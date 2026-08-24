@@ -395,8 +395,8 @@ async function emitReport(
         try {
             const v = await verifyFactory(chainArg, c.address, explorerApiKey);
             if (v.isV2 && v.isYoBatchesCompatible && v.configSnippet) {
-                const feeInfo = v.family === 'solidly-v2' || v.family === 'solidly-native'
-                    ? 'fee per-pair (Solidly)'
+                const feeInfo = v.family === 'v2fee' || v.family === 'solidly'
+                    ? 'fee per-pair'
                     : `fee ${v.fee} (${v.feeConfidence})`;
                 console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}`);
                 verified.push({ candidate: c, snippet: v.configSnippet, family: v.family });
@@ -408,14 +408,14 @@ async function emitReport(
         }
     }
 
-    const byFamily = { v2: 0, 'solidly-v2': 0, 'solidly-native': 0 } as Record<string, number>;
+    const byFamily = { v2: 0, v2fee: 0, solidly: 0 } as Record<string, number>;
     for (const v of verified) byFamily[v.family] = (byFamily[v.family] ?? 0) + 1;
 
     console.log('\n' + '═'.repeat(72));
     console.log(`RESULT: ${verified.length} verified factories ready to add`);
-    console.log(`  Pure V2:         ${byFamily['v2']}`);
-    console.log(`  Solidly-v2:      ${byFamily['solidly-v2']}`);
-    console.log(`  Solidly-native:  ${byFamily['solidly-native']}`);
+    console.log(`  Pure V2: ${byFamily['v2']}`);
+    console.log(`  V2Fee:   ${byFamily['v2fee']}`);
+    console.log(`  Solidly: ${byFamily['solidly']}`);
     console.log('═'.repeat(72));
 
     if (verified.length > 0) {

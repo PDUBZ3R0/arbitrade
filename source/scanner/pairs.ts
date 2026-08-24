@@ -119,23 +119,24 @@ export async function scanFactory(
     opts: ScanOptions = {},
 ): Promise<number> {
     if (factory.group !== 'v2'
-        && factory.group !== 'solidly-v2'
-        && factory.group !== 'solidly-native') {
+        && factory.group !== 'v2fee'
+        && factory.group !== 'solidly') {
         // V3/Algebra use different event shapes; separate scanner needed.
         return 0;
     }
 
-    // Event topic and parsing rules depend on the family:
-    //   'v2'             : PairCreated(address,address,address,uint256)
-    //                      No stable info in event.
-    //   'solidly-v2'     : Shadow-style — uses the SAME V2 topic. No stable
-    //                      info in event; populate later via pair.stable().
-    //   'solidly-native' : Canonical Solidly / Aerodrome / Velodrome / Equalizer.
-    //                      Different topic. Stable flag IS in the event data.
-    const eventTopic = factory.group === 'solidly-native'
+    // Event topic and parsing rules depend on the group:
+    //   'v2'      : PairCreated(address,address,address,uint256)
+    //               No stable info in event.
+    //   'v2fee'   : Also uses the V2 topic (Shadow-style). Fee is per-pair
+    //               (fetched later at reserves time). Some (Shadow) have
+    //               pair.stable() too — see hasStableFlag config.
+    //   'solidly' : Canonical Solidly / Aerodrome / Velodrome / Equalizer.
+    //               Different topic. Stable flag IS in the event data.
+    const eventTopic = factory.group === 'solidly'
         ? PAIR_CREATED_SOLIDLY_TOPIC
         : PAIR_CREATED_V2_TOPIC;
-    const parseStableFromEvent = factory.group === 'solidly-native';
+    const parseStableFromEvent = factory.group === 'solidly';
 
     const head = opts.toBlock ?? await provider.getBlockNumber();
     const resumeBlock = db.getScanProgress(factory.address);
@@ -333,11 +334,11 @@ export async function scanFactory(
                 let pair: string;
                 let stable: boolean | null = null;
                 if (parseStableFromEvent) {
-                    // Solidly-native: word 0 = stable bool, word 1 = pair
+                    // solidly: word 0 = stable bool, word 1 = pair
                     stable = BigInt('0x' + log.data.slice(2, 66)) === 1n;
                     pair = '0x' + log.data.slice(66, 130).slice(-40);
                 } else {
-                    // V2 or solidly-v2 (Shadow-style): word 0 = pair
+                    // v2 or v2fee (Shadow-style): word 0 = pair
                     pair = '0x' + log.data.slice(2, 66).slice(-40);
                 }
 
@@ -347,9 +348,9 @@ export async function scanFactory(
                     token0,
                     token1,
                     blockNumber: log.blockNumber,
-                    // fee is populated at reserve fetch time (all solidly families)
+                    // fee is populated later by reserves fetcher for v2fee/solidly
                     fee: null,
-                    stable,  // set from event for solidly-native, null otherwise
+                    stable,  // set from event for solidly; null otherwise
                 } satisfies import('../util/db.ts').PairRow;
             });
             const inserted = db.insertPairs(rows);
@@ -422,8 +423,8 @@ export async function scanChain(
     try {
         for (const factory of cfg.factories) {
             if (factory.group !== 'v2'
-                && factory.group !== 'solidly-v2'
-                && factory.group !== 'solidly-native') continue;
+                && factory.group !== 'v2fee'
+                && factory.group !== 'solidly') continue;
 
             // Prefer DB-cached deploy block over config, since discovery caches to DB
             const cachedBlock = db.getFactoryDeployBlock(factory.address);

@@ -17,9 +17,12 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --max-age N            Only refresh pairs with reserves older than N seconds');
     console.error('                         (also includes pairs that have never been fetched)');
     console.error('  --factory ADDR         Only refresh pairs from this factory');
-    console.error('  --refresh-metadata     Refetch Solidly fee/stable even if already populated');
+    console.error('  --refresh-metadata     Refetch v2fee/solidly fee (and stable, where applicable)');
+    console.error('                         even if already populated');
+    console.error('  --strict               Skip pairs whose factory is not in the current config');
+    console.error('                         (use yarn db-clean <chain> to delete them permanently)');
     console.error('');
-    console.error('Default: full refresh, fetch missing Solidly metadata only.');
+    console.error('Default: full refresh, fetch missing per-pair metadata only.');
     process.exit(1);
 }
 
@@ -33,6 +36,7 @@ const maxAgeStr = getStr('--max-age');
 const maxAge = maxAgeStr ? parseInt(maxAgeStr, 10) : undefined;
 const factory = getStr('--factory');
 const refreshMetadata = hasFlag('--refresh-metadata');
+const strict = hasFlag('--strict');
 
 const cfg = loadChainConfig(chainArg);
 const dbFile = dbPath(chainArg);
@@ -41,10 +45,11 @@ console.log(`Refreshing reserves for ${cfg.chain.currency} (chain id ${cfg.chain
 console.log(`DB:  ${dbFile}`);
 if (maxAge !== undefined) console.log(`Max age filter: ${maxAge}s`);
 if (factory) console.log(`Factory filter: ${factory}`);
-if (refreshMetadata) console.log(`Refreshing Solidly metadata even for already-populated pairs`);
+if (refreshMetadata) console.log(`Refreshing per-pair metadata even for already-populated pairs`);
+if (strict) console.log(`Strict mode: skipping pairs from factories not in current config`);
 
 const t0 = Date.now();
-const result = await fetchReserves(cfg, dbFile, { maxAgeSeconds: maxAge, factory, refreshMetadata });
+const result = await fetchReserves(cfg, dbFile, { maxAgeSeconds: maxAge, factory, refreshMetadata, strict });
 
 console.log('\n' + '─'.repeat(60));
 console.log(`Done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);

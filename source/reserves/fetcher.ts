@@ -2,18 +2,22 @@
 // Reserves fetcher.
 //
 // Refreshes reserves for pairs in the DB by calling YoBatches, and for
-// Solidly-family pairs, also fetches per-pair fee (and stable flag for
-// solidly-v2) via Multicall3.
+// v2fee/solidly pairs, also fetches per-pair fee (and stable flag when the
+// factory has hasStableFlag) via Multicall3.
 //
 // Pipeline per chain:
 //   1. Query DB for pairs to refresh (optionally filtered by factory/max-age)
-//   2. Group by factory (so we know which family each pair belongs to)
+//   2. Group by factory
 //   3. For each factory, batch YoBatches calls (~200 pairs per call)
 //   4. Filter out zero-reserve pairs (dead pools = no arb opportunity)
 //   5. Upsert non-zero reserves
-//   6. For solidly-* pairs missing metadata: batch factory.pairFee(pair)
-//      via Multicall3, plus pair.stable() for solidly-v2
+//   6. For v2fee/solidly pairs missing metadata: batch fee (and optionally
+//      stable) via Multicall3 — dispatched per feeTarget/feeFunction/feeDivisor
 //   7. Update pairs table with fee/stable
+//
+// Fail-loud: if >80% of a factory's fee calls return no data, we throw with
+// diagnostics pointing at the likely feeTarget/feeFunction misconfig instead
+// of silently declaring "0 pairs updated" like the pre-fix Equalizer bug.
 // -----------------------------------------------------------------------------
 
 import { JsonRpcProvider, Interface } from 'ethers';
@@ -22,21 +26,33 @@ import { ArbitradeDB } from '../util/db.ts';
 import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 
-const RESERVES_BATCH_SIZE  = 200;   // pairs per YoBatches call
-const METADATA_BATCH_SIZE  = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
+const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
+const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
+const FAIL_LOUD_THRESHOLD = 0.80;  // stop if this fraction of fee calls return no data
 
-// Selectors and ABI fragments for the Solidly per-pair metadata calls.
-// factory.pairFee(address) → uint256
-// pair.stable() → bool
-const solidlyIface = new Interface([
-    'function pairFee(address pair) view returns (uint256)',
+// pair.stable() is universal for v2fee pairs that have the flag (Shadow).
+const pairStableIface = new Interface([
     'function stable() view returns (bool)',
 ]);
 
-// Solidly factories express fees as raw uints — some use basis points
-// (divisor = 10_000, so 30 = 0.30%), others use parts per million
-// (divisor = 1_000_000, so 3000 = 0.30%). Per-factory feeDivisor lives in
-// config; we read cfg.factory.feeDivisor at call time.
+/**
+ * Build an Interface for the fee-lookup function, choosing signature based
+ * on where the function lives:
+ *   feeTarget="factory": (address) view returns (uint256)  — Shadow, Equalizer
+ *   feeTarget="pair":    () view returns (uint256)         — DXSwap
+ */
+function makeFeeIface(feeFunctionName: string, feeTarget: 'factory' | 'pair'): Interface {
+    const sig = feeTarget === 'pair'
+        ? `function ${feeFunctionName}() view returns (uint256)`
+        : `function ${feeFunctionName}(address pair) view returns (uint256)`;
+    return new Interface([sig]);
+}
+
+// v2fee/solidly factories express fees as raw uints with wildly different scales:
+//   Shadow (Sonic):     factory.pairFee(pair)    → ppm     (divisor 1e6)
+//   Equalizer (Sonic):  factory.getRealFee(pair) → wad     (divisor 1e18)
+//   DXSwap (Gnosis):    pair.swapFee()           → bps     (divisor 1e4)
+// Per-factory feeTarget/feeFunction/feeDivisor live in config.
 
 // -----------------------------------------------------------------------------
 
@@ -47,6 +63,11 @@ export type FetchOptions = {
     maxAgeSeconds?: number;
     /** If true, refetch fee/stable for solidly pairs even if already populated */
     refreshMetadata?: boolean;
+    /**
+     * If true, skip pairs whose factory is not in the current config.
+     * Default: false (process everything, but warn once).
+     */
+    strict?: boolean;
     /** Callback for progress updates */
     onProgress?: (info: {
         factoryName: string;
@@ -61,13 +82,14 @@ export type FetchResult = {
     reservesUpdated: number;
     reservesSkipped: number;   // zero-reserve pairs
     metadataUpdated: number;
+    orphanFactories: number;   // factories in DB but not in current config
     errors: string[];
 };
 
 // -----------------------------------------------------------------------------
 
 /**
- * Refresh reserves and Solidly-family metadata for pairs on a chain.
+ * Refresh reserves and per-pair metadata for pairs on a chain.
  */
 export async function fetchReserves(
     cfg: ChainConfig,
@@ -79,17 +101,33 @@ export async function fetchReserves(
     }
     const provider = new JsonRpcProvider(cfg.chain.host);
     const db = new ArbitradeDB(dbFilePath);
-    const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, errors: [] };
+    const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [] };
 
-    // Build factory lookup so we can identify family per pair
+    // Build factory lookup so we can identify group per pair.
     const factoriesByAddr = new Map<string, NormalizedFactory>();
     for (const f of cfg.factories) factoriesByAddr.set(f.address.toLowerCase(), f);
+    const currentFactoryAddrs = Array.from(factoriesByAddr.keys());
+
+    // Detect orphan pairs (factory in DB but not in current config). Report them
+    // and, in strict mode, filter them out of this run.
+    const orphans = db.countOrphanPairs(currentFactoryAddrs);
+    if (orphans.length > 0) {
+        result.orphanFactories = orphans.length;
+        const totalOrphanPairs = orphans.reduce((n, o) => n + o.count, 0);
+        console.log(`\n[!] Found ${totalOrphanPairs} pair(s) from ${orphans.length} factor${orphans.length === 1 ? 'y' : 'ies'} not in current config:`);
+        for (const o of orphans) console.log(`      ${o.factory}: ${o.count} pair(s)`);
+        console.log(`    These were probably scanned by a previous config that included these factories.`);
+        console.log(`    Fix: yarn reserves ${cfg.chain.name.toLowerCase()} --strict            (skip them this run)`);
+        console.log(`         yarn db-clean ${cfg.chain.name.toLowerCase()}                     (delete them permanently)`);
+        console.log('');
+    }
 
     try {
         // Group all requested pairs by factory address
         const pairs = db.getPairsForReservesFetch({
             factory: opts.factory,
             maxAgeSeconds: opts.maxAgeSeconds,
+            factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
         });
         if (pairs.length === 0) {
             console.log('No pairs need refresh.');
@@ -109,8 +147,8 @@ export async function fetchReserves(
 
         for (const [factoryAddr, factoryPairs] of byFactory) {
             const factory = factoriesByAddr.get(factoryAddr);
-            const factoryName = factory?.name ?? factoryAddr;
-            const family = factory?.group ?? 'v2';
+            const factoryName = factory?.name ?? `(orphan) ${factoryAddr}`;
+            const family = factory?.group ?? 'unknown';
 
             const batches = Math.ceil(factoryPairs.length / RESERVES_BATCH_SIZE);
             console.log(`\n[${factoryName}] ${factoryPairs.length} pairs (${family}), ${batches} batch(es)`);
@@ -160,14 +198,21 @@ export async function fetchReserves(
             }
             process.stdout.write('\n');
 
-            // Solidly-family metadata pass (if applicable)
-            if (family === 'solidly-v2' || family === 'solidly-native') {
-                const feeDivisor = factory?.feeDivisor ?? 10_000;
-                const metaCount = await fetchSolidlyMetadata(
-                    provider, db, factoryAddr, family, feeDivisor, opts.refreshMetadata ?? false,
+            // Per-pair metadata pass — runs for v2fee and solidly groups.
+            //   v2fee   : fetch fee; also fetch stable() if hasStableFlag
+            //   solidly : fetch fee only (stable was populated at scan time)
+            if (family === 'v2fee' || family === 'solidly') {
+                if (!factory) throw new Error(`No config for factory ${factoryAddr} on chain`);
+                const wantStable = family === 'v2fee' && factory.hasStableFlag;
+                const metaCount = await fetchPerPairMetadata(
+                    provider, db, factory, wantStable, opts.refreshMetadata ?? false,
                 );
                 result.metadataUpdated += metaCount;
-                console.log(`  [${factoryName}] metadata: ${metaCount} pairs updated (feeDivisor=${feeDivisor})`);
+                console.log(
+                    `  [${factoryName}] metadata: ${metaCount} pairs updated ` +
+                    `(target=${factory.feeTarget}, fn=${factory.feeFunction}, divisor=${factory.feeDivisor}` +
+                    `${wantStable ? ', +stable' : ''})`
+                );
             }
         }
     } finally {
@@ -180,46 +225,71 @@ export async function fetchReserves(
 // -----------------------------------------------------------------------------
 
 /**
- * Batch-fetch fee (and stable, for solidly-v2) for pairs of a Solidly-family
- * factory. Uses Multicall3 to reduce per-pair RPC calls.
+ * Batch-fetch per-pair fee (and stable, when applicable) for a v2fee or
+ * solidly factory. Uses Multicall3 to batch reads.
+ *
+ * Fails loud: throws with diagnostics if the first batch's fee calls come
+ * back mostly empty — that's the signature of a wrong feeTarget/feeFunction.
  */
-async function fetchSolidlyMetadata(
+async function fetchPerPairMetadata(
     provider: JsonRpcProvider,
     db: ArbitradeDB,
-    factoryAddr: string,
-    family: 'solidly-v2' | 'solidly-native',
-    feeDivisor: number,
+    factory: NormalizedFactory,
+    wantStable: boolean,
     refreshAll: boolean,
 ): Promise<number> {
-    const targets = db.getPairsForMetadataFetch(factoryAddr, refreshAll);
-    if (targets.length === 0) return 0;
+    const targets = db.getPairsForMetadataFetch(factory.address, refreshAll);
+    if (targets.length === 0) {
+        // Diagnostic: distinguish "already populated" from "no pairs match".
+        const totalForFactory = db.db.prepare('SELECT COUNT(*) AS n FROM pairs WHERE factory = ?')
+            .get(factory.address.toLowerCase()) as { n: number };
+        const withFee = db.db.prepare('SELECT COUNT(*) AS n FROM pairs WHERE factory = ? AND fee IS NOT NULL')
+            .get(factory.address.toLowerCase()) as { n: number };
+        if (refreshAll) {
+            console.log(`  (no pairs found for factory=${factory.address} — check config address matches DB)`);
+        } else if (totalForFactory.n === 0) {
+            console.log(`  (no pairs in DB for factory=${factory.address} — has the scanner run?)`);
+        } else if (withFee.n === totalForFactory.n) {
+            console.log(`  (all ${totalForFactory.n} pairs already have fee populated — pass --refresh-metadata to re-fetch)`);
+        } else {
+            console.log(`  (unexpected: ${totalForFactory.n} pairs exist, ${withFee.n} have fee, but query returned 0)`);
+        }
+        return 0;
+    }
+    const { feeTarget, feeFunction, feeDivisor } = factory;
+    const feeIface = makeFeeIface(feeFunction, feeTarget);
 
-    // For solidly-v2 we need BOTH pairFee and stable per pair; for solidly-native
-    // stable was populated at scan time from the event so we only need pairFee.
-    const wantStable = family === 'solidly-v2';
     const callsPerPair = wantStable ? 2 : 1;
     const pairsPerBatch = Math.max(1, Math.floor(METADATA_BATCH_SIZE * 2 / callsPerPair));
 
-    console.log(`  Fetching metadata for ${targets.length} pairs (${callsPerPair} calls/pair, ${pairsPerBatch}/batch)`);
+    console.log(
+        `  Fetching metadata for ${targets.length} pairs ` +
+        `(${callsPerPair} calls/pair, ${pairsPerBatch}/batch, ` +
+        `${feeTarget === 'pair' ? 'pair.' : 'factory.'}${feeFunction})`
+    );
 
     let totalUpdated = 0;
+    let firstBatchChecked = false;
 
     for (let i = 0; i < targets.length; i += pairsPerBatch) {
         const batch = targets.slice(i, i + pairsPerBatch);
 
-        // Build multicall
+        // Build the multicall. Fee call target and args depend on feeTarget.
         const calls: Multicall3Call[] = [];
         for (const t of batch) {
+            const feeCallData = feeTarget === 'pair'
+                ? feeIface.encodeFunctionData(feeFunction, [])
+                : feeIface.encodeFunctionData(feeFunction, [t.pair]);
             calls.push({
-                target: factoryAddr,
+                target: feeTarget === 'pair' ? t.pair : factory.address,
                 allowFailure: true,
-                callData: solidlyIface.encodeFunctionData('pairFee', [t.pair]),
+                callData: feeCallData,
             });
             if (wantStable) {
                 calls.push({
                     target: t.pair,
                     allowFailure: true,
-                    callData: solidlyIface.encodeFunctionData('stable'),
+                    callData: pairStableIface.encodeFunctionData('stable'),
                 });
             }
         }
@@ -232,7 +302,8 @@ async function fetchSolidlyMetadata(
             continue;
         }
 
-        // Decode results back into per-pair updates
+        // Decode. Track fee-call successes for fail-loud detection.
+        let feeSuccesses = 0;
         const updates: Array<{ pair: string; fee: number; stable?: boolean | null }> = [];
         for (let j = 0; j < batch.length; j++) {
             const t = batch[j];
@@ -240,28 +311,51 @@ async function fetchSolidlyMetadata(
             const stableResult = wantStable ? results[j * callsPerPair + 1] : null;
 
             if (!feeResult?.success || !feeResult.returnData || feeResult.returnData === '0x') {
-                continue;  // couldn't read fee for this pair, skip
+                continue;  // fee call failed for this pair, skip
             }
 
             let feeRaw: bigint;
             try {
-                feeRaw = BigInt(solidlyIface.decodeFunctionResult('pairFee', feeResult.returnData)[0]);
+                feeRaw = BigInt(feeIface.decodeFunctionResult(feeFunction, feeResult.returnData)[0]);
             } catch { continue; }
+            feeSuccesses++;
 
             const feeDecimal = Number(feeRaw) / feeDivisor;
-            // Sanity check: real-world fees fall between 0.001% and 5%
-            if (feeDecimal < 0.00001 || feeDecimal > 0.05) {
-                console.log(`\n  [!] Pair ${t.pair} fee ${feeDecimal} looks off (raw ${feeRaw}, divisor ${feeDivisor}). Check the factory's feeDivisor in config.`);
+            // Warn only for impossible values (> 100%) — legit outliers like
+            // 50% "brake" pools shouldn't spam.
+            if (feeDecimal > 1.0) {
+                console.log(`\n  [!] Pair ${t.pair} fee ${feeDecimal} > 100% — likely wrong divisor (raw ${feeRaw}, divisor ${feeDivisor}).`);
             }
 
             let stable: boolean | null = null;
             if (wantStable && stableResult?.success && stableResult.returnData && stableResult.returnData !== '0x') {
                 try {
-                    stable = Boolean(solidlyIface.decodeFunctionResult('stable', stableResult.returnData)[0]);
+                    stable = Boolean(pairStableIface.decodeFunctionResult('stable', stableResult.returnData)[0]);
                 } catch { /* leave null */ }
             }
 
             updates.push({ pair: t.pair, fee: feeDecimal, stable });
+        }
+
+        // Fail-loud after the first batch. If the config is wrong, almost
+        // every call will fail — no reason to burn through the whole factory
+        // before saying so.
+        if (!firstBatchChecked) {
+            firstBatchChecked = true;
+            const failureRate = 1 - (feeSuccesses / batch.length);
+            if (failureRate >= FAIL_LOUD_THRESHOLD) {
+                throw new Error(
+                    `Metadata fetch is failing for ${factory.name}: ` +
+                    `${batch.length - feeSuccesses}/${batch.length} pairs (${(failureRate * 100).toFixed(0)}%) ` +
+                    `returned no fee data in the first batch.\n` +
+                    `  Config: feeTarget="${feeTarget}", feeFunction="${feeFunction}", feeDivisor=${feeDivisor}\n` +
+                    `  Likely cause: wrong feeTarget or feeFunction. Check the factory contract on the block explorer.\n` +
+                    `  Common patterns:\n` +
+                    `    Shadow-like (Sonic):  feeTarget="factory", feeFunction="pairFee",    feeDivisor=1000000\n` +
+                    `    Equalizer-like:       feeTarget="factory", feeFunction="getRealFee", feeDivisor=1e18\n` +
+                    `    DXSwap-like (Gnosis): feeTarget="pair",    feeFunction="swapFee",    feeDivisor=10000`
+                );
+            }
         }
 
         const upserted = db.updatePairMetadata(updates);

@@ -27,12 +27,6 @@
           fee: 0.003
         },
 
-        "DXSwap v2": {
-          address: "0x5d48c95adffd4b40c1aaadc4e08fc44117e02179",
-          deployBlock: 14913783,
-          fee: 0.003        
-        },
-
         "UniSwap v2": {
           address: "0x965769c9cea8a7667246058504dcdcdb1e2975a5",
           deployBlock: 14000780,
@@ -45,8 +39,26 @@
           fee: 0.003        
         }
       }
+    },
+
+    "v2fee": {
+      abi: ["event PairCreated(address indexed token0, address indexed token1, address pair, uint)"],
+      list: {
+        "DXSwap v2": {
+          address: "0x5d48c95adffd4b40c1aaadc4e08fc44117e02179",
+          deployBlock: 14913783,
+          // DXSwap/Swapr stores fee ON THE PAIR CONTRACT, not the factory.
+          //   pair.swapFee() view returns (uint256)  — value is basis points
+          // K-check constant in pair source is 10000**2, confirming base 10000.
+          // Governance can retune per-pair; default is 25 (0.25%).
+          feeTarget: "pair",
+          feeFunction: "swapFee",
+          feeDivisor: 10000
+          // No hasStableFlag — DXSwap is pure V2 curve, no stable/volatile.
+        }
+      }
     }
-  },  
+  },
   "flashloan": {
     provider: "aave-v3",
     addressesProvider: "0x36616cf17557639614c1cdDb356b1B83fc0B2132",

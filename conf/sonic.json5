@@ -33,26 +33,30 @@
       }
     },
 
-    "solidly-v2": {
+    "v2fee": {
       abi: ["event PairCreated(address indexed token0, address indexed token1, address pair, uint)"],
       list: {
         "Shadow": {
           address: "0x2da25e7446a70d7be65fd4c053948becaa6374c8",          
           deployBlock: 4028276,
+          hasStableFlag: true,
           // Shadow's pairFee() returns raw values in parts-per-million.
           // Observed raw distribution: 5000 → 0.5%, 10000 → 1%, 3000 → 0.3%,
           // 4250 → 0.425%, 500000 → 50%, 20000 → 2%. All consistent with base 1e6.
-          feeDivisor: 1000000
-        } 
+          // Group defaults (v2fee): feeTarget=factory, feeFunction=pairFee, feeDivisor=1e6 — no override needed.
+        }
       }
     },
 
-    "solidly-native": {
+    "solidly": {
       abi: ["event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint)"],
       list: {
         "Equalizer": {
           address: "0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc",
-          deployBlock: 258140     
+          deployBlock: 258140,
+          // Equalizer's factory (impl 0xCdC29204...) exposes getRealFee(pair)
+          // which resolves per-pair overrides and returns a wad value where 1e18 = 100%.
+          // Group defaults (solidly): feeTarget=factory, feeFunction=getRealFee, feeDivisor=1e18 — no override needed.
         }
       }
     }

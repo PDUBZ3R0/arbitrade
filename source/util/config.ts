@@ -49,14 +49,40 @@ export type FactoryGroup = {
 export type FactoryEntry = {
     address: string;
     deployBlock?: number;
+    /** Factory-wide fee for pure v2 (unused for v2fee/solidly — those use per-pair). */
     fee?: number;
+
+    // --- Per-pair fee metadata (v2fee / solidly groups) ---
+
     /**
-     * For solidly-family factories where fee is per-pair (looked up via
-     * factory.pairFee), this divides the raw uint returned by pairFee to
-     * yield the decimal fee. Defaults to 10_000 (basis points). Shadow on
-     * Sonic and similar forks use 1_000_000 (parts per million).
+     * Where the fee lookup function lives:
+     *   "factory" (default): call factory.<feeFunction>(pair)  — Shadow, Equalizer
+     *   "pair":              call pair.<feeFunction>()         — DXSwap
+     */
+    feeTarget?: 'factory' | 'pair';
+    /**
+     * Function name for the per-pair fee lookup. Signature is inferred from feeTarget:
+     *   feeTarget="factory": (address pair) view returns (uint256)
+     *   feeTarget="pair":    () view returns (uint256)
+     * Defaults per group:
+     *   v2fee   → "pairFee"     (Shadow-compatible; DXSwap must override to "swapFee")
+     *   solidly → "getRealFee"  (Equalizer-compatible)
+     */
+    feeFunction?: string;
+    /**
+     * Divisor for raw fee values. Defaults per group:
+     *   v2fee   → 1_000_000    (Shadow uses ppm)
+     *   solidly → 1e18         (Equalizer uses wad)
+     * DXSwap on Gnosis uses 10_000 (basis points) and must override.
      */
     feeDivisor?: number;
+    /**
+     * For v2fee only: does the pair contract have a `stable()` view that
+     * distinguishes stable vs volatile curves? Shadow does; DXSwap doesn't.
+     * When true, we batch-call pair.stable() at metadata time.
+     * The solidly group always has stable from the event so this is ignored there.
+     */
+    hasStableFlag?: boolean;
 };
 
 export type RawChainConfig = {
@@ -65,8 +91,8 @@ export type RawChainConfig = {
         v2?: FactoryGroup;
         v3?: FactoryGroup;
         algebra?: FactoryGroup;
-        'solidly-v2'?: FactoryGroup;      // Solidly-family emitting V2-standard PairCreated (Shadow)
-        'solidly-native'?: FactoryGroup;  // Solidly emitting the extra-bool PairCreated (Aerodrome, etc.)
+        v2fee?: FactoryGroup;    // V2 event, per-pair fee (Shadow, DXSwap)
+        solidly?: FactoryGroup;  // Solidly event with stable flag, per-pair fee (Equalizer)
     };
     flashloan?: {
         provider: 'aave-v3' | 'balancer-v2';
@@ -81,13 +107,19 @@ export type RawChainConfig = {
 // Normalized types for consumers
 
 export type NormalizedFactory = {
-    group: 'v2' | 'v3' | 'algebra' | 'solidly-v2' | 'solidly-native';
+    group: 'v2' | 'v3' | 'algebra' | 'v2fee' | 'solidly';
     name: string;
     address: string;
     deployBlock: number;
     fee: number;
-    /** For solidly-family: divisor for factory.pairFee(pair) raw values. Default 10_000. */
+    /** For v2fee/solidly: "factory" or "pair" — where to call the fee function. */
+    feeTarget: 'factory' | 'pair';
+    /** For v2fee/solidly: factory function returning per-pair fee. Default per group. */
+    feeFunction: string;
+    /** For v2fee/solidly: divisor for raw fee values. Default per group. */
     feeDivisor: number;
+    /** For v2fee only: does the pair have a stable() view? Default false. */
+    hasStableFlag: boolean;
     abi: string[];
 };
 
@@ -162,20 +194,19 @@ export function loadChainConfig(chainName: string): ChainConfig {
 
     // Flatten the factory groups
     const factories: NormalizedFactory[] = [];
-    const KNOWN_GROUPS = ['v2', 'v3', 'algebra', 'solidly-v2', 'solidly-native'] as const;
+    const KNOWN_GROUPS = ['v2', 'v3', 'algebra', 'v2fee', 'solidly'] as const;
     const knownSet = new Set<string>(KNOWN_GROUPS);
 
     // Warn about unknown top-level keys under "factories" — common source of
-    // silent data loss when someone misspells a group name (e.g. "solidity"
-    // instead of "solidly"). We only iterate the known set, so anything else
-    // is silently dropped unless we shout about it.
+    // silent data loss when someone misspells a group name. We only iterate
+    // the known set, so anything else is silently dropped unless we shout.
     if (raw.factories) {
         for (const key of Object.keys(raw.factories)) {
             if (!knownSet.has(key)) {
                 console.warn(
                     `[config] WARNING: unknown factory group "${key}" in ${chainName}.json5. ` +
                     `Its factories will NOT be scanned. Known groups: ${KNOWN_GROUPS.join(', ')}. ` +
-                    `Common typo: "solidity-*" should be "solidly-*".`
+                    `Common mistakes: "solidity-*"/"solidly-*"/"solidly-v2" — the group is now "solidly" or "v2fee".`
                 );
             }
         }
@@ -184,6 +215,20 @@ export function loadChainConfig(chainName: string): ChainConfig {
     for (const group of KNOWN_GROUPS) {
         const g = raw.factories?.[group];
         if (!g) continue;
+
+        // Per-group defaults. Overrides land in FactoryEntry fields.
+        //   v2fee:   Shadow's convention (pairFee on factory, 1e6 ppm).
+        //            DXSwap uses "swapFee" on pair with 10_000 — needs full override.
+        //   solidly: Equalizer's convention (getRealFee on factory, 1e18 wad).
+        const defaultFeeFunction =
+            group === 'v2fee'   ? 'pairFee' :
+            group === 'solidly' ? 'getRealFee' :
+            'pairFee';  // unused for pure v2/v3/algebra but the type demands a string
+        const defaultFeeDivisor =
+            group === 'v2fee'   ? 1_000_000 :
+            group === 'solidly' ? 1e18 :
+            10_000;
+
         for (const [name, entry] of Object.entries(g.list)) {
             const isString = typeof entry === 'string';
             factories.push({
@@ -192,7 +237,10 @@ export function loadChainConfig(chainName: string): ChainConfig {
                 address: isString ? entry : entry.address,
                 deployBlock: isString ? 0 : (entry.deployBlock ?? 0),
                 fee: isString ? 0.003 : (entry.fee ?? 0.003),
-                feeDivisor: isString ? 10_000 : (entry.feeDivisor ?? 10_000),
+                feeTarget:     isString ? 'factory' : (entry.feeTarget     ?? 'factory'),
+                feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction   ?? defaultFeeFunction),
+                feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor    ?? defaultFeeDivisor),
+                hasStableFlag: isString ? false : (entry.hasStableFlag ?? false),
                 abi: g.abi,
             });
         }

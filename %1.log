@@ -1,0 +1,2 @@
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning source/scan.ts %1
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

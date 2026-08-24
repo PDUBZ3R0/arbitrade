@@ -1,0 +1,187 @@
+=== scan ===
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning source/scan.ts sonic
+Scanning S (chain id 146)
+RPC: https://rpc.soniclabs.com
+DB:  /home/pdubz3r0/Development/arbitrade/db/sonic.sqlite
+Factories configured: 5
+Scan tuning: chunk 5000 [min 10 / max 50000], delay 0ms
+
+[S] Scanning SpookySwap v2 @ 0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741
+  block 78091825/78091825 (100.0%) — 0 new pairs
+  → 0 new pairs; total now 5326
+
+[S] Scanning Metropolis v2 @ 0x1570300e9cFEC66c9Fb0C8bc14366C86EB170Ad0
+  block 78091825/78091825 (100.0%) — 0 new pairs
+  → 0 new pairs; total now 1081
+
+[S] Scanning Omni v2 @ 0x7d9d51267f7e9e6b46a48e0a75c0086f46777087
+  block 78091825/78091825 (100.0%) — 0 new pairs
+  → 0 new pairs; total now 9
+
+[S] Scanning Shadow @ 0x2da25e7446a70d7be65fd4c053948becaa6374c8
+  block 78091825/78091825 (100.0%) — 0 new pairs
+  → 0 new pairs; total now 18156
+
+[S] Scanning Equalizer @ 0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc
+  block 78091825/78091825 (100.0%) — 0 new pairs
+  → 0 new pairs; total now 2258
+
+────────────────────────────────────────────────────────────
+Scan complete in 2.3s
+  SpookySwap v2: 0 new pairs
+  Metropolis v2: 0 new pairs
+  Omni v2: 0 new pairs
+  Shadow: 0 new pairs
+  Equalizer: 0 new pairs
+=== reserves ===
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning source/reserves.ts sonic
+Refreshing reserves for S (chain id 146)
+DB:  /home/pdubz3r0/Development/arbitrade/db/sonic.sqlite
+Refreshing reserves for 26830 pairs across 5 factories
+YoBatches: 0xB7D20552080FB51861F607A52DCc34C91F4aaB9a
+
+[Metropolis v2] 1081 pairs (v2), 6 batch(es)
+  batch 1/6 — 183/200 non-zero, 183 total upserts  batch 2/6 — 194/200 non-zero, 377 total upserts  batch 3/6 — 193/200 non-zero, 570 total upserts  batch 4/6 — 184/200 non-zero, 754 total upserts  batch 5/6 — 190/200 non-zero, 944 total upserts  batch 6/6 — 77/81 non-zero, 1021 total upserts
+
+[Shadow] 18156 pairs (v2fee), 91 batch(es)
+  batch 1/91 — 198/200 non-zero, 1219 total upserts  batch 2/91 — 197/200 non-zero, 1416 total upserts  batch 3/91 — 197/200 non-zero, 1613 total upserts  batch 4/91 — 197/200 non-zero, 1810 total upserts  batch 5/91 — 198/200 non-zero, 2008 total upserts  batch 6/91 — 196/200 non-zero, 2204 total upserts  batch 7/91 — 197/200 non-zero, 2401 total upserts  batch 8/91 — 198/200 non-zero, 2599 total upserts  batch 9/91 — 198/200 non-zero, 2797 total upserts  batch 10/91 — 199/200 non-zero, 2996 total upserts  batch 11/91 — 198/200 non-zero, 3194 total upserts  batch 12/91 — 198/200 non-zero, 3392 total upserts  batch 13/91 — 198/200 non-zero, 3590 total upserts  batch 14/91 — 197/200 non-zero, 3787 total upserts  batch 15/91 — 199/200 non-zero, 3986 total upserts  batch 16/91 — 199/200 non-zero, 4185 total upserts  batch 17/91 — 197/200 non-zero, 4382 total upserts  batch 18/91 — 199/200 non-zero, 4581 total upserts  batch 19/91 — 199/200 non-zero, 4780 total upserts  batch 20/91 — 199/200 non-zero, 4979 total upserts  batch 21/91 — 199/200 non-zero, 5178 total upserts  batch 22/91 — 198/200 non-zero, 5376 total upserts  batch 23/91 — 199/200 non-zero, 5575 total upserts  batch 24/91 — 199/200 non-zero, 5774 total upserts  batch 25/91 — 197/200 non-zero, 5971 total upserts  batch 26/91 — 195/200 non-zero, 6166 total upserts  batch 27/91 — 197/200 non-zero, 6363 total upserts  batch 28/91 — 196/200 non-zero, 6559 total upserts  batch 29/91 — 197/200 non-zero, 6756 total upserts  batch 30/91 — 196/200 non-zero, 6952 total upserts  batch 31/91 — 199/200 non-zero, 7151 total upserts  batch 32/91 — 197/200 non-zero, 7348 total upserts  batch 33/91 — 199/200 non-zero, 7547 total upserts  batch 34/91 — 197/200 non-zero, 7744 total upserts  batch 35/91 — 200/200 non-zero, 7944 total upserts  batch 36/91 — 198/200 non-zero, 8142 total upserts  batch 37/91 — 198/200 non-zero, 8340 total upserts  batch 38/91 — 200/200 non-zero, 8540 total upserts  batch 39/91 — 196/200 non-zero, 8736 total upserts  batch 40/91 — 198/200 non-zero, 8934 total upserts  batch 41/91 — 199/200 non-zero, 9133 total upserts  batch 42/91 — 198/200 non-zero, 9331 total upserts  batch 43/91 — 194/200 non-zero, 9525 total upserts  batch 44/91 — 200/200 non-zero, 9725 total upserts  batch 45/91 — 200/200 non-zero, 9925 total upserts  batch 46/91 — 198/200 non-zero, 10123 total upserts  batch 47/91 — 198/200 non-zero, 10321 total upserts  batch 48/91 — 196/200 non-zero, 10517 total upserts  batch 49/91 — 199/200 non-zero, 10716 total upserts  batch 50/91 — 199/200 non-zero, 10915 total upserts  batch 51/91 — 198/200 non-zero, 11113 total upserts  batch 52/91 — 199/200 non-zero, 11312 total upserts  batch 53/91 — 198/200 non-zero, 11510 total upserts  batch 54/91 — 199/200 non-zero, 11709 total upserts  batch 55/91 — 197/200 non-zero, 11906 total upserts  batch 56/91 — 198/200 non-zero, 12104 total upserts  batch 57/91 — 200/200 non-zero, 12304 total upserts  batch 58/91 — 199/200 non-zero, 12503 total upserts  batch 59/91 — 198/200 non-zero, 12701 total upserts  batch 60/91 — 199/200 non-zero, 12900 total upserts  batch 61/91 — 199/200 non-zero, 13099 total upserts  batch 62/91 — 198/200 non-zero, 13297 total upserts  batch 63/91 — 199/200 non-zero, 13496 total upserts  batch 64/91 — 197/200 non-zero, 13693 total upserts  batch 65/91 — 198/200 non-zero, 13891 total upserts  batch 66/91 — 199/200 non-zero, 14090 total upserts  batch 67/91 — 199/200 non-zero, 14289 total upserts  batch 68/91 — 197/200 non-zero, 14486 total upserts  batch 69/91 — 200/200 non-zero, 14686 total upserts  batch 70/91 — 199/200 non-zero, 14885 total upserts  batch 71/91 — 197/200 non-zero, 15082 total upserts  batch 72/91 — 198/200 non-zero, 15280 total upserts  batch 73/91 — 198/200 non-zero, 15478 total upserts  batch 74/91 — 198/200 non-zero, 15676 total upserts  batch 75/91 — 199/200 non-zero, 15875 total upserts  batch 76/91 — 198/200 non-zero, 16073 total upserts  batch 77/91 — 200/200 non-zero, 16273 total upserts  batch 78/91 — 196/200 non-zero, 16469 total upserts  batch 79/91 — 198/200 non-zero, 16667 total upserts  batch 80/91 — 197/200 non-zero, 16864 total upserts  batch 81/91 — 197/200 non-zero, 17061 total upserts  batch 82/91 — 198/200 non-zero, 17259 total upserts  batch 83/91 — 199/200 non-zero, 17458 total upserts  batch 84/91 — 199/200 non-zero, 17657 total upserts  batch 85/91 — 198/200 non-zero, 17855 total upserts  batch 86/91 — 198/200 non-zero, 18053 total upserts  batch 87/91 — 197/200 non-zero, 18250 total upserts  batch 88/91 — 198/200 non-zero, 18448 total upserts  batch 89/91 — 198/200 non-zero, 18646 total upserts  batch 90/91 — 196/200 non-zero, 18842 total upserts  batch 91/91 — 156/156 non-zero, 18998 total upserts
+  [Shadow] metadata: 0 pairs updated (target=factory, fn=pairFee, divisor=1000000, +stable)
+
+[Omni v2] 9 pairs (v2), 1 batch(es)
+  batch 1/1 — 9/9 non-zero, 19007 total upserts
+
+[Equalizer] 2258 pairs (solidly), 12 batch(es)
+  batch 1/12 — 178/200 non-zero, 19185 total upserts  batch 2/12 — 178/200 non-zero, 19363 total upserts  batch 3/12 — 176/200 non-zero, 19539 total upserts  batch 4/12 — 182/200 non-zero, 19721 total upserts  batch 5/12 — 175/200 non-zero, 19896 total upserts  batch 6/12 — 177/200 non-zero, 20073 total upserts  batch 7/12 — 179/200 non-zero, 20252 total upserts  batch 8/12 — 172/200 non-zero, 20424 total upserts  batch 9/12 — 177/200 non-zero, 20601 total upserts  batch 10/12 — 176/200 non-zero, 20777 total upserts  batch 11/12 — 181/200 non-zero, 20958 total upserts  batch 12/12 — 51/58 non-zero, 21009 total upserts
+  [Equalizer] metadata: 0 pairs updated (target=factory, fn=getRealFee, divisor=1000000000000000000)
+
+[SpookySwap v2] 5326 pairs (v2), 27 batch(es)
+  batch 1/27 — 197/200 non-zero, 21206 total upserts  batch 2/27 — 200/200 non-zero, 21406 total upserts  batch 3/27 — 197/200 non-zero, 21603 total upserts  batch 4/27 — 200/200 non-zero, 21803 total upserts  batch 5/27 — 199/200 non-zero, 22002 total upserts  batch 6/27 — 198/200 non-zero, 22200 total upserts  batch 7/27 — 199/200 non-zero, 22399 total upserts  batch 8/27 — 197/200 non-zero, 22596 total upserts  batch 9/27 — 197/200 non-zero, 22793 total upserts  batch 10/27 — 199/200 non-zero, 22992 total upserts  batch 11/27 — 200/200 non-zero, 23192 total upserts  batch 12/27 — 199/200 non-zero, 23391 total upserts  batch 13/27 — 198/200 non-zero, 23589 total upserts  batch 14/27 — 199/200 non-zero, 23788 total upserts  batch 15/27 — 199/200 non-zero, 23987 total upserts  batch 16/27 — 196/200 non-zero, 24183 total upserts  batch 17/27 — 196/200 non-zero, 24379 total upserts  batch 18/27 — 199/200 non-zero, 24578 total upserts  batch 19/27 — 199/200 non-zero, 24777 total upserts  batch 20/27 — 198/200 non-zero, 24975 total upserts  batch 21/27 — 198/200 non-zero, 25173 total upserts  batch 22/27 — 199/200 non-zero, 25372 total upserts  batch 23/27 — 198/200 non-zero, 25570 total upserts  batch 24/27 — 199/200 non-zero, 25769 total upserts  batch 25/27 — 198/200 non-zero, 25967 total upserts  batch 26/27 — 197/200 non-zero, 26164 total upserts  batch 27/27 — 125/126 non-zero, 26289 total upserts
+
+────────────────────────────────────────────────────────────
+Done in 68.1s
+  Reserves upserted:  26289
+  Zero-reserve skips: 541
+  Metadata updated:   0
+=== triangles ===
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning source/triangles.ts sonic
+Enumerating triangles for Sonic (chain id 146)
+DB: /home/pdubz3r0/Development/arbitrade/db/sonic.sqlite
+Flash-loan tokens: USDC, WETH, wS, stS
+
+Loaded 26212 live pairs (excluding zero-reserve and stable)
+Adjacency: 25525 distinct tokens, 25932 distinct token-pairs
+  root 0x29219dd400f2bf60e5a23d13be72b486d4038894: 997 candidate triangles
+  root 0x50c42deacd8fc9773493ed674b675be577f2634b: 196 candidate triangles
+  root 0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38: 1698 candidate triangles
+  root 0xe5da20f15420ad15de0fa650600afc998bbe3955: 25 candidate triangles
+
+Inserting 2916 triangles into DB...
+
+────────────────────────────────────────────────────────────
+Done in 0.49s
+  Pairs used:          26212
+  Triangles inserted:  2916
+  2-hop count:         306
+  3-hop count:         2610
+  By root token:
+    USDC   0x29219dd400f2bf60e5a23d13be72b486d4038894: 997
+    WETH   0x50c42deacd8fc9773493ed674b675be577f2634b: 196
+    wS     0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38: 1698
+    stS    0xe5da20f15420ad15de0fa650600afc998bbe3955: 25
+=== evaluate ===
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning source/evaluate.ts sonic --limit 20 --verbose
+Evaluating triangles for Sonic (chain id 146)
+DB: /home/pdubz3r0/Development/arbitrade/db/sonic.sqlite
+Min liquidity: 1000000000000000 wei
+
+Loaded 26212 pairs with reserves
+Evaluating 2916 triangles...
+
+────────────────────────────────────────────────────────────
+Done in 0.20s
+  Triangles scored:    752
+  Triangles skipped:   2164 (dust or missing reserves)
+  Candidates found:    615
+  Profitable:          615
+
+Top 20 candidates:
+
+  #  1567 [3h forward] wS     in=    109.626170  net=+    1.399199  ROI=  1.276%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x71e99522  Metropolis v2   fee=0.300%  pair=0x1a0ccd3f
+         0x71e99522 → wS     Metropolis v2   fee=0.300%  pair=0x9fc6b2ca
+  #  1577 [3h forward] wS     in=      3.643104  net=+    0.267320  ROI=  7.338%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x71e99522  Shadow          fee=1.000%  pair=0x8d0e323f
+         0x71e99522 → wS     Metropolis v2   fee=0.300%  pair=0x9fc6b2ca
+  #  1984 [3h forward] wS     in=      3.231215  net=+    0.235688  ROI=  7.294%
+         wS    → 0xf26ff705  Equalizer       fee=1.000%  pair=0x2e92a37e
+         0xf26ff705 → 0xf229857c  Shadow          fee=0.500%  pair=0xfe893af2
+         0xf229857c → wS     Shadow          fee=0.500%  pair=0x832b7fcf
+  #  2745 [3h reverse] wS     in=      3.643104  net=+    0.212123  ROI=  5.823%
+         wS    → 0xc36cc059  Metropolis v2   fee=0.300%  pair=0xb32012b7
+         0xc36cc059 → 0x71e99522  Shadow          fee=1.000%  pair=0x8d0e323f
+         0x71e99522 → wS     Metropolis v2   fee=0.300%  pair=0x9fc6b2ca
+  #  1496 [3h reverse] wS     in=     45.266434  net=+    0.183352  ROI=  0.405%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x6fb98978  Shadow          fee=1.000%  pair=0x2268fd3a
+         0x6fb98978 → wS     Equalizer       fee=1.000%  pair=0x04f1b3ce
+  #  1566 [3h forward] wS     in=     29.223827  net=+    0.168478  ROI=  0.577%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x17af1df4  Shadow          fee=1.000%  pair=0x19e911c6
+         0x17af1df4 → wS     Metropolis v2   fee=0.300%  pair=0x4c777fb7
+  #  2811 [3h forward] wS     in=      3.364463  net=+    0.126656  ROI=  3.765%
+         wS    → 0xc36cc059  Metropolis v2   fee=0.300%  pair=0xb32012b7
+         0xc36cc059 → 0x71e99522  Shadow          fee=1.000%  pair=0x8d0e323f
+         0x71e99522 → wS     Shadow          fee=1.000%  pair=0xf4764368
+  #  2410 [3h forward] wS     in=      0.913203  net=+    0.125764  ROI= 13.772%
+         wS    → 0x1accebb3  SpookySwap v2   fee=0.200%  pair=0x736662cc
+         0x1accebb3 → 0x3ad2234e  SpookySwap v2   fee=0.200%  pair=0x4fe4097c
+         0x3ad2234e → wS     Shadow          fee=0.500%  pair=0x83a1ab1a
+  #  1852 [3h reverse] wS     in=      2.548414  net=+    0.095620  ROI=  3.752%
+         wS    → 0x1accebb3  SpookySwap v2   fee=0.200%  pair=0x736662cc
+         0x1accebb3 → 0x79bbf450  SpookySwap v2   fee=0.200%  pair=0x2c411609
+         0x79bbf450 → wS     Metropolis v2   fee=0.300%  pair=0x25130f6e
+  #  2406 [3h forward] wS     in=      2.548414  net=+    0.082703  ROI=  3.245%
+         wS    → 0x1accebb3  SpookySwap v2   fee=0.200%  pair=0x736662cc
+         0x1accebb3 → 0x79bbf450  SpookySwap v2   fee=0.200%  pair=0x2c411609
+         0x79bbf450 → wS     Equalizer       fee=1.000%  pair=0xa1666416
+  #  2829 [3h reverse] wS     in=      1.146202  net=+    0.075492  ROI=  6.586%
+         wS    → 0x6fd6e99f  SpookySwap v2   fee=0.200%  pair=0xfeeeb9a6
+         0x6fd6e99f → 0x9fdbc3f8  SpookySwap v2   fee=0.200%  pair=0x7459377c
+         0x9fdbc3f8 → wS     Shadow          fee=1.000%  pair=0xbd0313c1
+  #  2499 [3h reverse] wS     in=      1.146202  net=+    0.075245  ROI=  6.565%
+         wS    → 0x6fd6e99f  SpookySwap v2   fee=0.200%  pair=0xfeeeb9a6
+         0x6fd6e99f → 0x9fdbc3f8  SpookySwap v2   fee=0.200%  pair=0x7459377c
+         0x9fdbc3f8 → wS     Equalizer       fee=1.000%  pair=0x832e2bb9
+  #  1573 [3h forward] wS     in=     14.220507  net=+    0.057270  ROI=  0.403%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x9fdbc3f8  Shadow          fee=1.000%  pair=0x3edf7756
+         0x9fdbc3f8 → wS     Equalizer       fee=1.000%  pair=0x832e2bb9
+  #  1405 [2h reverse] wS     in=      2.305615  net=+    0.055366  ROI=  2.401%
+         wS    → 0x2abcea1e  SpookySwap v2   fee=0.200%  pair=0xa9be8c99
+         0x2abcea1e → wS     Shadow          fee=0.300%  pair=0x72a3d2ec
+  #  1565 [3h forward] wS     in=     20.189877  net=+    0.051732  ROI=  0.256%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x17af1df4  Shadow          fee=1.000%  pair=0x19e911c6
+         0x17af1df4 → wS     Equalizer       fee=1.000%  pair=0x3e6daa42
+  #  1968 [3h reverse] wS     in=      2.855583  net=+    0.047181  ROI=  1.652%
+         wS    → 0x1accebb3  SpookySwap v2   fee=0.200%  pair=0x736662cc
+         0x1accebb3 → 0xf26ff705  SpookySwap v2   fee=0.200%  pair=0x0ccbc08c
+         0xf26ff705 → wS     Equalizer       fee=1.000%  pair=0x2e92a37e
+  #  2481 [3h reverse] wS     in=      0.041950  net=+    0.034611  ROI= 82.506%
+         wS    → 0x7bf26df0  Shadow          fee=1.000%  pair=0xe0707bd1
+         0x7bf26df0 → 0x05e31a69  Equalizer       fee=1.000%  pair=0x5c9c283e
+         0x05e31a69 → wS     Equalizer       fee=0.300%  pair=0x822b6e8d
+  #  2404 [3h forward] wS     in=      1.432677  net=+    0.030293  ROI=  2.114%
+         wS    → 0x1accebb3  SpookySwap v2   fee=0.200%  pair=0x736662cc
+         0x1accebb3 → 0x79bbf450  SpookySwap v2   fee=0.200%  pair=0x2c411609
+         0x79bbf450 → wS     Omni v2         fee=0.300%  pair=0x8ca257cd
+  #  1867 [3h reverse] wS     in=      1.566799  net=+    0.025622  ROI=  1.635%
+         wS    → 0x6fd6e99f  SpookySwap v2   fee=0.200%  pair=0xfeeeb9a6
+         0x6fd6e99f → 0x79bbf450  SpookySwap v2   fee=0.200%  pair=0xa7cecc8b
+         0x79bbf450 → wS     Metropolis v2   fee=0.300%  pair=0x25130f6e
+  #  1569 [3h forward] wS     in=      2.191792  net=+    0.023278  ROI=  1.062%
+         wS    → 0xc36cc059  Shadow          fee=1.000%  pair=0x0ba03d73
+         0xc36cc059 → 0x71e99522  Metropolis v2   fee=0.300%  pair=0x1a0ccd3f
+         0x71e99522 → wS     Shadow          fee=1.000%  pair=0xf4764368

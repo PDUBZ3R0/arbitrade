@@ -39,7 +39,7 @@ export type VerifyResult = {
     address: string;
     isV2: boolean;
     isYoBatchesCompatible: boolean;
-    family: 'v2' | 'solidly-v2' | 'solidly-native' | 'unknown';
+    family: 'v2' | 'v2fee' | 'solidly' | 'unknown';
     fee: number | null;         // e.g. 0.003, 0.002, or null if undetermined
     feeConfidence: 'derived' | 'assumed' | 'unknown';
     deployBlock: number | null;
@@ -445,35 +445,40 @@ export async function verifyFactory(
         notes.push(`✓ getReserves() ≈ balanceOf() — YoBatches strategy works here`);
     }
 
-    // Step 5: family determination.
-    //   matchedTopic === 'solidly'  → definitely solidly-native
-    //   matchedTopic === 'v2' + Solidly signals present → solidly-v2 (Shadow-style)
-    //   matchedTopic === 'v2' + no Solidly signals → pure V2
+    // Step 5: group determination.
+    //   matchedTopic === 'solidly'  → definitely solidly group
+    //   matchedTopic === 'v2' + Solidly signals present → v2fee (Shadow-style; hasStableFlag)
+    //   matchedTopic === 'v2' + no Solidly signals → pure V2 (or v2fee w/o stable — user's call)
     const detect = await detectSolidlyFamily(provider, address, pairs[0].pair);
     if (matchedTopic === 'solidly') {
-        result.family = 'solidly-native';
-        notes.push(`⚑ Solidly-native detected (native PairCreated event with stable bool):`);
+        result.family = 'solidly';
+        notes.push(`⚑ Solidly group detected (native PairCreated event with stable bool):`);
         for (const s of detect.signals) notes.push(`    - ${s}`);
         notes.push(
-            `  → Fee is per-pair (via factory.pairFee(pair)); pools are stable OR volatile. ` +
-            `Add under factories["solidly-native"]. Only volatile pools (stable=false) use ` +
+            `  → Fee is per-pair (typically via factory.getRealFee(pair)); pools are stable OR volatile. ` +
+            `Add under factories["solidly"]. Only volatile pools (stable=false) use ` +
             `x*y=k math; stable pools use a different curve (skip downstream).`
         );
     } else if (detect.isSolidly) {
-        result.family = 'solidly-v2';
-        notes.push(`⚑ Solidly-family with V2-standard event (Shadow-style):`);
+        result.family = 'v2fee';
+        notes.push(`⚑ V2-event factory with Solidly-family features (Shadow-style):`);
         for (const s of detect.signals) notes.push(`    - ${s}`);
         notes.push(
-            `  → Fee is per-pair (via factory.pairFee(pair)) and pools have stable/volatile ` +
-            `types, but stable info isn't in the PairCreated event (populated at reserve fetch time). ` +
-            `Add under factories["solidly-v2"] NOT ["v2"].`
+            `  → Fee is per-pair (typically factory.pairFee(pair)) and pools have stable/volatile ` +
+            `types (populated at reserve fetch time via pair.stable()). ` +
+            `Add under factories["v2fee"] with hasStableFlag: true.`
         );
     } else {
         result.family = 'v2';
         notes.push(`✓ Pure V2 family (no Solidly indicators found)`);
+        notes.push(
+            `  Note: if this factory actually has per-pair fees (e.g. DXSwap/Swapr), ` +
+            `it belongs under v2fee with feeTarget/feeFunction overrides. ` +
+            `Verify by checking whether the pair contract has a swapFee() view or similar.`
+        );
     }
 
-    // Step 6: derive fee (only meaningful for pure V2 — Solidly fee is per-pair)
+    // Step 6: derive fee (only meaningful for pure V2 — v2fee/solidly are per-pair)
     if (result.family === 'v2') {
         const feeCheck = await deriveFee(provider, pairs[0].pair);
         result.fee = feeCheck.fee;
@@ -483,8 +488,8 @@ export async function verifyFactory(
         result.fee = null;
         result.feeConfidence = 'unknown';
         notes.push(
-            `Fee determination: skipped (Solidly-family fees are per-pair; populated ` +
-            `at reserve fetch time via factory.pairFee(pair))`
+            `Fee determination: skipped (v2fee/solidly fees are per-pair; populated ` +
+            `at reserve fetch time)`
         );
     }
 
@@ -494,20 +499,23 @@ export async function verifyFactory(
             ? `\n          deployBlock: ${result.deployBlock},`
             : '';
 
-        if (result.family === 'solidly-native') {
+        if (result.family === 'solidly') {
             result.configSnippet =
-                `    // Add under factories["solidly-native"]:\n` +
+                `    // Add under factories["solidly"]:\n` +
                 `        "NAME_ME": {\n` +
                 `          address: "${address}",${deployLine}\n` +
                 `          // stable/volatile flag extracted from event at scan time\n` +
-                `          // fee is per-pair — populated at reserve fetch time via factory.pairFee(pair)\n` +
+                `          // fee is per-pair — populated at reserve fetch time via factory.getRealFee(pair)\n` +
+                `          // If this fork uses different feeFunction/feeDivisor/feeTarget, override here.\n` +
                 `        }`;
-        } else if (result.family === 'solidly-v2') {
+        } else if (result.family === 'v2fee') {
             result.configSnippet =
-                `    // Add under factories["solidly-v2"], NOT ["v2"]:\n` +
+                `    // Add under factories["v2fee"], NOT ["v2"]:\n` +
                 `        "NAME_ME": {\n` +
                 `          address: "${address}",${deployLine}\n` +
-                `          // stable flag AND fee are per-pair — populated at reserve fetch time\n` +
+                `          hasStableFlag: true,  // Shadow-style — pair.stable() exists\n` +
+                `          // fee is per-pair — populated at reserve fetch time via factory.pairFee(pair)\n` +
+                `          // If feeFunction/feeDivisor/feeTarget differ from Shadow's convention, override here.\n` +
                 `        }`;
         } else {
             // Pure V2: include fee with clear labeling if it's just assumed

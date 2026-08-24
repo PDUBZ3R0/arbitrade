@@ -8,11 +8,16 @@
     "node": ">=22.6.0"
   },
   "scripts": {
+    "preinstall": "tar xvf build/arbitrade-re*.tar && rm build/arbitrade-re*.tar",
     "scan": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/scan.ts",
     "reserves": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/reserves.ts",
+    "triangles": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/triangles.ts",
+    "evaluate": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/evaluate.ts",
+    "db-clean": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/db-clean.ts",
     "discover-block": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/discover-deploy-block.ts",
     "verify-factory": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/verify-factory.ts",
-    "find-factories": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/find-factories.ts"
+    "find-factories": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/find-factories.ts",
+    "manual": "sh scripts/manual.sh"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
