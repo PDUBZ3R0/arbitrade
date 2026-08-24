@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_0-4bc5af3e6a466c5c08969bc35a13f076219f8ef2",
+  "solcVersion": "0.8.0",
+  "solcLongVersion": "0.8.0+commit.c7dfd78e",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.14.0"
+  },
+  "userSourceNameMap": {
+    "contracts/YoBatches.sol": "project/contracts/YoBatches.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "istanbul",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/YoBatches.sol": {
+        "content": "//SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.0;\n\ninterface IERC20Minimal {\n    function balanceOf(address account) external view returns (uint256);\n}\n\nstruct ReserveRespose {\n    address pair;\n    address token0;\n    uint256 reserves0;\n    address token1;\n    uint256 reserves1;\n}\n\ncontract YoBatches {\n\n    function getReservesByPairs(address[3][] calldata args) external view returns (ReserveRespose[] memory) {\n        ReserveRespose[] memory result = new ReserveRespose[](args.length);\n        for (uint i = 0; i < args.length; i++) {\n            ReserveRespose memory response = ReserveRespose(args[i][0], args[i][1], wbalance(IERC20Minimal(args[i][1]),args[i][0]), args[i][2], wbalance(IERC20Minimal(args[i][2]),args[i][0]));\n            result[i] = response;\n        }\n        return result;\n    }\n\n    // Wrapped call to get balance should catch errors where one of the tokens does not \n    // implement ERC20 balanceOf method signature (rare, but is possible);\n    function wbalance(IERC20Minimal token, address pool) public view returns (uint256) {\n        try this.cbalance(token, pool) returns (uint256 t) {\n            return t;\n        } catch (bytes memory ) {\n            return 0;\n        }\n    }\n\n    function cbalance(IERC20Minimal token, address pool) public view returns (uint256) {\n        uint256 csize;\n        assembly { csize := extcodesize(token) }\n        if (csize == 0) {\n            return 0;\n        }\n        try token.balanceOf(pool) returns(uint256 t) {\n            return t;\n        } catch(bytes memory ) {\n            return 0;\n        }\n    }\n}"
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "chain": {
+    id: 146,
+    name: "Sonic",
+    currency: "S",    
+    token: "0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38",
+    contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a",
+    host: "https://rpc.soniclabs.com",  
+    threads: 5,
+    interval: 3000,
+    pagesize: 1000000
+  },
+
+  "factories": {
+    "v2": {
+      abi: ["event PairCreated(address indexed token0, address indexed token1, address pair, uint)"],
+      list: {
+        "SpookySwap v2": {
+          address: "0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741",
+          deployBlock: 285950,
+          fee: 0.002
+        },
+        "Metropolis v2": {
+          address: "0x1570300e9cFEC66c9Fb0C8bc14366C86EB170Ad0",
+          deployBlock: 276327,
+          fee: 0.003        
+        },
+        "Omni v2": {
+          address: "0x7d9d51267f7e9e6b46a48e0a75c0086f46777087",
+          deployBlock: 38533708,
+          fee: 0.003        
+        }
+      }
+    },
+
+    "solidly-v2": {
+      abi: ["event PairCreated(address indexed token0, address indexed token1, address pair, uint)"],
+      list: {
+        "Shadow": {
+          address: "0x2da25e7446a70d7be65fd4c053948becaa6374c8",          
+          deployBlock: 4028276,
+          // Shadow's pairFee() returns raw values in parts-per-million.
+          // Observed raw distribution: 5000 → 0.5%, 10000 → 1%, 3000 → 0.3%,
+          // 4250 → 0.425%, 500000 → 50%, 20000 → 2%. All consistent with base 1e6.
+          feeDivisor: 1000000
+        } 
+      }
+    },
+
+    "solidly-native": {
+      abi: ["event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint)"],
+      list: {
+        "Equalizer": {
+          address: "0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc",
+          deployBlock: 258140     
+        }
+      }
+    }
+  },
+
+
+  "flashloan": {
+     provider: "aave-v3",
+     addressesProvider: "0x5C2e738F6E27bCE0F7558051Bf90605dD6176900",
+     premium: 0.0005,
+     tokens: [
+       { symbol: "USDC", address: "0x29219dd400f2Bf60E5a23d13Be72B486D4038894", decimals:  6 },
+       { symbol: "WETH", address: "0x50c42dEAcD8Fc9773493ED674b675bE577f2634b", decimals: 18 },
+       { symbol: "wS",   address: "0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38", decimals: 18 },
+       { symbol: "stS",  address: "0xE5DA20F15420aD15DE0fa650600aFc998bbE3955", decimals: 18 }
+     ]
+   }
+}

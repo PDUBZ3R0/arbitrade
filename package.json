@@ -1,0 +1,30 @@
+{
+  "name": "arbitrade",
+  "version": "0.2.0",
+  "description": "Flash-loan-powered multi-DEX triangular arbitrage bot",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "scan": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/scan.ts",
+    "reserves": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/reserves.ts",
+    "discover-block": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/discover-deploy-block.ts",
+    "verify-factory": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/verify-factory.ts",
+    "find-factories": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/find-factories.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
+    "json5": "^2.2.3"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.0.0",
+    "@nomicfoundation/hardhat-ignition-viem": "^3.0.0",
+    "@nomicfoundation/hardhat-viem": "^3.0.0",
+    "hardhat": "^3.0.0",
+    "viem": "^2.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "Ethereum": { id: 1, currency: "ETH", host: "https://cloudflare-eth.com" },
+  "BNB Smart Chain": { id: 56, currency: "BNB", host: "https://bsc-dataseed1.binance.org" },
+  "Gnosis": { id: 100, currency: "xDAI", host: "https://rpc.gnosischain.com" },
+  "Polygon": { id: 137, currency: "MATIC", host: "https://polygon-rpc.com" },
+  "Sonic": { id: 146, currency: "S", host: "https://rpc.soniclabs.com" },
+  "Base": { id: 8453, currency: "ETH", host: "https://mainnet.base.org" },
+  "Ethereum Classic": { id: 61, currency: "ETC", host: "https://etc.etcdesktop.com" }
+  /*
+  "PulseChain": { id: 369, currency: "PLS", host: "https://rpc.pulsechain.com" },
+  "Etica": { id: 61803, currency: "EGAZ", host: "https://eticamainnet.eticascan.org" }
+  */
+}
