@@ -13,16 +13,21 @@ const chainArg = args[0];
 if (!chainArg || chainArg.startsWith('--')) {
     console.error('Usage: yarn evaluate <chain> [options]');
     console.error('');
-    console.error('  --root ADDR         Only evaluate triangles rooted at this token');
-    console.error('  --hops 2|3          Only evaluate 2-hop or 3-hop cycles');
-    console.error('  --min-profit N      Minimum profit in root-token wei (default 0)');
-    console.error('  --min-liquidity N   Skip pairs where either side has < N wei reserves');
-    console.error('                      (default 1000000000000000000 = 1 token for 18-dec)');
-    console.error('                      NOTE: for 6-dec tokens like USDC, override to ~1000000');
-    console.error('  --max-roi-pct N     Skip candidates with ROI above N%. Real arb is under');
-    console.error('                      a few percent; above 100% is impossible. Default 100.');
-    console.error('  --limit N           Show top N candidates only (default 20)');
-    console.error('  --verbose           Show hop details for each candidate');
+    console.error('  --root ADDR              Only evaluate triangles rooted at this token');
+    console.error('  --hops 2|3               Only evaluate 2-hop or 3-hop cycles');
+    console.error('  --min-profit N           Minimum profit in root-token wei (default 0)');
+    console.error('  --min-profit-tokens N    Minimum profit as fraction of root token');
+    console.error('                           (default 0.001 = 0.001 root tokens; set 0 to disable)');
+    console.error('  --min-input-tokens N     Minimum optimal input as fraction of root token');
+    console.error('                           (default 0.001; filters dust-input phantoms)');
+    console.error('  --min-liquidity N        Skip pairs where either side has < N wei reserves');
+    console.error('                           (default 1e18 = 1 token for 18-dec)');
+    console.error('                           NOTE: for 6-dec tokens like USDC, override to ~1e6');
+    console.error('  --max-roi-pct N          Skip candidates with ROI above N%. Real arb is under');
+    console.error('                           a few percent; default 20 catches phantoms while');
+    console.error('                           keeping legitimate opportunities. Set 100 for raw.');
+    console.error('  --limit N                Show top N candidates only (default 20)');
+    console.error('  --verbose                Show hop details for each candidate');
     console.error('');
     console.error('Reads triangles table (built by `yarn triangles`) and reserves');
     console.error('(refreshed by `yarn reserves`), computes optimal input and profit.');
@@ -40,12 +45,19 @@ const hopsStr    = getStr('--hops');
 const onlyHops   = hopsStr === '2' ? 2 : hopsStr === '3' ? 3 : undefined;
 const minProfitStr = getStr('--min-profit');
 const minProfitWei = minProfitStr ? BigInt(minProfitStr) : undefined;
+const minProfitTokensStr = getStr('--min-profit-tokens');
+const minProfitTokens = minProfitTokensStr ? parseFloat(minProfitTokensStr) : undefined;  // undefined → default 0.001
+const minInputTokensStr = getStr('--min-input-tokens');
+const minInputTokens = minInputTokensStr ? parseFloat(minInputTokensStr) : undefined;
 const minLiqStr = getStr('--min-liquidity');
 // Default: 1 whole 18-decimal token. Filters most math phantoms from dust
 // pools. Override for USDC-rooted work (~1e6 = 1 USDC).
 const minPairReservesWei = minLiqStr ? BigInt(minLiqStr) : 1_000_000_000_000_000_000n;
 const maxRoiStr = getStr('--max-roi-pct');
-const maxRoiPct = maxRoiStr ? parseFloat(maxRoiStr) : 100;
+// Default 20% — real arb rarely exceeds a few percent; anything above 20%
+// on Sonic/Gnosis/Base/etc is almost always a math phantom. Bump higher
+// (--max-roi-pct 100) if debugging.
+const maxRoiPct = maxRoiStr ? parseFloat(maxRoiStr) : 20;
 const limitStr   = getStr('--limit');
 const limit      = limitStr ? parseInt(limitStr, 10) : 20;
 const verbose    = hasFlag('--verbose');
@@ -58,12 +70,15 @@ console.log(`DB: ${dbFile}`);
 if (onlyRoot) console.log(`Root filter: ${onlyRoot}`);
 if (onlyHops) console.log(`Hop filter: ${onlyHops}`);
 if (minProfitWei != null) console.log(`Min profit: ${minProfitWei} wei`);
-console.log(`Min liquidity: ${minPairReservesWei} wei`);
-console.log(`Max ROI cap:   ${maxRoiPct}%`);
+console.log(`Min liquidity:      ${minPairReservesWei} wei`);
+console.log(`Max ROI cap:        ${maxRoiPct}%`);
+if (minProfitTokens != null)  console.log(`Min profit tokens:  ${minProfitTokens}`);
+if (minInputTokens  != null)  console.log(`Min input tokens:   ${minInputTokens}`);
 console.log('');
 
 const result = await evaluateTriangles(cfg, dbFile, {
-    onlyRoot, onlyHops, minProfitWei, limit, minPairReservesWei, maxRoiPct
+    onlyRoot, onlyHops, minProfitWei, limit, minPairReservesWei, maxRoiPct,
+    minProfitTokens, minInputTokens,
 });
 
 console.log('\n' + '─'.repeat(60));

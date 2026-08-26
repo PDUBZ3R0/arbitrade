@@ -1,0 +1,1 @@
+{ id: 143,   name: "Monad",             currency: "MON",   host: "https://rpc.monad.xyz",              hypersyncUrl: "https://monad.hypersync.xyz" },

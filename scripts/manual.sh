@@ -9,8 +9,6 @@ if [ -z "$CHAIN" ]; then
     exit 1
 fi
 
-yarn install
-
 LOG="${CHAIN}.log"
 
 {

@@ -29,10 +29,12 @@ const CONF_DIR = path.join(PROJECT_ROOT, 'conf');
 
 export type ChainMeta = {
     id: number;
-    name: string;
+    name: string;              // display name from the @chains.json5 key
+    label: string;             // CLI/filesystem slug (e.g. "sonic"); also the conf/<label>.json5 filename
     currency: string;
-    token?: string;           // native wrapped (WETH, WMATIC, wS...)
-    host: string;
+    token?: string;            // native wrapped (WETH, WMATIC, wS...)
+    host: string;              // RPC URL
+    hypersyncUrl?: string;     // Envio HyperSync URL (e.g. "https://sonic.hypersync.xyz")
     contract?: string;         // deployed YoBatches address
     threads?: number;
     interval?: number;
@@ -149,8 +151,8 @@ export type ScanTuning = {
     chunkDelayMs: number;
 };
 
-function resolveScanTuning(chainName: string, raw: RawChainConfig): ScanTuning {
-    const upper = chainName.toUpperCase();
+function resolveScanTuning(chainLabel: string, raw: RawChainConfig): ScanTuning {
+    const upper = chainLabel.toUpperCase().replace(/-/g, '_');
     const num = (v: string | undefined, dflt: number): number => {
         if (v === undefined || v === '') return dflt;
         const n = Number(v);
@@ -168,26 +170,87 @@ function resolveScanTuning(chainName: string, raw: RawChainConfig): ScanTuning {
 // -----------------------------------------------------------------------------
 
 /**
- * Load the shared chain metadata registry (@chains.json5).
+ * Load the shared chain metadata registry (@chains.json5). The registry is
+ * keyed by label (the CLI slug), with `name` stored in each entry as the
+ * display name shown in logs. Every entry is normalized so the ChainMeta
+ * always has both `label` (the object key) and `name`.
  */
 export function loadChainRegistry(): Record<string, ChainMeta> {
     const p = path.join(CONF_DIR, '@chains.json5');
-    return JSON5.parse(fs.readFileSync(p, 'utf-8'));
+    const raw = JSON5.parse(fs.readFileSync(p, 'utf-8')) as Record<string, Partial<ChainMeta>>;
+    const byLabel: Record<string, ChainMeta> = {};
+    for (const [label, entry] of Object.entries(raw)) {
+        if (entry.id == null)   throw new Error(`Chain "${label}" in @chains.json5 is missing "id"`);
+        if (!entry.name)        throw new Error(`Chain "${label}" in @chains.json5 is missing "name"`);
+        if (!entry.host)        throw new Error(`Chain "${label}" in @chains.json5 is missing "host"`);
+        const meta: ChainMeta = {
+            id:            entry.id,
+            name:          entry.name,
+            label,
+            currency:      entry.currency ?? '',
+            token:         entry.token,
+            host:          entry.host,
+            hypersyncUrl:  entry.hypersyncUrl,
+            contract:      entry.contract,
+            threads:       entry.threads,
+            interval:      entry.interval,
+            pagesize:      entry.pagesize,
+            alchemy:       entry.alchemy,
+        };
+        byLabel[label] = meta;
+    }
+    return byLabel;
 }
 
 /**
- * Load a per-chain config file (polygon.json5, sonic.json5, ...) and return it
- * with the factory tree flattened into a NormalizedFactory[] for iteration.
+ * Resolve a user-provided chain argument to its normalized ChainMeta. Matches
+ * against label first (case-insensitive), then falls back to display name.
+ *
+ *   resolveChain("sonic")           → Sonic
+ *   resolveChain("Sonic")           → Sonic  (via name)
+ *   resolveChain("bsc")             → BNB Smart Chain
+ *   resolveChain("BNB Smart Chain") → BNB Smart Chain
  */
-export function loadChainConfig(chainName: string): ChainConfig {
-    const p = path.join(CONF_DIR, `${chainName.toLowerCase()}.json5`);
+export function resolveChain(arg: string): ChainMeta {
+    const registry = loadChainRegistry();
+    const lower = arg.toLowerCase();
+
+    // Try label first (fast path — this is what CLI args match)
+    if (registry[lower]) return registry[lower];
+
+    // Fall back to display name match
+    for (const meta of Object.values(registry)) {
+        if (meta.name.toLowerCase() === lower) return meta;
+    }
+
+    const known = Object.values(registry).map(m => `${m.label} (${m.name})`).join(', ');
+    throw new Error(`Unknown chain "${arg}". Known: ${known}`);
+}
+
+/**
+ * Load a per-chain config file, keyed by label. Merges with the ChainMeta
+ * from the registry (so per-chain files can override registry defaults).
+ */
+export function loadChainConfig(chainArg: string): ChainConfig {
+    const meta = resolveChain(chainArg);
+    const p = path.join(CONF_DIR, `${meta.label}.json5`);
     if (!fs.existsSync(p)) {
-        throw new Error(`No config file for chain "${chainName}" at ${p}`);
+        throw new Error(`No config file for chain "${meta.name}" at ${p} (label: "${meta.label}")`);
     }
     const raw = JSON5.parse(fs.readFileSync(p, 'utf-8')) as RawChainConfig;
 
-    // Env overrides for the RPC
-    const envKey = `${chainName.toUpperCase()}_RPC`;
+    // Merge registry defaults with per-chain overrides. Per-chain wins for
+    // fields both specify. But name/label always come from the registry (they're
+    // the identity of the chain, not a per-file concern).
+    raw.chain = {
+        ...meta,
+        ...raw.chain,
+        name:  meta.name,
+        label: meta.label,
+    };
+
+    // Env override for RPC (uses the label uppercased)
+    const envKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_RPC`;
     if (process.env[envKey]) {
         raw.chain.host = process.env[envKey]!;
     }
@@ -251,15 +314,18 @@ export function loadChainConfig(chainName: string): ChainConfig {
         chain: raw.chain,
         factories,
         flashloan: raw.flashloan,
-        scan: resolveScanTuning(chainName, raw),
+        scan: resolveScanTuning(meta.label, raw),
     };
 }
 
 /**
- * Absolute path to the SQLite database for a chain.
+ * Absolute path to the SQLite database for a chain. Resolves the arg to a
+ * chain label so `dbPath("Sonic")` and `dbPath("sonic")` both go to
+ * `db/sonic.sqlite`.
  */
-export function dbPath(chainName: string): string {
+export function dbPath(chainArg: string): string {
+    const meta = resolveChain(chainArg);
     const dir = path.join(PROJECT_ROOT, 'db');
     fs.mkdirSync(dir, { recursive: true });
-    return path.join(dir, `${chainName.toLowerCase()}.sqlite`);
+    return path.join(dir, `${meta.label}.sqlite`);
 }

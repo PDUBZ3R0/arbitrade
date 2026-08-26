@@ -50,7 +50,7 @@ export type FindOptions = {
     toBlock?: number;
     /** Only used when fromBlock is unset; how far back from toBlock to look. */
     lookbackBlocks?: number;
-    transport?: 'rpc' | 'etherscan';
+    transport?: 'auto' | 'hypersync' | 'etherscan' | 'rpc';
     chunkSize?: number;
     explorerApiKey?: string;
     /** If set, sweep bails out at the next chunk boundary and returns partial results. */
@@ -245,12 +245,14 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     //   Both fromBlock and toBlock explicit  → exact range (lookback ignored)
     //   Only fromBlock                       → from → from + lookback   (or head if smaller)
     //   Only toBlock                         → to - lookback → to
-    //   Neither                              → head - lookback → head
+    //   Only lookback                        → head - lookback → head
+    //   Nothing specified                    → 0 → head  (full chain scan)
     //
-    // This makes "start at X and go N blocks forward" (--from-block 250000 --lookback 50000)
-    // do what you'd expect: scan 250000..300000.
+    // The full-chain default only makes sense because HyperSync is fast enough
+    // to make it practical. For chains without HyperSync configured (or with
+    // RPC transport), the CLI warns before starting.
     const head = await provider.getBlockNumber();
-    const lookback = opts.lookbackBlocks ?? 100_000;
+    const lookback = opts.lookbackBlocks;
 
     let from: number;
     let to: number;
@@ -259,20 +261,38 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
         to   = opts.toBlock;
     } else if (opts.fromBlock !== undefined) {
         from = opts.fromBlock;
-        to   = Math.min(head, opts.fromBlock + lookback);
+        to   = Math.min(head, opts.fromBlock + (lookback ?? 100_000));
     } else if (opts.toBlock !== undefined) {
         to   = opts.toBlock;
-        from = Math.max(0, opts.toBlock - lookback);
-    } else {
+        from = Math.max(0, opts.toBlock - (lookback ?? 100_000));
+    } else if (lookback !== undefined) {
         to   = head;
         from = Math.max(0, head - lookback);
+    } else {
+        // No constraints — sweep genesis to head. Fast with HyperSync.
+        to   = head;
+        from = 0;
     }
     if (to < from) throw new Error(`Bad block range: from=${from} > to=${to}`);
     const totalBlocks = to - from + 1;
+    const isFullChainScan = opts.fromBlock === undefined && opts.toBlock === undefined && opts.lookbackBlocks === undefined;
 
     console.log(`\nSweeping ${cfg.chain.name} for PairCreated emitters (both V2 and Solidly-native event shapes)`);
-    console.log(`  Range: blocks ${from} → ${to} (${totalBlocks} blocks)`);
+    console.log(`  Range: blocks ${from} → ${to} (${totalBlocks} blocks${isFullChainScan ? ', full chain from genesis' : ''})`);
     console.log(`  Transport: ${opts.transport ?? 'auto'}`);
+
+    // If the user asked for a full-chain scan and HyperSync isn't available,
+    // warn loudly — this will take a very long time via RPC or Etherscan.
+    if (isFullChainScan) {
+        const hasHyperSync = Boolean(cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN);
+        const explicitOther = opts.transport && opts.transport !== 'auto' && opts.transport !== 'hypersync';
+        if (!hasHyperSync || explicitOther) {
+            console.log('');
+            console.log('  [!] Full-chain scan without HyperSync will be slow.');
+            console.log('      Add hypersyncUrl to @chains.json5 and set ENVIO_API_TOKEN in .env,');
+            console.log('      or narrow the range with --lookback / --from-block / --to-block.');
+        }
+    }
 
     const emitters = new Map<string, FactoryCandidate>();
     const topics: Array<{ hash: string; label: 'v2' | 'solidly' }> = [
@@ -287,16 +307,49 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     }
 
     try {
+        // Transport selection. Auto priority: hypersync > etherscan > rpc.
+        // Explicit --transport <name> overrides. Missing prereqs cause a clear
+        // error, not a silent fallback (fallback silently downgrading from
+        // hypersync to rpc would confuse someone doing a large sweep).
+        const explicit = opts.transport && opts.transport !== 'auto';
+        const hypersyncUrl   = cfg.chain.hypersyncUrl;
+        const envioToken     = process.env.ENVIO_API_TOKEN;
+        const canHyperSync   = Boolean(hypersyncUrl && envioToken);
+        const canEtherscan   = Boolean(opts.explorerApiKey);
+
+        let chosen: 'hypersync' | 'etherscan' | 'rpc';
+        if (opts.transport === 'hypersync') {
+            if (!hypersyncUrl) throw new Error(`--transport hypersync but ${cfg.chain.name} has no hypersyncUrl in @chains.json5`);
+            if (!envioToken)   throw new Error(`--transport hypersync but ENVIO_API_TOKEN not set in .env`);
+            chosen = 'hypersync';
+        } else if (opts.transport === 'etherscan') {
+            if (!canEtherscan) throw new Error(`--transport etherscan but ETHERSCAN_API_KEY not set in .env`);
+            chosen = 'etherscan';
+        } else if (opts.transport === 'rpc') {
+            chosen = 'rpc';
+        } else {
+            // auto
+            if      (canHyperSync)  chosen = 'hypersync';
+            else if (canEtherscan)  chosen = 'etherscan';
+            else                    chosen = 'rpc';
+        }
+        console.log(`  Chosen transport: ${chosen}${explicit ? ' (explicit)' : ' (auto)'}`);
+
         for (const topic of topics) {
             if (opts.abortSignal?.aborted) break;
             console.log(`\n  Sweeping topic: ${topic.label}...`);
-            if (opts.transport === 'rpc') {
-                await sweepRpc(provider, from, to, chunkSize, topic.hash, topic.label, emitters, opts.abortSignal);
-            } else {
-                if (!opts.explorerApiKey) {
-                    throw new Error(`ETHERSCAN_API_KEY not set — required for Etherscan transport. Set it in .env, or use --transport rpc if your RPC supports address-less log queries.`);
+            switch (chosen) {
+                case 'hypersync': {
+                    const { sweepHyperSync } = await import('./hypersync.ts');
+                    await sweepHyperSync(hypersyncUrl!, envioToken!, from, to, topic.hash, topic.label, emitters, opts.abortSignal);
+                    break;
                 }
-                await sweepEtherscan(cfg.chain.id, from, to, opts.explorerApiKey, chunkSize, topic.hash, topic.label, emitters, opts.abortSignal);
+                case 'etherscan':
+                    await sweepEtherscan(cfg.chain.id, from, to, opts.explorerApiKey!, chunkSize, topic.hash, topic.label, emitters, opts.abortSignal);
+                    break;
+                case 'rpc':
+                    await sweepRpc(provider, from, to, chunkSize, topic.hash, topic.label, emitters, opts.abortSignal);
+                    break;
             }
         }
     } finally {
@@ -439,17 +492,23 @@ if (isMain()) {
     if (!chainArg || chainArg.startsWith('--')) {
         console.error('Usage: yarn find-factories <chain> [options]');
         console.error('');
-        console.error('  --from-block N         Start block (default: derived)');
-        console.error('  --to-block N           End block   (default: derived)');
-        console.error('  --lookback N           Window size (default: 100000)');
+        console.error('  --from-block N         Start block (default: 0 if nothing else set)');
+        console.error('  --to-block N           End block   (default: chain head)');
+        console.error('  --lookback N           Window size to combine with --from or --to,');
+        console.error('                         or with nothing to mean "last N blocks from head"');
         console.error('');
-        console.error('  Range resolution:');
+        console.error('  Block-range precedence:');
         console.error('    both --from and --to  → exact range (--lookback ignored)');
-        console.error('    only --from           → from → from + lookback');
+        console.error('    only --from           → from → from + lookback (default 100k)');
         console.error('    only --to             → to - lookback → to');
-        console.error('    neither               → head - lookback → head');
+        console.error('    only --lookback       → head - lookback → head');
+        console.error('    nothing               → 0 → head  (full chain scan; needs HyperSync)');
         console.error('');
-        console.error('  --transport rpc|etherscan   (default: etherscan)');
+        console.error('  --transport auto|hypersync|etherscan|rpc  (default: auto)');
+        console.error('    auto priority: hypersync > etherscan > rpc');
+        console.error('    hypersync needs ENVIO_API_TOKEN in .env AND hypersyncUrl in @chains.json5');
+        console.error('    etherscan needs ETHERSCAN_API_KEY in .env');
+        console.error('    rpc works without keys but is much slower (only if RPC supports address-less log queries)');
         console.error('  --verify-limit N       Max candidates to verify (default: 10, 0 = skip)');
         console.error('  --autosave PATH        Write partial results as JSON every ~15s');
         console.error('');
@@ -471,9 +530,9 @@ if (isMain()) {
 
     const fromBlock    = getNum('--from-block', -1);
     const toBlock      = getNum('--to-block',   -1);
-    const lookback     = getNum('--lookback',   100_000);
+    const lookback     = getNum('--lookback',   -1);
     const verifyLimit  = getNum('--verify-limit', 10);
-    const transport    = getStr('--transport', 'etherscan' as const, ['rpc', 'etherscan'] as const)!;
+    const transport    = getStr('--transport', 'auto' as const, ['auto', 'hypersync', 'etherscan', 'rpc'] as const)!;
     const autosavePath = getStr('--autosave', undefined);
     const explorerApiKey = process.env.ETHERSCAN_API_KEY;
 
@@ -510,7 +569,7 @@ if (isMain()) {
         result = await findFactories(chainArg, {
             fromBlock: fromBlock >= 0 ? fromBlock : undefined,
             toBlock:   toBlock >= 0   ? toBlock   : undefined,
-            lookbackBlocks: lookback,
+            lookbackBlocks: lookback >= 0 ? lookback : undefined,
             transport,
             explorerApiKey,
             abortSignal: controller.signal,

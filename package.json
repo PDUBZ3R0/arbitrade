@@ -8,7 +8,6 @@
     "node": ">=22.6.0"
   },
   "scripts": {
-    "preinstall": "tar xvf build/arbitrade-re*.tar && rm build/arbitrade-re*.tar",
     "scan": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/scan.ts",
     "reserves": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/reserves.ts",
     "triangles": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/triangles.ts",
@@ -17,9 +16,12 @@
     "discover-block": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/discover-deploy-block.ts",
     "verify-factory": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/verify-factory.ts",
     "find-factories": "node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/find-factories.ts",
-    "manual": "sh scripts/manual.sh"
+    "manual": "sh scripts/manual.sh",
+    "apply": "sh scripts/apply-tar.sh",
+    "sync": "sh scripts/sync.sh"
   },
   "dependencies": {
+    "@envio-dev/hypersync-client": "^1.4.0",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",

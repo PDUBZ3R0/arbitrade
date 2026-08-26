@@ -30,6 +30,20 @@ export type EvaluateOptions = {
     onlyRoot?: string;
     /** Minimum profit in root-token wei to include in results. Default 0. */
     minProfitWei?: bigint;
+    /**
+     * Minimum profit as a decimal fraction of the root token (e.g. 0.001 =
+     * 0.001 root tokens). Applied ADDITIVELY with minProfitWei — candidate
+     * must exceed BOTH. Converted to wei per triangle using each root token's
+     * decimals from flashloan config. Default: 0.001.
+     * Set to 0 to disable and show raw output including sub-cent profits.
+     */
+    minProfitTokens?: number;
+    /**
+     * Minimum optimal input as a fraction of the root token. Filters
+     * candidates where ternary search converged to dust — a common source
+     * of math phantoms. Default: 0.001.
+     */
+    minInputTokens?: number;
     /** Include only 2-hop / only 3-hop cycles. */
     onlyHops?: 2 | 3;
     /** Max candidates to emit (top-N by profit). Default: unlimited. */
@@ -195,7 +209,6 @@ export async function evaluateTriangles(
     for (const f of cfg.factories) factoriesByAddr.set(f.address.toLowerCase(), f);
 
     const flashPremium = cfg.flashloan?.premium ?? 0.0005;
-    const minProfit = Number(opts.minProfitWei ?? 0n);
 
     const result: EvaluateResult = {
         candidatesFound: 0,
@@ -252,6 +265,30 @@ export async function evaluateTriangles(
         // outright math phantoms; set lower (e.g. 20) for stricter filtering.
         const maxRoi = (opts.maxRoiPct ?? 100) / 100;
 
+        // Per-root-token thresholds for profit + input, expressed in wei using
+        // each root token's decimals from flashloan config. Handles multi-decimal
+        // chains correctly (e.g. USDC 6 decimals vs wS 18 decimals).
+        //
+        // If a triangle's root isn't in the flashloan config (shouldn't happen
+        // for enumerated triangles, but defensive) we assume 18 decimals.
+        const minProfitTokensFrac = opts.minProfitTokens ?? 0.001;
+        const minInputTokensFrac  = opts.minInputTokens  ?? 0.001;
+        const rootThresholds = new Map<string, { minProfit: number; minInput: number }>();
+        for (const t of (cfg.flashloan?.tokens ?? [])) {
+            const scale = 10 ** t.decimals;
+            rootThresholds.set(t.address.toLowerCase(), {
+                minProfit: minProfitTokensFrac * scale,
+                minInput:  minInputTokensFrac  * scale,
+            });
+        }
+        // Base minimum from --min-profit (in wei) still applies on top.
+        const baseMinProfit = Number(opts.minProfitWei ?? 0n);
+        const thresholdsFor = (root: string) => {
+            const t = rootThresholds.get(root.toLowerCase())
+                ?? { minProfit: minProfitTokensFrac * 1e18, minInput: minInputTokensFrac * 1e18 };
+            return { minProfit: Math.max(t.minProfit, baseMinProfit), minInput: t.minInput };
+        };
+
         // 3. Load triangles
         const triWheres: string[] = [];
         const triParams: any[] = [];
@@ -295,6 +332,7 @@ export async function evaluateTriangles(
             const root  = tri.root_token;
             const tokB  = tri.token_b;
             const tokC  = tri.token_c;
+            const { minProfit, minInput } = thresholdsFor(root);
 
             if (tri.hop_count === 2) {
                 // 2-hop: swap root→tokB on one pair, tokB→root on the other.
@@ -332,7 +370,7 @@ export async function evaluateTriangles(
                     const grossProfit = out - x;
                     const netProfit   = grossProfit - x * flashPremium;
 
-                    if (netProfit > minProfit && x > 0 && (netProfit / x) <= maxRoi) {
+                    if (netProfit > minProfit && x >= minInput && (netProfit / x) <= maxRoi) {
                         result.candidatesFound++;
                         candidates.push({
                             triangleId: tri.id,
@@ -378,7 +416,7 @@ export async function evaluateTriangles(
                     if (grossProfit <= 0) continue;
 
                     const netProfit = grossProfit - xStar * flashPremium;
-                    if (netProfit > minProfit && xStar > 0 && (netProfit / xStar) <= maxRoi) {
+                    if (netProfit > minProfit && xStar >= minInput && (netProfit / xStar) <= maxRoi) {
                         result.candidatesFound++;
                         candidates.push({
                             triangleId: tri.id,

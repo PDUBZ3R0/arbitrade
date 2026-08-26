@@ -1,13 +1,33 @@
+// Chain registry. Each entry:
+//   KEY         = the label — used as CLI arg, conf filename, DB filename,
+//                 and env-var prefix. Match your yarn args to these keys
+//                 exactly (case-insensitive; hyphens allowed).
+//   id          = EVM chain ID
+//   name        = display name (shown in logs and error messages)
+//   currency    = native currency ticker
+//   host        = default RPC URL (override with <LABEL>_RPC env var,
+//                 e.g. SONIC_RPC or BNB_SMART_CHAIN_RPC → normalized)
+//   hypersyncUrl= optional; enables Envio HyperSync transport for
+//                 find-factories. Free token: https://envio.dev/, set
+//                 ENVIO_API_TOKEN in .env. HyperSync is up to 2000x faster
+//                 than eth_getLogs for historical scans.
+//
+// HyperSync URL convention: https://<chain>.hypersync.xyz — see
+// https://envio.dev/chains for the up-to-date supported list.
 {
-  "Ethereum": { id: 1, currency: "ETH", host: "https://cloudflare-eth.com" },
-  "BNB Smart Chain": { id: 56, currency: "BNB", host: "https://bsc-dataseed1.binance.org" },
-  "Gnosis": { id: 100, currency: "xDAI", host: "https://rpc.gnosischain.com" },
-  "Polygon": { id: 137, currency: "MATIC", host: "https://polygon-rpc.com" },
-  "Sonic": { id: 146, currency: "S", host: "https://rpc.soniclabs.com" },
-  "Base": { id: 8453, currency: "ETH", host: "https://mainnet.base.org" },
-  "Ethereum Classic": { id: 61, currency: "ETC", host: "https://etc.etcdesktop.com" }
+  ethereum:  { id: 1,     name: "Ethereum",          currency: "ETH",   host: "https://cloudflare-eth.com",         hypersyncUrl: "https://eth.hypersync.xyz" },
+  optimism:  { id: 10,    name: "Optimism",          currency: "ETH",   host: "https://mainnet.optimism.io",        hypersyncUrl: "https://optimism.hypersync.xyz" },
+  bsc:       { id: 56,    name: "BNB Smart Chain",   currency: "BNB",   host: "https://bsc-dataseed1.binance.org",  hypersyncUrl: "https://bsc.hypersync.xyz" },
+  etc:       { id: 61,    name: "Ethereum Classic",  currency: "ETC",   host: "https://etc.etcdesktop.com" },
+  gnosis:    { id: 100,   name: "Gnosis",            currency: "xDAI",  host: "https://rpc.gnosischain.com",        hypersyncUrl: "https://gnosis.hypersync.xyz" },
+  polygon:   { id: 137,   name: "Polygon",           currency: "POL",   host: "https://polygon.drpc.org",           hypersyncUrl: "https://polygon.hypersync.xyz" },
+  monad:     { id: 143,   name: "Monad",             currency: "MON",   host: "https://rpc.monad.xyz",              hypersyncUrl: "https://monad.hypersync.xyz" },
+  sonic:     { id: 146,   name: "Sonic",             currency: "S",     host: "https://rpc.soniclabs.com",          hypersyncUrl: "https://sonic.hypersync.xyz" },
+  base:      { id: 8453,  name: "Base",              currency: "ETH",   host: "https://mainnet.base.org",           hypersyncUrl: "https://base.hypersync.xyz" },
+  arbitrum:  { id: 42161, name: "Arbitrum One",      currency: "ETH",   host: "https://arb1.arbitrum.io/rpc",       hypersyncUrl: "https://arbitrum.hypersync.xyz" },
+  avalanche: { id: 43114, name: "Avalanche C-Chain", currency: "AVAX",  host: "https://api.avax.network/ext/bc/C/rpc", hypersyncUrl: "https://avalanche.hypersync.xyz" }
   /*
-  "PulseChain": { id: 369, currency: "PLS", host: "https://rpc.pulsechain.com" },
-  "Etica": { id: 61803, currency: "EGAZ", host: "https://eticamainnet.eticascan.org" }
+  pulse:     { id: 369,   name: "PulseChain",        currency: "PLS",   host: "https://rpc.pulsechain.com" },
+  etica:     { id: 61803, name: "Etica",             currency: "EGAZ",  host: "https://eticamainnet.eticascan.org" }
   */
 }
