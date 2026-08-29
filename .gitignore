@@ -1,0 +1,36 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+package-lock.json
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+ignition/deployments/*/journal.jsonl
+build/artifacts/
+build/cache/
+
+# Per-chain SQLite databases (regenerable)
+db/*.sqlite
+db/*.sqlite-shm
+db/*.sqlite-wal
+
+# Autosave dumps from find-factories
+*-sweep.json
+
+# Run logs from `yarn manual <chain>`
+*.log
+
+# Local tarball archive (from apply-tar workflow, if you use it)
+build/tarballs/
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+.idea/
