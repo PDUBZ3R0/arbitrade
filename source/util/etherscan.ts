@@ -165,6 +165,66 @@ export async function etherscanGetLogs(params: {
     }));
 }
 
+/**
+ * Look up a verified contract's name and metadata from Etherscan.
+ * Returns null if the contract isn't verified (source unavailable) or the
+ * lookup fails. Never throws — verification is best-effort classifier data,
+ * not blocking on find-factories output.
+ *
+ * Used by find-factories' classifier to turn `Factory_800b0526` into the
+ * real contract name (e.g. `UniswapV2Factory`, `MeshSwapFactory`, `PairFactory`).
+ * The name alone is often enough to identify a well-known DEX; combined with
+ * compiler settings and license, it's a strong signal of legitimacy.
+ */
+export type ContractSourceInfo = {
+    contractName: string;
+    compilerVersion: string;
+    optimizationUsed: boolean;
+    runs: number;
+    licenseType: string;
+    proxy: boolean;
+    implementation?: string;  // If proxy=true, the address of the implementation contract
+};
+
+export async function getContractSourceInfo(
+    chainId: number,
+    address: string,
+    apiKey: string,
+): Promise<ContractSourceInfo | null> {
+    const url = new URL(V2_BASE);
+    url.searchParams.set('chainid', String(chainId));
+    url.searchParams.set('module', 'contract');
+    url.searchParams.set('action', 'getsourcecode');
+    url.searchParams.set('address', address);
+    url.searchParams.set('apikey', apiKey);
+
+    try {
+        const res = await fetch(url.toString());
+        if (!res.ok) return null;
+        const data = await res.json() as any;
+        if (data.status !== '1' || !Array.isArray(data.result) || data.result.length === 0) return null;
+
+        const r = data.result[0];
+        // Etherscan returns empty strings for unverified contracts. Distinguish
+        // "verified but empty name" (rare) from "unverified" (common).
+        if (!r.ContractName || r.ContractName === '') return null;
+
+        return {
+            contractName:     r.ContractName,
+            compilerVersion:  r.CompilerVersion ?? '',
+            optimizationUsed: r.OptimizationUsed === '1',
+            runs:             Number(r.Runs) || 0,
+            licenseType:      r.LicenseType ?? '',
+            proxy:            r.Proxy === '1',
+            implementation:   r.Implementation && r.Implementation !== '' ? r.Implementation : undefined,
+        };
+    } catch (err) {
+        // Network errors, JSON parse errors, etc. — classifier data is
+        // best-effort; return null and let the caller proceed without a name.
+        return null;
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Rate limiter for Etherscan API.
 //

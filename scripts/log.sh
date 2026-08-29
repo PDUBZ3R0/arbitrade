@@ -27,7 +27,7 @@ if [ ! -d "log/${CHAIN}" ]; then
 fi
 
 {
-    echo "=== $STAGE ==="
+    echo "=== $STAGE ($CHAIN) ==="
     node --experimental-strip-types --disable-warning=ExperimentalWarning $ROOT/$STAGE.ts "$CHAIN"
     echo
 

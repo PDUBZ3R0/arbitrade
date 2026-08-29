@@ -56,11 +56,38 @@ async function fetchSamplePairs(
     chainId: number,
     deployBlock: number | null,
     explorerApiKey?: string,
+    hypersyncUrl?: string,
+    envioApiToken?: string,
 ): Promise<{ hits: Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }>; matchedTopic: 'v2' | 'solidly' | null }> {
     const head = await provider.getBlockNumber();
 
-    // Search strategy: try each event topic (V2 first, then Solidly-native)
-    // over a set of block windows. First hit wins.
+    const topics: Array<{ hash: string; label: 'v2' | 'solidly' }> = [
+        { hash: PAIR_CREATED_TOPIC,         label: 'v2' },
+        { hash: PAIR_CREATED_SOLIDLY_TOPIC, label: 'solidly' },
+    ];
+
+    // Fast path: if HyperSync is configured, use it. It sweeps the entire
+    // chain range for this specific factory + topic in one shot — no chunking,
+    // no rate limit dance, no hang risk. Falls through to RPC on any error.
+    if (hypersyncUrl && envioApiToken) {
+        const { samplePairsFromFactoryHyperSync } = await import('./hypersync.ts');
+        const from = deployBlock ?? 0;
+        for (const topic of topics) {
+            try {
+                const hits = await samplePairsFromFactoryHyperSync(
+                    hypersyncUrl, envioApiToken, factory, from, head, topic.hash, topic.label === 'solidly',
+                );
+                if (hits.length > 0) return { hits, matchedTopic: topic.label };
+            } catch (err) {
+                // Any HyperSync error: log and fall through to RPC on next topic
+                console.log(`  [!] HyperSync sample query failed (${(err as Error).message.slice(0, 100)}), falling back to RPC`);
+                break;   // don't retry HyperSync for the other topic; go straight to RPC path
+            }
+        }
+    }
+
+    // Slow path: chunked RPC + optional Etherscan fallback. Windowed to avoid
+    // scanning the whole chain via getLogs (which almost no free RPC supports).
     const windows: Array<{ label: string; from: number; to: number }> = [];
     if (deployBlock !== null) {
         windows.push({
@@ -78,11 +105,6 @@ async function fetchSamplePairs(
     } else {
         windows.push({ label: 'last 100k', from: Math.max(0, head - 100_000), to: head });
     }
-
-    const topics: Array<{ hash: string; label: 'v2' | 'solidly' }> = [
-        { hash: PAIR_CREATED_TOPIC,         label: 'v2' },
-        { hash: PAIR_CREATED_SOLIDLY_TOPIC, label: 'solidly' },
-    ];
 
     for (const topic of topics) {
         for (const win of windows) {
@@ -419,6 +441,8 @@ export async function verifyFactory(
         cfg.chain.id,
         result.deployBlock,
         explorerApiKey,
+        cfg.chain.hypersyncUrl,
+        process.env.ENVIO_API_TOKEN,
     );
     if (pairs.length === 0) {
         notes.push(

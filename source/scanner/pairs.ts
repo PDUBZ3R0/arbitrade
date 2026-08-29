@@ -103,8 +103,12 @@ export type ScanOptions = {
     chainId?: number;
     /** Etherscan V2 API key (unified across chains), for deploy-block discovery */
     explorerApiKey?: string;
-    /** Force a specific transport for log fetching. Default: try RPC, fall through to Etherscan on pruning. */
-    forceTransport?: 'rpc' | 'etherscan';
+    /** Force a specific transport for log fetching. Default: try HyperSync first (if configured), then RPC, then Etherscan on pruning. */
+    forceTransport?: 'hypersync' | 'rpc' | 'etherscan';
+    /** HyperSync URL for fast-path scanning (from cfg.chain.hypersyncUrl). */
+    hypersyncUrl?: string;
+    /** ENVIO API token (from process.env.ENVIO_API_TOKEN). */
+    envioApiToken?: string;
     /** Called after each successful chunk. */
     onProgress?: (info: { factory: string; block: number; head: number; found: number }) => void;
 };
@@ -167,12 +171,83 @@ export async function scanFactory(
         return 0;
     }
 
+    // Declared here so the HyperSync fast path (below) and the RPC/Etherscan
+    // slow path (further below) share the same running counter.
+    let totalFound = 0;
+
+    // -----------------------------------------------------------------------
+    // HyperSync fast path.
+    //
+    // If a HyperSync URL is configured for this chain and ENVIO_API_TOKEN is
+    // set, use HyperSync for the entire scan. This bypasses the chunked-RPC
+    // dance entirely — no window sizing, no rate-limit backoff, no
+    // adaptive fallback to Etherscan. HyperSync handles pagination natively
+    // and streams parsed pair events in batches. We persist scan progress
+    // per batch, so a killed scan resumes from the last completed batch.
+    //
+    // On any HyperSync error, we fall through to the RPC/Etherscan path below
+    // and continue from the last block HyperSync did complete (thanks to the
+    // per-batch progress writes).
+    // -----------------------------------------------------------------------
+    const canUseHyperSync =
+        opts.hypersyncUrl && opts.envioApiToken &&
+        (!opts.forceTransport || opts.forceTransport === 'hypersync');
+
+    if (canUseHyperSync) {
+        try {
+            const { scanFactoryHyperSync } = await import('../util/hypersync.ts');
+            const result = await scanFactoryHyperSync(
+                opts.hypersyncUrl!,
+                opts.envioApiToken!,
+                factory.address,
+                fromBlock,
+                head,
+                eventTopic,
+                parseStableFromEvent,
+                async (batchPairs, progressBlock) => {
+                    if (batchPairs.length > 0) {
+                        const rows = batchPairs.map(p => ({
+                            address:     p.pair,
+                            factory:     factory.address,
+                            token0:      p.token0,
+                            token1:      p.token1,
+                            blockNumber: p.blockNumber,
+                            fee:         null,
+                            stable:      p.stable,
+                        } satisfies import('../util/db.ts').PairRow));
+                        const inserted = db.insertPairs(rows);
+                        totalFound += inserted;
+                    }
+                    db.setScanProgress(factory.address, progressBlock);
+                    opts.onProgress?.({
+                        factory: factory.name,
+                        block:   progressBlock,
+                        head,
+                        found:   totalFound,
+                    });
+                },
+            );
+            // Success — return immediately without touching RPC.
+            return totalFound;
+        } catch (err) {
+            if (opts.forceTransport === 'hypersync') {
+                throw new Error(`HyperSync scan failed and forceTransport='hypersync': ${(err as Error).message}`);
+            }
+            console.log(`\n  [!] HyperSync scan failed at block ${db.getScanProgress(factory.address) ?? fromBlock}, ` +
+                        `falling back to RPC: ${(err as Error).message.slice(0, 100)}`);
+            // Fall through to the RPC path below. The scan-progress table
+            // has been updated up to the last successful batch, so the RPC
+            // path will resume from there (via resumeBlock in the next
+            // scanFactory call or from the recomputed fromBlock).
+        }
+    }
+
     let chunk = opts.chunkSize ?? opts.tuning?.chunkStart ?? CHUNK_DEFAULT;
     const chunkMin = opts.tuning?.chunkMin ?? CHUNK_MIN;
     const chunkMax = opts.tuning?.chunkMax ?? CHUNK_MAX;
     const chunkDelay = opts.tuning?.chunkDelayMs ?? 0;
     let cursor = fromBlock;
-    let totalFound = 0;
+    // totalFound already declared above the HyperSync fast path
 
     // Once the RPC has told us a specific hard cap (either via a "suggested
     // range" hint like Alchemy's "[from, to] should work" or by rejecting
@@ -439,6 +514,8 @@ export async function scanChain(
                 tuning: cfg.scan,
                 chainId: cfg.chain.id,
                 explorerApiKey,
+                hypersyncUrl:   cfg.chain.hypersyncUrl,
+                envioApiToken:  process.env.ENVIO_API_TOKEN,
                 ...opts,
                 onProgress: (info) => {
                     const denom = Math.max(1, info.head - effectiveFactory.deployBlock);

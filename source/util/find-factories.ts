@@ -1,4 +1,73 @@
 // -----------------------------------------------------------------------------
+// DISCOVERY.JSON SCHEMA (planned for phases 2-5 of the classifier work)
+//
+// Every full sweep will write log/<chain>/discovery.json with every candidate
+// factory it saw, all computed signals, and a verdict. This becomes the audit
+// trail for the classifier: nothing is silently dropped, and future work
+// (better heuristics, manual override, agent replays) can re-classify without
+// re-scanning.
+//
+// Shape:
+// {
+//   "chain":     "polygon",
+//   "scannedAt": "2026-08-26T10:33:00Z",
+//   "blockRange": { "from": 0, "to": 92709906 },
+//   "totalCandidates": 1243,
+//   "knownInConfig":  5,
+//   "tiers":     { "confident": 3, "optimistic": 6, "curious": 15, "rejected": 1219 },
+//   "candidates": [
+//     {
+//       "address":         "0x800b052609c355ca8103e06f022aa30647ead60a",
+//       "pairCount":       628,
+//       "firstBlockSeen":  11791428,
+//       "lastBlockSeen":   68402761,
+//       "matchedTopics":   ["v2"],
+//
+//       // --- Signals (populated by classifier phases as they land) ---
+//       "contractName":     "UniswapV2Factory",     // phase 1: etherscan name (DONE)
+//       "explorerVerified": true,                    // phase 1: source is verified (DONE)
+//       "compilerVersion":  "v0.5.16+commit.9c3226ce",// phase 1
+//       "licenseType":      "GPL-3.0",               // phase 1
+//       "deployBlock":      11633169,                // from verify-factory
+//       "family":           "v2",                    // from verify-factory
+//       "assumedFee":       0.003,                   // from verify-factory
+//       "feeConfidence":    "assumed",               // from verify-factory
+//
+//       // Phase 2: liquidity + activity
+//       "livePairCount":    412,      // pairs with non-zero reserves
+//       "topPairTvlUsd":    284350,   // sum of top 20 pair TVLs, rough USD via native pair anchoring
+//       "pairsAbove1kUsd":  67,
+//       "pairsAbove10kUsd": 23,
+//       "activePairsLast30d": 8,      // pairs created in last 30d
+//       "stopped":          false,   // no new pairs in 90d
+//
+//       // Phase 3: classifier verdict
+//       "tier":             "confident",    // confident | optimistic | curious | rejected
+//       "reasons": [
+//         "contract name matches known DEX pattern",
+//         "top-pair TVL exceeds $100K threshold",
+//         "still actively creating pairs"
+//       ],
+//       "rejectionReasons": [],   // populated when tier === 'rejected'
+//
+//       // Phase 5: auto-add
+//       "autoAddedTo":      "conf/polygon-auto.json5"  // present if config was written
+//     },
+//     ...
+//   ]
+// }
+//
+// Design principles:
+//   - Signals are additive: each phase adds fields but never removes them.
+//   - Rejected candidates are FULLY represented, not filtered out — you can
+//     always see why something was rejected, and override manually.
+//   - `reasons` is human-readable and roughly ordered by weight.
+//   - `tier` is derived from signals + thresholds at classify time. Re-running
+//     with different `--confidence` bounds doesn't need a re-scan; just
+//     replays the classifier over discovery.json.
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // Factory finder.
 //
 // Discovers unknown V2-style factories on a chain by sweeping recent
@@ -442,22 +511,69 @@ async function emitReport(
     console.log(`Verifying top ${toVerify.length} candidates...`);
     console.log(`─${'─'.repeat(71)}\n`);
 
-    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string }> = [];
+    // Each verify makes many RPC calls (getCode, getLogs chunks, eth_call).
+    // On flaky/rate-limited RPCs any one can hang indefinitely. Cap each
+    // candidate at 60s so we surface "RPC too slow" instead of hanging forever.
+    const VERIFY_TIMEOUT_MS = 60_000;
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+        return new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms (RPC may be rate-limiting or unreachable)`)), ms);
+            p.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+        });
+    };
+
+    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; explorerVerified: boolean }> = [];
     for (const c of toVerify) {
         console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pairs)`);
         try {
-            const v = await verifyFactory(chainArg, c.address, explorerApiKey);
+            const v = await withTimeout(
+                verifyFactory(chainArg, c.address, explorerApiKey),
+                VERIFY_TIMEOUT_MS,
+                `verifyFactory(${c.address})`
+            );
             if (v.isV2 && v.isYoBatchesCompatible && v.configSnippet) {
+                // Classifier signal: look up the verified contract name on the
+                // block explorer. Turns anonymous `Factory_800b0526` into e.g.
+                // `MeshSwapFactory` — an immediate quality signal (verified source
+                // = someone published it) and often enough to identify a
+                // well-known DEX at a glance.
+                let displayName: string | undefined;
+                let explorerVerified = false;
+                if (explorerApiKey) {
+                    try {
+                        const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
+                        await esRateLimit();
+                        const info = await withTimeout(
+                            getContractSourceInfo(loadChainConfig(chainArg).chain.id, c.address, explorerApiKey),
+                            10_000,
+                            `getContractSourceInfo(${c.address})`,
+                        );
+                        if (info?.contractName) {
+                            displayName = info.contractName;
+                            explorerVerified = true;
+                        }
+                    } catch { /* best-effort; classifier tolerates missing name */ }
+                }
+
                 const feeInfo = v.family === 'v2fee' || v.family === 'solidly'
                     ? 'fee per-pair'
                     : `fee ${v.fee} (${v.feeConfidence})`;
-                console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}`);
-                verified.push({ candidate: c, snippet: v.configSnippet, family: v.family });
+                const nameNote = displayName
+                    ? ` ["${displayName}"]`
+                    : (explorerApiKey ? ' [unverified on explorer]' : '');
+                console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}${nameNote}`);
+                verified.push({
+                    candidate: c,
+                    snippet: v.configSnippet,
+                    family: v.family,
+                    contractName: displayName,
+                    explorerVerified,
+                });
             } else {
                 console.log(`  ✗ Not usable: ${v.notes[v.notes.length - 1] ?? 'unknown reason'}`);
             }
         } catch (err) {
-            console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 100)}`);
+            console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 120)}`);
         }
     }
 
@@ -473,14 +589,25 @@ async function emitReport(
 
     if (verified.length > 0) {
         console.log(`\nSuggested additions to conf/${chainArg}.json5:\n`);
-        for (const { candidate, snippet } of verified) {
-            console.log(`// ${candidate.pairCreatedCount} pairs in the sweep window`);
-            console.log(snippet.replace('NAME_ME', `Factory_${candidate.address.slice(2, 10)}`));
+        for (const { candidate, snippet, contractName } of verified) {
+            // Config-key naming rule: prefer the on-explorer contract name when
+            // we have one, always suffixed with the address-8 to prevent JSON5
+            // key collisions across factories that share a common name (e.g.
+            // multiple forks all named `UniswapV2Factory`).
+            const configKey = contractName
+                ? `${contractName}_${candidate.address.slice(2, 10)}`
+                : `Factory_${candidate.address.slice(2, 10)}`;
+            const nameHint = contractName
+                ? ` (verified on explorer as "${contractName}")`
+                : '';
+            console.log(`// ${candidate.pairCreatedCount} pairs in the sweep window${nameHint}`);
+            console.log(snippet.replace('NAME_ME', configKey));
             console.log('');
         }
         console.log('IMPORTANT:');
-        console.log('  1. Rename each "Factory_xxxxxxxx" to the DEX\'s real name');
-        console.log('     (look up the factory on the block explorer — verified contracts are labeled)');
+        console.log('  1. Config keys already use the on-explorer contract name when available');
+        console.log('     (with an address suffix to avoid duplicates). Rename to the DEX brand');
+        console.log('     name ("QuickSwap", "MeshSwap") once you\'ve identified it.');
         console.log('  2. For pure V2 entries: VERIFY the fee — check pair swap() source for .mul(N) constant');
         console.log('  3. For solidly-* entries: the config comment says which factories group to use');
     }
@@ -509,7 +636,7 @@ if (isMain()) {
         console.error('    hypersync needs ENVIO_API_TOKEN in .env AND hypersyncUrl in @chains.json5');
         console.error('    etherscan needs ETHERSCAN_API_KEY in .env');
         console.error('    rpc works without keys but is much slower (only if RPC supports address-less log queries)');
-        console.error('  --verify-limit N       Max candidates to verify (default: 10, 0 = skip)');
+        console.error('  --verify-limit N       Max candidates to verify (default: 20, 0 = skip)');
         console.error('  --autosave PATH        Write partial results as JSON every ~15s');
         console.error('');
         console.error('Ctrl-C during a sweep flushes the partial report before exiting.');
@@ -531,7 +658,7 @@ if (isMain()) {
     const fromBlock    = getNum('--from-block', -1);
     const toBlock      = getNum('--to-block',   -1);
     const lookback     = getNum('--lookback',   -1);
-    const verifyLimit  = getNum('--verify-limit', 10);
+    const verifyLimit  = getNum('--verify-limit', 20);
     const transport    = getStr('--transport', 'auto' as const, ['auto', 'hypersync', 'etherscan', 'rpc'] as const)!;
     const autosavePath = getStr('--autosave', undefined);
     const explorerApiKey = process.env.ETHERSCAN_API_KEY;
