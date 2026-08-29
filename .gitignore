@@ -6,6 +6,8 @@
 # Node
 node_modules/
 package-lock.json
+yarn.lock
+bun.lock
 
 # Hardhat
 cache/
@@ -23,11 +25,12 @@ db/*.sqlite-wal
 # Autosave dumps from find-factories
 *-sweep.json
 
-# Run logs from `yarn manual <chain>`
+# Run logs
+log/
 *.log
 
 # Local tarball archive (from apply-tar workflow, if you use it)
-build/tarballs/
+build/
 
 # OS / editor
 .DS_Store
