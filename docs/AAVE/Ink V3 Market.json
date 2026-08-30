@@ -1,0 +1,67 @@
+[
+  {
+    "symbol": "WETH",
+    "address": "0x4200000000000000000000000000000000000006",
+    "decimals": 18
+  },
+  {
+    "symbol": "kBTC",
+    "address": "0x73E0C0d45E048D25Fc26Fa3159b0aA04BfA4Db98",
+    "decimals": 8
+  },
+  {
+    "symbol": "USDT",
+    "address": "0x0200C29006150606B650577BBE7B6248F58470c1",
+    "decimals": 6
+  },
+  {
+    "symbol": "USDG",
+    "address": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+    "decimals": 6
+  },
+  {
+    "symbol": "GHO",
+    "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
+    "decimals": 18
+  },
+  {
+    "symbol": "USDC",
+    "address": "0x2D270e6886d130D724215A266106e6832161EAEd",
+    "decimals": 6
+  },
+  {
+    "symbol": "weETH",
+    "address": "0xA3D68b74bF0528fdD07263c60d6488749044914b",
+    "decimals": 18
+  },
+  {
+    "symbol": "wrsETH",
+    "address": "0x9f0a74A92287E323Eb95c1cd9eCdBEb0e397cAe4",
+    "decimals": 18
+  },
+  {
+    "symbol": "ezETH",
+    "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+    "decimals": 18
+  },
+  {
+    "symbol": "sUSDe",
+    "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
+    "decimals": 18
+  },
+  {
+    "symbol": "USDe",
+    "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+    "decimals": 18
+  },
+  {
+    "symbol": "SolvBTC",
+    "address": "0xaE4EFbc7736f963982aACb17EFA37fCBAb924cB3",
+    "decimals": 18
+  },
+  {
+    "symbol": "syrupUSDT",
+    "address": "0x8A76fe7fA6da27f85a626c5C53730B38D13603d7",
+    "decimals": 6
+  }
+]

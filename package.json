@@ -17,6 +17,7 @@
     "verify-factory": "sh scripts/log.sh source/util verify-factory",
     "find-factories": "sh scripts/log.sh source/util find-factories",
     "manual": "fff(){ yarn scan $1 && yarn reserves $1 && yarn triangles $1 && yarn evaluate $1; }; fff",
+    "pretty": "sh scripts/confpretty.sh",
     "apply": "sh scripts/apply-tar.sh",
     "sync": "sh scripts/sync.sh"
   },

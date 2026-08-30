@@ -1,0 +1,27 @@
+[
+  {
+    "symbol": "mDAI",
+    "address": "0x4c078361FC9BbB78DF910800A991C7c3DD2F6ce0",
+    "decimals": 18
+  },
+  {
+    "symbol": "Metis",
+    "address": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+    "decimals": 18
+  },
+  {
+    "symbol": "mUSDC",
+    "address": "0xEA32A96608495e54156Ae48931A7c20f0dcc1a21",
+    "decimals": 6
+  },
+  {
+    "symbol": "mUSDT",
+    "address": "0xbB06DCA3AE6887fAbF931640f67cab3e3a16F4dC",
+    "decimals": 6
+  },
+  {
+    "symbol": "WETH",
+    "address": "0x420000000000000000000000000000000000000A",
+    "decimals": 18
+  }
+]

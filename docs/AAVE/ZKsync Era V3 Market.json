@@ -1,0 +1,42 @@
+[
+  {
+    "symbol": "USDC",
+    "address": "0x1d17CBcF0D6D143135aE902365D2E5e2A16538D4",
+    "decimals": 6
+  },
+  {
+    "symbol": "USDT",
+    "address": "0x493257fD37EDB34451f62EDf8D2a0C418852bA4C",
+    "decimals": 6
+  },
+  {
+    "symbol": "WETH",
+    "address": "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
+    "decimals": 18
+  },
+  {
+    "symbol": "wstETH",
+    "address": "0x703b52F2b28fEbcB60E1372858AF5b18849FE867",
+    "decimals": 18
+  },
+  {
+    "symbol": "ZK",
+    "address": "0x5A7d6b2F92C77FAD6CCaBd7EE0624E64907Eaf3E",
+    "decimals": 18
+  },
+  {
+    "symbol": "weETH",
+    "address": "0xc1Fa6E2E8667d9bE0Ca938a54c7E0285E9Df924a",
+    "decimals": 18
+  },
+  {
+    "symbol": "sUSDe",
+    "address": "0xAD17Da2f6Ac76746EF261E835C50b2651ce36DA8",
+    "decimals": 18
+  },
+  {
+    "symbol": "wrsETH",
+    "address": "0xd4169E045bcF9a86cC00101225d9ED61D2F51af2",
+    "decimals": 18
+  }
+]

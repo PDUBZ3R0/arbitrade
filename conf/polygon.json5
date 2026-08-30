@@ -1,23 +1,11 @@
-// -----------------------------------------------------------------------------
-// Polygon chain configuration
-//
-// Env vars that override values in this file:
-//   POLYGON_RPC  — the RPC endpoint (put your paid/Alchemy URL in .env)
-//
-// deployBlock is auto-discovered on first scan if omitted or 0.
-// -----------------------------------------------------------------------------
 {
   "chain": {
     name: "Polygon",
     id: 137,
-    currency: "POL",  // rebranded from MATIC; same chain
-    token: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // WPOL (formerly WMATIC)
-    // Free public RPC as fallback; override with POLYGON_RPC in .env
-    host: "https://polygon.drpc.org",
-    // Your deployed YoBatches batch reader. Verify this is actually deployed
-    // on Polygon mainnet before running reserves — the address is from the
-    // scaffolded state and may need re-deployment.
+    currency: "POL",
+    token: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",     
     contract: "0x1860a9f4661a0299A2A745c2A49DB212098414CB",
+    host: "https://polygon.drpc.org",
     threads: 5,
     interval: 3000,
     pagesize: 1000000
@@ -26,20 +14,264 @@
   "factories": {
     "v2": {
       abi: ["event PairCreated(address indexed token0, address indexed token1, address pair, uint)"],
-      // Value can be a string (just the address) OR an object with { address, deployBlock, fee }.
-      // Auto-discovery will backfill deployBlock on first scan.
       list: {
-        "UniSwap v2":    "0x9e5A52f57b3038F1B8EeE45F28b3C1967e22799C",
-        "QuickSwap v2":  "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32",
-        "SushiSwap":     "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
-        "Dfyn Exchange": "0xE7Fb3e833eFE5F9c441105EB65Ef8b261266423B",
-        "ApeSwap":       "0xCf083Be4164828f00cAE704EC15a36D711491284"
+        "UniSwapV2":    "0x9e5A52f57b3038F1B8EeE45F28b3C1967e22799C",
+        "QuickSwapV2":  "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32",
+        "SushiSwapV2":     "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
+        "DfynExchangeV2": "0xE7Fb3e833eFE5F9c441105EB65Ef8b261266423B",
+        "ApeSwapV2":       "0xCf083Be4164828f00cAE704EC15a36D711491284",
+
+        "UniswapV2Factory_800b0526": {
+          address: "0x800b052609c355ca8103e06f022aa30647ead60a",
+          deployBlock: 11633169,
+          fee: 0.003          },
+
+        "CatV2": {
+          address: "0x477ce834ae6b7ab003cce4bc4d8697763ff456fa",
+          deployBlock: 17703715,
+          fee: 0.003          },
+
+        "JetswapV2": {
+          address: "0x668ad0ed2622c62e24f0d5ab6b6ac1b9d2cd4ac7",
+          deployBlock: 16569374,
+          fee: 0.003          },
+
+        "ElkV2": {
+          address: "0xe3bd06c7ac7e1ceb17bdd2e5ba83e40d1515af2a",
+          deployBlock: 13103735,
+          fee: 0.003          },
+
+        "WaultSwapV2": {
+          address: "0xa98ea6356a316b44bf710d5f9b6b4ea0081409ef",
+          deployBlock: 15474436,
+          fee: 0.003          },
+
+        "KittenSwapV2": {
+          address: "0x7cfb780010e9c861e03bcbc7ac12e013137d47a5",
+          deployBlock: 31337344,
+          fee: 0.003          },
+
+        "PancakeSwapV2": {
+          address: "0x709e3c6b22993189327a8cfebd572b6cc459fe40",
+          deployBlock: 44112849,
+          fee: 0.003          },
+
+        "PolydexV2": {
+          address: "0xf0681bb7088ac68a62909929554aa22ad89a21fb",
+          deployBlock: 14810795,
+          fee: 0.003          },
+
+        "CafeSwapV2": {
+          address: "0x5ede3f4e7203bf1f12d57af1810448e5db20f46c",
+          deployBlock: 19199313,
+          fee: 0.003          },
+
+        "PolyZapV2": {
+          address: "0x34de5ce6c9a395db5710119419a7a29baa435c88",
+          deployBlock: 13765180,
+          fee: 0.003          },
+
+        "UniswapV2Factory_5c69bee7": {
+          address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+          deployBlock: 46393048,
+          fee: 0.003          },
+
+        "UniswapV2Factory_0f10f5a1": {
+          address: "0x0f10f5a1006f50edecd086ccd5704ade25709ab2",
+          deployBlock: 22270270,
+          fee: 0.003          },
+
+        "UniswapV2Factory_3ed75aff": {
+          address: "0x3ed75aff4094d2aaa38fafca64ef1c152ec1cf20",
+          deployBlock: 18134755,
+          fee: 0.003          },
+
+        "UniswapV2Factory_be087bed": {
+          address: "0xbe087bed88539d28664c9998fe3f180ea7b9749c",
+          deployBlock: 11591509,
+          fee: 0.003          },
+
+        "UniswapV2Factory_b581d0a3": {
+          address: "0xb581d0a3b7ea5cdc029260e989f768ae167ef39b",
+          deployBlock: 24980768,
+          fee: 0.003          },
+
+        "UniswapV2Factory_16ed6496": {
+          address: "0x16ed649675e6ed9f1480091123409b4b8d228dc1",
+          deployBlock: 43981810,
+          fee: 0.003          },
+
+          // 72 pairs in the sweep window (verified on explorer as "DEXFactory")
+    // Add under factories["v2"]:
+        "DEXFactory_56cfc115": {
+          address: "0x56cfc115e04dfcda3ad47eae1db86f70c1f8d8a5",
+          deployBlock: 21641376,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 72 pairs in the sweep window (verified on explorer as "DinoswapV2Factory")
+    // Add under factories["v2"]:
+        "DinoswapV2Factory_624ccf58": {
+          address: "0x624ccf581371f8a4493e6abde46412002555a1b6",
+          deployBlock: 22634106,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 71 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_9ccb9a67": {
+          address: "0x9ccb9a679ac05cb05569ff9916a6d56352d3f587",
+          deployBlock: 51079776,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 71 pairs in the sweep window (verified on explorer as "FractionSwapFactory")
+    // Add under factories["v2"]:
+        "FractionSwapFactory_e19c3070": {
+          address: "0xe19c307024e0ce71fefa0d31f0ae1a1eac57d8f5",
+          deployBlock: 76787943,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 69 pairs in the sweep window (verified on explorer as "PolydexFactory")
+    // Add under factories["v2"]:
+        "PolydexFactory_5bdd1cd9": {
+          address: "0x5bdd1cd910e3307582f213b33699e676e61dead9",
+          deployBlock: 17035187,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 65 pairs in the sweep window (verified on explorer as "UnifiFactory")
+    // Add under factories["v2"]:
+        "UnifiFactory_4fee5291": {
+          address: "0x4fee52912f81b78c3cdcb723728926ed6a893d27",
+          deployBlock: 17177062,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 56 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_46a499c5": {
+          address: "0x46a499c5e0499fb4b8243a234e9215ff1edccecf",
+          deployBlock: 38170715,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 54 pairs in the sweep window (verified on explorer as "GreenhouseV2Factory")
+    // Add under factories["v2"]:
+        "GreenhouseV2Factory_75ed9718": {
+          address: "0x75ed971834b0e176a053ac959d9cf77f0b4c89d0",
+          deployBlock: 25686904,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 50 pairs in the sweep window (verified on explorer as "DEXFactory")
+    // Add under factories["v2"]:
+        "DEXFactory_2541dbea": {
+          address: "0x2541dbea199a22501d75ea141627776bd4eefc80",
+          deployBlock: 59242897,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 45 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_2bc17223": {
+          address: "0x2bc17223a99b6e2857796a5f64a1ed91067b5657",
+          deployBlock: 40311946,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 42 pairs in the sweep window (verified on explorer as "SwapFactory")
+    // Add under factories["v2"]:
+        "SwapFactory_f08ae17c": {
+          address: "0xf08ae17c2a2728a788bb1b6c243fe7eb3e5bbadc",
+          deployBlock: 20697061,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 40 pairs in the sweep window (verified on explorer as "ThunderSwapFactory")
+    // Add under factories["v2"]:
+        "ThunderSwapFactory_c36a10fa": {
+          address: "0xc36a10fa186bdfe343c504a12168755a43d1eda7",
+          deployBlock: 13699120,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 40 pairs in the sweep window (verified on explorer as "UniswapV2FactoryCustomFee")
+    // Add under factories["v2"]:
+        "UniswapV2FactoryCustomFee_38390f0d": {
+          address: "0x38390f0d7d654d02b2cf240b8262b26499bb10ae",
+          deployBlock: 40948511,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 40 pairs in the sweep window (verified on explorer as "UniswapV2FactoryCustomFee")
+    // Add under factories["v2"]:
+        "UniswapV2FactoryCustomFee_53994a00": {
+          address: "0x53994a003eaa36431cac14c3a575f4cffd7b38cb",
+          deployBlock: 43005433,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 39 pairs in the sweep window (verified on explorer as "PlasmaswapFactory")
+    // Add under factories["v2"]:
+        "PlasmaswapFactory_745c475c": {
+          address: "0x745c475cc101ca5580eff6f723976480881bc008",
+          deployBlock: 15441546,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 37 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_8720dccf": {
+          address: "0x8720dccfcd5687afae5f0bfb56ff664e6d8b385b",
+          deployBlock: 26822178,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 37 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_e2f66738": {
+          address: "0xe2f6673805c00f5d8569e5a9b81e3a938104fded",
+          deployBlock: 57242115,
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        }
+      }
+    },
+
+    "v2fee": {
+      list: {
+        "DXSwap": {
+          address: "0x03daa61d8007443a6584e3d8f85105096543c19c",
+          deployBlock: 14599890,       
+          feeTarget: "pair",
+          feeFunction: "swapFee",
+          feeDivisor: 10000
+        },
+      }
+    },                                           
+
+    "solidly": {
+      list: {
+        "TransparentUpgradeableProxy_30030aa4": {
+          address: "0x30030aa4bc9bf07005cf61803ac8d0eb53e576ec",
+          deployBlock: 40603026,
+        },
+
+        "DystFactory_1d21db6c": {
+          address: "0x1d21db6cde1b18c7e47b0f7f42f4b3f68b9beec9",
+          deployBlock: 27986220,
+          // Dystopia charges a flat 0.05% fee for all pairs (stable AND volatile).
+          // Verified via docs: https://docs.dystopia.exchange/dystopia-1/dystopia-swap
+          // Setting `fee` here triggers flat-fee mode in the metadata fetcher:
+          // no getRealFee-style multicall, just a bulk UPDATE with this fee.
+          fee: 0.0005
+        }
       }
     }
+
+
     /*
-    // V3 & Algebra factories - stubbed for later.
-    // These use PoolCreated instead of PairCreated, and off-chain pricing needs
-    // a Quoter contract, not the pool's own reserves. Different scanner needed.
 
     "v3": {
       abi: ["event PoolCreated(address indexed token0,address indexed token1,uint24 indexed fee, int24 tickSpacing,address pool)"],
@@ -56,52 +288,31 @@
     }
     */
   },
-
-  // Aave V3 flash loan provider on Polygon.
-  // Fee is 0.05% (5 bps) — the current governance-set FLASHLOAN_PREMIUM_TOTAL.
-  // Token list is the full set of Aave V3 supported flash-loanable tokens
-  // on Polygon as of user-provided reference. Also used as enumeration root
-  // tokens — exotic entries (LINK, GHST, DPI, jEUR, etc.) will enumerate few
-  // triangles because they're not densely paired, but they're included so
-  // the executor can borrow them if a triangle does surface.
   "flashloan": {
     provider: "aave-v3",
     addressesProvider: "0xa97684ead0e402dc232d5a977953df7ecbab3cdb",
     premium: 0.0005,
     tokens: [
-      // --- Stables (major) ---
-      { symbol: "USDC",     address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals:  6 },  // bridged (PoS)
-      { symbol: "USDCn",    address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals:  6 },  // native (Circle)
+      { symbol: "USDC",     address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals:  6 },
+      { symbol: "USDCn",    address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals:  6 },
       { symbol: "USDT0",    address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals:  6 },
       { symbol: "DAI",      address: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063", decimals: 18 },
-
-      // --- Native / wrapped ---
       { symbol: "WPOL",     address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", decimals: 18 },
-      { symbol: "stMATIC",  address: "0x3A58a54C066FdC0f2D55FC9C89F0415C92eBf3C4", decimals: 18 },  // Lido-staked
-      { symbol: "MaticX",   address: "0xfa68FB4628DFF1028CFEc22b4162FCcd0d45efb6", decimals: 18 },  // Stader-staked
-
-      // --- Blue-chip bridged ---
+      { symbol: "stMATIC",  address: "0x3A58a54C066FdC0f2D55FC9C89F0415C92eBf3C4", decimals: 18 },
+      { symbol: "MaticX",   address: "0xfa68FB4628DFF1028CFEc22b4162FCcd0d45efb6", decimals: 18 },
       { symbol: "WETH",     address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619", decimals: 18 },
       { symbol: "WBTC",     address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", decimals:  8 },
       { symbol: "wstETH",   address: "0x03b54A6e9a984069379fae1a4fC4dBAE93B3bCCD", decimals: 18 },
-
-      // --- DeFi bluechips (deeper liquidity) ---
       { symbol: "LINK",     address: "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", decimals: 18 },
       { symbol: "AAVE",     address: "0xD6DF932A45C0f255f85145f286eA0b292B21C90B", decimals: 18 },
       { symbol: "CRV",      address: "0x172370d5Cd63279eFa6d502DAB29171933a610AF", decimals: 18 },
       { symbol: "BAL",      address: "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3", decimals: 18 },
       { symbol: "SUSHI",    address: "0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a", decimals: 18 },
-
-      // --- Ecosystem / niche (thin markets — few triangles will enumerate) ---
       { symbol: "GHST",     address: "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7", decimals: 18 },
       { symbol: "DPI",      address: "0x85955046DF4668e1DD369D2DE9f3AEB98DD2A369", decimals: 18 },
-
-      // --- Euro stables ---
       { symbol: "EURS",     address: "0xE111178A87A3BFf0c8d18DECBa5798827539Ae99", decimals:  2 },
       { symbol: "jEUR",     address: "0x4e3Decbb3645551B8A19f0eA1678079FCB33fB4c", decimals: 18 },
       { symbol: "EURA",     address: "0xE0B52e49357Fd4DAf2c15e02058DCE6BC0057db4", decimals: 18 },
-
-      // --- MAI (miMATIC stable) ---
       { symbol: "miMATIC",  address: "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1", decimals: 18 }
     ]
   }

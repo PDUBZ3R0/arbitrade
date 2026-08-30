@@ -256,6 +256,28 @@ async function fetchPerPairMetadata(
         }
         return 0;
     }
+
+    // Flat-fee fast path: some v2fee/solidly factories charge a uniform fee
+    // for all pairs (e.g. Dystopia = 0.05% flat). If the config declares a
+    // `fee` on the factory, use it directly — no multicall needed, and no
+    // failure mode from a missing/mismatched feeFunction on-chain.
+    //
+    // This is the escape hatch for Solidly forks whose fee API doesn't fit
+    // our single-feeFunction schema (Velodrome/Aerodrome-style stableFee +
+    // volatileFee split, uniform-fee forks like Dystopia, or forks where
+    // the fee is hardcoded in the pair's swap() and not queryable at all).
+    if (factory.fee !== undefined && factory.fee !== null) {
+        const updated = db.db.prepare(
+            'UPDATE pairs SET fee = ? WHERE factory = ? AND fee IS NULL'
+        ).run(factory.fee, factory.address.toLowerCase()).changes;
+        const total = targets.length;
+        console.log(
+            `  Flat fee mode: applied fee=${factory.fee} to ${updated} pair(s) ` +
+            `(config declares uniform fee for this factory; skipping metadata multicall)`
+        );
+        return updated;
+    }
+
     const { feeTarget, feeFunction, feeDivisor } = factory;
     const feeIface = makeFeeIface(feeFunction, feeTarget);
 
@@ -353,7 +375,11 @@ async function fetchPerPairMetadata(
                     `  Common patterns:\n` +
                     `    Shadow-like (Sonic):  feeTarget="factory", feeFunction="pairFee",    feeDivisor=1000000\n` +
                     `    Equalizer-like:       feeTarget="factory", feeFunction="getRealFee", feeDivisor=1e18\n` +
-                    `    DXSwap-like (Gnosis): feeTarget="pair",    feeFunction="swapFee",    feeDivisor=10000`
+                    `    DXSwap-like (Gnosis): feeTarget="pair",    feeFunction="swapFee",    feeDivisor=10000\n` +
+                    `\n` +
+                    `  Escape hatch: if the factory charges a UNIFORM fee for all pairs\n` +
+                    `  (e.g. Dystopia = 0.0005, Velodrome-style, hardcoded-in-swap()), set\n` +
+                    `  "fee": 0.0005  on the factory entry to skip metadata entirely.`
                 );
             }
         }

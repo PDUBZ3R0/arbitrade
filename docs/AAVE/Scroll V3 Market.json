@@ -1,0 +1,27 @@
+[
+  {
+    "symbol": "WETH",
+    "address": "0x5300000000000000000000000000000000000004",
+    "decimals": 18
+  },
+  {
+    "symbol": "USDC",
+    "address": "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4",
+    "decimals": 6
+  },
+  {
+    "symbol": "wstETH",
+    "address": "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32",
+    "decimals": 18
+  },
+  {
+    "symbol": "weETH",
+    "address": "0x01f0a31698C4d065659b9bdC21B3610292a1c506",
+    "decimals": 18
+  },
+  {
+    "symbol": "SCR",
+    "address": "0xd29687c813D741E2F938F4aC377128810E217b1b",
+    "decimals": 18
+  }
+]
