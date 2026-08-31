@@ -1,31 +1,160 @@
-// Chain registry. Each entry:
-//   KEY         = the label — used as CLI arg, conf filename, DB filename,
-//                 and env-var prefix. Match your yarn args to these keys
-//                 exactly (case-insensitive; hyphens allowed).
-//   id          = EVM chain ID
-//   name        = display name (shown in logs and error messages)
-//   currency    = native currency ticker
-//   host        = default RPC URL (override with <LABEL>_RPC env var,
-//                 e.g. SONIC_RPC or BNB_SMART_CHAIN_RPC → normalized)
-//   hypersyncUrl= optional; enables Envio HyperSync transport for
-//                 find-factories. Free token: https://envio.dev/, set
-//                 ENVIO_API_TOKEN in .env. HyperSync is up to 2000x faster
-//                 than eth_getLogs for historical scans.
-//
-// HyperSync URL convention: https://<chain>.hypersync.xyz — see
-// https://envio.dev/chains for the up-to-date supported list.
 {
-  ethereum:  { id: 1,     name: "Ethereum",          currency: "ETH",   host: "https://cloudflare-eth.com",             hypersyncUrl: "https://eth.hypersync.xyz" },
-  optimism:  { id: 10,    name: "Optimism",          currency: "ETH",   host: "https://mainnet.optimism.io",            hypersyncUrl: "https://optimism.hypersync.xyz" },
-  bsc:       { id: 56,    name: "BNB Smart Chain",   currency: "BNB",   host: "https://bsc-dataseed1.binance.org",      hypersyncUrl: "https://bsc.hypersync.xyz" },
-  gnosis:    { id: 100,   name: "Gnosis",            currency: "xDAI",  host: "https://rpc.gnosischain.com",            hypersyncUrl: "https://gnosis.hypersync.xyz" },
-  polygon:   { id: 137,   name: "Polygon",           currency: "POL",   host: "https://polygon.drpc.org",               hypersyncUrl: "https://polygon.hypersync.xyz" },
-  monad:     { id: 143,   name: "Monad",             currency: "MON",   host: "https://rpc.monad.xyz",                  hypersyncUrl: "https://monad.hypersync.xyz" },
-  sonic:     { id: 146,   name: "Sonic",             currency: "S",     host: "https://rpc.soniclabs.com",              hypersyncUrl: "https://sonic.hypersync.xyz" },
-  pulse:     { id: 369,   name: "PulseChain",        currency: "PLS",   host: "https://rpc.pulsechain.com" },
-  base:      { id: 8453,  name: "Base",              currency: "ETH",   host: "https://mainnet.base.org",               hypersyncUrl: "https://base.hypersync.xyz" },
-  arbitrum:  { id: 42161, name: "Arbitrum One",      currency: "ETH",   host: "https://arb1.arbitrum.io/rpc",           hypersyncUrl: "https://arbitrum.hypersync.xyz" },
-  avalanche: { id: 43114, name: "Avalanche C-Chain", currency: "AVAX",  host: "https://api.avax.network/ext/bc/C/rpc",  hypersyncUrl: "https://avalanche.hypersync.xyz" },
-  linea:     { id: 59144, name: "Linea",             currency: "ETH",   host: "https://linea-rpc.publicnode.com",       hypersyncUrl: "https://linea.hypersync.xyz" }
- 
+  ethereum: {
+    id: 1,
+    name: 'Ethereum',
+    currency: 'ETH',
+    hypersyncUrl: 'https://eth.hypersync.xyz',
+    host: 'https://eth.rpc.hypersync.xyz',
+  },
+  optimism: {
+    id: 10,
+    name: 'Optimism',
+    currency: 'ETH',
+    hypersyncUrl: 'https://optimism.hypersync.xyz',
+    host: 'https://optimism.rpc.hypersync.xyz',
+  },
+  bsc: {
+    id: 56,
+    name: 'BNB Smart Chain',
+    currency: 'BNB',
+    hypersyncUrl: 'https://bsc.hypersync.xyz',
+    host: 'https://bsc.rpc.hypersync.xyz',
+  },
+  gnosis: {
+    id: 100,
+    name: 'Gnosis',
+    currency: 'xDAI',
+    hypersyncUrl: 'https://gnosis.hypersync.xyz',
+    host: 'https://gnosis.rpc.hypersync.xyz',
+  },
+  unichain: {
+    id: 130,
+    name: 'Unichain',
+    currency: 'ETH',
+    hypersyncUrl: 'https://unichain.hypersync.xyz',
+    host: 'https://unichain.rpc.hypersync.xyz',
+  },
+  polygon: {
+    id: 137,
+    name: 'Polygon',
+    currency: 'POL',
+    hypersyncUrl: 'https://polygon.hypersync.xyz',
+    host: 'https://polygon.rpc.hypersync.xyz',
+  },
+  monad: {
+    id: 143,
+    name: 'Monad',
+    currency: 'MON',
+    hypersyncUrl: 'https://monad.hypersync.xyz',
+    host: 'https://monad.rpc.hypersync.xyz',
+  },
+  sonic: {
+    id: 146,
+    name: 'Sonic',
+    currency: 'S',
+    hypersyncUrl: 'https://sonic.hypersync.xyz',
+    host: 'https://sonic.rpc.hypersync.xyz',
+  },
+  xlayer: {
+    id: 196,
+    name: 'X Layer',
+    currency: 'OKB',
+    host: 'https://rpc.xlayer.tech',
+  },
+  zksync: {
+    id: 324,
+    name: 'zkSync Era',
+    currency: 'ETH',
+    hypersyncUrl: 'https://zksync.hypersync.xyz',
+    host: 'https://zksync.rpc.hypersync.xyz',
+  },
+  pulse: {
+    id: 369,
+    name: 'PulseChain',
+    currency: 'PLS',
+    host: 'https://rpc.pulsechain.com',
+  },
+  hyperliquid: {
+    id: 999,
+    name: 'Hyperliquid',
+    currency: 'HYPE',
+    hypersyncUrl: 'https://hyperliquid.hypersync.xyz',
+    host: 'https://hyperliquid.rpc.hypersync.xyz',
+  },
+  metis: {
+    id: 1088,
+    name: 'Metis Andromeda',
+    currency: 'METIS',
+    host: 'https://andromeda.metis.io/?owner=1088',
+  },
+  soneium: {
+    id: 1868,
+    name: 'Soneium',
+    currency: 'ETH',
+    hypersyncUrl: 'https://soneium.hypersync.xyz',
+    host: 'https://soneium.rpc.hypersync.xyz',
+  },
+  mantle: {
+    id: 5000,
+    name: 'Mantle',
+    currency: 'MNT',
+    hypersyncUrl: 'https://mantle.hypersync.xyz',
+    host: 'https://mantle.rpc.hypersync.xyz',
+  },
+  robinhood: {
+    id: 4663,
+    name: 'Robinhood',
+    currency: 'ETH',
+    hypersyncUrl: 'https://robinhood.hypersync.xyz',
+    host: 'https://robinhood.rpc.hypersync.xyz',
+  },
+  base: {
+    id: 8453,
+    name: 'Base',
+    currency: 'ETH',
+    hypersyncUrl: 'https://base.hypersync.xyz',
+    host: 'https://base.rpc.hypersync.xyz',
+  },
+  plasma: {
+    id: 9745,
+    name: 'Plasma',
+    currency: 'XPL',
+    hypersyncUrl: 'https://plasma.hypersync.xyz',
+    host: 'https://plasma.rpc.hypersync.xyz',
+  },
+  arbitrum: {
+    id: 42161,
+    name: 'Arbitrum One',
+    currency: 'ETH',
+    hypersyncUrl: 'https://arbitrum.hypersync.xyz',
+    host: 'https://arbitrum.rpc.hypersync.xyz',
+  },
+  avalanche: {
+    id: 43114,
+    name: 'Avalanche C-Chain',
+    currency: 'AVAX',
+    hypersyncUrl: 'https://avalanche.hypersync.xyz',
+    host: 'https://avalanche.rpc.hypersync.xyz',
+  },
+  ink: {
+    id: 57073,
+    name: 'Ink',
+    currency: 'ETH',
+    hypersyncUrl: 'https://ink.hypersync.xyz',
+    host: 'https://ink.rpc.hypersync.xyz',
+  },
+  linea: {
+    id: 59144,
+    name: 'Linea',
+    currency: 'ETH',
+    hypersyncUrl: 'https://linea.hypersync.xyz',
+    host: 'https://linea.rpc.hypersync.xyz',
+  },
+  scroll: {
+    id: 534352,
+    name: 'Scroll',
+    currency: 'ETH',
+    hypersyncUrl: 'https://scroll.hypersync.xyz',
+    host: 'https://scroll.rpc.hypersync.xyz',
+  },
 }
