@@ -26,7 +26,11 @@ const SCHEMA = `
         address     TEXT PRIMARY KEY,
         name        TEXT NOT NULL,
         type        TEXT NOT NULL DEFAULT 'v2',
-        fee         REAL NOT NULL DEFAULT 0.003,
+        -- Nullable: v2/v3 have a flat fee (0.003 default); v2fee/solidly can
+        -- either declare a flat fee (opt-in flat-fee mode) OR leave it NULL
+        -- to signal per-pair lookup via feeFunction. NULL means "see the
+        -- factory config's feeTarget/feeFunction/feeDivisor and pairs.fee".
+        fee         REAL,
         deployBlock INTEGER NOT NULL
     );
 
@@ -102,6 +106,29 @@ const SCHEMA = `
     CREATE INDEX IF NOT EXISTS idx_triangles_pair_ab ON triangles(pair_ab);
     CREATE INDEX IF NOT EXISTS idx_triangles_pair_bc ON triangles(pair_bc);
     CREATE INDEX IF NOT EXISTS idx_triangles_pair_ca ON triangles(pair_ca);
+
+    -- Token metadata (symbol / name / decimals) fetched from the chain.
+    -- Populated by \`yarn tokens <chain>\`. Read-side JOINed by any UI or log
+    -- output that wants to show token addresses as human-readable symbols.
+    --
+    -- \`fetchStatus\`: 'ok' when the on-chain fetch succeeded;
+    --                 'reverted' when the token's symbol()/decimals() reverted
+    --                            (non-standard ERC20; symbol/decimals will be NULL);
+    --                 'nocode' when the address has no bytecode (long-tail
+    --                          scam contracts get self-destructed);
+    --                 'pending' when we've seen the address but not yet fetched.
+    CREATE TABLE IF NOT EXISTS tokens (
+        address      TEXT PRIMARY KEY,
+        symbol       TEXT,
+        name         TEXT,
+        decimals     INTEGER,
+        fetchStatus  TEXT NOT NULL,   -- 'ok' | 'reverted' | 'nocode' | 'pending'
+        fetchedAt    INTEGER,          -- unix ts
+        discoveredAt INTEGER NOT NULL  -- unix ts of first-seen
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tokens_symbol ON tokens(symbol);
+    CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(fetchStatus);
 `;
 
 /**
@@ -118,6 +145,38 @@ function migratePairsColumns(db: import('better-sqlite3').Database): void {
     if (!names.has('stable')) {
         db.exec('ALTER TABLE pairs ADD COLUMN stable INTEGER');
     }
+}
+
+/**
+ * Schema migration: factories.fee was originally NOT NULL DEFAULT 0.003, but
+ * v2fee/solidly factories legitimately have NULL fees (per-pair mode). SQLite
+ * can't ALTER COLUMN DROP NOT NULL, so we swap the table: create a new one
+ * with the correct schema, copy data over, drop old, rename.
+ *
+ * Idempotent: checks PRAGMA table_info's `notnull` flag first. If the fee
+ * column is already nullable, does nothing.
+ */
+function migrateFactoriesFeeNullable(db: import('better-sqlite3').Database): void {
+    const cols = db.prepare("PRAGMA table_info(factories)").all() as Array<{ name: string; notnull: number }>;
+    const feeCol = cols.find(c => c.name === 'fee');
+    // notnull is 0 for nullable, non-zero for NOT NULL. If missing or already nullable, skip.
+    if (!feeCol || feeCol.notnull === 0) return;
+
+    db.exec(`
+        BEGIN;
+        CREATE TABLE factories_new (
+            address     TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            type        TEXT NOT NULL DEFAULT 'v2',
+            fee         REAL,
+            deployBlock INTEGER NOT NULL
+        );
+        INSERT INTO factories_new (address, name, type, fee, deployBlock)
+            SELECT address, name, type, fee, deployBlock FROM factories;
+        DROP TABLE factories;
+        ALTER TABLE factories_new RENAME TO factories;
+        COMMIT;
+    `);
 }
 
 // -----------------------------------------------------------------------------
@@ -152,6 +211,7 @@ export class ArbitradeDB {
         this.db.pragma('synchronous = NORMAL'); // ~2x write speedup, still safe
         this.db.exec(SCHEMA);
         migratePairsColumns(this.db);
+        migrateFactoriesFeeNullable(this.db);
     }
 
     close() {
@@ -160,7 +220,7 @@ export class ArbitradeDB {
 
     // ------------------------------------------- factories
 
-    upsertFactory(f: { address: string; name: string; type: string; fee: number; deployBlock: number }) {
+    upsertFactory(f: { address: string; name: string; type: string; fee: number | null | undefined; deployBlock: number }) {
         this.db.prepare(`
             INSERT INTO factories (address, name, type, fee, deployBlock)
             VALUES (@address, @name, @type, @fee, @deployBlock)
@@ -173,7 +233,9 @@ export class ArbitradeDB {
             address: f.address.toLowerCase(),
             name: f.name,
             type: f.type,
-            fee: f.fee,
+            // Normalize undefined → null so better-sqlite3's parameter binding
+            // treats it as SQL NULL rather than throwing.
+            fee: f.fee ?? null,
             deployBlock: f.deployBlock,
         });
     }
@@ -225,6 +287,113 @@ export class ArbitradeDB {
         }
         const row = this.db.prepare('SELECT COUNT(*) AS n FROM pairs').get() as { n: number };
         return row.n;
+    }
+
+    // ------------------------------------------- token metadata
+
+    /**
+     * Return all distinct token addresses referenced by any pair (or by
+     * pairs matching optional filters). Used by \`yarn tokens\` to discover
+     * what to fetch metadata for.
+     *
+     * `withReservesOnly`: if true, only tokens whose pairs have at least one
+     * non-zero-reserve pool. Cuts the working set roughly in half on Polygon
+     * (skips tokens that only appear in dead scaffold pairs).
+     *
+     * `unfetchedOnly`: skip tokens already in the tokens table with a
+     * terminal fetchStatus ('ok', 'reverted', 'nocode'). Default true.
+     */
+    listPairTokens(opts: { withReservesOnly?: boolean; unfetchedOnly?: boolean } = {}): string[] {
+        const withReserves = opts.withReservesOnly ?? false;
+        const unfetched = opts.unfetchedOnly ?? true;
+
+        // Build one query that unions token0/token1 across pairs, optionally
+        // gated by "has any non-zero reserves ever", and optionally excludes
+        // addresses already in tokens table.
+        const pairFilter = withReserves
+            ? `WHERE address IN (SELECT DISTINCT pair FROM reserves WHERE reserves0 > 0 OR reserves1 > 0)`
+            : '';
+        const query = `
+            WITH pair_tokens AS (
+                SELECT token0 AS address FROM pairs ${pairFilter}
+                UNION
+                SELECT token1 AS address FROM pairs ${pairFilter}
+            )
+            SELECT DISTINCT address FROM pair_tokens
+            ${unfetched
+                ? `WHERE address NOT IN (SELECT address FROM tokens WHERE fetchStatus IN ('ok', 'reverted', 'nocode'))`
+                : ''}
+        `;
+        return (this.db.prepare(query).all() as Array<{ address: string }>).map(r => r.address);
+    }
+
+    /**
+     * Upsert a batch of token metadata rows. Existing rows are updated;
+     * discoveredAt is preserved.
+     */
+    upsertTokens(rows: Array<{
+        address: string;
+        symbol: string | null;
+        name: string | null;
+        decimals: number | null;
+        fetchStatus: 'ok' | 'reverted' | 'nocode' | 'pending';
+    }>): number {
+        if (rows.length === 0) return 0;
+        const now = Math.floor(Date.now() / 1000);
+        const stmt = this.db.prepare(`
+            INSERT INTO tokens (address, symbol, name, decimals, fetchStatus, fetchedAt, discoveredAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(address) DO UPDATE SET
+                symbol = excluded.symbol,
+                name = excluded.name,
+                decimals = excluded.decimals,
+                fetchStatus = excluded.fetchStatus,
+                fetchedAt = excluded.fetchedAt
+        `);
+        const tx = this.db.transaction((batch: typeof rows) => {
+            let n = 0;
+            for (const r of batch) {
+                stmt.run(r.address.toLowerCase(), r.symbol, r.name, r.decimals, r.fetchStatus, now, now);
+                n++;
+            }
+            return n;
+        });
+        return tx(rows);
+    }
+
+    /**
+     * Fetch known token metadata for a set of addresses. Returns a map keyed
+     * by lowercased address. Missing addresses simply aren't in the returned
+     * map. Used by display code (evaluator output, discovery.json) to swap
+     * addresses for symbols.
+     */
+    getTokens(addresses: string[]): Map<string, { address: string; symbol: string | null; name: string | null; decimals: number | null; fetchStatus: string }> {
+        const out = new Map();
+        if (addresses.length === 0) return out;
+        const lower = addresses.map(a => a.toLowerCase());
+        // SQLite has a parameter limit (~999). Chunk defensively.
+        const CHUNK = 500;
+        for (let i = 0; i < lower.length; i += CHUNK) {
+            const chunk = lower.slice(i, i + CHUNK);
+            const placeholders = chunk.map(() => '?').join(',');
+            const rows = this.db.prepare(
+                `SELECT address, symbol, name, decimals, fetchStatus FROM tokens WHERE address IN (${placeholders})`
+            ).all(...chunk) as Array<{ address: string; symbol: string | null; name: string | null; decimals: number | null; fetchStatus: string }>;
+            for (const r of rows) out.set(r.address, r);
+        }
+        return out;
+    }
+
+    tokenStats(): { total: number; ok: number; reverted: number; nocode: number; pending: number } {
+        const rows = this.db.prepare(
+            `SELECT fetchStatus, COUNT(*) AS n FROM tokens GROUP BY fetchStatus`
+        ).all() as Array<{ fetchStatus: string; n: number }>;
+        const out = { total: 0, ok: 0, reverted: 0, nocode: 0, pending: 0 };
+        for (const r of rows) {
+            out.total += r.n;
+            (out as any)[r.fetchStatus] = r.n;
+        }
+        return out;
     }
 
     // ------------------------------------------- scan progress

@@ -98,6 +98,20 @@ import { realpathSync } from 'node:fs';
 import { loadChainConfig } from './config.ts';
 import { etherscanGetLogs, rateLimit, notifyRateLimit } from './etherscan.ts';
 import { verifyFactory } from './verify-factory.ts';
+import { detectProxy } from './proxy-detect.ts';
+
+// Contract names that indicate a proxy wrapper rather than the actual DEX logic.
+// When Etherscan returns one of these, we should try detectProxy() and look up
+// the implementation's contract name for the real identity.
+const PROXY_NAME_PATTERNS = [
+    /Proxy$/i,                        // ERC1967Proxy, BeaconProxy, TransparentUpgradeableProxy
+    /^Proxy/i,                        // ProxyAdmin, ProxyFactory
+    /UpgradeableProxy/i,
+    /InitializableProxy/i,
+];
+function isProxyName(name: string): boolean {
+    return PROXY_NAME_PATTERNS.some(re => re.test(name));
+}
 
 const PAIR_CREATED_V2_TOPIC      = ethers.id('PairCreated(address,address,address,uint256)');
 const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
@@ -506,9 +520,17 @@ async function emitReport(
         return;
     }
 
-    const toVerify = unknown.slice(0, opts.verifyLimit);
+    const toVerify = opts.verifyLimit > 0 ? unknown.slice(0, opts.verifyLimit) : unknown;
     console.log(`\n─${'─'.repeat(71)}`);
-    console.log(`Verifying top ${toVerify.length} candidates...`);
+    // For big verify runs, give a rough time estimate so nobody accidentally
+    // kicks off thousands of RPC calls thinking it'll be quick.
+    if (toVerify.length >= 100) {
+        const estMinutes = Math.ceil((toVerify.length * 5) / 60);
+        console.log(`Verifying ${toVerify.length} candidates (rough estimate ~${estMinutes} min at 5s/candidate)`);
+        console.log(`Ctrl-C to abort — sweep results are already saved.`);
+    } else {
+        console.log(`Verifying top ${toVerify.length} candidates...`);
+    }
     console.log(`─${'─'.repeat(71)}\n`);
 
     // Each verify makes many RPC calls (getCode, getLogs chunks, eth_call).
@@ -522,7 +544,7 @@ async function emitReport(
         });
     };
 
-    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; explorerVerified: boolean }> = [];
+    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean }> = [];
     for (const c of toVerify) {
         console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pairs)`);
         try {
@@ -539,6 +561,8 @@ async function emitReport(
                 // well-known DEX at a glance.
                 let displayName: string | undefined;
                 let explorerVerified = false;
+                let implementationName: string | undefined;
+                let implementationAddress: string | undefined;
                 if (explorerApiKey) {
                     try {
                         const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
@@ -555,18 +579,61 @@ async function emitReport(
                     } catch { /* best-effort; classifier tolerates missing name */ }
                 }
 
+                // Proxy resolution: if the top-level contract name looks like
+                // a proxy wrapper (TransparentUpgradeableProxy, ERC1967Proxy,
+                // BeaconProxy, etc.), read EIP-1967 storage to find the
+                // implementation address, then look up ITS contract name.
+                // The implementation name is what actually identifies the DEX
+                // (e.g. "PairFactory" for Retro Finance behind its proxy).
+                if (displayName && isProxyName(displayName)) {
+                    try {
+                        const proxyProvider = new JsonRpcProvider(loadChainConfig(chainArg).chain.host);
+                        const proxyInfo = await withTimeout(
+                            detectProxy(proxyProvider, c.address),
+                            10_000,
+                            `detectProxy(${c.address})`,
+                        );
+                        if (proxyInfo.isProxy && proxyInfo.implementation && explorerApiKey) {
+                            implementationAddress = proxyInfo.implementation;
+                            const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
+                            await esRateLimit();
+                            const implInfo = await withTimeout(
+                                getContractSourceInfo(loadChainConfig(chainArg).chain.id, proxyInfo.implementation, explorerApiKey),
+                                10_000,
+                                `getContractSourceInfo(impl ${proxyInfo.implementation})`,
+                            );
+                            if (implInfo?.contractName) {
+                                implementationName = implInfo.contractName;
+                            }
+                        }
+                    } catch { /* proxy detect / impl lookup best-effort */ }
+                }
+
                 const feeInfo = v.family === 'v2fee' || v.family === 'solidly'
                     ? 'fee per-pair'
                     : `fee ${v.fee} (${v.feeConfidence})`;
-                const nameNote = displayName
-                    ? ` ["${displayName}"]`
-                    : (explorerApiKey ? ' [unverified on explorer]' : '');
+                // Effective name for display: the implementation contract name
+                // when the top-level is a proxy wrapper, otherwise the top-level.
+                const effectiveName = implementationName ?? displayName;
+                let nameNote = '';
+                if (effectiveName) {
+                    if (implementationName && displayName) {
+                        // Show both to make the proxy-hop legible in logs
+                        nameNote = ` ["${displayName}" → "${implementationName}"]`;
+                    } else {
+                        nameNote = ` ["${effectiveName}"]`;
+                    }
+                } else if (explorerApiKey) {
+                    nameNote = ' [unverified on explorer]';
+                }
                 console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}${nameNote}`);
                 verified.push({
                     candidate: c,
                     snippet: v.configSnippet,
                     family: v.family,
                     contractName: displayName,
+                    implementationName,
+                    implementationAddress,
                     explorerVerified,
                 });
             } else {
@@ -589,19 +656,59 @@ async function emitReport(
 
     if (verified.length > 0) {
         console.log(`\nSuggested additions to conf/${chainArg}.json5:\n`);
-        for (const { candidate, snippet, contractName } of verified) {
-            // Config-key naming rule: prefer the on-explorer contract name when
-            // we have one, always suffixed with the address-8 to prevent JSON5
-            // key collisions across factories that share a common name (e.g.
-            // multiple forks all named `UniswapV2Factory`).
-            const configKey = contractName
-                ? `${contractName}_${candidate.address.slice(2, 10)}`
+        // Load pattern registry lazily so this file doesn't hard-depend on it
+        const { lookupDexPattern, renderPatternSnippet } = await import('./dex-patterns.ts');
+
+        for (const { candidate, snippet, family, contractName, implementationName, implementationAddress } of verified) {
+            // Naming rule for config keys: prefer the implementation's contract
+            // name (real DEX identity) when we detected a proxy. Fall back to
+            // the top-level contract name, then to a generic Factory_ prefix.
+            // Always suffix with address-8 so JSON5 keys don't collide across
+            // forks that share a common name.
+            const nameForKey = implementationName ?? contractName;
+            const configKey = nameForKey
+                ? `${nameForKey}_${candidate.address.slice(2, 10)}`
                 : `Factory_${candidate.address.slice(2, 10)}`;
-            const nameHint = contractName
-                ? ` (verified on explorer as "${contractName}")`
-                : '';
+
+            // Try the registered-pattern path first: if we recognize the
+            // contract name (or the impl name behind a proxy) as a known
+            // template, we can emit a pre-filled snippet with the right
+            // family + feeTarget/feeFunction/feeDivisor and drop the
+            // generic placeholder comments.
+            const pattern = lookupDexPattern(implementationName) ?? lookupDexPattern(contractName);
+
+            let nameHint = '';
+            if (implementationName && contractName) {
+                nameHint = ` (${contractName} proxy → impl "${implementationName}" at ${implementationAddress?.slice(0, 10)}...)`;
+            } else if (contractName) {
+                nameHint = ` (verified on explorer as "${contractName}")`;
+            }
             console.log(`// ${candidate.pairCreatedCount} pairs in the sweep window${nameHint}`);
-            console.log(snippet.replace('NAME_ME', configKey));
+
+            if (pattern) {
+                // Emit a snippet from the pattern registry.
+                const groupComment = `    // Add under factories["${pattern.family}"]:`;
+                const body = renderPatternSnippet(
+                    candidate.address,
+                    // pattern.family override may differ from verify-factory's runtime family;
+                    // that's the point of the registry — we trust the template match.
+                    (candidate as any).deployBlock,   // not currently tracked on FactoryCandidate; fine to omit
+                    pattern,
+                );
+                const patternNote = pattern.notes
+                    ? `\n          // Pattern: ${pattern.notes}`
+                    : '';
+                console.log(
+                    `${groupComment}\n` +
+                    `        "${configKey}": {${patternNote}\n` +
+                    `${body}\n` +
+                    `        }`
+                );
+            } else {
+                // Fall through to the verify-factory-generated snippet with
+                // NAME_ME substitution.
+                console.log(snippet.replace('NAME_ME', configKey));
+            }
             console.log('');
         }
         console.log('IMPORTANT:');
@@ -615,8 +722,11 @@ async function emitReport(
 
 if (isMain()) {
     const args = process.argv.slice(2);
-    const chainArg = args[0];
-    if (!chainArg || chainArg.startsWith('--')) {
+    // Accept the chain name in any position — first non-flag arg wins.
+    // This makes `yarn find-factories --verify-all polygon` work as expected
+    // instead of interpreting `--verify-all` as the chain name.
+    const chainArg = args.find(a => !a.startsWith('--'));
+    if (!chainArg) {
         console.error('Usage: yarn find-factories <chain> [options]');
         console.error('');
         console.error('  --from-block N         Start block (default: 0 if nothing else set)');
@@ -637,6 +747,8 @@ if (isMain()) {
         console.error('    etherscan needs ETHERSCAN_API_KEY in .env');
         console.error('    rpc works without keys but is much slower (only if RPC supports address-less log queries)');
         console.error('  --verify-limit N       Max candidates to verify (default: 20, 0 = skip)');
+        console.error('  --verify-all           Verify every unknown candidate (may take a long time on');
+        console.error('                         chains with many hits; overrides --verify-limit)');
         console.error('  --autosave PATH        Write partial results as JSON every ~15s');
         console.error('');
         console.error('Ctrl-C during a sweep flushes the partial report before exiting.');
@@ -658,7 +770,11 @@ if (isMain()) {
     const fromBlock    = getNum('--from-block', -1);
     const toBlock      = getNum('--to-block',   -1);
     const lookback     = getNum('--lookback',   -1);
-    const verifyLimit  = getNum('--verify-limit', 20);
+    // --verify-limit N     : verify top N candidates. Default 20. 0 = skip entirely.
+    // --verify-all         : verify every unknown candidate (equivalent to --verify-limit Infinity).
+    //                        On chains with 1000+ candidates this can take a long time.
+    const verifyAll    = args.includes('--verify-all');
+    const verifyLimit  = verifyAll ? Number.MAX_SAFE_INTEGER : getNum('--verify-limit', 20);
     const transport    = getStr('--transport', 'auto' as const, ['auto', 'hypersync', 'etherscan', 'rpc'] as const)!;
     const autosavePath = getStr('--autosave', undefined);
     const explorerApiKey = process.env.ETHERSCAN_API_KEY;

@@ -17,29 +17,29 @@
       ],
       list: {
         QuickSwapV2: {
-          address: "0x5757371414417b8c6caad45baef941abc7d3ab32",
+          address: '0x5757371414417b8c6caad45baef941abc7d3ab32',
           deployBlock: 4931780,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
         UniswapV2: {
-          address: "0x9e5a52f57b3038f1b8eee45f28b3c1967e22799c",
+          address: '0x9e5a52f57b3038f1b8eee45f28b3c1967e22799c',
           deployBlock: 49948178,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
         SushiSwapV2: {
-          address: "0xc35dadb65012ec5796536bd9864ed8773abc74c4",
+          address: '0xc35dadb65012ec5796536bd9864ed8773abc74c4',
           deployBlock: 11333218,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
-        "DyfnV2": {
-          address: "0xe7fb3e833efe5f9c441105eb65ef8b261266423b",
+        DyfnV2: {
+          address: '0xe7fb3e833efe5f9c441105eb65ef8b261266423b',
           deployBlock: 5436831,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
-        "ApeSwapV2": {
-          address: "0xcf083be4164828f00cae704ec15a36d711491284",
+        ApeSwapV2: {
+          address: '0xcf083be4164828f00cae704ec15a36d711491284',
           deployBlock: 15298801,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
         CatV2: {
           address: '0x477ce834ae6b7ab003cce4bc4d8697763ff456fa',
@@ -111,73 +111,217 @@
           deployBlock: 15441546,
           fee: 0.003,
         },
-
-
-// 35 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_3ee4154c": {
-          address: "0x3ee4154c7f42d94e1092ad8ce5debb4b743ed0b2",
-          deployBlock: 18907205,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        JavaSwapV2: {
+          address: '0x672353e4e674dddd7319a4852e49f6e1d2ac6f18',
+          deployBlock: 18983076,
+          fee: 0.003,
         },
-
-// 34 pairs in the sweep window (verified on explorer as "GravisFactory")
-    // Add under factories["v2"]:
-        "GravisFactory_17c1d25d": {
-          address: "0x17c1d25d5a2d833c266639de5fbe8896bdbeb234",
+        SafeswapV2: {
+          address: '0x5be44d6c5634161cdadcc2bc35389325aa493e83',
+          deployBlock: 20417200,
+          fee: 0.003,
+        },
+        BoltrV2: {
+          address: '0x442266042667407329e1729e6bead71424f42021',
+          deployBlock: 20918958,
+          fee: 0.003,
+        },
+        GravisV2: {
+          address: '0x17c1d25d5a2d833c266639de5fbe8896bdbeb234',
           deployBlock: 15328806,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
-
-// 34 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_598a177c": {
-          address: "0x598a177cccf553eea28eb2aee7542c8b04d46b82",
-          deployBlock: 55752534,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
-        },
-
-// 33 pairs in the sweep window (verified on explorer as "PancakeFactory")
-    // Add under factories["v2"]:
-        "PancakeFactory_d76d8c2a": {
-          address: "0xd76d8c2a7ca0a1609aea0b9b5017b3f7782891bf",
-          deployBlock: 17383679,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
-        },
-
-// 31 pairs in the sweep window (verified on explorer as "BullFactory")
-    // Add under factories["v2"]:
-        "BullFactory_79038549": {
-          address: "0x79038549c96bbfb1e45914402c3479f65e192787",
+        BullSwapV2: {
+          address: '0x79038549c96bbfb1e45914402c3479f65e192787',
           deployBlock: 15515418,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
-
-// 31 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_9c4f05b5": {
-          address: "0x9c4f05b52a00adfecd82bc8daed2ddab3fe3aa1c",
-          deployBlock: 60527537,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
-        },
-
-// 30 pairs in the sweep window (verified on explorer as "JMSwapFactory")
-    // Add under factories["v2"]:
-        "JMSwapFactory_d36aba9e": {
-          address: "0xd36aba9ec96523b0a89886c76065852adfe2eb39",
+        JMSwapV2: {
+          address: '0xd36aba9ec96523b0a89886c76065852adfe2eb39',
           deployBlock: 22056827,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
         },
-
-// 29 pairs in the sweep window (verified on explorer as "DiamondLoveChild")
-    // Add under factories["v2"]:
-        "DiamondLoveChild_69bde563": {
-          address: "0x69bde563680f580a2da5b5d4e202eca4fdf35664",
+        DiamondLoveChildV2: {
+          address: '0x69bde563680f580a2da5b5d4e202eca4fdf35664',
           deployBlock: 16420682,
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.003,
+        },
+        CroptoDexV2: {
+          address: '0x972C77e47CffaF6017D617E0Aa09Cf51ecb43b4C',
+          fee: 0.003,
         },
 
-        // From Here Down Naming Needs Research
+        JetswapFactory_d54187ea: {
+          address: '0xd54187ea5a6758fc8abdfaa353aae8f16ca59ef3',
+          deployBlock: 16547715,
+          fee: 0.003,
+        },
+        WolfFactory_3d6aa521: {
+          address: '0x3d6aa5217857167d30962be0f3adceb70c41b1d5',
+          deployBlock: 14567967,
+          fee: 0.003,
+        },
+        PearzapFactory_8a0239c0: {
+          address: '0x8a0239c06104dc4a7a8869cf68c6d98b96ef95dd',
+          deployBlock: 21432863,
+          fee: 0.003,
+        },
+        GalaxyFactory_d7581640: {
+          address: '0xd7581640dbfc558b3f4d729b8f8c60e0122511f8',
+          deployBlock: 17068437,
+          fee: 0.003,
+        },
+        OboswapFactory_3a43c0bc: {
+          address: '0x3a43c0bccb4edc19fea8e83c80cfc688da93e7c7',
+          deployBlock: 22893539,
+          fee: 0.003,
+        },
+        WolfFactory_9679010b: {
+          address: '0x9679010bf908225f84cd030b4acf7fd4fa13c8f5',
+          deployBlock: 15394465,
+          fee: 0.003,
+        },
+        KwikswapV1Factory_0b29d7a9: {
+          address: '0x0b29d7a989d6647e4a56ee9899daf7535ff9620c',
+          deployBlock: 21510940,
+          fee: 0.003,
+        },
+        HawkswapFactory_ffb5c096: {
+          address: '0xffb5c0964af4727b9d0e835bb53aea2c35283e4c',
+          deployBlock: 34213543,
+          fee: 0.003,
+        },
+        ComplusV2Factory_973c9341: {
+          address: '0x973c934137dd687eca67bdd1c5a8b74286964ac6',
+          deployBlock: 14252370,
+          fee: 0.003,
+        },
+        DuckstailFactory_8c24f1aa: {
+          address: '0x8c24f1aa3ac1a585e66b97013758840b4ea65dad',
+          deployBlock: 50878369,
+          fee: 0.003,
+        },
+        TwindexFactory_116997f6: {
+          address: '0x116997f67a26e72f036b3225476a6fe023fd8251',
+          deployBlock: 15856506,
+          fee: 0.003,
+        },
+        ProtofiFactory_80d15e16: {
+          address: '0x80d15e16eb920f1573168c91d6bce396e25df724',
+          deployBlock: 16575223,
+          fee: 0.003,
+        },
+        PhotonFactory_9468f600: {
+          address: '0x9468f600149cc9820be931ca78eda5b39b05e3f0',
+          deployBlock: 17421834,
+          fee: 0.003,
+        },
+        CompactFactory_3dda91f1: {
+          address: '0x3dda91f11433892bb77f303ff99f542766e76dcf',
+          deployBlock: 19849256,
+          fee: 0.003,
+        },
+        BazookaFactory_b77185fe: {
+          address: '0xb77185feb2037dd4210f035e62d1193e879b849e',
+          deployBlock: 30972274,
+          fee: 0.003,
+        },
+        BazookaFactory_5c69dded: {
+          address: '0x5c69dded27372f3f6bd7f90ef6e9f9fd9cb983ae',
+          deployBlock: 32177526,
+          fee: 0.003,
+        },
+        AliumFactory_3379b4a4: {
+          address: '0x3379b4a4fc0e1614c0687c9f613024e83fe0e8b5',
+          deployBlock: 16095853,
+          fee: 0.003,
+        },
+        ProtofiFactory_d109af9e: {
+          address: '0xd109af9eea5849f1a3c7a976995a5c315534dd9c',
+          deployBlock: 19168287,
+          fee: 0.003,
+        },
+        WhiteSwapV2Factory_3f0b5743: {
+          address: '0x3f0b5743bba8a552a3aa1e7907f4f44047e93f8f',
+          deployBlock: 33015345,
+          fee: 0.003,
+        },
+        BestDexV2Factory_e859a768: {
+          address: '0xe859a7685c906dd7a53919da5891cae0cb531f6e',
+          deployBlock: 43325197,
+          fee: 0.003,
+        },
+
+        FlashLiquidityFactory_6e553d5f: {
+          address: '0x6e553d5f028bd747a27e138fa3109570081a23ae',
+          deployBlock: 38871464,
+          fee: 0.003,
+        },
+        FlashLiquidityFactory_59c2997a: {
+          address: '0x59c2997a3d73f32590d9d49de63b860bb1477d3c',
+          deployBlock: 20648680,
+          fee: 0.003,
+        },
+        UniswapV2Factory_8303ba56: {
+          address: '0x8303ba56bddba5bcb983c896f82faf9bcfeafb9f',
+          deployBlock: 36077743,
+          fee: 0.003,
+        },
+        UniswapV2Factory_58811d99: {
+          address: '0x58811d99c057cdd9d55962dd0d55f66ae239ae59',
+          deployBlock: 26167272,
+          fee: 0.003,
+        },
+        UniswapV2Factory_275503ac: {
+          address: '0x275503ac956295042b0e57f73bb8a8200a7f0524',
+          deployBlock: 82276380,
+          fee: 0.003,
+        },
+        UniswapV2Factory_8b6e2497: {
+          address: '0x8b6e24976002e0daf9cd8331d4024d8c9d652ee4',
+          deployBlock: 15986217,
+          fee: 0.003,
+        },
+        UniswapV2Factory_d0b30fc6: {
+          address: '0xd0b30fc63169baaa3702ad7ec33ebe3f9e8627c0',
+          deployBlock: 29921219,
+          fee: 0.003,
+        },
+        UniswapV2Factory_5620f8ff: {
+          address: '0x5620f8ff8ab3658c3ef691cc1d1a8beede31f01c',
+          deployBlock: 15276325,
+          fee: 0.003,
+        },
+        UniswapV2Factory_1b44bf43: {
+          address: '0x1b44bf43111a26206f9735319a0c438dd1c030b2',
+          deployBlock: 24532805,
+          fee: 0.003,
+        },
+        UniswapV2Factory_ebe38c53: {
+          address: '0xebe38c53598376264b1fbf7a02a7d985009ad6c6',
+          deployBlock: 22273269,
+          fee: 0.003,
+        },
+        UniswapV2Factory_4e66ad90: {
+          address: '0x4e66ad900d9857160e132fda1b1d78724a6de3e3',
+          deployBlock: 16672231,
+          fee: 0.003,
+        },
+        UniswapV2Factory_F502B3d8: {
+          address: '0xF502B3d87311863bb0aC3CF3d2729A78438116Cf',
+          deployBlock: 16664157,
+          fee: 0.0005,
+        },
+        UniswapV2Factory_25cc30af: {
+          address: '0x25cc30af6b2957b0ed7ceca026fc204fdbe04e59',
+          deployBlock: 21740404,
+          fee: 0.003,
+        },
+        UniswapV2Factory_015de3ec: {
+          address: '0x015de3ec460869eb5ceae4224dc7112ac0a39303',
+          deployBlock: 29453214,
+          fee: 0.003,
+        },
         UniswapV2Factory_800b0526: {
           address: '0x800b052609c355ca8103e06f022aa30647ead60a',
           deployBlock: 11633169,
@@ -208,14 +352,29 @@
           deployBlock: 43981810,
           fee: 0.003,
         },
-        UniswapV2FactoryCustomFee_38390f0d: {
-          address: '0x38390f0d7d654d02b2cf240b8262b26499bb10ae',
-          deployBlock: 40948511,
+        UniswapV2Factory_5c69bee7: {
+          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+          deployBlock: 46393048,
           fee: 0.003,
         },
-        UniswapV2FactoryCustomFee_53994a00: {
-          address: '0x53994a003eaa36431cac14c3a575f4cffd7b38cb',
-          deployBlock: 43005433,
+        UniswapV2Factory_3fb1e7d5: {
+          address: '0x3fb1e7d5d9c974141a5b6e5fa4edab0a7aa15c6a',
+          deployBlock: 35205249,
+          fee: 0.003,
+        },
+        UniswapV2Factory_b9dc833a: {
+          address: '0xb9dc833a87a61ee4590f189d8fa7282031f4d7ff',
+          deployBlock: 19464144,
+          fee: 0.003,
+        },
+        UniswapV2Factory_68231516: {
+          address: '0x6823151641fb28ebde4830a92192ef962c37f421',
+          deployBlock: 12480594,
+          fee: 0.003,
+        },
+        UniswapV2Factory_42e635d3: {
+          address: '0x42e635d36913c94a340567761ec8383b9932906a',
+          deployBlock: 14217975,
           fee: 0.003,
         },
         Polydex_0xf0681: {
@@ -268,40 +427,292 @@
           deployBlock: 57242115,
           fee: 0.003,
         },
+        Factory_62c3409c: {
+          address: '0x62c3409c5a5f98aef255e7e2df6e9296228a7061',
+          deployBlock: 17975860,
+          fee: 0.003,
+        },
+        Factory_b4cf380e: {
+          address: '0xb4cf380eadcf29177b08058b6a9d84d4ab38f00a',
+          deployBlock: 29095386,
+          fee: 0.003,
+        },
+        Factory_c2d0e0bc: {
+          address: '0xc2d0e0bc81494adb71ce9aa350cc875dae12d81d',
+          deployBlock: 26497124,
+          fee: 0.003,
+        },
+        Factory_150170a4: {
+          address: '0x150170a4a4fa8a34dfc407f68cde789e4dffc103',
+          deployBlock: 45536275,
+          fee: 0.003,
+        },
+        Factory_3ee4154c: {
+          address: '0x3ee4154c7f42d94e1092ad8ce5debb4b743ed0b2',
+          deployBlock: 18907205,
+          fee: 0.003,
+        },
+        Factory_598a177c: {
+          address: '0x598a177cccf553eea28eb2aee7542c8b04d46b82',
+          deployBlock: 55752534,
+          fee: 0.003,
+        },
+        Factory_9c4f05b5: {
+          address: '0x9c4f05b52a00adfecd82bc8daed2ddab3fe3aa1c',
+          deployBlock: 60527537,
+          fee: 0.003,
+        },
+        Factory_7ff9b69a: {
+          address: '0x7ff9b69a7b6f11780c3d5d7d04b078ae5e4c219a',
+          deployBlock: 13874496,
+          fee: 0.003,
+        },
+
+        Factory_9405d6a4: {
+          address: '0x9405d6a4ae2605b666609c675570cd889fcdaf60',
+          deployBlock: 50028182,
+          fee: 0.003,
+        },
+
+      Factory_5c347a5b: {
+        address: '0x5c347a5b8e21908fe44bb5ae08ab52228196bdb4',
+        deployBlock: 14366751,
+        fee: 0.003,
+      },
+      Factory_3d077c05: {
+        address: '0x3d077c05c3abce52257e453607209f81d9db01fc',
+        deployBlock: 23016226,
+        fee: 0.003,
+      },
+      Factory_d9302ab5: {
+        address: '0xd9302ab59eaf8360623b62ab6b858e26b4a3116d',
+        deployBlock: 18488458,
+        fee: 0.003,
+      },
+      Factory_ccad9555: {
+        address: '0xccad9555bd30e3847344768bf12dd8fed16e567c',
+        deployBlock: 21965380,
+        fee: 0.003,
+      },
+      Factory_50722715: {
+        address: '0x50722715417efc40cbf9f5e6493698ba75b8d9ea',
+        deployBlock: 59983252,
+        fee: 0.003,
+      },
+      Factory_bc6220ef: {
+        address: '0xbc6220ef43be7c15e0710e23ec2a142dca0e9811',
+        deployBlock: 67971505,
+        fee: 0.003,
+      },
+      Factory_b10f2d34: {
+        address: '0xb10f2d34409d8bd78e1c11b719bbb2e8bbaf6274',
+        deployBlock: 28237610,
+        fee: 0.003,
+      },
+      Factory_eece1afc: {
+        address: '0xeece1afc6b66fd269896f640235e457da438dd47',
+        deployBlock: 59364466,
+        fee: 0.003,
+      },
+      Factory_8f8c3a7c: {
+        address: '0x8f8c3a7ccd2980b9a7b5cfadc5d1cf638dc1427a',
+        deployBlock: 18822755,
+        fee: 0.003,
+      },
+      Factory_85039b2e: {
+        address: '0x85039b2e95558addccf4379728b8433c447e37be',
+        deployBlock: 85577619,
+        fee: 0.003,
+      },
+      Factory_f9773e32: {
+        address: '0xf9773e320f09f1cf33aa808aaf744a330ff0e279',
+        deployBlock: 4750787,
+        fee: 0.003,
+      },
+      Factory_a3482117: {
+        address: '0xa3482117b1cdae813bd433a470182baf0c64dbc0',
+        deployBlock: 14610512,
+        fee: 0.003,
+      },
+      Factory_7f664c90: {
+        address: '0x7f664c90869fbe24a86323b0544185cfd492dc61',
+        deployBlock: 18729170,
+        fee: 0.003,
+      },
+      Factory_95c6d24c: {
+        address: '0x95c6d24c02f1f2cb4c93dbea8e53d95e12bc4d47',
+        deployBlock: 18159604,
+        fee: 0.003,
+      },
+      Factory_4e8d9cb4: {
+        address: '0x4e8d9cb43e8fe8af67a92bfa918453517e51ff3c',
+        deployBlock: 57149437,
+        fee: 0.003,
+      },
+      Factory_7265846d: {
+        address: '0x7265846dbf6c8ae060e838ce4b83f96b473d0476',
+        deployBlock: 60531983,
+        fee: 0.003,
+      },
+      Factory_77dbf8d5: {
+        address: '0x77dbf8d52a8e6750bec7658b49446f9cd5ae2aa4',
+        deployBlock: 60532138,
+        fee: 0.003,
+      },
+      Factory_8bf3d41a: {
+        address: '0x8bf3d41a6c618bbdf705f495d46486dadd78add4',
+        deployBlock: 60572465,
+        fee: 0.003,
+      },
+      PancakeFactory_dc1b62f7: {
+        address: '0xdc1b62f7910f429d4179c8c700c086a604c03f4c',
+        deployBlock: 80640592,
+        fee: 0.003,
+      },
+
+        PancakeFactory_d76d8c2a: {
+          address: '0xd76d8c2a7ca0a1609aea0b9b5017b3f7782891bf',
+          deployBlock: 17383679,
+          fee: 0.003,
+        },
       },
     },
     v2fee: {
       list: {
-        DXSwap: {
+        DXSwapV2: {
           address: '0x03daa61d8007443a6584e3d8f85105096543c19c',
           deployBlock: 14599890,
           feeTarget: 'pair',
           feeFunction: 'swapFee',
           feeDivisor: 10000,
         },
+        FraxFinanceV2: {
+          address: '0x54f454d747e037da288db568d4121117eab34e79',
+          deployBlock: 31971357,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 10000,
+        },
+        TetuSwapV2: {
+          address: '0x684d8c187be836171a1af8d533e4724893031828',
+          deployBlock: 20350799,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 10000,
+        },
+        UniswapV2FactoryCustomFee_7b13e27d: {
+          address: '0x7b13e27d7a3fa74abbc03a8a63ca3ab0603e3278',
+          deployBlock: 42845884,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_5c302639: {
+          address: '0x5c3026398b0dcf6c2c2e782801bfab197cdf064e',
+          deployBlock: 40020444,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_0dda821b: {
+          address: '0x0dda821b6550b9ccdd5923e46da82aa81910c4b5',
+          deployBlock: 41552489,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_05cb9ee6: {
+          address: '0x05cb9ee637a145576681c53bb6df078f398e19b7',
+          deployBlock: 43025139,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_38390f0d: {
+          address: '0x38390f0d7d654d02b2cf240b8262b26499bb10ae',
+          deployBlock: 40948511,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_53994a00: {
+          address: '0x53994a003eaa36431cac14c3a575f4cffd7b38cb',
+          deployBlock: 43005433,
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
       },
     },
     solidly: {
       list: {
         Retro: {
-          address: '0x30030aa4bc9bf07005cf61803ac8d0eb53e576ec',
-          deployBlock: 40603026,
+          address: '0xb52B28dC308F7ae25B31646B609198d7Bb505c24',
+          deployBlock: 40603026, 
+           feeTarget: "pair",
+      feeFunction: "swapFee",
+      feeDivisor: 1000000
         },
         Dyst: {
           address: '0x1d21db6cde1b18c7e47b0f7f42f4b3f68b9beec9',
           deployBlock: 27986220,
           fee: 0.0005,
         },
-        
-
-// 33 pairs in the sweep window (verified on explorer as "TransparentUpgradeableProxy")
-    // Add under factories["solidly"]:
-        "TransparentUpgradeableProxy_d541bc20": {
-          address: "0xd541bc203cc2b85810d9b8e6a534eed1615528e2",
-          deployBlock: 43653442,
-          // stable/volatile flag extracted from event at scan time
-          // fee is per-pair — populated at reserve fetch time via factory.getRealFee(pair)
-          // If this fork uses different feeFunction/feeDivisor/feeTarget, override here.
+    "VelodromeV1Fork_73339af7": {
+      address: "0x73339af73befcd85cf39056afc178f65d0c23278",
+      deployBlock: 0,        // TODO: look up first-tx block on Polygonscan
+      feeTarget: "factory",
+      feeArgSource: "pair-stable",
+      feeFunction: "getFee",
+      feeDivisor: 10000
+    },
+        Factory_3a897613: {
+          address: '0x3a8976137630B297462C7C2a3b92714FaCf48D74',
+          deployBlock: 39034855,
+      feeTarget: "factory",
+      feeArgSource: "pair-stable",
+      feeFunction: "getFee",
+      feeDivisor: 10000
+        },
+        PairFactoryUpgradeable_0b7795bc: {
+          address: '0xE4f8EB143eae44a3BC581E3990cF155006511f43',
+          deployBlock: 49203850,
+      feeTarget: "factory",
+      feeArgSource: "pair-stable",
+      feeFunction: "getFee",
+      feeDivisor: 10000
+        },
+        BaseV1Factory_ba06043a: {
+          address: '0xba06043a777652baf540ccc785edafd94ee05b37',
+          deployBlock: 39577746,
+        },
+        PairFactory_eaf188cd: {
+          address: '0xeaf188cdd22feebcb345dcb529aa18ca9fcb4fbd',
+          deployBlock: 45789047,
+        },
+        Factory_b5d0cb07: {
+          address: '0xb5d0cb074a741eaf2517313c5ce31178e0c61500',
+          deployBlock: 28374724,
+        },
+        PairFactory_a2d23c7c: {
+          address: '0xa2d23c7ca6d360d5b0b30caff79dbbfa242b4811',
+          deployBlock: 43249722,
+        },
+        WhaleswapFactory_abc26f83: {
+          address: '0xabc26f8364cc0dd728ac5c23fa40886fda3dd121',
+          deployBlock: 30320093,
+        },
+        PairFactory_12508dd9: {
+          address: '0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824',
+          deployBlock: 50117246,
+        },
+        PairFactory_c03c1253: {
+          address: '0xc03c125359111d188b1c4cd7e5ccd935edbb5833',
+          deployBlock: 45531135,
+        },
+        PairFactory_B2072E1E: {
+          address: '0xB2072E1E10D5B8CE7b90b00Fe88ac716b7a568b4',
+          deployBlock: 45753907,
         },
       },
     },

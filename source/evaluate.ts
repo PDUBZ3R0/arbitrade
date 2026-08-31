@@ -5,6 +5,7 @@
 // Prints profitable candidates sorted by net profit.
 // -----------------------------------------------------------------------------
 
+import { ArbitradeDB } from './util/db.ts';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { evaluateTriangles } from './evaluator/evaluator.ts';
 
@@ -93,11 +94,42 @@ if (result.topCandidates.length === 0) {
     process.exit(0);
 }
 
-// Look up symbols / decimals for pretty-print
+// Look up symbols / decimals for pretty-print.
+// Two-source lookup: config flashloan.tokens (curated) wins; the `tokens`
+// table (fetched via `yarn tokens`) fills in everything else.
 const tokenBySym = new Map<string, { symbol: string; decimals: number }>();
 for (const t of cfg.flashloan?.tokens ?? []) {
     tokenBySym.set(t.address.toLowerCase(), { symbol: t.symbol, decimals: t.decimals });
 }
+
+// Collect all token addresses appearing in the top candidates (both root and
+// hop-touched) and merge with tokens-table metadata for any we don't already
+// have from the flashloan config.
+const allTokenAddrs = new Set<string>();
+for (const c of result.topCandidates) {
+    allTokenAddrs.add(c.rootToken.toLowerCase());
+    for (const h of c.hops) {
+        allTokenAddrs.add(h.tokenIn.toLowerCase());
+        allTokenAddrs.add(h.tokenOut.toLowerCase());
+    }
+}
+const tokensTableMeta = (() => {
+    const db = new ArbitradeDB(dbFile);
+    try { return db.getTokens(Array.from(allTokenAddrs)); }
+    finally { db.close(); }
+})();
+let tokensTableHits = 0;
+for (const [addr, row] of tokensTableMeta) {
+    if (tokenBySym.has(addr)) continue;  // config wins
+    if (row.symbol && row.decimals !== null) {
+        tokenBySym.set(addr, { symbol: row.symbol, decimals: row.decimals });
+        tokensTableHits++;
+    }
+}
+if (tokensTableHits > 0) {
+    console.log(`  (loaded ${tokensTableHits} additional token symbol(s) from tokens table)`);
+}
+
 // Also look up factory names for hop display
 const factoryByAddr = new Map<string, string>();
 for (const f of cfg.factories) factoryByAddr.set(f.address.toLowerCase(), f.name);

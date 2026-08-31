@@ -41,11 +41,25 @@ export type VerifyResult = {
     isYoBatchesCompatible: boolean;
     family: 'v2' | 'v2fee' | 'solidly' | 'unknown';
     fee: number | null;         // e.g. 0.003, 0.002, or null if undetermined
-    feeConfidence: 'derived' | 'assumed' | 'unknown';
+    feeConfidence: 'derived' | 'assumed' | 'unknown' | 'probed';
     deployBlock: number | null;
     samplePair: string | null;
     notes: string[];
     configSnippet: string;
+
+    // Interface probe results — populated for v2fee/solidly when a pattern
+    // in DEX_PATTERNS produced a plausible fee value on-chain. When set,
+    // the config snippet is pre-filled with these fields and the user can
+    // paste it in without further edits.
+    probedPattern?: string;                // registry key, e.g. 'BaseV1Factory'
+    probedFeeTarget?: 'factory' | 'pair';
+    probedFeeArgSource?: 'pair-address' | 'pair-stable';
+    probedFeeFunction?: string;
+    probedFeeDivisor?: number;
+    probedFlatFee?: number;                // for flat-fee patterns (Dystopia-like)
+    probedHasStableFlag?: boolean;
+    probedConfidence?: 'high' | 'medium' | 'low';
+    probedReason?: string;                 // human-readable justification
 };
 
 // -----------------------------------------------------------------------------
@@ -511,36 +525,130 @@ export async function verifyFactory(
     } else {
         result.fee = null;
         result.feeConfidence = 'unknown';
-        notes.push(
-            `Fee determination: skipped (v2fee/solidly fees are per-pair; populated ` +
-            `at reserve fetch time)`
-        );
+
+        // Step 6b: interface probe. For v2fee/solidly factories, iterate
+        // DEX_PATTERNS in registry order and pick the first pattern that
+        // produces a plausible fee value on-chain against 1-3 sample pairs.
+        // If a match is found, populate probed* fields so the config snippet
+        // comes out fully-formed.
+        try {
+            const { probeFactoryBestMatch } = await import('./interface-probe.ts');
+            // Use up to 3 sample pairs for cross-checking. More = better
+            // confidence signal but slower; 3 is a sensible ceiling.
+            const probeSamples = pairs.slice(0, 3).map(p => ({
+                pair: p.pair,
+                stable: p.stable,
+            }));
+            const match = await probeFactoryBestMatch(
+                provider, address, probeSamples,
+                result.family === 'v2fee' ? 'v2fee' : 'solidly',
+            );
+            if (match) {
+                result.probedPattern       = match.patternName;
+                result.probedFeeTarget     = match.pattern.feeTarget;
+                result.probedFeeArgSource  = match.pattern.feeArgSource;
+                result.probedFeeFunction   = match.pattern.feeFunction;
+                result.probedFeeDivisor    = match.pattern.feeDivisor;
+                result.probedFlatFee       = match.pattern.fee;
+                result.probedHasStableFlag = match.pattern.hasStableFlag;
+                result.probedConfidence    = match.confidence;
+                result.probedReason        = match.reason;
+                result.feeConfidence       = 'probed';
+                notes.push(
+                    `✓ Interface probe matched pattern "${match.patternName}" ` +
+                    `[${match.confidence}]: ${match.reason}`
+                );
+                notes.push(
+                    `  Sample fees (${match.sampleFeesAdjusted.length}): ` +
+                    match.sampleFeesAdjusted.map(f => f.toFixed(6)).join(', ')
+                );
+            } else {
+                notes.push(
+                    `[!] Interface probe found no matching pattern in DEX_PATTERNS. ` +
+                    `This factory uses a fee mechanism we don't recognize. ` +
+                    `Add a new pattern to source/util/dex-patterns.ts or set feeTarget/` +
+                    `feeFunction/feeDivisor manually after inspecting the pair contract.`
+                );
+            }
+        } catch (err) {
+            notes.push(`  Interface probe skipped: ${(err as Error).message.slice(0, 100)}`);
+        }
+
+        // Legacy note when no probe result
+        if (!result.probedPattern) {
+            notes.push(
+                `Fee determination: skipped (v2fee/solidly fees are per-pair; populated ` +
+                `at reserve fetch time)`
+            );
+        }
     }
 
-    // Generate config snippet — group and shape depend on family
+    // Generate config snippet — group and shape depend on family + probe result
     if (result.isV2 && result.isYoBatchesCompatible) {
         const deployLine = result.deployBlock
             ? `\n          deployBlock: ${result.deployBlock},`
             : '';
 
+        // Build probe-informed fee lines when interface probe found a pattern
+        const buildProbeLines = (): string => {
+            const lines: string[] = [];
+            if (result.probedFlatFee !== undefined) {
+                lines.push(`          fee: ${result.probedFlatFee}   // flat-fee mode, no per-pair multicall`);
+            } else {
+                if (result.probedFeeTarget)   lines.push(`          feeTarget: "${result.probedFeeTarget}"`);
+                if (result.probedFeeArgSource && result.probedFeeArgSource !== 'pair-address') {
+                    lines.push(`          feeArgSource: "${result.probedFeeArgSource}"`);
+                }
+                if (result.probedFeeFunction) lines.push(`          feeFunction: "${result.probedFeeFunction}"`);
+                if (result.probedFeeDivisor)  lines.push(`          feeDivisor: ${result.probedFeeDivisor}`);
+            }
+            if (result.probedHasStableFlag) lines.push(`          hasStableFlag: true`);
+            return lines.join(',\n');
+        };
+
+        // Include a comment with probe attribution so the user knows how the
+        // config values were derived and can double-check if desired.
+        const probeComment = result.probedPattern
+            ? `\n          // Probed pattern: ${result.probedPattern} [${result.probedConfidence}] — ${result.probedReason}`
+            : '';
+
         if (result.family === 'solidly') {
-            result.configSnippet =
-                `    // Add under factories["solidly"]:\n` +
-                `        "NAME_ME": {\n` +
-                `          address: "${address}",${deployLine}\n` +
-                `          // stable/volatile flag extracted from event at scan time\n` +
-                `          // fee is per-pair — populated at reserve fetch time via factory.getRealFee(pair)\n` +
-                `          // If this fork uses different feeFunction/feeDivisor/feeTarget, override here.\n` +
-                `        }`;
+            if (result.probedPattern) {
+                result.configSnippet =
+                    `    // Add under factories["solidly"]:\n` +
+                    `        "NAME_ME": {${probeComment}\n` +
+                    `          address: "${address}",${deployLine}\n` +
+                    buildProbeLines() + `\n` +
+                    `        }`;
+            } else {
+                result.configSnippet =
+                    `    // Add under factories["solidly"]:\n` +
+                    `        "NAME_ME": {\n` +
+                    `          address: "${address}",${deployLine}\n` +
+                    `          // Interface probe found no matching pattern. Add\n` +
+                    `          // feeTarget/feeFunction/feeDivisor manually or\n` +
+                    `          // register a new pattern in dex-patterns.ts.\n` +
+                    `        }`;
+            }
         } else if (result.family === 'v2fee') {
-            result.configSnippet =
-                `    // Add under factories["v2fee"], NOT ["v2"]:\n` +
-                `        "NAME_ME": {\n` +
-                `          address: "${address}",${deployLine}\n` +
-                `          hasStableFlag: true,  // Shadow-style — pair.stable() exists\n` +
-                `          // fee is per-pair — populated at reserve fetch time via factory.pairFee(pair)\n` +
-                `          // If feeFunction/feeDivisor/feeTarget differ from Shadow's convention, override here.\n` +
-                `        }`;
+            if (result.probedPattern) {
+                result.configSnippet =
+                    `    // Add under factories["v2fee"]:\n` +
+                    `        "NAME_ME": {${probeComment}\n` +
+                    `          address: "${address}",${deployLine}\n` +
+                    buildProbeLines() + `\n` +
+                    `        }`;
+            } else {
+                result.configSnippet =
+                    `    // Add under factories["v2fee"], NOT ["v2"]:\n` +
+                    `        "NAME_ME": {\n` +
+                    `          address: "${address}",${deployLine}\n` +
+                    `          hasStableFlag: true,  // Shadow-style — pair.stable() exists\n` +
+                    `          // Interface probe found no matching pattern. Add\n` +
+                    `          // feeTarget/feeFunction/feeDivisor manually or\n` +
+                    `          // register a new pattern in dex-patterns.ts.\n` +
+                    `        }`;
+            }
         } else {
             // Pure V2: include fee with clear labeling if it's just assumed
             const feeComment = result.feeConfidence === 'derived'

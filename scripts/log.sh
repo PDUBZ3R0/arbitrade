@@ -12,12 +12,10 @@ shift
 CHAIN="$1"
 shift
 
-echo "ROOT: $ROOT"
-echo "STAGE:" $STAGE
-echo "CHAIN": $CHAIN
+CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $@"
 
 if [ -z "$CHAIN" ]; then
-    echo "Usage: yarn manual <chain>" >&2 $@
+    echo "Usage: yarn $STAGE <chain>" >&2
     exit 1
 fi
 
@@ -27,8 +25,9 @@ if [ ! -d "log/${CHAIN}" ]; then
 fi
 
 {
+    echo $CALLLOG
     echo "=== $STAGE ($CHAIN) ==="
-    node --experimental-strip-types --disable-warning=ExperimentalWarning $ROOT/$STAGE.ts "$CHAIN"
+    node --experimental-strip-types --disable-warning=ExperimentalWarning $ROOT/$STAGE.ts "$CHAIN" $@
     echo
 
 } 2>&1 | tee "$LOG"

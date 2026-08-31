@@ -63,6 +63,15 @@ export type FactoryEntry = {
      */
     feeTarget?: 'factory' | 'pair';
     /**
+     * When feeTarget="factory", what to pass as the function argument:
+     *   "pair-address" (default) — factory.<feeFunction>(pair)      — Shadow, Equalizer, DXSwap-style
+     *   "pair-stable"            — factory.<feeFunction>(pair.stable) — PairFactoryUpgradeable
+     *                                                                  (Retro-family), returns fee
+     *                                                                  for stable vs volatile pool
+     * Ignored when feeTarget="pair" (zero-arg call).
+     */
+    feeArgSource?: 'pair-address' | 'pair-stable';
+    /**
      * Function name for the per-pair fee lookup. Signature is inferred from feeTarget:
      *   feeTarget="factory": (address pair) view returns (uint256)
      *   feeTarget="pair":    () view returns (uint256)
@@ -113,9 +122,16 @@ export type NormalizedFactory = {
     name: string;
     address: string;
     deployBlock: number;
-    fee: number;
+    /**
+     * Flat fee (used directly, no metadata multicall).
+     * - v2/v3: always populated (default 0.003 for canonical Uniswap V2).
+     * - v2fee/solidly: optional. When set, opts into flat-fee mode. When
+     *   undefined, per-pair fee is fetched via feeTarget/feeFunction/feeDivisor.
+     */
+    fee: number | undefined;
     /** For v2fee/solidly: "factory" or "pair" — where to call the fee function. */
     feeTarget: 'factory' | 'pair';
+    feeArgSource: 'pair-address' | 'pair-stable';
     /** For v2fee/solidly: factory function returning per-pair fee. Default per group. */
     feeFunction: string;
     /** For v2fee/solidly: divisor for raw fee values. Default per group. */
@@ -294,13 +310,25 @@ export function loadChainConfig(chainArg: string): ChainConfig {
 
         for (const [name, entry] of Object.entries(g.list)) {
             const isString = typeof entry === 'string';
+            // Fee defaulting rules:
+            //   v2       → fee is authoritative; default 0.003 (canonical Uniswap V2)
+            //   v2fee    → fee is OPTIONAL and opt-in for flat-fee mode; leave undefined
+            //             otherwise so the metadata multicall runs per-pair.
+            //   solidly  → same as v2fee — fee is opt-in for flat-fee mode.
+            //
+            // Setting a default fee on v2fee/solidly would silently skip the
+            // per-pair metadata fetch (flat-fee fast path fires when factory.fee
+            // is defined), which is a subtle bug that produces mostly-correct
+            // math but hides real per-pair fee variance.
+            const defaultFee = group === 'v2' || group === 'v3' || group === 'algebra' ? 0.003 : undefined;
             factories.push({
                 group,
                 name,
                 address: isString ? entry : entry.address,
                 deployBlock: isString ? 0 : (entry.deployBlock ?? 0),
-                fee: isString ? 0.003 : (entry.fee ?? 0.003),
+                fee: isString ? defaultFee : (entry.fee ?? defaultFee),
                 feeTarget:     isString ? 'factory' : (entry.feeTarget     ?? 'factory'),
+                feeArgSource:  isString ? 'pair-address' : (entry.feeArgSource ?? 'pair-address'),
                 feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction   ?? defaultFeeFunction),
                 feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor    ?? defaultFeeDivisor),
                 hasStableFlag: isString ? false : (entry.hasStableFlag ?? false),

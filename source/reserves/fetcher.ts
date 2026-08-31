@@ -41,10 +41,24 @@ const pairStableIface = new Interface([
  *   feeTarget="factory": (address) view returns (uint256)  — Shadow, Equalizer
  *   feeTarget="pair":    () view returns (uint256)         — DXSwap
  */
-function makeFeeIface(feeFunctionName: string, feeTarget: 'factory' | 'pair'): Interface {
-    const sig = feeTarget === 'pair'
-        ? `function ${feeFunctionName}() view returns (uint256)`
-        : `function ${feeFunctionName}(address pair) view returns (uint256)`;
+// Build the ABI Interface for a factory/pair fee lookup. The function
+// signature depends on both the target (factory vs pair) and, for factory
+// targets, the argument source (pair address vs pair.stable bool).
+function makeFeeIface(
+    feeFunctionName: string,
+    feeTarget: 'factory' | 'pair',
+    feeArgSource: 'pair-address' | 'pair-stable' = 'pair-address',
+): Interface {
+    let sig: string;
+    if (feeTarget === 'pair') {
+        sig = `function ${feeFunctionName}() view returns (uint256)`;
+    } else if (feeArgSource === 'pair-stable') {
+        // PairFactoryUpgradeable-style: factory.<fn>(bool stable)
+        sig = `function ${feeFunctionName}(bool stable) view returns (uint256)`;
+    } else {
+        // Default factory-target: takes pair address
+        sig = `function ${feeFunctionName}(address pair) view returns (uint256)`;
+    }
     return new Interface([sig]);
 }
 
@@ -208,11 +222,16 @@ export async function fetchReserves(
                     provider, db, factory, wantStable, opts.refreshMetadata ?? false,
                 );
                 result.metadataUpdated += metaCount;
-                console.log(
-                    `  [${factoryName}] metadata: ${metaCount} pairs updated ` +
-                    `(target=${factory.feeTarget}, fn=${factory.feeFunction}, divisor=${factory.feeDivisor}` +
-                    `${wantStable ? ', +stable' : ''})`
-                );
+                // Only print the per-pair method details when we actually used
+                // the multicall (i.e. flat-fee mode wasn't triggered). Flat-fee
+                // mode logs its own "applied fee=X" line inside the helper.
+                if (factory.fee === undefined || factory.fee === null) {
+                    console.log(
+                        `  [${factoryName}] metadata: ${metaCount} pairs updated ` +
+                        `(target=${factory.feeTarget}, fn=${factory.feeFunction}, divisor=${factory.feeDivisor}` +
+                        `${wantStable ? ', +stable' : ''})`
+                    );
+                }
             }
         }
     } finally {
@@ -278,8 +297,21 @@ async function fetchPerPairMetadata(
         return updated;
     }
 
-    const { feeTarget, feeFunction, feeDivisor } = factory;
-    const feeIface = makeFeeIface(feeFunction, feeTarget);
+    const { feeTarget, feeFunction, feeDivisor, feeArgSource } = factory;
+    const feeIface = makeFeeIface(feeFunction, feeTarget, feeArgSource);
+
+    // If feeArgSource='pair-stable', we need every pair to have a stable
+    // value. Warn (not fail) if any are missing — they'll return 0 fee
+    // which the caller can decide how to handle.
+    if (feeTarget === 'factory' && feeArgSource === 'pair-stable') {
+        const missingStable = targets.filter(t => t.stable === null || t.stable === undefined).length;
+        if (missingStable > 0) {
+            console.log(
+                `  [!] ${missingStable}/${targets.length} pairs have no stable flag; ` +
+                `feeArgSource='pair-stable' calls will use false (volatile) for those.`
+            );
+        }
+    }
 
     const callsPerPair = wantStable ? 2 : 1;
     const pairsPerBatch = Math.max(1, Math.floor(METADATA_BATCH_SIZE * 2 / callsPerPair));
@@ -299,9 +331,16 @@ async function fetchPerPairMetadata(
         // Build the multicall. Fee call target and args depend on feeTarget.
         const calls: Multicall3Call[] = [];
         for (const t of batch) {
-            const feeCallData = feeTarget === 'pair'
-                ? feeIface.encodeFunctionData(feeFunction, [])
-                : feeIface.encodeFunctionData(feeFunction, [t.pair]);
+            let feeCallData: string;
+            if (feeTarget === 'pair') {
+                feeCallData = feeIface.encodeFunctionData(feeFunction, []);
+            } else if (feeArgSource === 'pair-stable') {
+                // PairFactoryUpgradeable.getFee(bool stable). Fall back to
+                // false (volatile) when the pair has no stable flag.
+                feeCallData = feeIface.encodeFunctionData(feeFunction, [Boolean(t.stable)]);
+            } else {
+                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair]);
+            }
             calls.push({
                 target: feeTarget === 'pair' ? t.pair : factory.address,
                 allowFailure: true,
