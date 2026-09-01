@@ -1,4 +1,4 @@
-{ id: 43114, name: "Avalanche C-Chain", currency: "AVAX",  host: "https://api.avax.network/ext/bc/C/rpc", hypersyncUrl: "https://avalanche.hypersync.xyz" 
+{ id: 43114, name: "Avalanche C-Chain", currency: "AVAX", 
 	"flashloan": {
 		provider: "aave-v3",
 		tokens: [

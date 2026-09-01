@@ -1,5 +1,4 @@
-{ id: 10,    name: "Optimism",          currency: "ETH",   host: "https://mainnet.optimism.io",        hypersyncUrl: "https://optimism.hypersync.xyz",
-	flashloan: {
+{ id: 10,    name: "Optimism",          currency: "ETH",  
 		provider: "aave-v3",
 		tokens:[
   {

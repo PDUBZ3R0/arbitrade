@@ -89,6 +89,8 @@ async function tryPattern(
         sig = `function ${pattern.feeFunction}(bool stable, bool degen) view returns (uint256)`;
     } else if (pattern.feeArgSource === 'pair-stable') {
         sig = `function ${pattern.feeFunction}(bool stable) view returns (uint256)`;
+    } else if (pattern.feeArgSource === 'pair-and-caller') {
+        sig = `function ${pattern.feeFunction}(address pair, address to) view returns (uint256)`;
     } else {
         sig = `function ${pattern.feeFunction}(address pair) view returns (uint256)`;
     }
@@ -123,6 +125,10 @@ async function tryPattern(
         } else if (pattern.feeArgSource === 'pair-stable') {
             target = factory;
             callData = iface.encodeFunctionData(pattern.feeFunction, [Boolean(sp.stable)]);
+        } else if (pattern.feeArgSource === 'pair-and-caller') {
+            // LeetSwapV2 probe — pass 0x0 as `to` for baseline fee.
+            target = factory;
+            callData = iface.encodeFunctionData(pattern.feeFunction, [sp.pair, '0x0000000000000000000000000000000000000000']);
         } else {
             target = factory;
             callData = iface.encodeFunctionData(pattern.feeFunction, [sp.pair]);

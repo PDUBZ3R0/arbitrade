@@ -84,7 +84,7 @@ const pairStableIface = new Interface([
 function makeFeeIface(
     feeFunctionName: string,
     feeTarget: 'factory' | 'pair',
-    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' = 'pair-address',
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' = 'pair-address',
 ): Interface {
     let sig: string;
     if (feeTarget === 'pair') {
@@ -95,6 +95,9 @@ function makeFeeIface(
     } else if (feeArgSource === 'pair-stable') {
         // PairFactoryUpgradeable-style: factory.<fn>(bool stable)
         sig = `function ${feeFunctionName}(bool stable) view returns (uint256)`;
+    } else if (feeArgSource === 'pair-and-caller') {
+        // LeetSwapV2-style: factory.<fn>(address pair, address to)
+        sig = `function ${feeFunctionName}(address pair, address to) view returns (uint256)`;
     } else {
         sig = `function ${feeFunctionName}(address pair) view returns (uint256)`;
     }
@@ -660,6 +663,11 @@ async function fetchPerPairMetadata(
                 // PairFactoryUpgradeable.getFee(bool stable). Fall back to
                 // false (volatile) when the pair has no stable flag.
                 feeCallData = feeIface.encodeFunctionData(feeFunction, [Boolean(t.stable)]);
+            } else if (feeArgSource === 'pair-and-caller') {
+                // LeetSwapV2.tradingFees(pair, to). Pass 0x0 as `to` — that
+                // returns the baseline fee (matches what any user without a
+                // per-recipient discount would pay).
+                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair, '0x0000000000000000000000000000000000000000']);
             } else {
                 feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair]);
             }

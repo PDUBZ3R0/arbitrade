@@ -48,12 +48,15 @@ export type DexPattern = {
      *   'pair-address'      (default) — factory.<fn>(pair)                        Shadow, Equalizer
      *   'pair-stable'                — factory.<fn>(pair.stable)                  PairFactoryUpgradeable
      *   'pair-stable-degen'          — factory.<fn>(pair.stable, pair.degen)      PairFactory (Retro-degen variant)
+     *   'pair-and-caller'            — factory.<fn>(pair, callerAddress)          LeetSwapV2Factory
+     *                                  callerAddress defaults to 0x0 unless the config sets `feeCallerAddress`.
+     *                                  When 0x0, oracles typically return the baseline fee.
      *
      * 'pair-stable-degen' requires an extra multicall step at metadata time
      * to fetch each pair's mutable `degen` flag (unlike `stable` which is
      * immutable and cached at scan time).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
 
     /** Function name to call for the fee lookup. */
     feeFunction?: string;
@@ -178,6 +181,29 @@ export const DEX_PATTERNS: Record<string, DexPattern> = {
         feeFunction:  'getFee',
         feeDivisor:   10000,
         notes:        'Retro-degen family — factory.getFee(bool stable, bool degen) / 10000. degen is mutable; refetched at reserves time.',
+    },
+
+    'LeetSwapV2Factory': {
+        // LeetSwapV2 on Base. factory.tradingFees(address pair, address to)
+        // returns fee in bps (raw / 10000). Cap is 100 (1%); default 30 (0.3%).
+        //
+        // The `to` (caller) argument enables per-recipient fees when a
+        // tradingFeesOracle is set on the factory (VIP tiers, pair-specific
+        // discounts). When no oracle is set, the factory returns the flat
+        // `_tradingFees` value regardless of `to`.
+        //
+        // For scoring we pass address(0) as `to` — that's the baseline fee
+        // any address gets. When we later have a flashloan contract deployed,
+        // an override can pass its address to get the exact fee the bot pays.
+        //
+        // Oracle detection short-circuit is not implemented; the multicall
+        // works correctly whether or not an oracle is set.
+        family:       'solidly',
+        feeTarget:    'factory',
+        feeArgSource: 'pair-and-caller',
+        feeFunction:  'tradingFees',
+        feeDivisor:   10000,
+        notes:        'LeetSwapV2 — factory.tradingFees(pair, to) / 10000. `to` defaults to 0x0 (baseline fee).',
     },
 
     // --- V2fee family (V2-event PairCreated + per-pair fees) -------------

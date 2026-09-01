@@ -5,7 +5,6 @@
     currency: "xDAI",    
     token: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
     contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a",
-    host: "https://gnosis-rpc.publicnode.com",   
     threads: 5,
     interval: 3000,
     pagesize: 5000

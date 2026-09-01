@@ -1,4 +1,4 @@
-{ id: 143,   name: "Monad",             currency: "MON",   host: "https://rpc.monad.xyz",              hypersyncUrl: "https://monad.hypersync.xyz", 
+{ id: 143,   name: "Monad",             currency: "MON",   
 	flashloan:{
 		provider: "aave-v3"
 		tokens: [

@@ -81,7 +81,7 @@ export type FactoryEntry = {
      *                                                                  for stable vs volatile pool
      * Ignored when feeTarget="pair" (zero-arg call).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
     /**
      * Function name for the per-pair fee lookup. Signature is inferred from feeTarget:
      *   feeTarget="factory": (address pair) view returns (uint256)
@@ -150,7 +150,7 @@ export type NormalizedFactory = {
     stableFees: { stable: number; volatile: number } | undefined;
     /** For v2fee/solidly: "factory" or "pair" — where to call the fee function. */
     feeTarget: 'factory' | 'pair';
-    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
     /** For v2fee/solidly: factory function returning per-pair fee. Default per group. */
     feeFunction: string;
     /** For v2fee/solidly: divisor for raw fee values. Default per group. */

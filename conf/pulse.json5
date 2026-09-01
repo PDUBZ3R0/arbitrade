@@ -4,7 +4,6 @@
     name: "BSC"
     currency: "BNB", 
     token: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",    
-    host: "https://rpc.swiftnodes.io/rpc/bsc",  
     threads: 5,
     interval: 3000,
     pagesize: 1000000

@@ -1,82 +1,357 @@
-{ id: 8453,  name: "Base",              currency: "ETH",   host: "https://mainnet.base.org",           hypersyncUrl: "https://base.hypersync.xyz" 
-	flashloan: {
-		provider: "aave-v3",
-		tokens: [
-  {
-    "symbol": "WETH",
-    "address": "address/0x4200000000000000000000000000000000000006",
-    "decimals": 18
+{
+  id: 8453,
+  name: 'Base',
+  currency: 'ETH',
+  factories: {
+    v2: {
+      list: {
+        // 3049363 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_8909dc15": {
+          address: "0x8909dc15e40173ff4699343b6eb8132c65e18ec6",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source
+        },
+
+        // 37623 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_1b8128c3": {
+          address: "0x1b8128c3a1b7d20053d10763ff02466ca7ff99fc",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 14506 pairs in the sweep window (verified on explorer as "PancakeFactory")
+        "PancakeFactory_02a84c1b": {
+          address: "0x02a84c1b3bbd7401a5f7fa98a384ebc70bb5749e",
+          fee: 0.003  // ← UNVERIFIED (PancakeSwap V2 defaults 0.0025, verify)
+        },
+
+        // 8235 pairs in the sweep window (verified on explorer as "PancakeFactory")
+        "PancakeFactory_fda619b6": {
+          address: "0xfda619b6d20975be80a10332cd39b9a4b0faa8bb",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 6056 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_71524b4f": {
+          address: "0x71524b4f93c58fcbf659783284e38825f0622859",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 1290 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_3e84d913": {
+          address: "0x3e84d913803b02a4a7f027165e8ca42c14c0fde7",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 1017 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_04c9f118": {
+          address: "0x04c9f118d21e8b767d2e50c946f0cc9f6c367300",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 889 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_ec654026": {
+          address: "0xec6540261aaae13f236a032d454dc9287e52e56a",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 567 pairs in the sweep window (verified on explorer as "SynthFactory")
+        "SynthFactory_4bd16d59": {
+          address: "0x4bd16d59a5e1e0db903f724aa9d721a31d7d720d",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 517 pairs in the sweep window (verified on explorer as "ChaingeFactory")
+        "ChaingeFactory_9e3f684f": {
+          address: "0x9e3f684f1d3f9ab6d86703af41f7f33b84083b5d",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 501 pairs in the sweep window (verified on explorer as "SwapV2Factory")
+        "SwapV2Factory_9bffc3b3": {
+          address: "0x9bffc3b30d6659e3d84754cc38865b3d60b4980e",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 362 pairs in the sweep window (verified on explorer as "NineMMFactory")
+        "NineMMFactory_4c1b8d4a": {
+          address: "0x4c1b8d4ae77a37b94e195cab316391d3c687ebd1",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 305 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_8c8402fa": {
+          address: "0x8c8402fa28b509aa6d3ada3cea071e6097a349a2",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 230 pairs in the sweep window (verified on explorer as "XchangeFactory")
+        "XchangeFactory_8b76c056": {
+          address: "0x8b76c05676d205563ffc1cbd11c0a6e3d83929c5",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 223 pairs in the sweep window (verified on explorer as "TokenLaunchpad")
+        "TokenLaunchpad_7d4d8415": {
+          address: "0x7d4d84152aaceae2c5347a13d652e83528caa586",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 148 pairs in the sweep window (verified on explorer as "CBSwapFactory")
+        "CBSwapFactory_0a1c657b": {
+          address: "0x0a1c657b839a7fe9a976ffd4ac5a1a363de3ee69",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 136 pairs in the sweep window (verified on explorer as "DackieFactory")
+        "DackieFactory_591f122d": {
+          address: "0x591f122d1df761e616c13d265006fcbf4c6d6551",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 111 pairs in the sweep window (verified on explorer as "ElkFactory")
+        "ElkFactory_fbb4e52f": {
+          address: "0xfbb4e52fecc90924c79f980eb24a9794ae4affa4",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 97 pairs in the sweep window
+        "Factory_5546393c": {
+          address: "0x5546393c69c654aa7ee6b7d8ddcded80d05d1a6e",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 90 pairs in the sweep window (verified on explorer as "EtherVistaFactory")
+        "EtherVistaFactory_9c9dfc8b": {
+          address: "0x9c9dfc8b5d8f1cb1b7f854108db16be1c21ea400",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 78 pairs in the sweep window
+        "Factory_e5552e03": {
+          address: "0xe5552e0318531f9ec585c83bdc8956c08bf74b71",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 77 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_49c18d09": {
+          address: "0x49c18d091d7e6d18f8f3c05a245dbf86facb2937",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 75 pairs in the sweep window (verified on explorer as "RaiFactory")
+        "RaiFactory_539db2b4": {
+          address: "0x539db2b4fe8016db2594d7cfbeab4d2b730b723e",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 65 pairs in the sweep window
+        "Factory_834f0ba5": {
+          address: "0x834f0ba595d103ba7f885473ab7fa51161478e18",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 60 pairs in the sweep window (verified on explorer as "OasisSwapFactory")
+        "OasisSwapFactory_c8126578": {
+          address: "0xc8126578093366968199707b7f8edff258f473b6",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 55 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_9e6d21e7": {
+          address: "0x9e6d21e759a7a288b80eef94e4737d313d31c13f",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 54 pairs in the sweep window
+        "Factory_d9eda30c": {
+          address: "0xd9eda30ce9ecdaca840c71f819497d83ac52bcfd",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 52 pairs in the sweep window (verified on explorer as "SharkswapFactory")
+        "SharkswapFactory_57592d44": {
+          address: "0x57592d44eb60011500961ef177bff8d8691d5a8b",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 50 pairs in the sweep window (verified on explorer as "MineSwapFactory")
+        "MineSwapFactory_b0c2d8a8": {
+          address: "0xb0c2d8a877a5b48607d9c89b6ad761f36bc79c88",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 46 pairs in the sweep window (verified on explorer as "DEXFactory")
+        "DEXFactory_78fa7fa3": {
+          address: "0x78fa7fa39cf6544dd9768a75d8ad8c45854ae530",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 45 pairs in the sweep window (verified on explorer as "OmniFactory")
+        "OmniFactory_7d9d5126": {
+          address: "0x7d9d51267f7e9e6b46a48e0a75c0086f46777087",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 44 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_a2899c77": {
+          address: "0xa2899c776baaf9925d432f83c950d5054a6cf59c",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 42 pairs in the sweep window (verified on explorer as "UniswapV2Factory") — mainnet UniV2 address, CREATE2 spoof, expected DEAD
+        "UniswapV2Factory_5c69bee7": {
+          address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+          fee: 0.003  // ← UNVERIFIED; will likely blacklist after reserves
+        },
+
+        // 35 pairs in the sweep window (verified on explorer as "DeltaSwapFactory")
+        "DeltaSwapFactory_9a9a171c": {
+          address: "0x9a9a171c69cc811dc6b59bb2f9990e34a22fc971",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 28 pairs in the sweep window (verified on explorer as "DiedFactory")
+        "DiedFactory_5c98fa96": {
+          address: "0x5c98fa9654407bffd0d84634ddba0586cd7729e2",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 27 pairs in the sweep window (verified on explorer as "AquilaFactory")
+        "AquilaFactory_a5ca8ba2": {
+          address: "0xa5ca8ba2e3017e9af3bd9eda69e9e8c263abf6cd",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 24 pairs in the sweep window
+        "Factory_98d87e0e": {
+          address: "0x98d87e0ebb0666b91ef853cfa9e2f171c53edd6c",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 24 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_cfff30f4": {
+          address: "0xcfff30f4e7160be2d7a45ee366e5c283accc907f",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 23 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_b8364eff": {
+          address: "0xb8364eff247a469fe7b34956b1e5c0a9bda6f630",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 22 pairs in the sweep window (verified on explorer as "CloudBaseFactory")
+        "CloudBaseFactory_0dccfdf2": {
+          address: "0x0dccfdf227c3f7b1e5d34b2488a7b0ca01d400a4",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 20 pairs in the sweep window (verified on explorer as "DefaultDiamondProxy")
+        "DefaultDiamondProxy_dc93aca9": {
+          address: "0xdc93aca9bf72ceb35d1f2cd305bd8335b5b88757",
+          fee: 0.003  // ← UNVERIFIED — impl was a diamond, verify per-pair fee approach
+        },
+
+        // 20 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_61110341": {
+          address: "0x611103410c8021b51725ab38cc79c8f0fed715c6",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 18 pairs in the sweep window (verified on explorer as "SwapFactory")
+        "SwapFactory_ad376065": {
+          address: "0xad376065d4fa9abb6dda0ded0eadd911fe6e0f92",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 18 pairs in the sweep window (verified on explorer as "MemeUniV2Factory")
+        "MemeUniV2Factory_5ca7b983": {
+          address: "0x5ca7b983c1e272c0f7c3139537798f7ee371a4b3",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 17 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_fc422215": {
+          address: "0xfc42221594c07f2efcedfb11f4763fca03248b5a",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 17 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
+        "UniswapV2Factory_18cff4c5": {
+          address: "0x18cff4c5059f13958ee7abd7c22930a125e03443",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 16 pairs in the sweep window (verified on explorer as "ThroneV2Factory")
+        "ThroneV2Factory_e4806bdd": {
+          address: "0xe4806bdd8e010828324928d25587721f6b58bea2",
+          fee: 0.003  // ← UNVERIFIED
+        },
+
+        // 16 pairs in the sweep window (verified on explorer as "UniswapV2FactoryDiamond")
+        "UniswapV2FactoryDiamond_1a62a841": {
+          address: "0x1a62a841e83ecc3d72b0de6002af7a7dbf921cd5",
+          fee: 0.003  // ← UNVERIFIED
+        },
+      },
+    },
+    solidly: {
+      list: {
+        // 4505 pairs in the sweep window (verified on explorer as "LeetSwapV2Factory")
+        // Pattern registry auto-populates feeTarget/feeArgSource/feeFunction/feeDivisor.
+        "LeetSwapV2Factory_169c06b4": {
+          address: "0x169c06b4cfb09bfd73a81e6f2bb1eb514d75bb19"
+        },
+
+        // 428 pairs in the sweep window (verified on explorer as "PairFactory")
+        "PairFactory_12508dd9": {
+          address: "0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824"
+        },
+
+        // 352 pairs in the sweep window (TransparentUpgradeableProxy proxy → impl "PairFactory")
+        "PairFactory_ed8db60a": {
+          address: "0xed8db60acc29e14bc867a497d94ca6e3ceb5ec04"
+        },
+
+        // 156 pairs in the sweep window (verified on explorer as "PairFactory")
+        "PairFactory_e21aac7f": {
+          address: "0xe21aac7f113bd5dc2389e4d8a8db854a87fd6951"
+        },
+
+        // 108 pairs in the sweep window (PairFactoryUpgradeableProxy → impl "PairFactoryUpgradeable")
+        "PairFactoryUpgradeable_c47f17c4": {
+          address: "0xc47f17c4fd96f50efd2a2448cede5c185c084bf0"
+        },
+
+        // 29 pairs in the sweep window (verified on explorer as "PairFactory")
+        "PairFactory_2d9a3a2b": {
+          address: "0x2d9a3a2bd6400ee28d770c7254ca840c82faf23f"
+        },
+
+        // 21 pairs in the sweep window (verified on explorer as "PairFactory")
+        "PairFactory_cefbebf0": {
+          address: "0xcefbebf0b85b1638c19b01ce2a02c262f421b07d"
+        },
+      },
+    },
   },
-  {
-    "symbol": "cbETH",
-    "address": "address/0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
-    "decimals": 18
+  flashloan: {
+    provider: 'aave-v3',
+    tokens: [
+      { symbol: 'WETH',     address: '0x4200000000000000000000000000000000000006', decimals: 18 },
+      { symbol: 'cbETH',    address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', decimals: 18 },
+      { symbol: 'USDbC',    address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', decimals: 6  },
+      { symbol: 'wstETH',   address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452', decimals: 18 },
+      { symbol: 'USDC',     address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6  },
+      { symbol: 'weETH',    address: '0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A', decimals: 18 },
+      { symbol: 'cbBTC',    address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8  },
+      { symbol: 'ezETH',    address: '0x2416092f143378750bb29b79eD961ab195CcEea5', decimals: 18 },
+      { symbol: 'GHO',      address: '0x6Bb7a212910682DCFdbd5BCBb3e28FB4E8da10Ee', decimals: 18 },
+      { symbol: 'wrsETH',   address: '0xEDfa23602D0EC14714057867A78d01e94176BEA0', decimals: 18 },
+      { symbol: 'LBTC',     address: '0xecAc9C5F704e954931349Da37F60E39f515c11c1', decimals: 8  },
+      { symbol: 'EURC',     address: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42', decimals: 6  },
+      { symbol: 'AAVE',     address: '0x63706e401c06ac8513145b7687A14804d17f814b', decimals: 18 },
+      { symbol: 'tBTC',     address: '0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b', decimals: 18 },
+      { symbol: 'syrupUSDC',address: '0x660975730059246A68521a3e2FBD4740173100f5', decimals: 6  },
+    ],
   },
-  {
-    "symbol": "USDbC",
-    "address": "address/0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
-    "decimals": 6
-  },
-  {
-    "symbol": "wstETH",
-    "address": "address/0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
-    "decimals": 18
-  },
-  {
-    "symbol": "USDC",
-    "address": "address/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "decimals": 6
-  },
-  {
-    "symbol": "weETH",
-    "address": "address/0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
-    "decimals": 18
-  },
-  {
-    "symbol": "cbBTC",
-    "address": "address/0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
-    "decimals": 8
-  },
-  {
-    "symbol": "ezETH",
-    "address": "address/0x2416092f143378750bb29b79eD961ab195CcEea5",
-    "decimals": 18
-  },
-  {
-    "symbol": "GHO",
-    "address": "address/0x6Bb7a212910682DCFdbd5BCBb3e28FB4E8da10Ee",
-    "decimals": 18
-  },
-  {
-    "symbol": "wrsETH",
-    "address": "address/0xEDfa23602D0EC14714057867A78d01e94176BEA0",
-    "decimals": 18
-  },
-  {
-    "symbol": "LBTC",
-    "address": "address/0xecAc9C5F704e954931349Da37F60E39f515c11c1",
-    "decimals": 8
-  },
-  {
-    "symbol": "EURC",
-    "address": "address/0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
-    "decimals": 6
-  },
-  {
-    "symbol": "AAVE",
-    "address": "address/0x63706e401c06ac8513145b7687A14804d17f814b",
-    "decimals": 18
-  },
-  {
-    "symbol": "tBTC",
-    "address": "address/0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
-    "decimals": 18
-  },
-  {
-    "symbol": "syrupUSDC",
-    "address": "address/0x660975730059246A68521a3e2FBD4740173100f5",
-    "decimals": 6
-  }
-]
-	}
-},
+}
