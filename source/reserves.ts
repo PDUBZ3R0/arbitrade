@@ -26,6 +26,8 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                         reasonable values: 0.001, 0.01, 0.1)');
     console.error('  --blacklist-dead       Auto-append DEAD factories to conf/<chain>-blacklist.json5');
     console.error('                         after the summary. Idempotent — existing entries preserved.');
+    console.error('  --concurrency N        Parallel batches per factory (default: chain.threads or 4)');
+    console.error('                         HyperRPC handles 8-16 easily; low-tier public RPCs may throttle at 4+');
     console.error('');
     console.error('Default: full refresh, fetch missing per-pair metadata only.');
     process.exit(1);
@@ -45,6 +47,8 @@ const strict = hasFlag('--strict');
 const dustStr = getStr('--dust');
 const dustThreshold = dustStr ? Number(dustStr) : 0;
 const autoBlacklistDead = hasFlag('--blacklist-dead');
+const concurrencyStr = getStr('--concurrency');
+const concurrency = concurrencyStr ? Number(concurrencyStr) : undefined;
 
 const cfg = loadChainConfig(chainArg);
 const dbFile = dbPath(chainArg);
@@ -59,7 +63,7 @@ if (dustThreshold > 0) console.log(`Dust threshold: ${dustThreshold} tokens (bot
 if (autoBlacklistDead) console.log(`Auto-blacklist DEAD factories: ON (will write to conf/<chain>-blacklist.json5)`);
 
 const t0 = Date.now();
-const result = await fetchReserves(cfg, dbFile, { maxAgeSeconds: maxAge, factory, refreshMetadata, strict, dustThreshold, autoBlacklistDead });
+const result = await fetchReserves(cfg, dbFile, { maxAgeSeconds: maxAge, factory, refreshMetadata, strict, dustThreshold, autoBlacklistDead, concurrency });
 
 console.log('\n' + '─'.repeat(60));
 console.log(`Done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);

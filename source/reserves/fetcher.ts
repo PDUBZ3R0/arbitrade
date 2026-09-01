@@ -29,6 +29,8 @@ import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
 const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
 const FAIL_LOUD_THRESHOLD = 0.80;  // stop if this fraction of fee calls return no data
+const DEFAULT_CONCURRENCY = 4;     // fallback when chain config has no `threads` setting
+const MAX_CONCURRENCY = 32;        // safety cap; higher hits Node's HTTP socket limit anyway
 
 // Retry policy for transient RPC failures (read timeouts, connection reset,
 // occasional -32700 from HyperRPC upstream). Real bugs will fail all attempts;
@@ -137,6 +139,13 @@ export type FetchOptions = {
      * conf/<chain>-blacklist.json5. Idempotent (existing entries skipped).
      */
     autoBlacklistDead?: boolean;
+    /**
+     * Max number of concurrent YoBatches calls per factory. Default: chain
+     * config's `threads` setting, or 4 if unset. Capped at MAX_CONCURRENCY.
+     * Higher values shorten wall time on fast RPCs (HyperRPC handles 8-16
+     * easily); low-tier public RPCs may throttle at 4+.
+     */
+    concurrency?: number;
     /** Callback for progress updates */
     onProgress?: (info: {
         factoryName: string;
@@ -263,6 +272,14 @@ export async function fetchReserves(
         console.log(`Refreshing reserves for ${pairs.length} pairs across ${byFactory.size} factories`);
         console.log(`YoBatches: ${cfg.chain.contract}`);
 
+        // Resolve effective concurrency: CLI flag > chain.threads > default.
+        // Capped at MAX_CONCURRENCY. Anything <= 0 becomes 1 (sequential).
+        const rawConcurrency = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
+        const concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawConcurrency) || DEFAULT_CONCURRENCY));
+        if (concurrency > 1) {
+            console.log(`Concurrency: ${concurrency} parallel batches per factory`);
+        }
+
         for (const [factoryAddr, factoryPairs] of byFactory) {
             const factory = factoriesByAddr.get(factoryAddr);
             const factoryName = factory?.name ?? `(orphan) ${factoryAddr}`;
@@ -278,18 +295,38 @@ export async function fetchReserves(
             let factoryNonZeroCount = 0;
             let factoryDustCount = 0;
 
-            for (let i = 0; i < batches; i++) {
+            // Fetch head block ONCE per factory instead of per batch. Saves
+            // one RPC round-trip per batch AND ensures all pairs in this
+            // factory get labeled with a consistent block number. Cross-factory
+            // drift is a few seconds — acceptable for arb.
+            let headBlock: number;
+            try {
+                headBlock = await provider.getBlockNumber();
+            } catch (err) {
+                console.log(`  [!] Failed to fetch head block: ${(err as Error).message.slice(0, 100)} — skipping factory`);
+                continue;
+            }
+
+            // Bounded-concurrency batch runner. Each worker pulls the next
+            // batch index, processes it, updates the shared counters, and
+            // repeats. Log a compact running counter (per-batch echo would
+            // interleave chaotically with concurrent workers).
+            let batchIdx = 0;
+            let batchesDone = 0;
+            const factoryStart = Date.now();
+
+            const processBatch = async (i: number): Promise<void> => {
                 const batch = factoryPairs.slice(i * RESERVES_BATCH_SIZE, (i + 1) * RESERVES_BATCH_SIZE);
                 const triples: Array<[string, string, string]> = batch.map(p => [p.pair, p.token0, p.token1]);
 
                 let reserves;
                 try {
-                    reserves = await fetchReservesWithRetry(provider, cfg.chain.contract, triples);
+                    reserves = await fetchReservesWithRetry(provider, cfg.chain.contract!, triples);
                 } catch (err) {
                     const msg = (err as Error).message ?? String(err);
                     result.errors.push(`${factoryName} batch ${i + 1}/${batches}: ${msg.slice(0, 200)}`);
                     process.stdout.write(`\n  [!] Batch ${i + 1}/${batches} failed after retries: ${msg.slice(0, 100)}\n`);
-                    continue;
+                    return;
                 }
 
                 // Filter zero-reserve pairs (dead pools)
@@ -298,9 +335,7 @@ export async function fetchReserves(
                 result.reservesSkipped += skipped;
                 factoryNonZeroCount += nonZero.length;
 
-                // Dust detection: for pairs with reserves, check whether both
-                // sides exceed the human-unit dust threshold. Requires decimals
-                // from the tokens table. Missing decimals = kept (conservative).
+                // Dust detection
                 if (opts.dustThreshold && opts.dustThreshold > 0 && decimalsByToken.size > 0) {
                     const pairByAddr = new Map(batch.map(b => [b.pair.toLowerCase(), b]));
                     for (const r of nonZero) {
@@ -308,7 +343,7 @@ export async function fetchReserves(
                         if (!bp) continue;
                         const d0 = decimalsByToken.get(bp.token0.toLowerCase());
                         const d1 = decimalsByToken.get(bp.token1.toLowerCase());
-                        if (d0 === undefined || d1 === undefined) continue;   // unknown → keep
+                        if (d0 === undefined || d1 === undefined) continue;
                         const h0 = Number(r.reserves0) / (10 ** d0);
                         const h1 = Number(r.reserves1) / (10 ** d1);
                         if (h0 < opts.dustThreshold || h1 < opts.dustThreshold) {
@@ -317,11 +352,6 @@ export async function fetchReserves(
                     }
                 }
 
-                // Upsert non-zero reserves. blockNumber = "current" (we don't
-                // know exactly which block the eth_call was against without an
-                // extra call to get it, so we use head as a best-effort approximation).
-                // For arbitrage purposes, "current-ish" is what matters.
-                const headBlock = await provider.getBlockNumber();
                 const updated = db.upsertReserves(nonZero.map(r => ({
                     pair: r.pair,
                     reserves0: r.reserves0,
@@ -337,11 +367,30 @@ export async function fetchReserves(
                     pairsInBatch: batch.length,
                     nonZero: nonZero.length,
                 });
+
+                batchesDone++;
+                // Compact single-line progress. Worker-safe (we just overwrite).
                 process.stdout.write(
-                    `\r  batch ${i + 1}/${batches} — ${nonZero.length}/${batch.length} non-zero, ${result.reservesUpdated} total upserts`
+                    `\r  ${batchesDone}/${batches} batches done, ${result.reservesUpdated} total upserts`
                 );
+            };
+
+            // Worker pool: exactly `concurrency` workers, each grabs the next
+            // batch index atomically until none remain.
+            const workers: Promise<void>[] = [];
+            for (let w = 0; w < Math.min(concurrency, batches); w++) {
+                workers.push((async () => {
+                    while (true) {
+                        const i = batchIdx++;
+                        if (i >= batches) return;
+                        await processBatch(i);
+                    }
+                })());
             }
-            process.stdout.write('\n');
+            await Promise.all(workers);
+
+            const factorySecs = ((Date.now() - factoryStart) / 1000).toFixed(1);
+            process.stdout.write(`\n  [${factoryName}] done in ${factorySecs}s (block ${headBlock})\n`);
 
             // Record per-factory stats for the summary printed at end of run.
             const substantial = factoryNonZeroCount - factoryDustCount;

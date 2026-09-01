@@ -17,7 +17,7 @@
     "discover-block": "sh scripts/log.sh source/util discover-deploy-block",
     "verify-factory": "sh scripts/log.sh source/util verify-factory",
     "find-factories": "sh scripts/log.sh source/util find-factories",
-    "manual": "fff(){ yarn scan $1 && yarn reserves $1 && yarn tokens $1 && yarn triangles $1 && yarn evaluate $1; }; fff",
+    "manual": "fff(){ yarn scan $1 && yarn tokens $1 && yarn reserves $1 --dust 0.01 --blacklist-dead && yarn triangles $1 && yarn evaluate $1; }; fff",
     "pretty-print": "bash scripts/pretty.sh print",
     "pretty-commit": "bash scripts/pretty.sh commit"
   },
