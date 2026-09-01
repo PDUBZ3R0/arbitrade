@@ -44,11 +44,16 @@ export type DexPattern = {
     feeTarget?: 'factory' | 'pair';
 
     /**
-     * For feeTarget='factory' only: what to pass as the function argument.
-     *   'pair-address' (default) — factory.<fn>(pair)
-     *   'pair-stable'            — factory.<fn>(pair.stable) — PairFactoryUpgradeable
+     * For feeTarget='factory' only: what to pass as the function argument(s).
+     *   'pair-address'      (default) — factory.<fn>(pair)                        Shadow, Equalizer
+     *   'pair-stable'                — factory.<fn>(pair.stable)                  PairFactoryUpgradeable
+     *   'pair-stable-degen'          — factory.<fn>(pair.stable, pair.degen)      PairFactory (Retro-degen variant)
+     *
+     * 'pair-stable-degen' requires an extra multicall step at metadata time
+     * to fetch each pair's mutable `degen` flag (unlike `stable` which is
+     * immutable and cached at scan time).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
 
     /** Function name to call for the fee lookup. */
     feeFunction?: string;
@@ -70,6 +75,20 @@ export type DexPattern = {
      * fee is hardcoded in swap() and not queryable.
      */
     fee?: number;
+
+    /**
+     * Static per-pair-type fees, used when a factory's fees are hardcoded in
+     * swap() based on the pair's `stable` bool and NOT queryable via any
+     * view function. Setting this triggers a special metadata path: apply
+     * `stable` fee to pairs where pair.stable=true, `volatile` fee otherwise.
+     * No on-chain calls.
+     *
+     * Example: WhaleSwap on Polygon uses stable=0.0004, volatile=0.0025,
+     * both hardcoded in the pair's swap() function.
+     *
+     * Overrides `fee`. Ignored when `feeFunction` is set (per-pair mode wins).
+     */
+    stableFees?: { stable: number; volatile: number };
 
     /**
      * Whether the pair contract exposes `stable()` (Shadow-family v2fee). Set
@@ -135,6 +154,32 @@ export const DEX_PATTERNS: Record<string, DexPattern> = {
         notes:  'Dystopia — flat 0.05% fee for all pairs.',
     },
 
+    'WhaleswapFactory': {
+        // WhaleSwap on Polygon — fees hardcoded in swap() based on pair.stable().
+        // Not queryable via any view function; identifiable by name only.
+        family:     'solidly',
+        stableFees: { stable: 0.0004, volatile: 0.0025 },
+        notes:      'WhaleSwap — hardcoded: stable pairs 4 bps (0.04%), volatile 25 bps (0.25%). No on-chain fee query.',
+    },
+
+    'PairFactory': {
+        // Retro-degen family: PairFactoryUpgradeable variant with a mutable
+        // per-pair `degen` flag. factory.getFee(bool stable, bool degen)
+        // returns fee in basis points (raw / 10000).
+        //
+        // From source: stableFee/volatileFee ≤ MAX_FEE=50 (0.50%);
+        //              degenFee ≤ MAX_DEGEN_FEE=100 (1.00%).
+        //
+        // pair.degen() is mutable — feeManager can flipDegen() at any time.
+        // Fetcher refreshes degen state on every reserves run.
+        family:       'solidly',
+        feeTarget:    'factory',
+        feeArgSource: 'pair-stable-degen',
+        feeFunction:  'getFee',
+        feeDivisor:   10000,
+        notes:        'Retro-degen family — factory.getFee(bool stable, bool degen) / 10000. degen is mutable; refetched at reserves time.',
+    },
+
     // --- V2fee family (V2-event PairCreated + per-pair fees) -------------
 
     'ShadowV3Factory': {
@@ -195,6 +240,12 @@ export function renderPatternSnippet(
     if (pattern.hasStableFlag) lines.push(`hasStableFlag: true`);
     if (pattern.fee !== undefined) {
         lines.push(`fee: ${pattern.fee}   // flat-fee mode, no per-pair multicall`);
+    } else if (pattern.stableFees) {
+        // Static per-type fees: emit as an inline object, no multicall runs.
+        lines.push(
+            `stableFees: { stable: ${pattern.stableFees.stable}, volatile: ${pattern.stableFees.volatile} }` +
+            `   // fee derived from pair.stable, no on-chain query`
+        );
     } else {
         // Per-pair mode — emit the trio (plus feeArgSource if non-default)
         if (pattern.feeTarget)     lines.push(`feeTarget: "${pattern.feeTarget}"`);

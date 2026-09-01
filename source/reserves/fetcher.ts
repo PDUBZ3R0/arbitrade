@@ -30,6 +30,41 @@ const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
 const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
 const FAIL_LOUD_THRESHOLD = 0.80;  // stop if this fraction of fee calls return no data
 
+// Retry policy for transient RPC failures (read timeouts, connection reset,
+// occasional -32700 from HyperRPC upstream). Real bugs will fail all attempts;
+// transient issues almost always succeed on retry #2 or #3.
+const RESERVES_RETRY_DELAYS_MS = [2000, 5000, 15000] as const;
+
+/**
+ * Fetch reserves for a batch with exponential backoff. Real errors bubble up
+ * after all attempts fail; transient RPC timeouts almost always succeed on
+ * the second or third attempt.
+ *
+ * Silently retries — only logs on failure of the final attempt (via the
+ * caller's catch block).
+ */
+async function fetchReservesWithRetry(
+    provider: JsonRpcProvider,
+    contractAddr: string,
+    triples: Array<[string, string, string]>,
+): Promise<Awaited<ReturnType<typeof getReservesByPairs>>> {
+    let lastErr: Error | undefined;
+    for (let attempt = 0; attempt <= RESERVES_RETRY_DELAYS_MS.length; attempt++) {
+        try {
+            return await getReservesByPairs(provider, contractAddr, triples);
+        } catch (err) {
+            lastErr = err as Error;
+            // No more attempts — propagate to caller
+            if (attempt === RESERVES_RETRY_DELAYS_MS.length) break;
+            const delayMs = RESERVES_RETRY_DELAYS_MS[attempt];
+            const msg = (err as Error).message?.slice(0, 80) ?? String(err);
+            process.stdout.write(`\n  [retry ${attempt + 1}/${RESERVES_RETRY_DELAYS_MS.length}] ${msg} — waiting ${delayMs}ms`);
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+    throw lastErr!;
+}
+
 // pair.stable() is universal for v2fee pairs that have the flag (Shadow).
 const pairStableIface = new Interface([
     'function stable() view returns (bool)',
@@ -47,16 +82,18 @@ const pairStableIface = new Interface([
 function makeFeeIface(
     feeFunctionName: string,
     feeTarget: 'factory' | 'pair',
-    feeArgSource: 'pair-address' | 'pair-stable' = 'pair-address',
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' = 'pair-address',
 ): Interface {
     let sig: string;
     if (feeTarget === 'pair') {
         sig = `function ${feeFunctionName}() view returns (uint256)`;
+    } else if (feeArgSource === 'pair-stable-degen') {
+        // PairFactory Retro-degen variant: factory.<fn>(bool stable, bool degen)
+        sig = `function ${feeFunctionName}(bool stable, bool degen) view returns (uint256)`;
     } else if (feeArgSource === 'pair-stable') {
         // PairFactoryUpgradeable-style: factory.<fn>(bool stable)
         sig = `function ${feeFunctionName}(bool stable) view returns (uint256)`;
     } else {
-        // Default factory-target: takes pair address
         sig = `function ${feeFunctionName}(address pair) view returns (uint256)`;
     }
     return new Interface([sig]);
@@ -82,6 +119,24 @@ export type FetchOptions = {
      * Default: false (process everything, but warn once).
      */
     strict?: boolean;
+    /**
+     * Minimum human-readable reserve on BOTH sides of a pair for it to count
+     * as "real liquidity" (non-dust). Value is in token units (raw/10^decimals),
+     * so 0.01 means "at least 0.01 of each token". Default 0 = disabled.
+     *
+     * Requires the tokens table to be populated (`yarn tokens <chain>`); pairs
+     * whose tokens don't have decimals recorded are conservatively kept.
+     *
+     * Pairs that pass non-zero but fail this check are counted as `dust` in
+     * the factory summary — useful for identifying factories where all pairs
+     * technically have reserves but none matter for arb.
+     */
+    dustThreshold?: number;
+    /**
+     * If true, after the run's summary auto-append DEAD factories to
+     * conf/<chain>-blacklist.json5. Idempotent (existing entries skipped).
+     */
+    autoBlacklistDead?: boolean;
     /** Callback for progress updates */
     onProgress?: (info: {
         factoryName: string;
@@ -92,12 +147,29 @@ export type FetchOptions = {
     }) => void;
 };
 
+export type FactoryLiquidityStats = {
+    name: string;
+    address: string;
+    group: string;
+    totalPairs: number;
+    nonZeroPairs: number;    // reserves > 0 on both sides
+    dustPairs: number;       // non-zero but below dustThreshold (or 0 if disabled)
+    substantialPairs: number;// non-zero AND non-dust — the real-liquidity count
+    ratio: number;           // substantialPairs / totalPairs (or nonZero/total if dust disabled)
+};
+
 export type FetchResult = {
     reservesUpdated: number;
     reservesSkipped: number;   // zero-reserve pairs
     metadataUpdated: number;
     orphanFactories: number;   // factories in DB but not in current config
     errors: string[];
+    /**
+     * Per-factory liquidity stats collected during the run. Used to flag
+     * dead-scaffolding factories (0% non-zero) and mostly-dead factories
+     * (<5% non-zero) in the summary.
+     */
+    factoryStats: FactoryLiquidityStats[];
 };
 
 // -----------------------------------------------------------------------------
@@ -115,12 +187,44 @@ export async function fetchReserves(
     }
     const provider = new JsonRpcProvider(cfg.chain.host);
     const db = new ArbitradeDB(dbFilePath);
-    const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [] };
+    const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [], factoryStats: [] };
 
     // Build factory lookup so we can identify group per pair.
     const factoriesByAddr = new Map<string, NormalizedFactory>();
     for (const f of cfg.factories) factoriesByAddr.set(f.address.toLowerCase(), f);
     const currentFactoryAddrs = Array.from(factoriesByAddr.keys());
+
+    // Token decimals lookup for dust filter. Loaded once from the tokens table
+    // (populated by `yarn tokens`). Empty map = no dust filtering happens.
+    // Also seeded with flashloan tokens' decimals from config (higher trust).
+    const decimalsByToken = new Map<string, number>();
+    if (opts.dustThreshold && opts.dustThreshold > 0) {
+        for (const t of cfg.flashloan?.tokens ?? []) {
+            decimalsByToken.set(t.address.toLowerCase(), t.decimals);
+        }
+        try {
+            const allPairs = db.getPairsForReservesFetch({ factoryAllowlist: currentFactoryAddrs });
+            const tokenAddrs = new Set<string>();
+            for (const p of allPairs) {
+                tokenAddrs.add(p.token0.toLowerCase());
+                tokenAddrs.add(p.token1.toLowerCase());
+            }
+            const tokenRows = db.getTokens(Array.from(tokenAddrs));
+            let hits = 0;
+            for (const [addr, row] of tokenRows) {
+                if (row.decimals !== null && !decimalsByToken.has(addr)) {
+                    decimalsByToken.set(addr, row.decimals);
+                    hits++;
+                }
+            }
+            console.log(`[dust filter] threshold=${opts.dustThreshold}; loaded decimals for ${hits + (cfg.flashloan?.tokens?.length ?? 0)} token(s) (of ${tokenAddrs.size} referenced)`);
+            if (hits === 0 && (cfg.flashloan?.tokens?.length ?? 0) === 0) {
+                console.log(`[dust filter] WARNING: tokens table is empty. Run 'yarn tokens ${cfg.chain.name.toLowerCase()}' first, or the dust filter will be a no-op.`);
+            }
+        } catch (err) {
+            console.log(`[dust filter] Failed to load token decimals: ${(err as Error).message}`);
+        }
+    }
 
     // Detect orphan pairs (factory in DB but not in current config). Report them
     // and, in strict mode, filter them out of this run.
@@ -167,17 +271,24 @@ export async function fetchReserves(
             const batches = Math.ceil(factoryPairs.length / RESERVES_BATCH_SIZE);
             console.log(`\n[${factoryName}] ${factoryPairs.length} pairs (${family}), ${batches} batch(es)`);
 
+            // Per-factory liquidity accumulator — tallies non-zero and dust
+            // pairs across this factory's batches. `substantial` = non-zero AND
+            // above the dust threshold; that's the real-liquidity count that
+            // categorizes the factory as DEAD / MOSTLY DEAD / THIN / HEALTHY.
+            let factoryNonZeroCount = 0;
+            let factoryDustCount = 0;
+
             for (let i = 0; i < batches; i++) {
                 const batch = factoryPairs.slice(i * RESERVES_BATCH_SIZE, (i + 1) * RESERVES_BATCH_SIZE);
                 const triples: Array<[string, string, string]> = batch.map(p => [p.pair, p.token0, p.token1]);
 
                 let reserves;
                 try {
-                    reserves = await getReservesByPairs(provider, cfg.chain.contract, triples);
+                    reserves = await fetchReservesWithRetry(provider, cfg.chain.contract, triples);
                 } catch (err) {
                     const msg = (err as Error).message ?? String(err);
                     result.errors.push(`${factoryName} batch ${i + 1}/${batches}: ${msg.slice(0, 200)}`);
-                    process.stdout.write(`\n  [!] Batch ${i + 1}/${batches} failed: ${msg.slice(0, 100)}\n`);
+                    process.stdout.write(`\n  [!] Batch ${i + 1}/${batches} failed after retries: ${msg.slice(0, 100)}\n`);
                     continue;
                 }
 
@@ -185,6 +296,26 @@ export async function fetchReserves(
                 const nonZero = reserves.filter(r => r.reserves0 > 0n && r.reserves1 > 0n);
                 const skipped = reserves.length - nonZero.length;
                 result.reservesSkipped += skipped;
+                factoryNonZeroCount += nonZero.length;
+
+                // Dust detection: for pairs with reserves, check whether both
+                // sides exceed the human-unit dust threshold. Requires decimals
+                // from the tokens table. Missing decimals = kept (conservative).
+                if (opts.dustThreshold && opts.dustThreshold > 0 && decimalsByToken.size > 0) {
+                    const pairByAddr = new Map(batch.map(b => [b.pair.toLowerCase(), b]));
+                    for (const r of nonZero) {
+                        const bp = pairByAddr.get(r.pair.toLowerCase());
+                        if (!bp) continue;
+                        const d0 = decimalsByToken.get(bp.token0.toLowerCase());
+                        const d1 = decimalsByToken.get(bp.token1.toLowerCase());
+                        if (d0 === undefined || d1 === undefined) continue;   // unknown → keep
+                        const h0 = Number(r.reserves0) / (10 ** d0);
+                        const h1 = Number(r.reserves1) / (10 ** d1);
+                        if (h0 < opts.dustThreshold || h1 < opts.dustThreshold) {
+                            factoryDustCount++;
+                        }
+                    }
+                }
 
                 // Upsert non-zero reserves. blockNumber = "current" (we don't
                 // know exactly which block the eth_call was against without an
@@ -212,6 +343,19 @@ export async function fetchReserves(
             }
             process.stdout.write('\n');
 
+            // Record per-factory stats for the summary printed at end of run.
+            const substantial = factoryNonZeroCount - factoryDustCount;
+            result.factoryStats.push({
+                name: factoryName,
+                address: factoryAddr,
+                group: family,
+                totalPairs: factoryPairs.length,
+                nonZeroPairs: factoryNonZeroCount,
+                dustPairs: factoryDustCount,
+                substantialPairs: substantial,
+                ratio: factoryPairs.length > 0 ? substantial / factoryPairs.length : 0,
+            });
+
             // Per-pair metadata pass — runs for v2fee and solidly groups.
             //   v2fee   : fetch fee; also fetch stable() if hasStableFlag
             //   solidly : fetch fee only (stable was populated at scan time)
@@ -231,6 +375,74 @@ export async function fetchReserves(
                         `(target=${factory.feeTarget}, fn=${factory.feeFunction}, divisor=${factory.feeDivisor}` +
                         `${wantStable ? ', +stable' : ''})`
                     );
+                }
+            }
+        }
+
+        // Summary: flag factories with suspiciously low real-liquidity rates.
+        // "Real liquidity" = pairs with non-zero reserves AND above the dust
+        // threshold (when configured). Three tiers based on substantial ratio:
+        //   DEAD        (0 substantial pairs)                 — remove/blacklist
+        //   MOSTLY DEAD (<5% substantial)                     — consider removing
+        //   THIN        (5%–20% substantial)                  — advisory only
+        //
+        // When `--blacklist-dead` was passed and there are DEAD factories,
+        // auto-append them to conf/<chain>-blacklist.json5.
+        if (result.factoryStats.length > 0) {
+            const dead   = result.factoryStats.filter(s => s.totalPairs > 0 && s.ratio === 0);
+            const mostly = result.factoryStats.filter(s => s.totalPairs > 0 && s.ratio > 0    && s.ratio < 0.05);
+            const thin   = result.factoryStats.filter(s => s.totalPairs > 0 && s.ratio >= 0.05 && s.ratio < 0.20);
+            const totalDust = result.factoryStats.reduce((n, s) => n + s.dustPairs, 0);
+
+            if (dead.length > 0 || mostly.length > 0 || thin.length > 0 || totalDust > 0) {
+                console.log(`\n${'─'.repeat(72)}`);
+                console.log(`Suspicious factories by liquidity signal:`);
+                if (opts.dustThreshold && opts.dustThreshold > 0) {
+                    console.log(`  Dust threshold: ${opts.dustThreshold} tokens (both sides). Dust pairs across run: ${totalDust}.`);
+                }
+                console.log(`${'─'.repeat(72)}`);
+
+                const formatEntry = (s: typeof dead[0]): string => {
+                    const dustNote = s.dustPairs > 0 ? ` [+${s.dustPairs} dust]` : '';
+                    return `   ${s.name.padEnd(45)}  ${s.substantialPairs}/${s.totalPairs} pairs (${(s.ratio * 100).toFixed(1)}%)${dustNote}`;
+                };
+
+                if (dead.length > 0) {
+                    console.log(`\n🚨 DEAD (0 pairs with real liquidity — likely CREATE2 spoof or abandoned):`);
+                    for (const s of dead) console.log(formatEntry(s));
+                    if (!opts.autoBlacklistDead) {
+                        console.log(`\n   → To auto-blacklist these: re-run with --blacklist-dead`);
+                        console.log(`   → Or manually add to conf/${cfg.chain.name.toLowerCase()}-blacklist.json5:`);
+                        for (const s of dead) {
+                            console.log(`       { address: "${s.address}", reason: "dead (0/${s.totalPairs} pairs)" },`);
+                        }
+                    }
+                }
+
+                if (mostly.length > 0) {
+                    console.log(`\n⚠️  MOSTLY DEAD (<5% pairs with real liquidity):`);
+                    for (const s of mostly.sort((a, b) => a.ratio - b.ratio)) console.log(formatEntry(s));
+                    console.log(`   → Small contribution to arb surface; consider removing.`);
+                }
+
+                if (thin.length > 0) {
+                    console.log(`\nℹ️  THIN (5%–20% pairs with real liquidity — advisory only):`);
+                    for (const s of thin.sort((a, b) => a.ratio - b.ratio)) console.log(formatEntry(s));
+                }
+
+                console.log('');
+
+                // --blacklist-dead: auto-append DEAD factories to the blacklist file.
+                if (opts.autoBlacklistDead && dead.length > 0) {
+                    const { appendToBlacklist } = await import('../util/blacklist.ts');
+                    const chainLabel = cfg.chain.name.toLowerCase();
+                    const entries = dead.map(s => ({
+                        address: s.address,
+                        reason:  `dead (0/${s.totalPairs} pairs with real liquidity)`,
+                    }));
+                    const { added, skipped } = appendToBlacklist(chainLabel, entries);
+                    console.log(`[blacklist] Appended ${added} entry(ies) to conf/${chainLabel}-blacklist.json5 (${skipped} already present).`);
+                    console.log(`[blacklist] Next scan/reserves/triangles/evaluate run will skip these factories.`);
                 }
             }
         }
@@ -297,6 +509,27 @@ async function fetchPerPairMetadata(
         return updated;
     }
 
+    // stableFees fast path: some factories hardcode fees in swap() based on
+    // pair.stable (e.g. WhaleSwap = 0.04% stable, 0.25% volatile). Not
+    // queryable on-chain — look up each pair's cached `stable` flag and
+    // apply the corresponding fee via bulk UPDATE. Solidly-family only.
+    if (factory.stableFees) {
+        const { stable, volatile } = factory.stableFees;
+        const stableApplied = db.db.prepare(
+            `UPDATE pairs SET fee = ? WHERE factory = ? AND stable = 1 AND fee IS NULL`
+        ).run(stable, factory.address.toLowerCase()).changes;
+        const volatileApplied = db.db.prepare(
+            `UPDATE pairs SET fee = ? WHERE factory = ? AND (stable = 0 OR stable IS NULL) AND fee IS NULL`
+        ).run(volatile, factory.address.toLowerCase()).changes;
+        const total = stableApplied + volatileApplied;
+        console.log(
+            `  Static per-type mode: applied stable=${stable} to ${stableApplied} pair(s) + ` +
+            `volatile=${volatile} to ${volatileApplied} pair(s) = ${total} total ` +
+            `(config declares static per-type fees; skipping metadata multicall)`
+        );
+        return total;
+    }
+
     const { feeTarget, feeFunction, feeDivisor, feeArgSource } = factory;
     const feeIface = makeFeeIface(feeFunction, feeTarget, feeArgSource);
 
@@ -311,6 +544,42 @@ async function fetchPerPairMetadata(
                 `feeArgSource='pair-stable' calls will use false (volatile) for those.`
             );
         }
+    }
+
+    // pair-stable-degen prefetch: `degen` is a mutable boolean per pair,
+    // toggleable by the factory's feeManager. Not stored at scan time (would
+    // go stale). We fetch it fresh here via one Multicall3 pass, then use
+    // it when encoding the getFee(stable, degen) calls below.
+    const degenByPair = new Map<string, boolean>();
+    if (feeTarget === 'factory' && feeArgSource === 'pair-stable-degen') {
+        const degenIface = new Interface(['function degen() view returns (bool)']);
+        const SEL_degen = degenIface.getFunction('degen')!.selector;
+        const DEGEN_BATCH = 500;
+        let fetched = 0;
+        for (let i = 0; i < targets.length; i += DEGEN_BATCH) {
+            const chunk = targets.slice(i, i + DEGEN_BATCH);
+            const calls: Multicall3Call[] = chunk.map(t => ({
+                target: t.pair,
+                allowFailure: true,
+                callData: SEL_degen,
+            }));
+            try {
+                const results = await multicall3(provider, calls);
+                for (let j = 0; j < chunk.length; j++) {
+                    const r = results[j];
+                    if (r.success && r.returnData !== '0x') {
+                        try {
+                            const isDegen = degenIface.decodeFunctionResult('degen', r.returnData)[0] as boolean;
+                            degenByPair.set(chunk[j].pair.toLowerCase(), isDegen);
+                            fetched++;
+                        } catch { /* leave undefined — defaults to false */ }
+                    }
+                }
+            } catch (err) {
+                console.log(`  [!] degen prefetch batch failed: ${(err as Error).message.slice(0, 100)}`);
+            }
+        }
+        console.log(`  Prefetched degen flag for ${fetched}/${targets.length} pair(s)`);
     }
 
     const callsPerPair = wantStable ? 2 : 1;
@@ -334,6 +603,10 @@ async function fetchPerPairMetadata(
             let feeCallData: string;
             if (feeTarget === 'pair') {
                 feeCallData = feeIface.encodeFunctionData(feeFunction, []);
+            } else if (feeArgSource === 'pair-stable-degen') {
+                const isStable = Boolean(t.stable);
+                const isDegen = degenByPair.get(t.pair.toLowerCase()) ?? false;
+                feeCallData = feeIface.encodeFunctionData(feeFunction, [isStable, isDegen]);
             } else if (feeArgSource === 'pair-stable') {
                 // PairFactoryUpgradeable.getFee(bool stable). Fall back to
                 // false (volatile) when the pair has no stable flag.

@@ -18,6 +18,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSON5 from 'json5';
 import 'dotenv/config';
+import { lookupDexPattern } from './dex-patterns.ts';
+import { blacklistedAddresses } from './blacklist.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +56,15 @@ export type FactoryEntry = {
     /** Factory-wide fee for pure v2 (unused for v2fee/solidly — those use per-pair). */
     fee?: number;
 
+    /**
+     * Static per-pair-type fees. When set, this factory has fees hardcoded
+     * in swap() based on pair.stable — not queryable via any view function.
+     * Metadata step applies stable/volatile fee based on pair's stable flag,
+     * no on-chain calls. Overrides `fee`; ignored if `feeFunction` is set.
+     * Example: WhaleSwap on Polygon.
+     */
+    stableFees?: { stable: number; volatile: number };
+
     // --- Per-pair fee metadata (v2fee / solidly groups) ---
 
     /**
@@ -70,7 +81,7 @@ export type FactoryEntry = {
      *                                                                  for stable vs volatile pool
      * Ignored when feeTarget="pair" (zero-arg call).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
     /**
      * Function name for the per-pair fee lookup. Signature is inferred from feeTarget:
      *   feeTarget="factory": (address pair) view returns (uint256)
@@ -129,9 +140,17 @@ export type NormalizedFactory = {
      *   undefined, per-pair fee is fetched via feeTarget/feeFunction/feeDivisor.
      */
     fee: number | undefined;
+
+    /**
+     * Static per-pair-type fees for factories whose fees are hardcoded in
+     * swap() based on pair.stable. Overrides `fee`; ignored if `feeFunction`
+     * is set. When present, metadata step does a bulk UPDATE with the
+     * appropriate fee per pair based on the pair's cached stable flag.
+     */
+    stableFees: { stable: number; volatile: number } | undefined;
     /** For v2fee/solidly: "factory" or "pair" — where to call the fee function. */
     feeTarget: 'factory' | 'pair';
-    feeArgSource: 'pair-address' | 'pair-stable';
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen';
     /** For v2fee/solidly: factory function returning per-pair fee. Default per group. */
     feeFunction: string;
     /** For v2fee/solidly: divisor for raw fee values. Default per group. */
@@ -283,7 +302,7 @@ export function loadChainConfig(chainArg: string): ChainConfig {
         for (const key of Object.keys(raw.factories)) {
             if (!knownSet.has(key)) {
                 console.warn(
-                    `[config] WARNING: unknown factory group "${key}" in ${chainName}.json5. ` +
+                    `[config] WARNING: unknown factory group "${key}" in ${meta.label}.json5. ` +
                     `Its factories will NOT be scanned. Known groups: ${KNOWN_GROUPS.join(', ')}. ` +
                     `Common mistakes: "solidity-*"/"solidly-*"/"solidly-v2" — the group is now "solidly" or "v2fee".`
                 );
@@ -321,26 +340,52 @@ export function loadChainConfig(chainArg: string): ChainConfig {
             // is defined), which is a subtle bug that produces mostly-correct
             // math but hides real per-pair fee variance.
             const defaultFee = group === 'v2' || group === 'v3' || group === 'algebra' ? 0.003 : undefined;
+
+            // Pattern registry auto-populate: extract the base pattern name from
+            // the config key by stripping the `_[a-f0-9]{8}` address suffix,
+            // then look up the registered pattern. Its values fill in as
+            // DEFAULTS for anything the config didn't explicitly set. Lets
+            // users add `WhaleswapFactory_abc26f83: { address: "..." }` and
+            // get the right fee mode automatically — no need to paste the
+            // full fee metadata block.
+            //
+            // Explicit entry fields always win; the pattern only fills gaps.
+            const patternKey = name.replace(/_[a-fA-F0-9]{8}$/, '');
+            const pattern = !isString ? lookupDexPattern(patternKey) : null;
+
             factories.push({
                 group,
                 name,
                 address: isString ? entry : entry.address,
                 deployBlock: isString ? 0 : (entry.deployBlock ?? 0),
-                fee: isString ? defaultFee : (entry.fee ?? defaultFee),
-                feeTarget:     isString ? 'factory' : (entry.feeTarget     ?? 'factory'),
-                feeArgSource:  isString ? 'pair-address' : (entry.feeArgSource ?? 'pair-address'),
-                feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction   ?? defaultFeeFunction),
-                feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor    ?? defaultFeeDivisor),
-                hasStableFlag: isString ? false : (entry.hasStableFlag ?? false),
+                fee: isString ? defaultFee : (entry.fee ?? pattern?.fee ?? defaultFee),
+                stableFees: isString ? undefined : (entry.stableFees ?? pattern?.stableFees),
+                feeTarget:     isString ? 'factory'      : (entry.feeTarget     ?? pattern?.feeTarget     ?? 'factory'),
+                feeArgSource:  isString ? 'pair-address' : (entry.feeArgSource  ?? pattern?.feeArgSource  ?? 'pair-address'),
+                feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction ?? pattern?.feeFunction ?? defaultFeeFunction),
+                feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor  ?? pattern?.feeDivisor  ?? defaultFeeDivisor),
+                hasStableFlag: isString ? false : (entry.hasStableFlag ?? pattern?.hasStableFlag ?? false),
                 abi: g.abi,
             });
         }
     }
 
+    // Apply blacklist — remove factories flagged as dead/scam in
+    // conf/<chain>-blacklist.json5. Filtering here (in loadChainConfig)
+    // ensures every downstream stage (scanner, reserves, triangles, evaluator)
+    // sees the same filtered list. Zero-cost when no blacklist file exists.
+    const blacklist = blacklistedAddresses(meta.label);
+    const filteredCount = factories.length;
+    const filteredFactories = factories.filter(f => !blacklist.has(f.address.toLowerCase()));
+    const excluded = filteredCount - filteredFactories.length;
+    if (excluded > 0) {
+        console.log(`[blacklist] Excluded ${excluded} factory(ies) via conf/${meta.label}-blacklist.json5`);
+    }
+
     return {
         raw,
         chain: raw.chain,
-        factories,
+        factories: filteredFactories,
         flashloan: raw.flashloan,
         scan: resolveScanTuning(meta.label, raw),
     };

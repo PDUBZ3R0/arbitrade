@@ -289,7 +289,16 @@ export async function evaluateTriangles(
             return { minProfit: Math.max(t.minProfit, baseMinProfit), minInput: t.minInput };
         };
 
-        // 3. Load triangles
+        // 3. Enumerate triangles via streaming cursor (NOT .all()).
+        //
+        // With ~5M triangles on a big chain, .all() blows past the 4 GB heap
+        // (each row is ~500 bytes of JS objects; 5M × 500 = 2.5 GB just for
+        // the array). .iterate() yields rows one at a time via SQLite's cursor
+        // so memory stays flat: O(candidates) instead of O(all_triangles).
+        //
+        // Get the total count first so the log line + progress indicator are
+        // meaningful. This is a separate query but SQLite counts triangles in
+        // milliseconds thanks to the primary key.
         const triWheres: string[] = [];
         const triParams: any[] = [];
         if (opts.onlyRoot) {
@@ -301,12 +310,24 @@ export async function evaluateTriangles(
             triParams.push(opts.onlyHops);
         }
         const triWhere = triWheres.length ? 'WHERE ' + triWheres.join(' AND ') : '';
-        const triangles = db.db.prepare(`SELECT * FROM triangles ${triWhere}`).all(...triParams) as any[];
-        console.log(`Evaluating ${triangles.length} triangles...`);
+
+        const totalTriRow = db.db.prepare(`SELECT COUNT(*) as n FROM triangles ${triWhere}`)
+            .get(...triParams) as { n: number };
+        const totalTriangles = totalTriRow.n;
+        console.log(`Evaluating ${totalTriangles} triangles (streaming to keep memory flat)...`);
+
+        const triStmt = db.db.prepare(`SELECT * FROM triangles ${triWhere}`);
 
         const candidates: Candidate[] = [];
+        let processed = 0;
+        const PROGRESS_EVERY = 100_000;
 
-        for (const tri of triangles) {
+        for (const tri of triStmt.iterate(...triParams) as Iterable<any>) {
+            processed++;
+            if (processed % PROGRESS_EVERY === 0) {
+                const pct = ((processed / totalTriangles) * 100).toFixed(1);
+                process.stdout.write(`\r  ${pct.padStart(5)}%  —  ${processed}/${totalTriangles} processed, ${result.trianglesScored} scored, ${candidates.length} kept`);
+            }
             const loaded = loadTrianglePairs(tri, pairsByAddr);
             if (!loaded) { result.trianglesSkipped++; continue; }
             const [pAB, pBC, pCA] = loaded;

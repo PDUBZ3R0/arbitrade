@@ -5,12 +5,12 @@
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
     contract: '0x1860a9f4661a0299A2A745c2A49DB212098414CB',
-    host: 'https://polygon.drpc.org',
-    threads: 5,
+    host: 'https://rpc.swiftnodes.io/rpc/polygon',
+    threads: 20,
     interval: 3000,
     pagesize: 1000000,
   },
-  factories: {
+  factories: { 
     v2: {
       abi: [
         'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
@@ -150,7 +150,6 @@
           address: '0x972C77e47CffaF6017D617E0Aa09Cf51ecb43b4C',
           fee: 0.003,
         },
-
         JetswapFactory_d54187ea: {
           address: '0xd54187ea5a6758fc8abdfaa353aae8f16ca59ef3',
           deployBlock: 16547715,
@@ -196,11 +195,7 @@
           deployBlock: 14252370,
           fee: 0.003,
         },
-        DuckstailFactory_8c24f1aa: {
-          address: '0x8c24f1aa3ac1a585e66b97013758840b4ea65dad',
-          deployBlock: 50878369,
-          fee: 0.003,
-        },
+
         TwindexFactory_116997f6: {
           address: '0x116997f67a26e72f036b3225476a6fe023fd8251',
           deployBlock: 15856506,
@@ -251,7 +246,6 @@
           deployBlock: 43325197,
           fee: 0.003,
         },
-
         FlashLiquidityFactory_6e553d5f: {
           address: '0x6e553d5f028bd747a27e138fa3109570081a23ae',
           deployBlock: 38871464,
@@ -277,11 +271,7 @@
           deployBlock: 82276380,
           fee: 0.003,
         },
-        UniswapV2Factory_8b6e2497: {
-          address: '0x8b6e24976002e0daf9cd8331d4024d8c9d652ee4',
-          deployBlock: 15986217,
-          fee: 0.003,
-        },
+
         UniswapV2Factory_d0b30fc6: {
           address: '0xd0b30fc63169baaa3702ad7ec33ebe3f9e8627c0',
           deployBlock: 29921219,
@@ -352,11 +342,7 @@
           deployBlock: 43981810,
           fee: 0.003,
         },
-        UniswapV2Factory_5c69bee7: {
-          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
-          deployBlock: 46393048,
-          fee: 0.003,
-        },
+
         UniswapV2Factory_3fb1e7d5: {
           address: '0x3fb1e7d5d9c974141a5b6e5fa4edab0a7aa15c6a',
           deployBlock: 35205249,
@@ -457,119 +443,95 @@
           deployBlock: 55752534,
           fee: 0.003,
         },
-        Factory_9c4f05b5: {
-          address: '0x9c4f05b52a00adfecd82bc8daed2ddab3fe3aa1c',
-          deployBlock: 60527537,
-          fee: 0.003,
-        },
+
         Factory_7ff9b69a: {
           address: '0x7ff9b69a7b6f11780c3d5d7d04b078ae5e4c219a',
           deployBlock: 13874496,
           fee: 0.003,
         },
-
         Factory_9405d6a4: {
           address: '0x9405d6a4ae2605b666609c675570cd889fcdaf60',
           deployBlock: 50028182,
           fee: 0.003,
         },
+        Factory_5c347a5b: {
+          address: '0x5c347a5b8e21908fe44bb5ae08ab52228196bdb4',
+          deployBlock: 14366751,
+          fee: 0.003,
+        },
+        Factory_3d077c05: {
+          address: '0x3d077c05c3abce52257e453607209f81d9db01fc',
+          deployBlock: 23016226,
+          fee: 0.003,
+        },
+        Factory_d9302ab5: {
+          address: '0xd9302ab59eaf8360623b62ab6b858e26b4a3116d',
+          deployBlock: 18488458,
+          fee: 0.003,
+        },
+        Factory_ccad9555: {
+          address: '0xccad9555bd30e3847344768bf12dd8fed16e567c',
+          deployBlock: 21965380,
+          fee: 0.003,
+        },
+        Factory_50722715: {
+          address: '0x50722715417efc40cbf9f5e6493698ba75b8d9ea',
+          deployBlock: 59983252,
+          fee: 0.003,
+        },
+        Factory_bc6220ef: {
+          address: '0xbc6220ef43be7c15e0710e23ec2a142dca0e9811',
+          deployBlock: 67971505,
+          fee: 0.003,
+        },
+        Factory_b10f2d34: {
+          address: '0xb10f2d34409d8bd78e1c11b719bbb2e8bbaf6274',
+          deployBlock: 28237610,
+          fee: 0.003,
+        },
 
-      Factory_5c347a5b: {
-        address: '0x5c347a5b8e21908fe44bb5ae08ab52228196bdb4',
-        deployBlock: 14366751,
-        fee: 0.003,
-      },
-      Factory_3d077c05: {
-        address: '0x3d077c05c3abce52257e453607209f81d9db01fc',
-        deployBlock: 23016226,
-        fee: 0.003,
-      },
-      Factory_d9302ab5: {
-        address: '0xd9302ab59eaf8360623b62ab6b858e26b4a3116d',
-        deployBlock: 18488458,
-        fee: 0.003,
-      },
-      Factory_ccad9555: {
-        address: '0xccad9555bd30e3847344768bf12dd8fed16e567c',
-        deployBlock: 21965380,
-        fee: 0.003,
-      },
-      Factory_50722715: {
-        address: '0x50722715417efc40cbf9f5e6493698ba75b8d9ea',
-        deployBlock: 59983252,
-        fee: 0.003,
-      },
-      Factory_bc6220ef: {
-        address: '0xbc6220ef43be7c15e0710e23ec2a142dca0e9811',
-        deployBlock: 67971505,
-        fee: 0.003,
-      },
-      Factory_b10f2d34: {
-        address: '0xb10f2d34409d8bd78e1c11b719bbb2e8bbaf6274',
-        deployBlock: 28237610,
-        fee: 0.003,
-      },
-      Factory_eece1afc: {
-        address: '0xeece1afc6b66fd269896f640235e457da438dd47',
-        deployBlock: 59364466,
-        fee: 0.003,
-      },
-      Factory_8f8c3a7c: {
-        address: '0x8f8c3a7ccd2980b9a7b5cfadc5d1cf638dc1427a',
-        deployBlock: 18822755,
-        fee: 0.003,
-      },
-      Factory_85039b2e: {
-        address: '0x85039b2e95558addccf4379728b8433c447e37be',
-        deployBlock: 85577619,
-        fee: 0.003,
-      },
-      Factory_f9773e32: {
-        address: '0xf9773e320f09f1cf33aa808aaf744a330ff0e279',
-        deployBlock: 4750787,
-        fee: 0.003,
-      },
-      Factory_a3482117: {
-        address: '0xa3482117b1cdae813bd433a470182baf0c64dbc0',
-        deployBlock: 14610512,
-        fee: 0.003,
-      },
-      Factory_7f664c90: {
-        address: '0x7f664c90869fbe24a86323b0544185cfd492dc61',
-        deployBlock: 18729170,
-        fee: 0.003,
-      },
-      Factory_95c6d24c: {
-        address: '0x95c6d24c02f1f2cb4c93dbea8e53d95e12bc4d47',
-        deployBlock: 18159604,
-        fee: 0.003,
-      },
-      Factory_4e8d9cb4: {
-        address: '0x4e8d9cb43e8fe8af67a92bfa918453517e51ff3c',
-        deployBlock: 57149437,
-        fee: 0.003,
-      },
-      Factory_7265846d: {
-        address: '0x7265846dbf6c8ae060e838ce4b83f96b473d0476',
-        deployBlock: 60531983,
-        fee: 0.003,
-      },
-      Factory_77dbf8d5: {
-        address: '0x77dbf8d52a8e6750bec7658b49446f9cd5ae2aa4',
-        deployBlock: 60532138,
-        fee: 0.003,
-      },
-      Factory_8bf3d41a: {
-        address: '0x8bf3d41a6c618bbdf705f495d46486dadd78add4',
-        deployBlock: 60572465,
-        fee: 0.003,
-      },
-      PancakeFactory_dc1b62f7: {
-        address: '0xdc1b62f7910f429d4179c8c700c086a604c03f4c',
-        deployBlock: 80640592,
-        fee: 0.003,
-      },
+        Factory_8f8c3a7c: {
+          address: '0x8f8c3a7ccd2980b9a7b5cfadc5d1cf638dc1427a',
+          deployBlock: 18822755,
+          fee: 0.003,
+        },
+        Factory_85039b2e: {
+          address: '0x85039b2e95558addccf4379728b8433c447e37be',
+          deployBlock: 85577619,
+          fee: 0.003,
+        },
+        Factory_f9773e32: {
+          address: '0xf9773e320f09f1cf33aa808aaf744a330ff0e279',
+          deployBlock: 4750787,
+          fee: 0.003,
+        },
+        Factory_a3482117: {
+          address: '0xa3482117b1cdae813bd433a470182baf0c64dbc0',
+          deployBlock: 14610512,
+          fee: 0.003,
+        },
+        Factory_7f664c90: {
+          address: '0x7f664c90869fbe24a86323b0544185cfd492dc61',
+          deployBlock: 18729170,
+          fee: 0.003,
+        },
+        Factory_95c6d24c: {
+          address: '0x95c6d24c02f1f2cb4c93dbea8e53d95e12bc4d47',
+          deployBlock: 18159604,
+          fee: 0.003,
+        },
+        Factory_4e8d9cb4: {
+          address: '0x4e8d9cb43e8fe8af67a92bfa918453517e51ff3c',
+          deployBlock: 57149437,
+          fee: 0.003,
+        },
 
+
+        PancakeFactory_dc1b62f7: {
+          address: '0xdc1b62f7910f429d4179c8c700c086a604c03f4c',
+          deployBlock: 80640592,
+          fee: 0.003,
+        },
         PancakeFactory_d76d8c2a: {
           address: '0xd76d8c2a7ca0a1609aea0b9b5017b3f7782891bf',
           deployBlock: 17383679,
@@ -593,13 +555,7 @@
           feeFunction: 'fee',
           feeDivisor: 10000,
         },
-        TetuSwapV2: {
-          address: '0x684d8c187be836171a1af8d533e4724893031828',
-          deployBlock: 20350799,
-          feeTarget: 'pair',
-          feeFunction: 'fee',
-          feeDivisor: 10000,
-        },
+
         UniswapV2FactoryCustomFee_7b13e27d: {
           address: '0x7b13e27d7a3fa74abbc03a8a63ca3ab0603e3278',
           deployBlock: 42845884,
@@ -642,47 +598,48 @@
           feeFunction: 'fee',
           feeDivisor: 1000,
         },
+        
       },
     },
     solidly: {
       list: {
         Retro: {
           address: '0xb52B28dC308F7ae25B31646B609198d7Bb505c24',
-          deployBlock: 40603026, 
-           feeTarget: "pair",
-      feeFunction: "swapFee",
-      feeDivisor: 1000000
+          deployBlock: 40603026,
+          feeTarget: 'pair',
+          feeFunction: 'swapFee',
+          feeDivisor: 1000000,
         },
         Dyst: {
           address: '0x1d21db6cde1b18c7e47b0f7f42f4b3f68b9beec9',
           deployBlock: 27986220,
           fee: 0.0005,
         },
-    "VelodromeV1Fork_73339af7": {
-      address: "0x73339af73befcd85cf39056afc178f65d0c23278",
-      deployBlock: 0,        // TODO: look up first-tx block on Polygonscan
-      feeTarget: "factory",
-      feeArgSource: "pair-stable",
-      feeFunction: "getFee",
-      feeDivisor: 10000
-    },
+        VelodromeV1Fork_73339af7: {
+          address: '0x73339af73befcd85cf39056afc178f65d0c23278',
+          deployBlock: 0,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
         Factory_3a897613: {
           address: '0x3a8976137630B297462C7C2a3b92714FaCf48D74',
           deployBlock: 39034855,
-      feeTarget: "factory",
-      feeArgSource: "pair-stable",
-      feeFunction: "getFee",
-      feeDivisor: 10000
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
         },
         PairFactoryUpgradeable_0b7795bc: {
           address: '0xE4f8EB143eae44a3BC581E3990cF155006511f43',
           deployBlock: 49203850,
-      feeTarget: "factory",
-      feeArgSource: "pair-stable",
-      feeFunction: "getFee",
-      feeDivisor: 10000
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
         },
-        BaseV1Factory_ba06043a: {
+ /*       BaseV1Factory_ba06043a: {
           address: '0xba06043a777652baf540ccc785edafd94ee05b37',
           deployBlock: 39577746,
         },
@@ -693,10 +650,14 @@
         Factory_b5d0cb07: {
           address: '0xb5d0cb074a741eaf2517313c5ce31178e0c61500',
           deployBlock: 28374724,
-        },
+        }, */
         PairFactory_a2d23c7c: {
           address: '0xa2d23c7ca6d360d5b0b30caff79dbbfa242b4811',
           deployBlock: 43249722,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable-degen',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
         },
         WhaleswapFactory_abc26f83: {
           address: '0xabc26f8364cc0dd728ac5c23fa40886fda3dd121',
@@ -706,10 +667,10 @@
           address: '0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824',
           deployBlock: 50117246,
         },
-        PairFactory_c03c1253: {
+  /*      PairFactory_c03c1253: {
           address: '0xc03c125359111d188b1c4cd7e5ccd935edbb5833',
           deployBlock: 45531135,
-        },
+        },*/
         PairFactory_B2072E1E: {
           address: '0xB2072E1E10D5B8CE7b90b00Fe88ac716b7a568b4',
           deployBlock: 45753907,

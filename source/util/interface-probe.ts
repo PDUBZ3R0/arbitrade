@@ -85,6 +85,8 @@ async function tryPattern(
     let sig: string;
     if (pattern.feeTarget === 'pair') {
         sig = `function ${pattern.feeFunction}() view returns (uint256)`;
+    } else if (pattern.feeArgSource === 'pair-stable-degen') {
+        sig = `function ${pattern.feeFunction}(bool stable, bool degen) view returns (uint256)`;
     } else if (pattern.feeArgSource === 'pair-stable') {
         sig = `function ${pattern.feeFunction}(bool stable) view returns (uint256)`;
     } else {
@@ -93,6 +95,12 @@ async function tryPattern(
     const iface = new Interface([sig]);
     const selector = iface.getFunction(pattern.feeFunction)!.selector;
 
+    // For pair-stable-degen patterns, fetch pair.degen() first — needed to
+    // construct the getFee(bool, bool) call arg. Best-effort: default to
+    // false (non-degen) if the call reverts.
+    const degenIface = new Interface(['function degen() view returns (bool)']);
+    const SEL_degen = degenIface.getFunction('degen')!.selector;
+
     const rawResults: (bigint | null)[] = [];
     for (const sp of samplePairs) {
         // Build the call
@@ -100,14 +108,24 @@ async function tryPattern(
         let callData: string;
         if (pattern.feeTarget === 'pair') {
             target   = sp.pair;
-            callData = selector;   // zero-arg
+            callData = selector;
+        } else if (pattern.feeArgSource === 'pair-stable-degen') {
+            // Fetch this pair's degen flag first
+            let isDegen = false;
+            try {
+                const dr = await provider.call({ to: sp.pair, data: SEL_degen });
+                if (dr && dr !== '0x') {
+                    isDegen = degenIface.decodeFunctionResult('degen', dr)[0] as boolean;
+                }
+            } catch { /* pair doesn't have degen — pattern doesn't apply */ }
+            target = factory;
+            callData = iface.encodeFunctionData(pattern.feeFunction, [Boolean(sp.stable), isDegen]);
+        } else if (pattern.feeArgSource === 'pair-stable') {
+            target = factory;
+            callData = iface.encodeFunctionData(pattern.feeFunction, [Boolean(sp.stable)]);
         } else {
             target = factory;
-            if (pattern.feeArgSource === 'pair-stable') {
-                callData = iface.encodeFunctionData(pattern.feeFunction, [Boolean(sp.stable)]);
-            } else {
-                callData = iface.encodeFunctionData(pattern.feeFunction, [sp.pair]);
-            }
+            callData = iface.encodeFunctionData(pattern.feeFunction, [sp.pair]);
         }
 
         try {
