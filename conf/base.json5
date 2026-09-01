@@ -1,7 +1,14 @@
 {
-  id: 8453,
-  name: 'Base',
-  currency: 'ETH',
+  chain: {
+    id: 8453,
+    name: 'Base',
+    currency: 'ETH',
+    hypersyncUrl: 'https://base.hypersync.xyz',
+    host: 'https://rpc-base.blockmachine.io',
+    
+    token: '0x4200000000000000000000000000000000000006',
+    contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a"
+  },
   factories: {
     v2: {
       list: {

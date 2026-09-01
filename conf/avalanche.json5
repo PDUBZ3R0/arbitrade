@@ -1,4 +1,7 @@
-{ id: 43114, name: "Avalanche C-Chain", currency: "AVAX", 
+{ 
+  chain: {
+    id: 43114, name: "Avalanche C-Chain", currency: "AVAX", 
+  },
 	"flashloan": {
 		provider: "aave-v3",
 		tokens: [

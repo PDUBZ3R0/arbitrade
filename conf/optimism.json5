@@ -1,6 +1,10 @@
-{ id: 10,    name: "Optimism",          currency: "ETH",  
+{ 
+  chain: {
+    id: 10,    name: "Optimism",          currency: "ETH", 
+  },
+  flashloan: { 
 		provider: "aave-v3",
-		tokens:[
+		tokens:{
   {
     "symbol": "DAI",
     "address": "https://optimistic.etherscan.io/address/0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
@@ -71,5 +75,5 @@
     "address": "https://optimistic.etherscan.io/address/0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     "decimals": 6
   }
-]
+}
 	} }

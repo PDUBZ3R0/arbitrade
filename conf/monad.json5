@@ -1,4 +1,7 @@
-{ id: 143,   name: "Monad",             currency: "MON",   
+{ 
+  chain: {
+    id: 143,   name: "Monad",             currency: "MON",   
+  },
 	flashloan:{
 		provider: "aave-v3"
 		tokens: [
