@@ -10,14 +10,15 @@ STAGE="$1"
 shift
 
 CHAIN="$1"
-shift
-
-CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $@"
 
 if [ -z "$CHAIN" ]; then
     echo "Usage: yarn $STAGE <chain>" >&2
     exit 1
 fi
+
+shift
+
+CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $@"
 
 LOG="log/${CHAIN}/${STAGE}.log"
 if [ ! -d "log/${CHAIN}" ]; then

@@ -31,49 +31,49 @@
           deployBlock: 38533708,
           fee: 0.003,
         },
-        UniswapV2Factory_b45e5327: {
+        'Uniswap v2': {
           address: '0xb45e53277a7e0f1d35f2a77160e91e25507f1763',
           deployBlock: 347155,
           fee: 0.003,
         },
-        DeFiveFactory_47524ca6: {
+        'DeFive v2': {
           address: '0x47524ca6578e172878abf6fd6f3e1cd106c551e6',
           deployBlock: 2352971,
           fee: 0.003,
         },
-        NineMMFactory_0f7b3fcb: {
+        'NineMM v2': {
           address: '0x0f7b3fcba276a65dd6e41e400055dcb75ba66750',
           deployBlock: 10021858,
           fee: 0.003,
         },
-        SonicxSwapFactory_0569f2a6: {
+        'SonicxSwap v2': {
           address: '0x0569f2a6b281b139bc164851cf86e4a792ca6e81',
           deployBlock: 759665,
           fee: 0.003,
         },
-        Factory_bb13ade0: {
-          address: '0xbb13ade01dc6f897ff81ded9bbe3a0d4e845fbb6',
-          deployBlock: 298964,
-          fee: 0.003,
-        },
-        FatfingerdotfunV2Factory_765331f7: {
+        'Fatfingerdotfun v2': {
           address: '0x765331f7a008c0609543acca6209d91636bceeac',
           deployBlock: 38243201,
           fee: 0.003,
         },
-        MobiusDEXFactory_475f2ddf: {
+        "MobiusDEX v2": {
           address: '0x475f2ddfa1a5da19f4a3f282f1305f285e742c45',
           deployBlock: 401842,
           fee: 0.003,
         },
-        PancakeFactory_de26aa06: {
+        'PancakeSwap V2': {
           address: '0xde26aa06fc545be2bc8c759c02bdaf72e66ac937',
           deployBlock: 15068750,
           fee: 0.003,
         },
-        Factory_15d8d9ef: {
-          address: '0x15d8d9efd079e0e0633646cb834789d209a5fe5b',
-          deployBlock: 133339,
+        'SuperSonic v2': {
+          address: '0x4d8ef974fad9b7e323be2c260b7c7712db090e86',
+          deployBlock: 12608877,
+          fee: 0.003,
+        },
+        'ZF v2': {
+          address: '0xce98a0e578b639aa90ee96ed5ba8e5a4022de529',
+          deployBlock: 19071304,
           fee: 0.003,
         },
         UniswapV2Factory_01d6747d: {
@@ -81,14 +81,14 @@
           deployBlock: 270033,
           fee: 0.003,
         },
-        SuperSonic: {
-          address: '0x4d8ef974fad9b7e323be2c260b7c7712db090e86',
-          deployBlock: 12608877,
+        Factory_15d8d9ef: {
+          address: '0x15d8d9efd079e0e0633646cb834789d209a5fe5b',
+          deployBlock: 133339,
           fee: 0.003,
         },
-        ZF: {
-          address: '0xce98a0e578b639aa90ee96ed5ba8e5a4022de529',
-          deployBlock: 19071304,
+        Factory_bb13ade0: {
+          address: '0xbb13ade01dc6f897ff81ded9bbe3a0d4e845fbb6',
+          deployBlock: 298964,
           fee: 0.003,
         },
       },
@@ -113,10 +113,6 @@
         Equalizer: {
           address: '0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc',
           deployBlock: 258140,
-        },
-        TransparentUpgradeableProxy_05c1be79: {
-          address: '0x05c1be79d3ac21cc4b727eed58c9b2ff757f5663',
-          deployBlock: 1333667,
         },
       },
     },
