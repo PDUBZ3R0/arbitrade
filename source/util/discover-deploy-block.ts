@@ -25,10 +25,84 @@ import { realpathSync } from 'node:fs';
 /** Detects the various ways RPCs signal "state at this old block is pruned". */
 const ARCHIVE_UNAVAILABLE_RE = /(state.*not available|missing trie node|no historical|historical state|archive|pruned)/i;
 
+/** Detects the various ways RPCs signal "you're over your quota, slow down". */
+const RATE_LIMIT_RE = /(rate limit|too many requests|429|-32029|exceeded maximum retry|compute unit|capacity)/i;
+
+/** How many times to wait out a rate limit before giving up on one getCode. */
+const RATE_LIMIT_MAX_ATTEMPTS = 8;
+
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+function errorText(err: unknown): string {
+    const raw = err as any;
+    return [
+        raw?.message,
+        raw?.error?.message,
+        raw?.info?.error?.message,
+        raw?.info?.responseBody,
+        raw?.shortMessage,
+    ].filter(Boolean).join(' ');
+}
+
+/**
+ * How long to wait after a rate-limit rejection. Providers usually tell us
+ * exactly — blockmachine/Alchemy-style errors carry `retry_after_ms` and a
+ * `reset` unix timestamp in error.data — so prefer their number and fall back
+ * to exponential backoff only when there's nothing to read.
+ */
+function rateLimitDelayMs(err: unknown, attempt: number): number {
+    let hinted = 0;
+    try {
+        const body = (err as any)?.info?.responseBody;
+        const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+        const data = parsed?.error?.data;
+        if (data?.retry_after_ms) {
+            hinted = Number(data.retry_after_ms);
+        } else if (data?.reset) {
+            // `reset` is when the next quota window opens, in unix seconds.
+            hinted = Number(data.reset) * 1000 - Date.now();
+        }
+    } catch {
+        // Non-JSON body — nothing to extract, use backoff.
+    }
+    const backoff = Math.min(30_000, 500 * 2 ** attempt);
+    return Math.max(Math.min(hinted, 60_000), backoff);
+}
+
+/**
+ * eth_getCode with rate-limit patience. A binary search over ~50M blocks is
+ * ~26 sequential archive calls, which is enough to exhaust a per-minute compute
+ * budget partway through — and failing there wastes every call already spent.
+ */
+async function getCodeWithRetry(
+    provider: JsonRpcProvider,
+    address: string,
+    block: number,
+    when: string,
+): Promise<string> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await provider.getCode(address, block);
+        } catch (err) {
+            const text = errorText(err);
+            const retryable = RATE_LIMIT_RE.test(text) && !ARCHIVE_UNAVAILABLE_RE.test(text);
+            if (!retryable || attempt >= RATE_LIMIT_MAX_ATTEMPTS - 1) {
+                throw wrapRpcError(err, address, block, when);
+            }
+            const wait = rateLimitDelayMs(err, attempt);
+            console.log(
+                `  [i] RPC rate limited — waiting ${(wait / 1000).toFixed(1)}s ` +
+                `(attempt ${attempt + 1}/${RATE_LIMIT_MAX_ATTEMPTS})`
+            );
+            await sleep(wait);
+        }
+    }
+}
+
 export async function discoverDeployBlock(
     provider: JsonRpcProvider,
     address: string,
-    opts: { chainId?: number; explorerApiKey?: string } = {},
+    opts: { chainId?: number; explorerApiKey?: string; minBlock?: number } = {},
 ): Promise<number> {
     // Try explorer API first if we have an API key and chain id
     if (opts.chainId && opts.explorerApiKey) {
@@ -42,34 +116,28 @@ export async function discoverDeployBlock(
     }
 
     // RPC binary search fallback
-    return discoverViaBinarySearch(provider, address);
+    return discoverViaBinarySearch(provider, address, opts.minBlock ?? 0);
 }
 
-async function discoverViaBinarySearch(provider: JsonRpcProvider, address: string): Promise<number> {
+async function discoverViaBinarySearch(
+    provider: JsonRpcProvider,
+    address: string,
+    minBlock = 0,
+): Promise<number> {
     const head = await provider.getBlockNumber();
 
     // Sanity check: contract must exist at head
-    let codeNow: string;
-    try {
-        codeNow = await provider.getCode(address, head);
-    } catch (err) {
-        throw wrapRpcError(err, address, head, 'checking contract exists at head');
-    }
+    const codeNow = await getCodeWithRetry(provider, address, head, 'checking contract exists at head');
     if (codeNow === '0x' || codeNow === '') {
         throw new Error(`No code at ${address} on latest block ${head} — wrong address or wrong chain?`);
     }
 
     // Binary search
-    let lo = 0;
+    let lo = minBlock;
     let hi = head;
     while (lo < hi) {
         const mid = Math.floor((lo + hi) / 2);
-        let code: string;
-        try {
-            code = await provider.getCode(address, mid);
-        } catch (err) {
-            throw wrapRpcError(err, address, mid, 'during binary search');
-        }
+        const code = await getCodeWithRetry(provider, address, mid, 'during binary search');
         if (code === '0x' || code === '') {
             lo = mid + 1;
         } else {
@@ -93,6 +161,19 @@ function wrapRpcError(err: unknown, address: string, block: number, when: string
             `  2. Use an archive-node RPC (Alchemy Growth+, QuickNode paid, or self-hosted Erigon/reth)\n` +
             `  3. Hardcode the deploy block in the config's factory entry:\n` +
             `       "FactoryName": { address: "${address}", deployBlock: <block> }\n` +
+            `Underlying error: ${msg.trim().slice(0, 200)}`
+        );
+    }
+
+    if (RATE_LIMIT_RE.test(msg)) {
+        return new Error(
+            `RPC rate limit exhausted ${when} for ${address} at block ${block}, after ` +
+            `${RATE_LIMIT_MAX_ATTEMPTS} waits. Deploy-block discovery needs ~26 sequential ` +
+            `archive calls per factory, which a small per-minute quota can't sustain. Options:\n` +
+            `  1. Set ETHERSCAN_API_KEY in .env — one HTTP call instead of 26 RPC calls\n` +
+            `  2. Hardcode the deploy block in the config's factory entry:\n` +
+            `       "FactoryName": { address: "${address}", deployBlock: <block> }\n` +
+            `  3. Use an RPC with a larger compute-unit budget\n` +
             `Underlying error: ${msg.trim().slice(0, 200)}`
         );
     }

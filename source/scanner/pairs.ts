@@ -114,6 +114,33 @@ export type ScanOptions = {
 };
 
 /**
+ * Discover a factory's deploy block and cache it in the DB so later runs skip
+ * the lookup. Only called when the chunked-RPC path is actually going to be
+ * used — see the comment at its call site in scanFactory.
+ */
+async function discoverAndCacheDeployBlock(
+    provider: JsonRpcProvider,
+    db: ArbitradeDB,
+    factory: NormalizedFactory,
+    opts: ScanOptions,
+): Promise<number> {
+    console.log(`  [!] deployBlock not set for ${factory.name}, discovering...`);
+    const startBlock = await discoverDeployBlock(provider, factory.address, {
+        chainId: opts.chainId,
+        explorerApiKey: opts.explorerApiKey,
+    });
+    console.log(`  [i] Discovered deployBlock: ${startBlock} — caching in DB (add to config too if you like)`);
+    db.upsertFactory({
+        address: factory.address,
+        name: factory.name,
+        type: factory.group,
+        fee: factory.fee,
+        deployBlock: startBlock,
+    });
+    return startBlock;
+}
+
+/**
  * Scan a single factory. Returns the number of NEW pairs discovered.
  */
 export async function scanFactory(
@@ -145,26 +172,31 @@ export async function scanFactory(
     const head = opts.toBlock ?? await provider.getBlockNumber();
     const resumeBlock = db.getScanProgress(factory.address);
 
+    // Whether the HyperSync fast path is available. Computed up here rather
+    // than immediately before the fast path, because it decides whether we
+    // need a deploy block at all — see the next block.
+    const canUseHyperSync = Boolean(
+        opts.hypersyncUrl && opts.envioApiToken &&
+        (!opts.forceTransport || opts.forceTransport === 'hypersync')
+    );
+
+    // Deploy-block discovery is ONLY an optimization for the chunked-RPC path,
+    // where the number of eth_getLogs calls scales with (head - fromBlock).
+    // HyperSync serves an indexed address+topic query, so starting it at block 0
+    // costs essentially the same as starting it at the deploy block.
+    //
+    // Discovering a deploy block we then don't use is pure waste — and not cheap
+    // waste: the binary search is ~26 archive eth_getCode calls per factory, which
+    // is enough to exhaust a modest RPC compute-unit budget before the scan has
+    // fetched a single log. So skip discovery when HyperSync is on. If HyperSync
+    // later fails and we fall through to RPC, we discover lazily at that point.
     let startBlock = factory.deployBlock;
-    if (!startBlock && resumeBlock === null) {
-        console.log(`  [!] deployBlock not set for ${factory.name}, discovering...`);
-        startBlock = await discoverDeployBlock(provider, factory.address, {
-            chainId: opts.chainId,
-            explorerApiKey: opts.explorerApiKey,
-        });
-        console.log(`  [i] Discovered deployBlock: ${startBlock} — caching in DB (add to config too if you like)`);
-        // Update the DB so subsequent runs don't re-discover
-        db.upsertFactory({
-            address: factory.address,
-            name: factory.name,
-            type: factory.group,
-            fee: factory.fee,
-            deployBlock: startBlock,
-        });
+    if (!startBlock && resumeBlock === null && !canUseHyperSync) {
+        startBlock = await discoverAndCacheDeployBlock(provider, db, factory, opts);
     }
 
     const fromBlock = opts.fromBlock
-        ?? (resumeBlock !== null ? resumeBlock + 1 : startBlock);
+        ?? (resumeBlock !== null ? resumeBlock + 1 : (startBlock || 0));
 
     if (fromBlock > head) {
         // Already caught up
@@ -189,9 +221,12 @@ export async function scanFactory(
     // and continue from the last block HyperSync did complete (thanks to the
     // per-batch progress writes).
     // -----------------------------------------------------------------------
-    const canUseHyperSync =
-        opts.hypersyncUrl && opts.envioApiToken &&
-        (!opts.forceTransport || opts.forceTransport === 'hypersync');
+    // Starting block for the RPC path. Usually identical to fromBlock, but if
+    // HyperSync fails we may have no deploy block yet (discovery was skipped
+    // above), leaving fromBlock at 0 — and a chunked RPC scan from genesis is
+    // not something we want to start by accident. The catch block below fixes
+    // this up before the RPC path reads it.
+    let rpcFromBlock = fromBlock;
 
     if (canUseHyperSync) {
         try {
@@ -235,10 +270,16 @@ export async function scanFactory(
             }
             console.log(`\n  [!] HyperSync scan failed at block ${db.getScanProgress(factory.address) ?? fromBlock}, ` +
                         `falling back to RPC: ${(err as Error).message.slice(0, 100)}`);
-            // Fall through to the RPC path below. The scan-progress table
-            // has been updated up to the last successful batch, so the RPC
-            // path will resume from there (via resumeBlock in the next
-            // scanFactory call or from the recomputed fromBlock).
+            // Fall through to the RPC path below. Work out where it should
+            // start: prefer whatever HyperSync managed to persist, otherwise
+            // discover the deploy block now (we skipped it above precisely
+            // because we expected HyperSync to handle this factory).
+            const progressed = db.getScanProgress(factory.address);
+            if (progressed !== null) {
+                rpcFromBlock = progressed + 1;
+            } else if (opts.fromBlock === undefined && !startBlock) {
+                rpcFromBlock = await discoverAndCacheDeployBlock(provider, db, factory, opts);
+            }
         }
     }
 
@@ -246,7 +287,7 @@ export async function scanFactory(
     const chunkMin = opts.tuning?.chunkMin ?? CHUNK_MIN;
     const chunkMax = opts.tuning?.chunkMax ?? CHUNK_MAX;
     const chunkDelay = opts.tuning?.chunkDelayMs ?? 0;
-    let cursor = fromBlock;
+    let cursor = rpcFromBlock;
     // totalFound already declared above the HyperSync fast path
 
     // Once the RPC has told us a specific hard cap (either via a "suggested
@@ -484,6 +525,7 @@ export async function scanChain(
     }
 
     const results: Record<string, number> = {};
+    const failures: { factory: string; error: string }[] = [];
 
     // Announce active tuning so the user sees what's in effect
     const t = cfg.scan;
@@ -510,27 +552,44 @@ export async function scanChain(
 
             console.log(`\n[${cfg.chain.currency}] Scanning ${factory.name} @ ${factory.address}`);
             const startPairs = db.countPairs(factory.address);
-            const found = await scanFactory(provider, db, effectiveFactory, {
-                tuning: cfg.scan,
-                chainId: cfg.chain.id,
-                explorerApiKey,
-                hypersyncUrl:   cfg.chain.hypersyncUrl,
-                envioApiToken:  process.env.ENVIO_API_TOKEN,
-                ...opts,
-                onProgress: (info) => {
-                    const denom = Math.max(1, info.head - effectiveFactory.deployBlock);
-                    const pct = ((info.block - effectiveFactory.deployBlock) / denom * 100).toFixed(1);
-                    process.stdout.write(
-                        `\r  block ${info.block}/${info.head} (${pct}%) — ${info.found} new pairs`
-                    );
-                },
-            });
-            process.stdout.write('\n');
-            console.log(`  → ${found} new pairs; total now ${startPairs + found}`);
-            results[factory.name] = found;
+            try {
+                const found = await scanFactory(provider, db, effectiveFactory, {
+                    tuning: cfg.scan,
+                    chainId: cfg.chain.id,
+                    explorerApiKey,
+                    hypersyncUrl:   cfg.chain.hypersyncUrl,
+                    envioApiToken:  process.env.ENVIO_API_TOKEN,
+                    ...opts,
+                    onProgress: (info) => {
+                        const denom = Math.max(1, info.head - effectiveFactory.deployBlock);
+                        const pct = ((info.block - effectiveFactory.deployBlock) / denom * 100).toFixed(1);
+                        process.stdout.write(
+                            `\r  block ${info.block}/${info.head} (${pct}%) — ${info.found} new pairs`
+                        );
+                    },
+                });
+                process.stdout.write('\n');
+                console.log(`  → ${found} new pairs; total now ${startPairs + found}`);
+                results[factory.name] = found;
+            } catch (err) {
+                // One bad factory must not cost us the rest of the list. Scan
+                // progress is persisted per batch, so a re-run resumes rather
+                // than restarting this factory from scratch.
+                process.stdout.write('\n');
+                console.log(`  [x] FAILED ${factory.name}: ${(err as Error).message.split('\n')[0]}`);
+                failures.push({ factory: factory.name, error: (err as Error).message });
+                results[factory.name] = 0;
+            }
         }
     } finally {
         db.close();
+        if (failures.length > 0) {
+            console.log(`\n[!] ${failures.length} factor${failures.length === 1 ? 'y' : 'ies'} failed and were skipped:`);
+            for (const f of failures) {
+                console.log(`    - ${f.factory}: ${f.error.split('\n')[0].slice(0, 160)}`);
+            }
+            console.log(`    Re-run the scan to retry them; completed factories resume from saved progress.`);
+        }
     }
 
     return results;

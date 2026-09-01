@@ -14,6 +14,14 @@
 const V2_BASE = 'https://api.etherscan.io/v2/api';
 
 /**
+ * Etherscan returns status="0" for both "nothing found" and real failures.
+ * These substrings mark the real failures — anything else with status="0" is
+ * treated as a legitimate empty result.
+ */
+const ETHERSCAN_FAILURE_RE =
+    /(invalid api key|missing.*api key|rate limit|max.*calls|too many|notok|invalid address|unsupported chain|chainid)/i;
+
+/**
  * Look up when a contract was created.
  *
  * Returns { blockNumber, txHash, creator } or null if not found.
@@ -41,9 +49,21 @@ export async function getContractCreation(
 
     const data = await res.json() as any;
 
-    // Etherscan quirk: on "no results" they return status="0", message="No data found",
-    // result=[] or result="No data found" (string). Don't treat that as an error.
-    if (data.status !== '1' || !Array.isArray(data.result) || data.result.length === 0) {
+    // Etherscan signals BOTH "no results" and hard failures with status="0",
+    // distinguished only by `message`/`result` text. Collapsing all of them to
+    // null is how an invalid key or a rate-limit stall masquerades as "this
+    // contract doesn't exist" — which then silently drops us into the very
+    // expensive RPC binary-search fallback for every single factory.
+    if (data.status !== '1') {
+        const detail = `${data.message ?? ''} ${typeof data.result === 'string' ? data.result : ''}`.trim();
+        if (ETHERSCAN_FAILURE_RE.test(detail)) {
+            throw new Error(`Etherscan V2 error for ${address} (chain ${chainId}): ${detail || 'unknown error'}`);
+        }
+        // Genuine "no record" — the caller may legitimately fall back.
+        return null;
+    }
+
+    if (!Array.isArray(data.result) || data.result.length === 0) {
         return null;
     }
 
