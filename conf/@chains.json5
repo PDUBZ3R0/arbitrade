@@ -113,7 +113,7 @@
     name: 'Base',
     currency: 'ETH',
     hypersyncUrl: 'https://base.hypersync.xyz',
-    host: 'https://rpc-base.blockmachine.io',
+    host: 'https://base-rpc.publicnode.com',
   },
   plasma: {
     id: 9745,

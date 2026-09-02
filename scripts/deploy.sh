@@ -1,5 +1,6 @@
 #!/bin/bash
 
+STAGE="deploy-contract"
 CHAIN="$1"
 
 if [ -z "$CHAIN" ]; then
@@ -7,7 +8,7 @@ if [ -z "$CHAIN" ]; then
     exit 1
 fi
 
-LOG="log/${CHAIN}/deploy-contract.log"
+LOG="log/${CHAIN}/${STAGE}.log"
 if [ ! -d "log/${CHAIN}" ]; then
     mkdir -p "log/${CHAIN}"
 fi

@@ -8,19 +8,21 @@
     "node": ">=22.6.0"
   },
   "scripts": {
+    "preinstall": "npm install -g json5",
     "deploy-contract": "sh scripts/deploy.sh",
+    "discover-block": "sh scripts/log.sh source/util discover-deploy-block",
+    "verify-factory": "sh scripts/log.sh source/util verify-factory",
+    "find-factories": "sh scripts/log.sh source/util find-factories",
     "scan": "sh scripts/log.sh source scan",
     "reserves": "sh scripts/log.sh source reserves",
     "tokens": "sh scripts/log.sh source tokens",
     "triangles": "sh scripts/log.sh source triangles",
     "evaluate": "sh scripts/log.sh source evaluate",
     "db-clean": "sh scripts/log.sh source db-clean",
-    "discover-block": "sh scripts/log.sh source/util discover-deploy-block",
-    "verify-factory": "sh scripts/log.sh source/util verify-factory",
-    "find-factories": "sh scripts/log.sh source/util find-factories",
-    "manual": "fff(){ yarn scan $1 && yarn tokens $1 && yarn reserves $1 --dust 0.01 --blacklist-dead && yarn triangles $1 && yarn evaluate $1; }; fff",
+    "manual": "fff(){ yarn scan $1 && yarn reserves $1 --dust 0.01 --blacklist-dead && yarn tokens $1 && yarn triangles $1 && yarn evaluate $1; }; fff",
     "pretty-print": "bash scripts/pretty.sh print",
-    "pretty-commit": "bash scripts/pretty.sh commit"
+    "pretty-commit": "bash scripts/pretty.sh commit",
+    "panoramix": "bash scripts/decompile.sh"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",

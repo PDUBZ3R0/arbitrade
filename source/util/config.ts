@@ -378,9 +378,9 @@ export function loadChainConfig(chainArg: string): ChainConfig {
     const filteredCount = factories.length;
     const filteredFactories = factories.filter(f => !blacklist.has(f.address.toLowerCase()));
     const excluded = filteredCount - filteredFactories.length;
-    if (excluded > 0) {
+/*    if (excluded > 0) {
         console.log(`[blacklist] Excluded ${excluded} factory(ies) via conf/${meta.label}-blacklist.json5`);
-    }
+    }*/
 
     return {
         raw,

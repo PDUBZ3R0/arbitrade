@@ -1,0 +1,19 @@
+{
+    factories: [
+        {
+            address: "0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6",
+            reason:  "dead (0/5 pairs with real liquidity)",
+            addedAt: "2026-09-02",
+        },
+        {
+            address: "0x796f21efa35bf3b0360ac8e3c108241f88e47a3a",
+            reason:  "dead (0/4 pairs with real liquidity)",
+            addedAt: "2026-09-02",
+        },
+        {
+            address: "0x8164765f5886d43ddaf2454cba6c1acc4479fd18",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-09-02",
+        },
+    ]
+}
