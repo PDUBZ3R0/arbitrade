@@ -1,47 +1,52 @@
-[
-  {
-    "symbol": "WETH",
-    "address": "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
-    "decimals": 18
-  },
-  {
-    "symbol": "WBTC",
-    "address": "0x3aAB2285ddcDdaD8edf438C1bAB47e1a9D05a9b4",
-    "decimals": 8
-  },
-  {
-    "symbol": "USDC",
-    "address": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
-    "decimals": 6
-  },
-  {
-    "symbol": "USDT",
-    "address": "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
-    "decimals": 6
-  },
-  {
-    "symbol": "wstETH",
-    "address": "0xB5beDd42000b71FddE22D3eE8a79Bd49A568fC8F",
-    "decimals": 18
-  },
-  {
-    "symbol": "ezETH",
-    "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
-    "decimals": 18
-  },
-  {
-    "symbol": "weETH",
-    "address": "0x1Bf74C010E6320bab11e2e5A532b5AC15e0b8aA6",
-    "decimals": 18
-  },
-  {
-    "symbol": "wrsETH",
-    "address": "0xD2671165570f41BBB3B0097893300b6EB6101E6C",
-    "decimals": 18
-  },
-  {
-    "symbol": "mUSD",
-    "address": "0xacA92E438df0B2401fF60dA7E4337B687a2435DA",
-    "decimals": 6
-  }
-]
+{
+  "provider": "aave-v3",
+  "premium": 0.0005,
+  "tokens": [
+    {
+      "symbol": "WETH",
+      "address": "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
+      "decimals": 18
+    },
+    {
+      "symbol": "WBTC",
+      "address": "0x3aAB2285ddcDdaD8edf438C1bAB47e1a9D05a9b4",
+      "decimals": 8
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDT",
+      "address": "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
+      "decimals": 6
+    },
+    {
+      "symbol": "wstETH",
+      "address": "0xB5beDd42000b71FddE22D3eE8a79Bd49A568fC8F",
+      "decimals": 18
+    },
+    {
+      "symbol": "ezETH",
+      "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+      "decimals": 18
+    },
+    {
+      "symbol": "weETH",
+      "address": "0x1Bf74C010E6320bab11e2e5A532b5AC15e0b8aA6",
+      "decimals": 18
+    },
+    {
+      "symbol": "wrsETH",
+      "address": "0xD2671165570f41BBB3B0097893300b6EB6101E6C",
+      "decimals": 18
+    },
+    {
+      "symbol": "mUSD",
+      "address": "0xacA92E438df0B2401fF60dA7E4337B687a2435DA",
+      "decimals": 6
+    }
+  ],
+  "pool": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac"
+}

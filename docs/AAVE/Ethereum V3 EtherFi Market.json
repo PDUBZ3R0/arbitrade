@@ -1,22 +1,27 @@
-[
-  {
-    "symbol": "weETH",
-    "address": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
-    "decimals": 18
-  },
-  {
-    "symbol": "USDC",
-    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "decimals": 6
-  },
-  {
-    "symbol": "PYUSD",
-    "address": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
-    "decimals": 6
-  },
-  {
-    "symbol": "FRAX",
-    "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
-    "decimals": 18
-  }
-]
+{
+  "provider": "aave-v3",
+  "premium": 0.0005,
+  "tokens": [
+    {
+      "symbol": "weETH",
+      "address": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDC",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "decimals": 6
+    },
+    {
+      "symbol": "PYUSD",
+      "address": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
+      "decimals": 6
+    },
+    {
+      "symbol": "FRAX",
+      "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+      "decimals": 18
+    }
+  ],
+  "pool": "0x0AA97c284e98396202b6A04024F5E2c65026F3c0"
+}

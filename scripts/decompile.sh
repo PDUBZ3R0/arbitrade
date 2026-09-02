@@ -16,7 +16,7 @@ LOG="log/${CHAIN}/${STAGE}-${CONTRACT}.log"
 if [ ! -d "log/${CHAIN}" ]; then
     mkdir -p "log/${CHAIN}"
 fi
-node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/resolvehost.ts $CHAIN
+
 export RPCURL=$(node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/resolvehost.ts $CHAIN)
 
 {

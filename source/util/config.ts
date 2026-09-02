@@ -38,6 +38,7 @@ export type ChainMeta = {
     host: string;              // RPC URL
     hypersyncUrl?: string;     // Envio HyperSync URL (e.g. "https://sonic.hypersync.xyz")
     contract?: string;         // deployed YoBatches address
+    executor?: string;         // deployed FlashArbExecutor address (piece 6) — set after `yarn deploy-flasharb <chain>`
     threads?: number;
     interval?: number;
     pagesize?: number;

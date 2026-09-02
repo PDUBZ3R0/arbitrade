@@ -1,92 +1,97 @@
-[
-  {
-    "symbol": "USDT0",
-    "address": "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
-    "decimals": 6
-  },
-  {
-    "symbol": "USDe",
-    "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
-    "decimals": 18
-  },
-  {
-    "symbol": "sUSDe",
-    "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
-    "decimals": 18
-  },
-  {
-    "symbol": "XAUt0",
-    "address": "0x1B64B9025EEbb9A6239575dF9Ea4b9Ac46D4d193",
-    "decimals": 6
-  },
-  {
-    "symbol": "weETH",
-    "address": "0xA3D68b74bF0528fdD07263c60d6488749044914b",
-    "decimals": 18
-  },
-  {
-    "symbol": "WETH",
-    "address": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_USDe_15JAN2026",
-    "address": "0x93B544c330F60A2aa05ceD87aEEffB8D38FD8c9a",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_sUSDE_15JAN2026",
-    "address": "0x02FCC4989B4C9D435b7ceD3fE1Ba4CF77BBb5Dd8",
-    "decimals": 18
-  },
-  {
-    "symbol": "wstETH",
-    "address": "0xe48D935e6C9e735463ccCf29a7F11e32bC09136E",
-    "decimals": 18
-  },
-  {
-    "symbol": "wrsETH",
-    "address": "0xe561FE05C39075312Aa9Bc6af79DdaE981461359",
-    "decimals": 18
-  },
-  {
-    "symbol": "syrupUSDT",
-    "address": "0xC4374775489CB9C56003BF2C9b12495fC64F0771",
-    "decimals": 6
-  },
-  {
-    "symbol": "WXPL",
-    "address": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_sUSDE_9APR2026",
-    "address": "0xab509448ad489e2E1341e25CC500f2596464Cc82",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_USDe_9APR2026",
-    "address": "0x54Dc267be2839303ff1e323584A16e86CeC4Aa44",
-    "decimals": 18
-  },
-  {
-    "symbol": "GHO",
-    "address": "0xb77E872A68C62CfC0dFb02C067Ecc3DA23B4bbf3",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_USDe_18JUN2026",
-    "address": "0x23B17d3944742ACe3d0C71586FcB320d1e4a1Ed2",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_sUSDE_18JUN2026",
-    "address": "0x30559E3d35e33AB69399a3fe9F383d32bd3c016E",
-    "decimals": 18
-  },
-  {
-    "symbol": "PT_sUSDE_22OCT2026",
-    "address": "0xf7fB83435F455Bd970F2D9f943f4eECE1941b3e9",
-    "decimals": 18
-  }
-]
+{
+  "provider": "aave-v3",
+  "premium": 0.0005,
+  "pool": "0x925a2A7214Ed92428B5b1B090F80b25700095e12",
+  "tokens": [
+    {
+      "symbol": "USDT0",
+      "address": "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDe",
+      "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+      "decimals": 18
+    },
+    {
+      "symbol": "sUSDe",
+      "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
+      "decimals": 18
+    },
+    {
+      "symbol": "XAUt0",
+      "address": "0x1B64B9025EEbb9A6239575dF9Ea4b9Ac46D4d193",
+      "decimals": 6
+    },
+    {
+      "symbol": "weETH",
+      "address": "0xA3D68b74bF0528fdD07263c60d6488749044914b",
+      "decimals": 18
+    },
+    {
+      "symbol": "WETH",
+      "address": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_USDe_15JAN2026",
+      "address": "0x93B544c330F60A2aa05ceD87aEEffB8D38FD8c9a",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_sUSDE_15JAN2026",
+      "address": "0x02FCC4989B4C9D435b7ceD3fE1Ba4CF77BBb5Dd8",
+      "decimals": 18
+    },
+    {
+      "symbol": "wstETH",
+      "address": "0xe48D935e6C9e735463ccCf29a7F11e32bC09136E",
+      "decimals": 18
+    },
+    {
+      "symbol": "wrsETH",
+      "address": "0xe561FE05C39075312Aa9Bc6af79DdaE981461359",
+      "decimals": 18
+    },
+    {
+      "symbol": "syrupUSDT",
+      "address": "0xC4374775489CB9C56003BF2C9b12495fC64F0771",
+      "decimals": 6
+    },
+    {
+      "symbol": "WXPL",
+      "address": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_sUSDE_9APR2026",
+      "address": "0xab509448ad489e2E1341e25CC500f2596464Cc82",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_USDe_9APR2026",
+      "address": "0x54Dc267be2839303ff1e323584A16e86CeC4Aa44",
+      "decimals": 18
+    },
+    {
+      "symbol": "GHO",
+      "address": "0xb77E872A68C62CfC0dFb02C067Ecc3DA23B4bbf3",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_USDe_18JUN2026",
+      "address": "0x23B17d3944742ACe3d0C71586FcB320d1e4a1Ed2",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_sUSDE_18JUN2026",
+      "address": "0x30559E3d35e33AB69399a3fe9F383d32bd3c016E",
+      "decimals": 18
+    },
+    {
+      "symbol": "PT_sUSDE_22OCT2026",
+      "address": "0xf7fB83435F455Bd970F2D9f943f4eECE1941b3e9",
+      "decimals": 18
+    }
+  ]
+}

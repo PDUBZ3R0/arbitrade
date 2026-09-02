@@ -1,47 +1,52 @@
-[
-  {
-    "symbol": "WETH",
-    "address": "0x4200000000000000000000000000000000000006",
-    "decimals": 18
-  },
-  {
-    "symbol": "BTCb",
-    "address": "0xB0F70C0bD6FD87dbEb7C10dC692a2a6106817072",
-    "decimals": 8
-  },
-  {
-    "symbol": "USDT0",
-    "address": "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
-    "decimals": 6
-  },
-  {
-    "symbol": "USDm",
-    "address": "0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7",
-    "decimals": 18
-  },
-  {
-    "symbol": "wstETH",
-    "address": "0x601aC63637933D88285A025C685AC4e9a92a98dA",
-    "decimals": 18
-  },
-  {
-    "symbol": "wrsETH",
-    "address": "0x4Fc44BE15e9B6E30C1E774E2C87A21D3E8b5403F",
-    "decimals": 18
-  },
-  {
-    "symbol": "ezETH",
-    "address": "0x09601A65e7de7BC8A19813D263dD9E98bFdC3c57",
-    "decimals": 18
-  },
-  {
-    "symbol": "USDe",
-    "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
-    "decimals": 18
-  },
-  {
-    "symbol": "stcUSD",
-    "address": "0x88887bE419578051FF9F4eb6C858A951921D8888",
-    "decimals": 18
-  }
-]
+{
+  "provider": "aave-v3",
+  "premium": 0.0005,
+  "tokens": [
+    {
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": 18
+    },
+    {
+      "symbol": "BTCb",
+      "address": "0xB0F70C0bD6FD87dbEb7C10dC692a2a6106817072",
+      "decimals": 8
+    },
+    {
+      "symbol": "USDT0",
+      "address": "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDm",
+      "address": "0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7",
+      "decimals": 18
+    },
+    {
+      "symbol": "wstETH",
+      "address": "0x601aC63637933D88285A025C685AC4e9a92a98dA",
+      "decimals": 18
+    },
+    {
+      "symbol": "wrsETH",
+      "address": "0x4Fc44BE15e9B6E30C1E774E2C87A21D3E8b5403F",
+      "decimals": 18
+    },
+    {
+      "symbol": "ezETH",
+      "address": "0x09601A65e7de7BC8A19813D263dD9E98bFdC3c57",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDe",
+      "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+      "decimals": 18
+    },
+    {
+      "symbol": "stcUSD"
+    }
+  ],,
+      "address": "0x88887bE419578051FF9F4eb6C858A951921D8888",
+      "decimals": 18
+  "pool": "0x7e324AbC5De01d112AfC03a584966ff199741C28"
+}

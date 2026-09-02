@@ -10,6 +10,7 @@
   "scripts": {
     "preinstall": "npm install -g json5",
     "deploy-contract": "sh scripts/deploy.sh",
+    "deploy-flasharb": "sh scripts/deploy-flasharb.sh",
     "discover-block": "sh scripts/log.sh source/util discover-deploy-block",
     "verify-factory": "sh scripts/log.sh source/util verify-factory",
     "find-factories": "sh scripts/log.sh source/util find-factories",
@@ -18,6 +19,7 @@
     "tokens": "sh scripts/log.sh source tokens",
     "triangles": "sh scripts/log.sh source triangles",
     "evaluate": "sh scripts/log.sh source evaluate",
+    "orchestrator": "sh scripts/log.sh source orchestrator",
     "db-clean": "sh scripts/log.sh source db-clean",
     "manual": "fff(){ yarn scan $1 && yarn reserves $1 --dust 0.01 --blacklist-dead && yarn tokens $1 && yarn triangles $1 && yarn evaluate $1; }; fff",
     "pretty-print": "bash scripts/pretty.sh print",
