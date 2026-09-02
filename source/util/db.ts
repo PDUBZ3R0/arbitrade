@@ -583,6 +583,31 @@ export class ArbitradeDB {
         return tx(rows);
     }
 
+    // ------------------------------------------- orchestrator (piece 6) lookups
+
+    /**
+     * Look up token0/token1 for a batch of pair addresses. Used by the
+     * orchestrator's hop builder to decide which side of a pair's swap()
+     * call gets the nonzero amountOut, without an extra on-chain call —
+     * token0/token1 ordering is fixed at pair creation and already cached
+     * from the scan.
+     */
+    getPairTokenOrder(addresses: string[]): Map<string, { token0: string; token1: string }> {
+        const out = new Map<string, { token0: string; token1: string }>();
+        if (addresses.length === 0) return out;
+        const lower = [...new Set(addresses.map(a => a.toLowerCase()))];
+        const CHUNK = 500;
+        for (let i = 0; i < lower.length; i += CHUNK) {
+            const chunk = lower.slice(i, i + CHUNK);
+            const placeholders = chunk.map(() => '?').join(',');
+            const rows = this.db.prepare(
+                `SELECT address, token0, token1 FROM pairs WHERE address IN (${placeholders})`
+            ).all(...chunk) as Array<{ address: string; token0: string; token1: string }>;
+            for (const r of rows) out.set(r.address, { token0: r.token0, token1: r.token1 });
+        }
+        return out;
+    }
+
     // ------------------------------------------- triangle enumeration inputs
 
     /**

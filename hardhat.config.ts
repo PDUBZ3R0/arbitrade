@@ -51,13 +51,31 @@ export default defineConfig({
         },
     },
     solidity: {
-        version: "0.8.0",
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 200,
+        // Multiple compiler versions: YoBatches is pinned to ^0.8.0 and stays
+        // on 0.8.0 to avoid touching its existing deployed bytecode/ABI.
+        // FlashArbExecutor uses custom errors (needs solc >=0.8.4) and targets
+        // 0.8.24. Hardhat picks whichever compiler in this list satisfies each
+        // file's pragma.
+        compilers: [
+            {
+                version: "0.8.0",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
             },
-        },
+            {
+                version: "0.8.24",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
+            },
+        ],
     },
     paths: {
         sources:   "./contracts",

@@ -343,6 +343,9 @@
   },
   flashloan: {
     provider: 'aave-v3',
+    // Aave V3 Pool Proxy on Base, verified against aave-address-book
+    // (bgd-labs/aave-address-book, AaveV3Base.sol) and basescan.org.
+    pool: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     tokens: [
       { symbol: 'WETH',     address: '0x4200000000000000000000000000000000000006', decimals: 18 },
       { symbol: 'cbETH',    address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', decimals: 18 },

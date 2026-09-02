@@ -118,6 +118,8 @@ export type RawChainConfig = {
     };
     flashloan?: {
         provider: 'aave-v3' | 'balancer-v2';
+        /** Aave V3 Pool contract (NOT the addresses provider) — flashLoanSimple lives here. Required for aave-v3. */
+        pool?: string;
         addressesProvider?: string;
         vault?: string;
         premium: number;
