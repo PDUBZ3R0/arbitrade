@@ -49,9 +49,25 @@ export type EvaluateOptions = {
     /** Max candidates to emit (top-N by profit). Default: unlimited. */
     limit?: number;
     /**
-     * Minimum reserves (in wei) that BOTH sides of every pair in the triangle
-     * must have. Skips dust pools that produce math phantoms. Default: 0 (no
-     * filter). A sensible default for 18-decimal tokens is 1e18 (1 whole token).
+     * Minimum reserves that BOTH sides of every pair in the triangle must
+     * have, expressed in WHOLE TOKENS (human units), not wei — e.g. 0.01
+     * means "at least 0.01 of whatever token is on that side of the pair".
+     * Converted per-token using decimals from the tokens table (populated by
+     * `yarn tokens <chain>`) or flashloan config, defaulting to 18 decimals
+     * with a warning when a token's decimals are unknown. Default: 0 (off).
+     *
+     * This REPLACES the old `minPairReservesWei` (flat-wei) filter, which
+     * was decimal-blind: a flat 1e18 wei threshold is "1 whole token" for an
+     * 18-decimal token but "1 trillion tokens" for a 6-decimal one like
+     * USDC — silently killing every pair on that token regardless of real
+     * liquidity. If you were relying on minPairReservesWei, switch to this.
+     */
+    minLiquidityTokens?: number;
+    /**
+     * DEPRECATED — decimal-blind, see minLiquidityTokens above. Still
+     * accepted for backwards compatibility (applied as an absolute wei floor
+     * ADDITIONALLY to minLiquidityTokens, not instead of it), but you almost
+     * certainly want minLiquidityTokens instead. Default: 0 (off).
      */
     minPairReservesWei?: bigint;
     /**
@@ -66,6 +82,17 @@ export type EvaluateOptions = {
      * just prints a warning at the start. Default: 300 (5 min).
      */
     stalenessWarningSec?: number;
+    /**
+     * Print a per-triangle breakdown (reserves, decimals used, fee, computed
+     * profit/ROI, and exactly which filter tripped) for a sample of filtered
+     * triangles, so filter behavior can be audited against real numbers
+     * instead of trusted blind. Bounded by debugLimit — this is a diagnostic
+     * aid, not a full dump (a big chain has millions of triangles).
+     * Default: false.
+     */
+    debug?: boolean;
+    /** Max triangles to print full detail for for when debug=true. Default: 25. */
+    debugLimit?: number;
 };
 
 export type Candidate = {
@@ -90,11 +117,37 @@ export type Candidate = {
     }>;
 };
 
+/**
+ * Aggregate counts of WHY triangles were skipped, always populated (cheap —
+ * just counters) regardless of `debug`. This is the first thing to check
+ * when "candidates disappeared" — a spike in one bucket points straight at
+ * which filter is responsible, before looking at any individual triangle.
+ */
+export type SkipReasons = {
+    /** One of the triangle's 3 pairs isn't in the pairs table at all (blacklisted factory, deleted pair, etc). */
+    missingPair: number;
+    /** A pair exists but has no reserves row, or a reserve is exactly zero. */
+    missingReserves: number;
+    /** Tripped minLiquidityTokens (or the deprecated minPairReservesWei). */
+    dustLiquidity: number;
+    /** Direction produced no positive spread at all (grossProfit <= 0) — not a filter, just not profitable. */
+    notProfitable: number;
+    /** grossProfit > 0 but netProfit (after flash premium) < minProfit threshold. */
+    belowMinProfit: number;
+    /** Optimal input converged below minInput threshold — usually a math phantom, not a real opportunity. */
+    belowMinInput: number;
+    /** ROI exceeded maxRoiPct — almost always a phantom (impossible or wildly unrealistic spread). */
+    roiCapExceeded: number;
+};
+
 export type EvaluateResult = {
     candidatesFound: number;
     profitableCount: number;
     trianglesScored: number;
-    trianglesSkipped: number;      // missing reserves / dust
+    trianglesSkipped: number;      // sum of all skipReasons buckets except notProfitable
+    skipReasons: SkipReasons;
+    /** Count of distinct tokens whose decimals were unknown and defaulted to 18 for the liquidity filter. */
+    tokensWithUnknownDecimals: number;
     topCandidates: Candidate[];
     elapsedMs: number;
 };
@@ -134,6 +187,9 @@ type PairData = {
     reserves0: number;   // Number for off-chain math; BigInt is used on-chain
     reserves1: number;
     fee: number;         // effective fee for this pair
+    /** Per-token minimum reserve (raw units) for the dust filter — token0/token1's own decimals, not a global flat number. */
+    minReserve0: number;
+    minReserve1: number;
 };
 
 /**
@@ -209,12 +265,27 @@ export async function evaluateTriangles(
     for (const f of cfg.factories) factoriesByAddr.set(f.address.toLowerCase(), f);
 
     const flashPremium = cfg.flashloan?.premium ?? 0.0005;
+    const debug = opts.debug ?? false;
+    const debugLimit = opts.debugLimit ?? 25;
+    let debugPrinted = 0;
+
+    const skipReasons: SkipReasons = {
+        missingPair: 0,
+        missingReserves: 0,
+        dustLiquidity: 0,
+        notProfitable: 0,
+        belowMinProfit: 0,
+        belowMinInput: 0,
+        roiCapExceeded: 0,
+    };
 
     const result: EvaluateResult = {
         candidatesFound: 0,
         profitableCount: 0,
         trianglesScored: 0,
         trianglesSkipped: 0,
+        skipReasons,
+        tokensWithUnknownDecimals: 0,
         topCandidates: [],
         elapsedMs: 0,
     };
@@ -222,8 +293,49 @@ export async function evaluateTriangles(
     try {
         // 1. Bulk load pairs+reserves+fee into an in-memory index.
         const pairRows = db.getPairsForEnumeration({ includeStable: false }) as any[];
+
+        // 1a. Decimals lookup for the liquidity filter — same pattern as the
+        // reserves fetcher's --dust option (config wins over DB, DB wins over
+        // the 18-decimal fallback). Loaded once for every token touched by
+        // any pair, not just root tokens — the OLD flat-wei dust filter's bug
+        // was exactly that it never looked at per-token decimals at all.
+        const decimalsByToken = new Map<string, number>();
+        for (const t of cfg.flashloan?.tokens ?? []) {
+            decimalsByToken.set(t.address.toLowerCase(), t.decimals);
+        }
+        const minLiquidityTokens = opts.minLiquidityTokens ?? 0;
+        let unknownDecimalsTokens = new Set<string>();
+        if (minLiquidityTokens > 0) {
+            const allTokenAddrs = new Set<string>();
+            for (const r of pairRows) {
+                allTokenAddrs.add(r.token0.toLowerCase());
+                allTokenAddrs.add(r.token1.toLowerCase());
+            }
+            const tokenRows = db.getTokens(Array.from(allTokenAddrs));
+            for (const addr of allTokenAddrs) {
+                if (decimalsByToken.has(addr)) continue;
+                const row = tokenRows.get(addr);
+                if (row?.decimals != null) {
+                    decimalsByToken.set(addr, row.decimals);
+                } else {
+                    unknownDecimalsTokens.add(addr);
+                }
+            }
+            result.tokensWithUnknownDecimals = unknownDecimalsTokens.size;
+            if (unknownDecimalsTokens.size > 0) {
+                console.log(
+                    `[liquidity filter] ${unknownDecimalsTokens.size} token(s) have unknown decimals ` +
+                    `(run \`yarn tokens ${cfg.chain.label}\` to fix) — defaulting to 18 for those. ` +
+                    `Any of them that are actually 6/8/etc-decimal will get an over-strict dust threshold.`
+                );
+            }
+        }
+        const decimalsOf = (addr: string): number => decimalsByToken.get(addr.toLowerCase()) ?? 18;
+
         const pairsByAddr = new Map<string, PairData>();
         for (const r of pairRows) {
+            const minReserve0 = minLiquidityTokens > 0 ? minLiquidityTokens * (10 ** decimalsOf(r.token0)) : 0;
+            const minReserve1 = minLiquidityTokens > 0 ? minLiquidityTokens * (10 ** decimalsOf(r.token1)) : 0;
             pairsByAddr.set(r.pair, {
                 pair: r.pair,
                 factory: r.factory,
@@ -232,6 +344,8 @@ export async function evaluateTriangles(
                 reserves0: 0,
                 reserves1: 0,
                 fee: resolveFee(r, factoriesByAddr),
+                minReserve0,
+                minReserve1,
             });
         }
         // 2. Load reserves and attach
@@ -259,7 +373,10 @@ export async function evaluateTriangles(
             console.log(`\n[!] Warning: oldest reserves are ${mins} minute(s) old. Consider running \`yarn reserves <chain>\` first for accurate scoring.\n`);
         }
 
-        const minLiq = Number(opts.minPairReservesWei ?? 0n);
+        // DEPRECATED flat-wei floor — applied ADDITIONALLY to minLiquidityTokens
+        // for backwards compat, but decimal-blind. See EvaluateOptions doc.
+        const legacyMinLiqWei = Number(opts.minPairReservesWei ?? 0n);
+
         // ROI cap. Real arb almost never exceeds a few percent. Above 100% is
         // physically impossible in a market with fees. Default 100 skips only
         // outright math phantoms; set lower (e.g. 20) for stricter filtering.
@@ -322,6 +439,19 @@ export async function evaluateTriangles(
         let processed = 0;
         const PROGRESS_EVERY = 100_000;
 
+        // Debug helper: describes a pair's reserves/decimals/threshold for
+        // whichever side tripped the dust filter, so you can see the exact
+        // numbers instead of trusting the boolean.
+        const symOrAddr = (addr: string): string => addr.slice(0, 10);
+        const dumpDustDetail = (label: string, p: PairData) => {
+            const d0 = decimalsOf(p.token0), d1 = decimalsOf(p.token1);
+            console.log(
+                `      [${label}] ${p.pair.slice(0,10)}  ` +
+                `${symOrAddr(p.token0)}: reserve=${(p.reserves0 / 10 ** d0).toFixed(6)} (dec=${d0}) min=${minLiquidityTokens}  ` +
+                `${symOrAddr(p.token1)}: reserve=${(p.reserves1 / 10 ** d1).toFixed(6)} (dec=${d1}) min=${minLiquidityTokens}`
+            );
+        };
+
         for (const tri of triStmt.iterate(...triParams) as Iterable<any>) {
             processed++;
             if (processed % PROGRESS_EVERY === 0) {
@@ -329,23 +459,39 @@ export async function evaluateTriangles(
                 process.stdout.write(`\r  ${pct.padStart(5)}%  —  ${processed}/${totalTriangles} processed, ${result.trianglesScored} scored, ${candidates.length} kept`);
             }
             const loaded = loadTrianglePairs(tri, pairsByAddr);
-            if (!loaded) { result.trianglesSkipped++; continue; }
+            if (!loaded) {
+                skipReasons.missingPair++;
+                continue;
+            }
             const [pAB, pBC, pCA] = loaded;
             if (pAB.reserves0 <= 0 || pAB.reserves1 <= 0 ||
                 pBC.reserves0 <= 0 || pBC.reserves1 <= 0 ||
                 pCA.reserves0 <= 0 || pCA.reserves1 <= 0) {
-                result.trianglesSkipped++;
+                skipReasons.missingReserves++;
                 continue;
             }
-            // Dust-pool filter: if any pair has less than minLiq wei on either
-            // side, skip. Prevents math phantoms where a near-zero reserve
-            // produces impossible "profits".
-            if (minLiq > 0 && (
-                pAB.reserves0 < minLiq || pAB.reserves1 < minLiq ||
-                pBC.reserves0 < minLiq || pBC.reserves1 < minLiq ||
-                pCA.reserves0 < minLiq || pCA.reserves1 < minLiq
-            )) {
-                result.trianglesSkipped++;
+            // Dust-pool filter: per-token-decimals-aware. Each side is
+            // checked against ITS OWN token's minReserve (minLiquidityTokens
+            // × 10^that token's decimals) — not a single global number.
+            // legacyMinLiqWei (deprecated) is still ANDed in on top if set.
+            const dustTripped =
+                pAB.reserves0 < pAB.minReserve0 || pAB.reserves1 < pAB.minReserve1 ||
+                pBC.reserves0 < pBC.minReserve0 || pBC.reserves1 < pBC.minReserve1 ||
+                pCA.reserves0 < pCA.minReserve0 || pCA.reserves1 < pCA.minReserve1 ||
+                (legacyMinLiqWei > 0 && (
+                    pAB.reserves0 < legacyMinLiqWei || pAB.reserves1 < legacyMinLiqWei ||
+                    pBC.reserves0 < legacyMinLiqWei || pBC.reserves1 < legacyMinLiqWei ||
+                    pCA.reserves0 < legacyMinLiqWei || pCA.reserves1 < legacyMinLiqWei
+                ));
+            if (dustTripped) {
+                skipReasons.dustLiquidity++;
+                if (debug && debugPrinted < debugLimit) {
+                    debugPrinted++;
+                    console.log(`  [debug] triangle #${tri.id} skipped: dust liquidity`);
+                    dumpDustDetail('AB', pAB);
+                    dumpDustDetail('BC', pBC);
+                    dumpDustDetail('CA', pCA);
+                }
                 continue;
             }
             result.trianglesScored++;
@@ -374,7 +520,7 @@ export async function evaluateTriangles(
                         { a2: secondO.rOut, b2: secondO.rIn },  // note: a2/b2 swap for the closed form's convention
                         avgFee,
                     );
-                    if (!(x > 0) || !isFinite(x)) continue;
+                    if (!(x > 0) || !isFinite(x)) { skipReasons.notProfitable++; continue; }
 
                     // Refine with a couple ternary iterations if fees differ (usually tiny effect)
                     if (first.fee !== second.fee) {
@@ -390,23 +536,36 @@ export async function evaluateTriangles(
                     const out = swap_output(mid, secondO.rIn, secondO.rOut, second.fee);
                     const grossProfit = out - x;
                     const netProfit   = grossProfit - x * flashPremium;
+                    const roi = x > 0 ? netProfit / x : 0;
 
-                    if (netProfit > minProfit && x >= minInput && (netProfit / x) <= maxRoi) {
-                        result.candidatesFound++;
-                        candidates.push({
-                            triangleId: tri.id,
-                            rootToken: root,
-                            hopCount: 2,
-                            direction,
-                            inputAmount: x,
-                            grossProfit,
-                            netProfit,
-                            hops: [
-                                { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee },
-                                { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee },
-                            ],
-                        });
+                    if (netProfit <= minProfit) { skipReasons.belowMinProfit++; continue; }
+                    if (x < minInput)           { skipReasons.belowMinInput++;  continue; }
+                    if (roi > maxRoi)           { skipReasons.roiCapExceeded++;
+                        if (debug && debugPrinted < debugLimit) {
+                            debugPrinted++;
+                            console.log(
+                                `  [debug] triangle #${tri.id} [2h ${direction}] skipped: ROI cap ` +
+                                `(roi=${(roi*100).toFixed(2)}% > cap=${(maxRoi*100).toFixed(2)}%, ` +
+                                `in=${x.toFixed(6)}, net=${netProfit.toFixed(6)})`
+                            );
+                        }
+                        continue;
                     }
+
+                    result.candidatesFound++;
+                    candidates.push({
+                        triangleId: tri.id,
+                        rootToken: root,
+                        hopCount: 2,
+                        direction,
+                        inputAmount: x,
+                        grossProfit,
+                        netProfit,
+                        hops: [
+                            { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee },
+                            { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee },
+                        ],
+                    });
                 }
             } else {
                 // 3-hop: try both traversal directions
@@ -429,36 +588,54 @@ export async function evaluateTriangles(
                         orient(hops[1].pair, hops[1].tokenIn).rIn,
                         orient(hops[2].pair, hops[2].tokenIn).rIn,
                     );
-                    if (smallestInReserve <= 0) continue;
+                    if (smallestInReserve <= 0) { skipReasons.notProfitable++; continue; }
                     const hi = smallestInReserve / 2;  // never swap more than 50% of any pool
                     const evalAt = (x: number) => simulate3Hop(x, root, hops) - x;
                     const xStar = ternarySearchLog(evalAt, 1, hi, 40);
                     const grossProfit = evalAt(xStar);
-                    if (grossProfit <= 0) continue;
+                    if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
                     const netProfit = grossProfit - xStar * flashPremium;
-                    if (netProfit > minProfit && xStar >= minInput && (netProfit / xStar) <= maxRoi) {
-                        result.candidatesFound++;
-                        candidates.push({
-                            triangleId: tri.id,
-                            rootToken: root,
-                            hopCount: 3,
-                            direction,
-                            inputAmount: xStar,
-                            grossProfit,
-                            netProfit,
-                            hops: hops.map(h => ({
-                                pair: h.pair.pair,
-                                factory: h.pair.factory,
-                                tokenIn: h.tokenIn,
-                                tokenOut: h.tokenOut,
-                                fee: h.pair.fee,
-                            })),
-                        });
+                    const roi = xStar > 0 ? netProfit / xStar : 0;
+
+                    if (netProfit <= minProfit) { skipReasons.belowMinProfit++; continue; }
+                    if (xStar < minInput)       { skipReasons.belowMinInput++;  continue; }
+                    if (roi > maxRoi)           { skipReasons.roiCapExceeded++;
+                        if (debug && debugPrinted < debugLimit) {
+                            debugPrinted++;
+                            console.log(
+                                `  [debug] triangle #${tri.id} [3h ${direction}] skipped: ROI cap ` +
+                                `(roi=${(roi*100).toFixed(2)}% > cap=${(maxRoi*100).toFixed(2)}%, ` +
+                                `in=${xStar.toFixed(6)}, net=${netProfit.toFixed(6)})`
+                            );
+                        }
+                        continue;
                     }
+
+                    result.candidatesFound++;
+                    candidates.push({
+                        triangleId: tri.id,
+                        rootToken: root,
+                        hopCount: 3,
+                        direction,
+                        inputAmount: xStar,
+                        grossProfit,
+                        netProfit,
+                        hops: hops.map(h => ({
+                            pair: h.pair.pair,
+                            factory: h.pair.factory,
+                            tokenIn: h.tokenIn,
+                            tokenOut: h.tokenOut,
+                            fee: h.pair.fee,
+                        })),
+                    });
                 }
             }
         }
+
+        result.trianglesSkipped =
+            skipReasons.missingPair + skipReasons.missingReserves + skipReasons.dustLiquidity +
+            skipReasons.belowMinProfit + skipReasons.belowMinInput + skipReasons.roiCapExceeded;
 
         candidates.sort((a, b) => b.netProfit - a.netProfit);
         result.profitableCount = candidates.length;

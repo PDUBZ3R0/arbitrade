@@ -21,14 +21,25 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           (default 0.001 = 0.001 root tokens; set 0 to disable)');
     console.error('  --min-input-tokens N     Minimum optimal input as fraction of root token');
     console.error('                           (default 0.001; filters dust-input phantoms)');
-    console.error('  --min-liquidity N        Skip pairs where either side has < N wei reserves');
-    console.error('                           (default 1e18 = 1 token for 18-dec)');
-    console.error('                           NOTE: for 6-dec tokens like USDC, override to ~1e6');
+    console.error('  --min-liquidity-tokens N Skip pairs where either side has < N WHOLE TOKENS of');
+    console.error('                           reserves (default 0.001). Decimals-aware — uses the');
+    console.error('                           tokens table / flashloan config per-token, so this is');
+    console.error('                           correct for mixed-decimal chains (e.g. USDC 6-dec next');
+    console.error('                           to an 18-dec token). Use this, not --min-liquidity.');
+    console.error('  --min-liquidity N        DEPRECATED: flat wei threshold applied on top of');
+    console.error('                           --min-liquidity-tokens, decimal-BLIND (1e18 wei is "1');
+    console.error('                           token" for 18-dec but "1 trillion" for 6-dec like USDC —');
+    console.error('                           silently kills every pair on that token). Default 0 (off).');
     console.error('  --max-roi-pct N          Skip candidates with ROI above N%. Real arb is under');
     console.error('                           a few percent; default 20 catches phantoms while');
     console.error('                           keeping legitimate opportunities. Set 100 for raw.');
     console.error('  --limit N                Show top N candidates only (default 20)');
     console.error('  --verbose                Show hop details for each candidate');
+    console.error('  --debug                  Print per-triangle detail (reserves, decimals, fee,');
+    console.error('                           computed ROI) for a sample of FILTERED triangles — use');
+    console.error('                           this to audit whether a filter is behaving correctly');
+    console.error('                           against real numbers instead of trusting it blind.');
+    console.error('  --debug-limit N          Cap on triangles printed in --debug mode (default 25)');
     console.error('');
     console.error('Reads triangles table (built by `yarn triangles`) and reserves');
     console.error('(refreshed by `yarn reserves`), computes optimal input and profit.');
@@ -50,10 +61,23 @@ const minProfitTokensStr = getStr('--min-profit-tokens');
 const minProfitTokens = minProfitTokensStr ? parseFloat(minProfitTokensStr) : undefined;  // undefined → default 0.001
 const minInputTokensStr = getStr('--min-input-tokens');
 const minInputTokens = minInputTokensStr ? parseFloat(minInputTokensStr) : undefined;
+
+// New decimals-aware liquidity filter, in whole tokens. Default 0.001 — a
+// much lower floor than the old flat-wei default, and correct across mixed
+// decimals. See evaluator.ts's EvaluateOptions doc for why the old
+// --min-liquidity (flat wei) was silently wrong for non-18-decimal tokens.
+const minLiquidityTokensStr = getStr('--min-liquidity-tokens');
+const minLiquidityTokens = minLiquidityTokensStr ? parseFloat(minLiquidityTokensStr) : 0.001;
+
+// DEPRECATED flat-wei floor. Default 0 (off) — the old 1e18 default is what
+// caused mixed-decimal chains (Gnosis: USDC/USDCe alongside 18-dec tokens)
+// to silently lose most/all candidates. Only applies if explicitly passed.
 const minLiqStr = getStr('--min-liquidity');
-// Default: 1 whole 18-decimal token. Filters most math phantoms from dust
-// pools. Override for USDC-rooted work (~1e6 = 1 USDC).
-const minPairReservesWei = minLiqStr ? BigInt(minLiqStr) : 1_000_000_000_000_000_000n;
+const minPairReservesWei = minLiqStr ? BigInt(minLiqStr) : undefined;
+if (minLiqStr) {
+    console.log(`[!] --min-liquidity is deprecated and decimal-blind. Consider --min-liquidity-tokens instead.`);
+}
+
 const maxRoiStr = getStr('--max-roi-pct');
 // Default 20% — real arb rarely exceeds a few percent; anything above 20%
 // on Sonic/Gnosis/Base/etc is almost always a math phantom. Bump higher
@@ -62,6 +86,9 @@ const maxRoiPct = maxRoiStr ? parseFloat(maxRoiStr) : 20;
 const limitStr   = getStr('--limit');
 const limit      = limitStr ? parseInt(limitStr, 10) : 20;
 const verbose    = hasFlag('--verbose');
+const debug      = hasFlag('--debug');
+const debugLimitStr = getStr('--debug-limit');
+const debugLimit = debugLimitStr ? parseInt(debugLimitStr, 10) : 25;
 
 const cfg = loadChainConfig(chainArg);
 const dbFile = dbPath(chainArg);
@@ -71,26 +98,43 @@ console.log(`DB: ${dbFile}`);
 if (onlyRoot) console.log(`Root filter: ${onlyRoot}`);
 if (onlyHops) console.log(`Hop filter: ${onlyHops}`);
 if (minProfitWei != null) console.log(`Min profit: ${minProfitWei} wei`);
-console.log(`Min liquidity:      ${minPairReservesWei} wei`);
+console.log(`Min liquidity (tokens, decimals-aware): ${minLiquidityTokens}`);
+if (minPairReservesWei != null) console.log(`Min liquidity (LEGACY flat wei):        ${minPairReservesWei}`);
 console.log(`Max ROI cap:        ${maxRoiPct}%`);
 if (minProfitTokens != null)  console.log(`Min profit tokens:  ${minProfitTokens}`);
 if (minInputTokens  != null)  console.log(`Min input tokens:   ${minInputTokens}`);
 console.log('');
 
 const result = await evaluateTriangles(cfg, dbFile, {
-    onlyRoot, onlyHops, minProfitWei, limit, minPairReservesWei, maxRoiPct,
+    onlyRoot, onlyHops, minProfitWei, limit,
+    minLiquidityTokens, minPairReservesWei, maxRoiPct,
     minProfitTokens, minInputTokens,
+    debug, debugLimit,
 });
 
 console.log('\n' + '─'.repeat(60));
 console.log(`Done in ${(result.elapsedMs / 1000).toFixed(2)}s`);
 console.log(`  Triangles scored:    ${result.trianglesScored}`);
-console.log(`  Triangles skipped:   ${result.trianglesSkipped} (dust or missing reserves)`);
+console.log(`  Triangles skipped:   ${result.trianglesSkipped}`);
+console.log(`    missing pair:        ${result.skipReasons.missingPair}`);
+console.log(`    missing reserves:    ${result.skipReasons.missingReserves}`);
+console.log(`    dust liquidity:      ${result.skipReasons.dustLiquidity}`);
+console.log(`    below min profit:    ${result.skipReasons.belowMinProfit}`);
+console.log(`    below min input:     ${result.skipReasons.belowMinInput}`);
+console.log(`    ROI cap exceeded:    ${result.skipReasons.roiCapExceeded}`);
+console.log(`  (not counted as "skipped" — no positive spread at all: ${result.skipReasons.notProfitable})`);
+if (result.tokensWithUnknownDecimals > 0) {
+    console.log(`  [!] ${result.tokensWithUnknownDecimals} token(s) had unknown decimals (defaulted to 18) — run \`yarn tokens ${cfg.chain.label}\``);
+}
 console.log(`  Candidates found:    ${result.candidatesFound}`);
 console.log(`  Profitable:          ${result.profitableCount}`);
 
 if (result.topCandidates.length === 0) {
     console.log('\nNo profitable candidates.');
+    if (result.skipReasons.dustLiquidity > result.trianglesScored) {
+        console.log(`Most triangles were dropped by the liquidity filter (${result.skipReasons.dustLiquidity}).`);
+        console.log(`Re-run with --debug to see exact reserves/decimals for a sample, or --min-liquidity-tokens 0 to disable it entirely and check whether that's the cause.`);
+    }
     process.exit(0);
 }
 
