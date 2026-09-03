@@ -378,24 +378,39 @@ async function deriveFee(
     pairAddr: string,
 ): Promise<{ fee: number; confidence: 'derived' | 'assumed'; notes: string[] }> {
     const notes: string[] = [];
-    // Most V2 forks encode the fee constant into the pair's swap() function
-    // rather than exposing it publicly. Without deploying a helper contract
-    // that calls swap() and reads the resulting reserves, we can't derive it
-    // precisely on-chain. So we assume the V2 default (0.003) and let the
-    // user override in config if they know it differs.
-    //
-    // Common overrides worth knowing:
-    //   - SpookySwap:  0.002 (998/1000)
-    //   - Trader Joe:  0.003
-    //   - PancakeSwap: 0.0025 (9975/10000)
-    //   - ApeSwap:     0.002 (998/1000)
-    //
-    // Future improvement: deploy a "FeeProber" helper contract that does the
-    // swap and reads the delta, so we can derive fee exactly.
+
+    // sevm-based derivation: decompile the pair's swap() bytecode and try to
+    // recover the hardcoded fee constant directly, instead of assuming V2
+    // standard. See util/decompile-fee.ts for the extraction approach and
+    // its limitations.
+    const { deriveFeeFromBytecode } = await import('./decompile-fee.ts');
+    const decompiled = await deriveFeeFromBytecode(provider, pairAddr);
+
+    if (decompiled.confidence === 'derived' && decompiled.fee !== null) {
+        const via = decompiled.matches.map(m => `${m.numerator}/${m.denominator}`).join(', ');
+        notes.push(`✓ Fee derived from decompiled swap() bytecode via sevm: ${decompiled.fee} (constant ${via})`);
+        return { fee: decompiled.fee, confidence: 'derived', notes };
+    }
+
+    if (decompiled.confidence === 'ambiguous') {
+        const via = decompiled.matches.map(m => `${m.numerator}/${m.denominator}=${m.fee}`).join(', ');
+        notes.push(
+            `[!] sevm decompile found multiple plausible fee constants in swap(): ${via}. ` +
+            `Defaulting to 0.003 — REVIEW MANUALLY (run \`yarn verify-fees <chain> --show-snippets\` ` +
+            `to see the decompiled swap() body for this factory before trusting the default).`
+        );
+        return { fee: 0.003, confidence: 'assumed', notes };
+    }
+
+    // decompiled.confidence === 'unknown' — no swap() found, decompile
+    // failed, or no plausible constant at all. Fall back to the V2-standard
+    // assumption, same as before sevm was wired in, but now the reason is
+    // explicit instead of just "we didn't try".
     notes.push(
-        `Fee not derivable from on-chain state alone. Defaulting to 0.003 (V2 standard). ` +
-        `Verify manually by checking the pair contract's swap() source — look for ` +
-        `\`amountIn.mul(N)\` where fee = (1000-N)/1000. Common values: 997=0.3%, 998=0.2%, 9975=0.25%.`
+        `[!] sevm decompile could not identify a fee constant in swap() ` +
+        `(${decompiled.error ?? 'no plausible numerator/denominator pair found'}). ` +
+        `Defaulting to 0.003 (V2 standard) — UNVERIFIED. ` +
+        `Common overrides worth checking manually: SpookySwap 0.002, PancakeSwap 0.0025, ApeSwap 0.002.`
     );
     return { fee: 0.003, confidence: 'assumed', notes };
 }
@@ -652,7 +667,7 @@ export async function verifyFactory(
         } else {
             // Pure V2: include fee with clear labeling if it's just assumed
             const feeComment = result.feeConfidence === 'derived'
-                ? ''
+                ? '  // ✓ sevm-derived from swap() bytecode'
                 : '  // ← UNVERIFIED, check pair swap() source (see report notes)';
             const feeLine = `\n          fee: ${result.fee}${feeComment}`;
             result.configSnippet =

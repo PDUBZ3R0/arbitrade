@@ -608,6 +608,19 @@ export class ArbitradeDB {
         return out;
     }
 
+    /**
+     * One pair address for a given factory, for callers that just need a
+     * representative sample (e.g. bytecode-based fee derivation) rather than
+     * the full pair list. Picks deterministically (lowest address) so repeat
+     * calls are stable. Returns null if the factory has no scanned pairs.
+     */
+    getSamplePairForFactory(factory: string): { pair: string; token0: string; token1: string } | null {
+        const row = this.db.prepare(
+            `SELECT address AS pair, token0, token1 FROM pairs WHERE factory = ? ORDER BY address LIMIT 1`
+        ).get(factory.toLowerCase()) as { pair: string; token0: string; token1: string } | undefined;
+        return row ?? null;
+    }
+
     // ------------------------------------------- triangle enumeration inputs
 
     /**

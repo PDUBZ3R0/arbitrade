@@ -1,6 +1,6 @@
 #!/bin/bash
 
-STAGE="panoramix"
+STAGE="decompile"
 CHAIN="$1"
 CONTRACT="$2"
 
@@ -20,8 +20,5 @@ fi
 export RPCURL=$(node --experimental-strip-types --disable-warning=ExperimentalWarning source/util/resolvehost.ts $CHAIN)
 
 {
-	echo "RPC URL: $RPCURL"
-	WEB3_PROVIDER_URI=$RPCURL \
-	PYTHONINTMAXSTRDIGITS=0 \
-	panoramix ${CONTRACT}
+	sevm sol --rpc-url $RPCURL ${CONTRACT}
 } 2>&1 | tee "$LOG"

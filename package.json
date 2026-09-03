@@ -13,6 +13,7 @@
     "deploy-flasharb": "sh scripts/deploy-flasharb.sh",
     "discover": "sh scripts/log.sh source/util discover-deploy-block",
     "verify": "sh scripts/log.sh source/util verify-factory",
+    "verify-fees": "sh scripts/log.sh source verify-fees",
     "factories": "sh scripts/log.sh source/util find-factories",
     "scan": "sh scripts/log.sh source scan",
     "reserves": "sh scripts/log.sh source reserves",
@@ -24,7 +25,7 @@
     "manual": "sh scripts/manual.sh",
     "pretty-print": "bash scripts/pretty.sh print",
     "pretty-commit": "bash scripts/pretty.sh commit",
-    "panoramix": "bash scripts/decompile.sh"
+    "decompile": "bash scripts/decompile.sh"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",
@@ -33,7 +34,8 @@
     "better-sqlite3": "^13.0.3",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
-    "json5": "^2.2.3"
+    "json5": "^2.2.3",
+    "sevm": "^0.7.4"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.0",
