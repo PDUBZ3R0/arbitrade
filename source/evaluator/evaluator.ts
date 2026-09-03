@@ -445,10 +445,13 @@ export async function evaluateTriangles(
         const symOrAddr = (addr: string): string => addr.slice(0, 10);
         const dumpDustDetail = (label: string, p: PairData) => {
             const d0 = decimalsOf(p.token0), d1 = decimalsOf(p.token1);
+            const r0 = p.reserves0 / 10 ** d0, r1 = p.reserves1 / 10 ** d1;
+            const fail0 = r0 < minLiquidityTokens ? ' <-- BELOW MIN' : '';
+            const fail1 = r1 < minLiquidityTokens ? ' <-- BELOW MIN' : '';
             console.log(
                 `      [${label}] ${p.pair.slice(0,10)}  ` +
-                `${symOrAddr(p.token0)}: reserve=${(p.reserves0 / 10 ** d0).toFixed(6)} (dec=${d0}) min=${minLiquidityTokens}  ` +
-                `${symOrAddr(p.token1)}: reserve=${(p.reserves1 / 10 ** d1).toFixed(6)} (dec=${d1}) min=${minLiquidityTokens}`
+                `${symOrAddr(p.token0)}: reserve=${r0.toFixed(6)} (dec=${d0}) min=${minLiquidityTokens}${fail0}  ` +
+                `${symOrAddr(p.token1)}: reserve=${r1.toFixed(6)} (dec=${d1}) min=${minLiquidityTokens}${fail1}`
             );
         };
 
@@ -538,9 +541,21 @@ export async function evaluateTriangles(
                     const netProfit   = grossProfit - x * flashPremium;
                     const roi = x > 0 ? netProfit / x : 0;
 
-                    if (netProfit <= minProfit) { skipReasons.belowMinProfit++; continue; }
-                    if (x < minInput)           { skipReasons.belowMinInput++;  continue; }
-                    if (roi > maxRoi)           { skipReasons.roiCapExceeded++;
+                    if (netProfit <= minProfit) {
+                        skipReasons.belowMinProfit++;
+                        if (debug && debugPrinted < debugLimit) {
+                            debugPrinted++;
+                            console.log(
+                                `  [debug] triangle #${tri.id} [2h ${direction}] skipped: below min profit ` +
+                                `(net=${netProfit.toFixed(8)}, threshold=${minProfit.toFixed(8)}, ` +
+                                `shortfall=${(minProfit - netProfit).toFixed(8)}, in=${x.toFixed(6)}, roi=${(roi*100).toFixed(4)}%)`
+                            );
+                        }
+                        continue;
+                    }
+                    if (x < minInput) { skipReasons.belowMinInput++; continue; }
+                    if (roi > maxRoi) {
+                        skipReasons.roiCapExceeded++;
                         if (debug && debugPrinted < debugLimit) {
                             debugPrinted++;
                             console.log(
@@ -598,7 +613,18 @@ export async function evaluateTriangles(
                     const netProfit = grossProfit - xStar * flashPremium;
                     const roi = xStar > 0 ? netProfit / xStar : 0;
 
-                    if (netProfit <= minProfit) { skipReasons.belowMinProfit++; continue; }
+                    if (netProfit <= minProfit) {
+                        skipReasons.belowMinProfit++;
+                        if (debug && debugPrinted < debugLimit) {
+                            debugPrinted++;
+                            console.log(
+                                `  [debug] triangle #${tri.id} [3h ${direction}] skipped: below min profit ` +
+                                `(net=${netProfit.toFixed(8)}, threshold=${minProfit.toFixed(8)}, ` +
+                                `shortfall=${(minProfit - netProfit).toFixed(8)}, in=${xStar.toFixed(6)}, roi=${(roi*100).toFixed(4)}%)`
+                            );
+                        }
+                        continue;
+                    }
                     if (xStar < minInput)       { skipReasons.belowMinInput++;  continue; }
                     if (roi > maxRoi)           { skipReasons.roiCapExceeded++;
                         if (debug && debugPrinted < debugLimit) {

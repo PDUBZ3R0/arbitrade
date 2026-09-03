@@ -277,55 +277,55 @@
     },
   },
   flashloan: {
-    provider: 'aave-v3',
-    addressesProvider: '0x36616cf17557639614c1cdDb356b1B83fc0B2132',
-    premium: 0.0005,
-    tokens: [
+    "provider": "aave-v3",
+    "premium": 0.0005,
+    "tokens": [
       {
-        symbol: 'wXDAI',
-        address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
-        decimals: 18,
+        "symbol": "WETH",
+        "address": "0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1",
+        "decimals": 18
       },
       {
-        symbol: 'WETH',
-        address: '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1',
-        decimals: 18,
+        "symbol": "wstETH",
+        "address": "0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6",
+        "decimals": 18
       },
       {
-        symbol: 'wstETH',
-        address: '0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6',
-        decimals: 18,
+        "symbol": "GNO",
+        "address": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb",
+        "decimals": 18
       },
       {
-        symbol: 'GNO',
-        address: '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb',
-        decimals: 18,
+        "symbol": "USDC",
+        "address": "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83",
+        "decimals": 6
       },
       {
-        symbol: 'USDC',
-        address: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83',
-        decimals: 6,
+        "symbol": "WXDAI",
+        "address": "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+        "decimals": 18
       },
       {
-        symbol: 'EURe',
-        address: '0xcB444e90D8198415266c6a2724b7900fb12FC56E',
-        decimals: 18,
+        "symbol": "EURe",
+        "address": "0xcB444e90D8198415266c6a2724b7900fb12FC56E",
+        "decimals": 18
       },
       {
-        symbol: 'sDAI',
-        address: '0xaf204776c7245bF4147c2612BF6e5972Ee483701',
-        decimals: 18,
+        "symbol": "sDAI",
+        "address": "0xaf204776c7245bF4147c2612BF6e5972Ee483701",
+        "decimals": 18
       },
       {
-        symbol: 'USDCe',
-        address: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0',
-        decimals: 6,
+        "symbol": "USDCe",
+        "address": "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0",
+        "decimals": 6
       },
       {
-        symbol: 'GHO',
-        address: '0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73',
-        decimals: 18,
-      },
+        "symbol": "GHO",
+        "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
+        "decimals": 18
+      }
     ],
-  },
+    "pool": "0xb50201558B00496A145fE76f7424749556E326D8"
+  }
 }
