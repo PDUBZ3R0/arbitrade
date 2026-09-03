@@ -147,6 +147,19 @@ export type RawChainConfig = {
         minLiquidityTokens?: number;
         minInputTokens?: number;
     };
+    /**
+     * Chain-tuned reserves-stage dust threshold (piece 4), same numeraire
+     * semantics as `evaluator` above — denominated in cfg.chain.token, not a
+     * flat amount applied identically to every pair-side token. Converted
+     * per-token via the best-liquidity direct DB-known pair against the
+     * numeraire. Falls back to a flat threshold for a token with no price
+     * path yet (common on a chain's very first `yarn reserves` run, before
+     * the numeraire's own pairs have reserves in the DB), logged once per
+     * affected token.
+     */
+    reserves?: {
+        dust?: number;
+    };
 };
 
 // -----------------------------------------------------------------------------
@@ -190,6 +203,7 @@ export type ChainConfig = {
     factories: NormalizedFactory[];
     flashloan?: RawChainConfig['flashloan'];
     evaluator?: RawChainConfig['evaluator'];
+    reserves?: RawChainConfig['reserves'];
     scan: ScanTuning;
 };
 
@@ -413,6 +427,7 @@ export function loadChainConfig(chainArg: string): ChainConfig {
         factories: filteredFactories,
         flashloan: raw.flashloan,
         evaluator: raw.evaluator,
+        reserves: raw.reserves,
         scan: resolveScanTuning(meta.label, raw),
     };
 }

@@ -10,6 +10,14 @@
     interval: 3000,
     pagesize: 1000000,
   },
+  reserves: {
+    dust: 0.005
+  },
+  evaluate: {
+    minProfitTokens: 0.01,
+    minInputTokens: 0.01,
+    minLiquidityTokens: 1
+  },
   factories: { 
     v2: {
       abi: [

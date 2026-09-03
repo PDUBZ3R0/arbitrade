@@ -9,6 +9,14 @@
     interval: 3000,
     pagesize: 1000000,
   },
+  reserves: {
+    dust: 0.1
+  },
+  evaluate: {
+    minProfitTokens: 1,
+    minInputTokens: 1,
+    minLiquidityTokens: 5
+  },
   factories: {
     v2: {
       abi: [
@@ -249,5 +257,11 @@
     minProfitTokens: 1,
     minLiquidityTokens: 1,
     minInputTokens: 1,
+  },
+  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
+  // `evaluator` above, but deliberately looser: this flags factories as
+  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
+  reserves: {
+    dust: 0.1,
   },
 }

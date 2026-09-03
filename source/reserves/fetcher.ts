@@ -25,6 +25,7 @@ import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
 import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
+import { findBestDirectPriceFromDb } from '../util/numeraire-price.ts';
 
 const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
 const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
@@ -125,9 +126,15 @@ export type FetchOptions = {
      */
     strict?: boolean;
     /**
-     * Minimum human-readable reserve on BOTH sides of a pair for it to count
-     * as "real liquidity" (non-dust). Value is in token units (raw/10^decimals),
-     * so 0.01 means "at least 0.01 of each token". Default 0 = disabled.
+     * Minimum reserve on BOTH sides of a pair for it to count as "real
+     * liquidity" (non-dust), denominated in the CHAIN's numeraire token
+     * (cfg.chain.token), not a flat amount applied identically to every
+     * pair-side token — same semantics as the evaluator's minProfitTokens.
+     * "0.10" means "0.10 numeraire-token-worth"; converted per-token via the
+     * best-liquidity DB-known direct pair against the numeraire. A token
+     * with no price path yet (e.g. the numeraire's own pairs haven't been
+     * fetched this run) falls back to the flat number directly, logged once.
+     * Default 0 = disabled.
      *
      * Requires the tokens table to be populated (`yarn tokens <chain>`); pairs
      * whose tokens don't have decimals recorded are conservatively kept.
@@ -210,6 +217,35 @@ export async function fetchReserves(
     // (populated by `yarn tokens`). Empty map = no dust filtering happens.
     // Also seeded with flashloan tokens' decimals from config (higher trust).
     const decimalsByToken = new Map<string, number>();
+    const decimalsOfForPricing = (addr: string): number => decimalsByToken.get(addr.toLowerCase()) ?? 18;
+    // Numeraire pricing for the dust threshold (see FetchOptions.dustThreshold
+    // doc) — DB-backed since this fetcher processes factory-by-factory rather
+    // than holding every pair+reserve in memory. Lazily cached per token as
+    // pairs are actually checked, since decimalsByToken (built below) can
+    // cover far more tokens than ever get dust-checked in a given run.
+    const numeraire = cfg.chain.token?.toLowerCase();
+    const priceCache = new Map<string, { price: number; liquidity: number } | null>();
+    const warnedNoPricePath = new Set<string>();
+    const minReserveFor = (token: string): number => {
+        const dustThreshold = opts.dustThreshold!;
+        if (!numeraire) return dustThreshold; // no numeraire configured at all — flat behavior
+        const key = token.toLowerCase();
+        let priced = priceCache.get(key);
+        if (priced === undefined) {
+            priced = findBestDirectPriceFromDb(db, key, numeraire, decimalsOfForPricing);
+            priceCache.set(key, priced);
+        }
+        if (priced && priced.price > 0) return dustThreshold / priced.price;
+        if (!warnedNoPricePath.has(key)) {
+            warnedNoPricePath.add(key);
+            console.log(
+                `[dust filter] No price path to numeraire yet for ${key.slice(0, 10)} — ` +
+                `using flat threshold (${dustThreshold}) for this token. Common on a chain's ` +
+                `first \`yarn reserves\` run before the numeraire's own pairs have reserves.`
+            );
+        }
+        return dustThreshold;
+    };
     if (opts.dustThreshold && opts.dustThreshold > 0) {
         for (const t of cfg.flashloan?.tokens ?? []) {
             decimalsByToken.set(t.address.toLowerCase(), t.decimals);
@@ -229,7 +265,10 @@ export async function fetchReserves(
                     hits++;
                 }
             }
-            console.log(`[dust filter] threshold=${opts.dustThreshold}; loaded decimals for ${hits + (cfg.flashloan?.tokens?.length ?? 0)} token(s) (of ${tokenAddrs.size} referenced)`);
+            const numeraireNote = numeraire
+                ? ` (numeraire-denominated: threshold means "${opts.dustThreshold} ${cfg.chain.currency}-numeraire-worth", converted per-token)`
+                : ' (no chain.token configured — flat threshold applied to every token as-is)';
+            console.log(`[dust filter] threshold=${opts.dustThreshold}${numeraireNote}; loaded decimals for ${hits + (cfg.flashloan?.tokens?.length ?? 0)} token(s) (of ${tokenAddrs.size} referenced)`);
             if (hits === 0 && (cfg.flashloan?.tokens?.length ?? 0) === 0) {
                 console.log(`[dust filter] WARNING: tokens table is empty. Run 'yarn tokens ${cfg.chain.name.toLowerCase()}' first, or the dust filter will be a no-op.`);
             }
@@ -349,7 +388,9 @@ export async function fetchReserves(
                         if (d0 === undefined || d1 === undefined) continue;
                         const h0 = Number(r.reserves0) / (10 ** d0);
                         const h1 = Number(r.reserves1) / (10 ** d1);
-                        if (h0 < opts.dustThreshold || h1 < opts.dustThreshold) {
+                        const min0 = minReserveFor(bp.token0);
+                        const min1 = minReserveFor(bp.token1);
+                        if (h0 < min0 || h1 < min1) {
                             factoryDustCount++;
                         }
                     }
@@ -450,7 +491,8 @@ export async function fetchReserves(
                 console.log(`\n${'─'.repeat(72)}`);
                 console.log(`Suspicious factories by liquidity signal:`);
                 if (opts.dustThreshold && opts.dustThreshold > 0) {
-                    console.log(`  Dust threshold: ${opts.dustThreshold} tokens (both sides). Dust pairs across run: ${totalDust}.`);
+                    const unit = numeraire ? `${cfg.chain.currency}-numeraire-worth` : 'tokens';
+                    console.log(`  Dust threshold: ${opts.dustThreshold} ${unit} (both sides, per-token converted). Dust pairs across run: ${totalDust}.`);
                 }
                 console.log(`${'─'.repeat(72)}`);
 

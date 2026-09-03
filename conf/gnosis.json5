@@ -339,4 +339,10 @@
     minLiquidityTokens: 0.10,
     minInputTokens: 0.10,
   },
+  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
+  // `evaluator` above, but deliberately looser: this flags factories as
+  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
+  reserves: {
+    dust: 0.01,
+  },
 }
