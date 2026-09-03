@@ -327,5 +327,16 @@
       }
     ],
     "pool": "0xb50201558B00496A145fE76f7424749556E326D8"
-  }
+  },
+  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
+  // tokens, not fractions. WXDAI is ~$1, so 0.10 is a meaningful minimum
+  // profit/liquidity floor here without needing a USD price oracle. Applies
+  // the same fraction to every root token on this chain (WETH, GNO, etc.) —
+  // for a non-stablecoin root that's a different real dollar floor; override
+  // per-run with --min-profit-tokens etc. if you want per-root precision.
+  evaluator: {
+    minProfitTokens: 0.10,
+    minLiquidityTokens: 0.10,
+    minInputTokens: 0.10,
+  },
 }

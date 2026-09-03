@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 
 import { JsonRpcProvider } from 'ethers';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { deriveFeeFromBytecode } from './util/decompile-fee.ts';
@@ -24,8 +25,13 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('Usage: yarn verify-fees <chain> [options]');
     console.error('');
     console.error('  --group v2|v2fee|solidly   Which factory group to audit (default: v2)');
-    console.error('  --show-snippets            Print the decompiled swap() body for every');
-    console.error('                             MISMATCH/UNKNOWN factory, for manual review');
+    console.error('  --show-snippets            Write the decompiled swap() body for every');
+    console.error('                             MISMATCH/UNKNOWN/AMBIGUOUS factory to a separate');
+    console.error('                             file under log/<chain>/verify-fees-snippets/ —');
+    console.error('                             NOT inlined into the console/log output, since a');
+    console.error('                             real UniswapV2Pair swap() body (with full ERC20');
+    console.error('                             callback logic) can be tens of KB; dozens of them');
+    console.error('                             in one log file blow past readable/tool size limits.');
     console.error('');
     console.error('Decompiles one sample pair per factory via sevm and compares the recovered');
     console.error('fee constant against what conf/<chain>.json5 currently assumes. Prints a');
@@ -111,15 +117,10 @@ if (mismatches.length > 0) {
     for (const r of mismatches) {
         console.log(`   ${r.name.padEnd(32)} assumed=${r.assumedFee}  decompiled=${r.decompiledFee} (${r.confidence})  ${r.detail}`);
         console.log(`     ${r.address}`);
-        if (showSnippets) {
-            console.log('     --- decompiled swap() ---');
-            console.log('     ' + r.snippet.split('\n').join('\n     '));
-            console.log('     --- end ---\n');
-        }
     }
     console.log(`\n   Fix by hand in conf/${cfg.chain.label}.json5 — set "fee": <decompiledFee> on each entry above.`);
-    console.log(`   For 'ambiguous' confidence, re-run with --show-snippets and read the swap() body`);
-    console.log(`   yourself before trusting the number — the heuristic found more than one candidate.`);
+    console.log(`   For 'ambiguous' confidence, check the snippet file before trusting the number —`);
+    console.log(`   the heuristic found more than one candidate and picked its best guess.`);
 }
 
 const unresolved = rows.filter(r => r.status === 'UNKNOWN' || r.status === 'NO-SWAP');
@@ -127,11 +128,6 @@ if (unresolved.length > 0) {
     console.log(`\nℹ️  ${unresolved.length} factor(ies) couldn't be resolved automatically:`);
     for (const r of unresolved) {
         console.log(`   ${r.name.padEnd(32)} ${r.status}  ${r.detail}`);
-        if (showSnippets && r.snippet) {
-            console.log('     --- decompiled swap() ---');
-            console.log('     ' + r.snippet.split('\n').join('\n     '));
-            console.log('     --- end ---\n');
-        }
     }
     console.log(`   NO-SWAP likely means this factory isn't actually a standard V2-shaped pair`);
     console.log(`   (worth double-checking it belongs in the "${group}" group at all).`);
@@ -140,6 +136,26 @@ if (unresolved.length > 0) {
 const matches = rows.filter(r => r.status === 'MATCH');
 if (matches.length > 0) {
     console.log(`\n✓ ${matches.length} factor(ies) confirmed — decompiled fee matches the assumed config value.`);
+}
+
+if (showSnippets) {
+    const snippetDir = `log/${cfg.chain.label}/verify-fees-snippets`;
+    mkdirSync(snippetDir, { recursive: true });
+    const toWrite = rows.filter(r => r.snippet && (r.status === 'MISMATCH' || r.status === 'UNKNOWN' || r.confidence === 'ambiguous'));
+    for (const r of toWrite) {
+        const safeName = r.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const path = `${snippetDir}/${safeName}_${r.address.slice(2, 10)}.txt`;
+        const header =
+            `Factory: ${r.name} (${r.address})\n` +
+            `Status: ${r.status}  Confidence: ${r.confidence}\n` +
+            `Assumed fee: ${r.assumedFee}  Decompiled fee: ${r.decompiledFee}\n` +
+            `Detail: ${r.detail}\n` +
+            `${'='.repeat(80)}\n\n`;
+        writeFileSync(path, header + r.snippet);
+    }
+    if (toWrite.length > 0) {
+        console.log(`\nWrote ${toWrite.length} decompiled swap() snippet(s) to ${snippetDir}/ (one file per factory).`);
+    }
 }
 
 db.close();

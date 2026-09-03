@@ -364,4 +364,13 @@
       { symbol: 'syrupUSDC',address: '0x660975730059246A68521a3e2FBD4740173100f5', decimals: 6  },
     ],
   },
+  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
+  // tokens, not fractions. WETH is expensive, so 0.001 (~a couple dollars at
+  // typical prices) is a meaningful minimum profit/liquidity floor here.
+  // Override per-run with --min-profit-tokens etc.
+  evaluator: {
+    minProfitTokens: 0.001,
+    minLiquidityTokens: 0.001,
+    minInputTokens: 0.001,
+  },
 }

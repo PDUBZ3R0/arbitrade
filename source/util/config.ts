@@ -126,6 +126,27 @@ export type RawChainConfig = {
         premium: number;
         tokens: Array<{ symbol: string; address: string; decimals: number }>;
     };
+    /**
+     * Chain-tuned evaluator thresholds (piece 5), denominated in the CHAIN's
+     * numeraire token (chain.token — e.g. WXDAI on Gnosis, wS on Sonic, WETH
+     * on Base), NOT a flat fraction applied identically to every root token.
+     * "0.10" means "0.10 WXDAI worth" — the evaluator converts that target
+     * into each root token's own units using the best-liquidity direct DEX
+     * pair between that root and the numeraire (reserve ratio = exchange
+     * rate, no price oracle needed). A root with no direct numeraire pair
+     * falls back to being treated as a flat fraction of itself, logged so
+     * the gap is visible.
+     *
+     * These are DEFAULTS — CLI flags (--min-profit-tokens etc.) still
+     * override per-run. Pick a number that's a meaningful minimum
+     * profit/liquidity in the chain's numeraire, e.g. Sonic ~1 wS, Gnosis
+     * ~0.10 WXDAI, Base ~0.001 WETH.
+     */
+    evaluator?: {
+        minProfitTokens?: number;
+        minLiquidityTokens?: number;
+        minInputTokens?: number;
+    };
 };
 
 // -----------------------------------------------------------------------------
@@ -168,6 +189,7 @@ export type ChainConfig = {
     chain: ChainMeta;
     factories: NormalizedFactory[];
     flashloan?: RawChainConfig['flashloan'];
+    evaluator?: RawChainConfig['evaluator'];
     scan: ScanTuning;
 };
 
@@ -390,6 +412,7 @@ export function loadChainConfig(chainArg: string): ChainConfig {
         chain: raw.chain,
         factories: filteredFactories,
         flashloan: raw.flashloan,
+        evaluator: raw.evaluator,
         scan: resolveScanTuning(meta.label, raw),
     };
 }

@@ -31,17 +31,26 @@ export type EvaluateOptions = {
     /** Minimum profit in root-token wei to include in results. Default 0. */
     minProfitWei?: bigint;
     /**
-     * Minimum profit as a decimal fraction of the root token (e.g. 0.001 =
-     * 0.001 root tokens). Applied ADDITIVELY with minProfitWei — candidate
-     * must exceed BOTH. Converted to wei per triangle using each root token's
-     * decimals from flashloan config. Default: 0.001.
+     * Minimum profit, denominated in the CHAIN's numeraire token
+     * (cfg.chain.token — e.g. WXDAI on Gnosis, wS on Sonic, WETH on Base),
+     * not a fraction of whatever token happens to be the triangle's root.
+     * "0.10" means "0.10 WXDAI worth of profit", whether the triangle roots
+     * in WXDAI itself, in WETH, or in USDC — the evaluator converts using
+     * the best-liquidity direct DEX pair it can find between that root token
+     * and the numeraire (reserve ratio = exchange rate; no price oracle
+     * needed). If no direct pair exists for a given root, that root falls
+     * back to being treated as a flat fraction of itself (the old
+     * behavior) and a one-time warning is logged so the gap is visible
+     * rather than silently wrong.
+     * Applied ADDITIVELY with minProfitWei — candidate must exceed BOTH.
+     * Default: 0.001 (interpreted as 0.001 numeraire-token-equivalent).
      * Set to 0 to disable and show raw output including sub-cent profits.
      */
     minProfitTokens?: number;
     /**
-     * Minimum optimal input as a fraction of the root token. Filters
-     * candidates where ternary search converged to dust — a common source
-     * of math phantoms. Default: 0.001.
+     * Minimum optimal input, same numeraire-denominated conversion as
+     * minProfitTokens above. Filters candidates where ternary search
+     * converged to dust — a common source of math phantoms. Default: 0.001.
      */
     minInputTokens?: number;
     /** Include only 2-hop / only 3-hop cycles. */
@@ -148,6 +157,21 @@ export type EvaluateResult = {
     skipReasons: SkipReasons;
     /** Count of distinct tokens whose decimals were unknown and defaulted to 18 for the liquidity filter. */
     tokensWithUnknownDecimals: number;
+    /**
+     * How each root token's minProfitTokens/minInputTokens threshold was
+     * resolved — for transparency (printed by the CLI), so "why did this
+     * root need X profit" is answerable without reading source. Keyed by
+     * root token address (lowercase).
+     */
+    rootPricing: Record<string, {
+        symbol?: string;
+        /** Numeraire units per 1 unit of this root token, or null if no direct pair was found (flat-fraction fallback used). */
+        priceInNumeraire: number | null;
+        /** Liquidity (numeraire-side reserve) of the pair the price was derived from, for trust-assessment. Null if no pair found. */
+        sourceLiquidity: number | null;
+        minProfitInRootTokens: number;
+        minInputInRootTokens: number;
+    }>;
     topCandidates: Candidate[];
     elapsedMs: number;
 };
@@ -248,6 +272,53 @@ function simulate3Hop(
     return amt;
 }
 
+/**
+ * Find the best direct DEX pair between `token` and `numeraire`, and return
+ * the implied price (numeraire units per 1 unit of token), using whichever
+ * matching pair has the deepest numeraire-side reserve — deepest pair is
+ * the least likely to be a stale/dust price. Returns null if no direct pair
+ * exists between the two tokens in the currently-loaded pair set.
+ *
+ * This is reserve-ratio pricing, not an oracle: it reflects THIS chain's
+ * current on-DEX price, which is exactly what we want for sizing a
+ * meaningful profit floor (no external price feed dependency), but it can
+ * be off if the only available pair is itself thin or freshly imbalanced.
+ */
+function findBestDirectPrice(
+    pairsByAddr: Map<string, PairData>,
+    token: string,
+    numeraire: string,
+    decimalsOf: (addr: string) => number,
+): { price: number; liquidity: number } | null {
+    const tokenLower = token.toLowerCase();
+    const numeraireLower = numeraire.toLowerCase();
+    let best: { price: number; liquidity: number } | null = null;
+
+    for (const p of pairsByAddr.values()) {
+        const t0 = p.token0.toLowerCase();
+        const t1 = p.token1.toLowerCase();
+        let tokenIsToken0: boolean;
+        if (t0 === tokenLower && t1 === numeraireLower) tokenIsToken0 = true;
+        else if (t1 === tokenLower && t0 === numeraireLower) tokenIsToken0 = false;
+        else continue;
+
+        const rToken     = tokenIsToken0 ? p.reserves0 : p.reserves1;
+        const rNumeraire = tokenIsToken0 ? p.reserves1 : p.reserves0;
+        if (rToken <= 0 || rNumeraire <= 0) continue;
+
+        const dToken     = decimalsOf(token);
+        const dNumeraire = decimalsOf(numeraire);
+        const humanToken     = rToken / 10 ** dToken;
+        const humanNumeraire = rNumeraire / 10 ** dNumeraire;
+        const price = humanNumeraire / humanToken;
+        const liquidity = humanNumeraire; // numeraire-side depth as the trust signal
+
+        if (!best || liquidity > best.liquidity) best = { price, liquidity };
+    }
+
+    return best;
+}
+
 // -----------------------------------------------------------------------------
 
 /**
@@ -286,6 +357,7 @@ export async function evaluateTriangles(
         trianglesSkipped: 0,
         skipReasons,
         tokensWithUnknownDecimals: 0,
+        rootPricing: {},
         topCandidates: [],
         elapsedMs: 0,
     };
@@ -382,20 +454,64 @@ export async function evaluateTriangles(
         // outright math phantoms; set lower (e.g. 20) for stricter filtering.
         const maxRoi = (opts.maxRoiPct ?? 100) / 100;
 
-        // Per-root-token thresholds for profit + input, expressed in wei using
-        // each root token's decimals from flashloan config. Handles multi-decimal
-        // chains correctly (e.g. USDC 6 decimals vs wS 18 decimals).
-        //
-        // If a triangle's root isn't in the flashloan config (shouldn't happen
-        // for enumerated triangles, but defensive) we assume 18 decimals.
+        // Per-root-token thresholds for profit + input, denominated in the
+        // chain's numeraire token (cfg.chain.token), converted per-root via
+        // the best-liquidity direct DEX pair between that root and the
+        // numeraire. See EvaluateOptions.minProfitTokens doc for the full
+        // rationale. Falls back to a flat fraction of the root itself when no
+        // direct pair exists (old behavior), logged once per affected root.
         const minProfitTokensFrac = opts.minProfitTokens ?? 0.001;
         const minInputTokensFrac  = opts.minInputTokens  ?? 0.001;
+        const numeraire = cfg.chain.token?.toLowerCase();
+        const symbolByAddr = new Map<string, string>();
+        for (const t of (cfg.flashloan?.tokens ?? [])) symbolByAddr.set(t.address.toLowerCase(), t.symbol);
+
         const rootThresholds = new Map<string, { minProfit: number; minInput: number }>();
         for (const t of (cfg.flashloan?.tokens ?? [])) {
             const scale = 10 ** t.decimals;
-            rootThresholds.set(t.address.toLowerCase(), {
-                minProfit: minProfitTokensFrac * scale,
-                minInput:  minInputTokensFrac  * scale,
+            const addr = t.address.toLowerCase();
+
+            let priceInNumeraire: number | null = null;
+            let sourceLiquidity: number | null = null;
+            let minProfitRootUnits: number;
+            let minInputRootUnits: number;
+
+            if (numeraire && addr === numeraire) {
+                priceInNumeraire = 1;
+                minProfitRootUnits = minProfitTokensFrac;
+                minInputRootUnits  = minInputTokensFrac;
+            } else if (numeraire) {
+                const found = findBestDirectPrice(pairsByAddr, addr, numeraire, decimalsOf);
+                if (found && found.price > 0) {
+                    priceInNumeraire = found.price;
+                    sourceLiquidity = found.liquidity;
+                    minProfitRootUnits = minProfitTokensFrac / found.price;
+                    minInputRootUnits  = minInputTokensFrac  / found.price;
+                } else {
+                    console.log(
+                        `[pricing] No direct DEX pair found between ${symbolByAddr.get(addr) ?? addr.slice(0,10)} and ` +
+                        `numeraire ${symbolByAddr.get(numeraire) ?? numeraire.slice(0,10)} — falling back to flat-fraction ` +
+                        `threshold (${minProfitTokensFrac} ${symbolByAddr.get(addr) ?? 'tokens'}) for this root instead of a numeraire-equivalent amount.`
+                    );
+                    minProfitRootUnits = minProfitTokensFrac;
+                    minInputRootUnits  = minInputTokensFrac;
+                }
+            } else {
+                minProfitRootUnits = minProfitTokensFrac;
+                minInputRootUnits  = minInputTokensFrac;
+            }
+
+            result.rootPricing[addr] = {
+                symbol: t.symbol,
+                priceInNumeraire,
+                sourceLiquidity,
+                minProfitInRootTokens: minProfitRootUnits,
+                minInputInRootTokens: minInputRootUnits,
+            };
+
+            rootThresholds.set(addr, {
+                minProfit: minProfitRootUnits * scale,
+                minInput:  minInputRootUnits  * scale,
             });
         }
         // Base minimum from --min-profit (in wei) still applies on top.

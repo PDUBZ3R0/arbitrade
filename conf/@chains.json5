@@ -39,7 +39,7 @@
     name: 'Polygon',
     currency: 'POL',
     hypersyncUrl: 'https://polygon.hypersync.xyz',
-    host: 'https://polygon-rpc.publicnode.com',
+    host: 'https://polygon-bor-rpc.publicnode.com',
   },
   monad: {
     id: 143,

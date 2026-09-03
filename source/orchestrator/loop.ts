@@ -90,7 +90,12 @@ export async function runOrchestratorPass(
     const db = new ArbitradeDB(dbFile);
 
     const candidatesPerPass = opts.candidatesPerPass ?? 5;
-    const minProfitTokens = opts.minProfitTokens ?? 0.001;
+    // Chain-tuned default from conf/<chain>.json5's `evaluator` block (same
+    // source the evaluate.ts CLI uses), falling back to 0.001 if the chain
+    // hasn't set one. Keeps the orchestrator's profit floor consistent with
+    // whatever you've calibrated for manual `yarn evaluate` runs, rather
+    // than silently using its own separate hardcoded number.
+    const minProfitTokens = opts.minProfitTokens ?? cfg.evaluator?.minProfitTokens ?? 0.001;
 
     const result: OrchestratorPassResult = {
         candidatesTried: 0,
@@ -105,13 +110,18 @@ export async function runOrchestratorPass(
             minProfitTokens,
         });
 
-        // Per-root-token minProfitWei, same derivation the evaluator uses
-        // internally — buildHops re-checks the SAME threshold against exact
-        // BigInt numbers instead of the evaluator's float estimate.
+        // Per-root-token minProfitWei, using the SAME resolved threshold the
+        // evaluator just used to select these candidates (evalResult.rootPricing
+        // — numeraire-converted per root, not a flat fraction recomputed here).
+        // Recomputing independently would silently diverge from what actually
+        // selected the candidate the moment the evaluator's pricing logic
+        // changes; reading it back from the result keeps them locked together.
         const minProfitWeiFor = (root: string): bigint => {
             const tokenCfg = cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === root.toLowerCase());
             const decimals = tokenCfg?.decimals ?? 18;
-            return BigInt(Math.round(minProfitTokens * 10 ** decimals));
+            const pricing = evalResult.rootPricing[root.toLowerCase()];
+            const rootUnits = pricing?.minProfitInRootTokens ?? minProfitTokens;
+            return BigInt(Math.round(rootUnits * 10 ** decimals));
         };
 
         const executor = new Contract(cfg.chain.executor, EXECUTOR_ABI, provider);

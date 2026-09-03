@@ -241,4 +241,13 @@
       },
     ],
   },
+  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
+  // tokens, not fractions. wS is cheap, so 1 wS is a meaningful minimum
+  // profit/liquidity floor here without needing a USD price oracle.
+  // Override per-run with --min-profit-tokens etc.
+  evaluator: {
+    minProfitTokens: 1,
+    minLiquidityTokens: 1,
+    minInputTokens: 1,
+  },
 }

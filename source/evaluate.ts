@@ -17,10 +17,16 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --root ADDR              Only evaluate triangles rooted at this token');
     console.error('  --hops 2|3               Only evaluate 2-hop or 3-hop cycles');
     console.error('  --min-profit N           Minimum profit in root-token wei (default 0)');
-    console.error('  --min-profit-tokens N    Minimum profit as fraction of root token');
-    console.error('                           (default 0.001 = 0.001 root tokens; set 0 to disable)');
-    console.error('  --min-input-tokens N     Minimum optimal input as fraction of root token');
-    console.error('                           (default 0.001; filters dust-input phantoms)');
+    console.error('  --min-profit-tokens N    Minimum profit, denominated in the chain\'s numeraire');
+    console.error('                           token (cfg.chain.token — e.g. WXDAI on Gnosis, wS on');
+    console.error('                           Sonic, WETH on Base). Converted per-root via the best-');
+    console.error('                           liquidity direct DEX pair between that root and the');
+    console.error('                           numeraire. Default comes from conf/<chain>.json5\'s');
+    console.error('                           "evaluator" block if set, else falls back to 0.001.');
+    console.error('                           Set 0 to disable.');
+    console.error('  --min-input-tokens N     Minimum optimal input, same numeraire conversion as');
+    console.error('                           above (chain-tuned default, else 0.001; filters');
+    console.error('                           dust-input phantoms)');
     console.error('  --min-liquidity-tokens N Skip pairs where either side has < N WHOLE TOKENS of');
     console.error('                           reserves (default 0.001). Decimals-aware — uses the');
     console.error('                           tokens table / flashloan config per-token, so this is');
@@ -52,22 +58,31 @@ const getStr = (flag: string): string | undefined => {
 };
 const hasFlag = (flag: string): boolean => args.indexOf(flag) >= 0;
 
+const cfg = loadChainConfig(chainArg);
+const dbFile = dbPath(chainArg);
+
+// Chain-tuned defaults from conf/<chain>.json5's `evaluator` block (falls
+// back to the old global defaults if a chain hasn't set one). See
+// config.ts's RawChainConfig.evaluator doc for why a single global number
+// doesn't work well across chains with wildly different root-token prices.
+const chainDefaults = cfg.evaluator ?? {};
+
 const onlyRoot   = getStr('--root');
 const hopsStr    = getStr('--hops');
 const onlyHops   = hopsStr === '2' ? 2 : hopsStr === '3' ? 3 : undefined;
 const minProfitStr = getStr('--min-profit');
 const minProfitWei = minProfitStr ? BigInt(minProfitStr) : undefined;
 const minProfitTokensStr = getStr('--min-profit-tokens');
-const minProfitTokens = minProfitTokensStr ? parseFloat(minProfitTokensStr) : undefined;  // undefined → default 0.001
+const minProfitTokens = minProfitTokensStr ? parseFloat(minProfitTokensStr) : (chainDefaults.minProfitTokens ?? 0.001);
 const minInputTokensStr = getStr('--min-input-tokens');
-const minInputTokens = minInputTokensStr ? parseFloat(minInputTokensStr) : undefined;
+const minInputTokens = minInputTokensStr ? parseFloat(minInputTokensStr) : (chainDefaults.minInputTokens ?? 0.001);
 
-// New decimals-aware liquidity filter, in whole tokens. Default 0.001 — a
-// much lower floor than the old flat-wei default, and correct across mixed
-// decimals. See evaluator.ts's EvaluateOptions doc for why the old
-// --min-liquidity (flat wei) was silently wrong for non-18-decimal tokens.
+// Decimals-aware liquidity filter, in whole tokens. Chain-tuned default (see
+// above), falling back to 0.001 if the chain hasn't set one. See
+// evaluator.ts's EvaluateOptions doc for why the old --min-liquidity (flat
+// wei) was silently wrong for non-18-decimal tokens.
 const minLiquidityTokensStr = getStr('--min-liquidity-tokens');
-const minLiquidityTokens = minLiquidityTokensStr ? parseFloat(minLiquidityTokensStr) : 0.001;
+const minLiquidityTokens = minLiquidityTokensStr ? parseFloat(minLiquidityTokensStr) : (chainDefaults.minLiquidityTokens ?? 0.001);
 
 // DEPRECATED flat-wei floor. Default 0 (off) — the old 1e18 default is what
 // caused mixed-decimal chains (Gnosis: USDC/USDCe alongside 18-dec tokens)
@@ -90,19 +105,16 @@ const debug      = hasFlag('--debug');
 const debugLimitStr = getStr('--debug-limit');
 const debugLimit = debugLimitStr ? parseInt(debugLimitStr, 10) : 25;
 
-const cfg = loadChainConfig(chainArg);
-const dbFile = dbPath(chainArg);
-
 console.log(`Evaluating triangles for ${cfg.chain.name} (chain id ${cfg.chain.id})`);
 console.log(`DB: ${dbFile}`);
 if (onlyRoot) console.log(`Root filter: ${onlyRoot}`);
 if (onlyHops) console.log(`Hop filter: ${onlyHops}`);
 if (minProfitWei != null) console.log(`Min profit: ${minProfitWei} wei`);
-console.log(`Min liquidity (tokens, decimals-aware): ${minLiquidityTokens}`);
+console.log(`Min liquidity (tokens, decimals-aware): ${minLiquidityTokens}${minLiquidityTokensStr ? '' : (chainDefaults.minLiquidityTokens != null ? '  (from conf/' + cfg.chain.label + '.json5)' : '  (global default)')}`);
 if (minPairReservesWei != null) console.log(`Min liquidity (LEGACY flat wei):        ${minPairReservesWei}`);
 console.log(`Max ROI cap:        ${maxRoiPct}%`);
-if (minProfitTokens != null)  console.log(`Min profit tokens:  ${minProfitTokens}`);
-if (minInputTokens  != null)  console.log(`Min input tokens:   ${minInputTokens}`);
+console.log(`Min profit tokens:  ${minProfitTokens}${minProfitTokensStr ? '' : (chainDefaults.minProfitTokens != null ? '  (from conf/' + cfg.chain.label + '.json5)' : '  (global default)')}`);
+console.log(`Min input tokens:   ${minInputTokens}${minInputTokensStr ? '' : (chainDefaults.minInputTokens != null ? '  (from conf/' + cfg.chain.label + '.json5)' : '  (global default)')}`);
 console.log('');
 
 const result = await evaluateTriangles(cfg, dbFile, {
@@ -111,6 +123,26 @@ const result = await evaluateTriangles(cfg, dbFile, {
     minProfitTokens, minInputTokens,
     debug, debugLimit,
 });
+
+// Show exactly how each root token's threshold was resolved — a root priced
+// via a real DEX pair vs one that fell back to the flat-fraction default are
+// very different levels of trust, worth seeing before trusting the results.
+const pricedRoots = Object.entries(result.rootPricing);
+if (pricedRoots.length > 0) {
+    console.log('Root token thresholds:');
+    for (const [addr, p] of pricedRoots) {
+        const sym = p.symbol ?? addr.slice(0, 10);
+        if (p.priceInNumeraire != null) {
+            const via = p.sourceLiquidity != null
+                ? ` (via direct pair, numeraire-side liquidity ≈ ${p.sourceLiquidity.toFixed(4)})`
+                : ' (this is the numeraire itself)';
+            console.log(`  ${sym.padEnd(8)} price=${p.priceInNumeraire.toFixed(8)} numeraire/token${via}  minProfit=${p.minProfitInRootTokens.toFixed(8)} ${sym}`);
+        } else {
+            console.log(`  ${sym.padEnd(8)} NO PRICE PATH — using flat fraction directly: minProfit=${p.minProfitInRootTokens.toFixed(8)} ${sym}`);
+        }
+    }
+    console.log('');
+}
 
 console.log('\n' + '─'.repeat(60));
 console.log(`Done in ${(result.elapsedMs / 1000).toFixed(2)}s`);
