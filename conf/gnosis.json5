@@ -9,6 +9,14 @@
     interval: 3000,
     pagesize: 5000,
   },
+  reserves: {
+    dust: 0.01
+  },
+  evaluate: {
+    minProfitTokens: 0.1,
+    minInputTokens: 0.1,
+    minLiquidityTokens: 0.5
+  },
   factories: {
     v2: {
       list: {

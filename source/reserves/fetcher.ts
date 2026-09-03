@@ -25,7 +25,7 @@ import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
 import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
-import { findBestDirectPriceFromDb } from '../util/numeraire-price.ts';
+import { buildPriceGraph } from '../util/numeraire-price.ts';
 
 const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
 const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
@@ -130,10 +130,13 @@ export type FetchOptions = {
      * liquidity" (non-dust), denominated in the CHAIN's numeraire token
      * (cfg.chain.token), not a flat amount applied identically to every
      * pair-side token — same semantics as the evaluator's minProfitTokens.
-     * "0.10" means "0.10 numeraire-token-worth"; converted per-token via the
-     * best-liquidity DB-known direct pair against the numeraire. A token
-     * with no price path yet (e.g. the numeraire's own pairs haven't been
-     * fetched this run) falls back to the flat number directly, logged once.
+     * "0.10" means "0.10 numeraire-token-worth"; converted per-token via a
+     * multi-hop widest-path search from the numeraire (source/util/
+     * numeraire-price.ts's buildPriceGraph — token -> X -> numeraire, not
+     * just a direct pair), preferring the highest-liquidity path when more
+     * than one exists. A token with no reachable path within the graph's
+     * hop/node limits falls back to the flat number directly, summarized
+     * once at the end of the run rather than logged per-token.
      * Default 0 = disabled.
      *
      * Requires the tokens table to be populated (`yarn tokens <chain>`); pairs
@@ -219,31 +222,25 @@ export async function fetchReserves(
     const decimalsByToken = new Map<string, number>();
     const decimalsOfForPricing = (addr: string): number => decimalsByToken.get(addr.toLowerCase()) ?? 18;
     // Numeraire pricing for the dust threshold (see FetchOptions.dustThreshold
-    // doc) — DB-backed since this fetcher processes factory-by-factory rather
-    // than holding every pair+reserve in memory. Lazily cached per token as
-    // pairs are actually checked, since decimalsByToken (built below) can
-    // cover far more tokens than ever get dust-checked in a given run.
+    // doc). Built ONCE per run as a multi-hop widest-path graph from the
+    // numeraire (source/util/numeraire-price.ts) rather than per-token direct
+    // lookups — resolves tokens that only pair against something OTHER than
+    // the numeraire directly (e.g. token -> USDC -> wS on Sonic), and is
+    // faster since it's one traversal instead of many separate DB queries.
     const numeraire = cfg.chain.token?.toLowerCase();
-    const priceCache = new Map<string, { price: number; liquidity: number } | null>();
+    let priceGraph: Map<string, { price: number; liquidity: number; hops: number }> | null = null;
     const warnedNoPricePath = new Set<string>();
     const minReserveFor = (token: string): number => {
         const dustThreshold = opts.dustThreshold!;
-        if (!numeraire) return dustThreshold; // no numeraire configured at all — flat behavior
+        if (!numeraire || !priceGraph) return dustThreshold; // no numeraire configured, or graph build failed — flat behavior
         const key = token.toLowerCase();
-        let priced = priceCache.get(key);
-        if (priced === undefined) {
-            priced = findBestDirectPriceFromDb(db, key, numeraire, decimalsOfForPricing);
-            priceCache.set(key, priced);
-        }
+        const priced = priceGraph.get(key);
         if (priced && priced.price > 0) return dustThreshold / priced.price;
-        if (!warnedNoPricePath.has(key)) {
-            warnedNoPricePath.add(key);
-            console.log(
-                `[dust filter] No price path to numeraire yet for ${key.slice(0, 10)} — ` +
-                `using flat threshold (${dustThreshold}) for this token. Common on a chain's ` +
-                `first \`yarn reserves\` run before the numeraire's own pairs have reserves.`
-            );
-        }
+        // Not in the graph — genuinely no path to the numeraire within the
+        // configured hop/node limits (or the node cap was hit before reaching
+        // this token). Tracked silently here; summarized once at the end of
+        // the run instead of logged inline per-token.
+        warnedNoPricePath.add(key);
         return dustThreshold;
     };
     if (opts.dustThreshold && opts.dustThreshold > 0) {
@@ -266,14 +263,23 @@ export async function fetchReserves(
                 }
             }
             const numeraireNote = numeraire
-                ? ` (numeraire-denominated: threshold means "${opts.dustThreshold} ${cfg.chain.currency}-numeraire-worth", converted per-token)`
+                ? ` (numeraire-denominated: threshold means "${opts.dustThreshold} ${cfg.chain.currency}-numeraire-worth", converted per-token via multi-hop pricing)`
                 : ' (no chain.token configured — flat threshold applied to every token as-is)';
             console.log(`[dust filter] threshold=${opts.dustThreshold}${numeraireNote}; loaded decimals for ${hits + (cfg.flashloan?.tokens?.length ?? 0)} token(s) (of ${tokenAddrs.size} referenced)`);
             if (hits === 0 && (cfg.flashloan?.tokens?.length ?? 0) === 0) {
                 console.log(`[dust filter] WARNING: tokens table is empty. Run 'yarn tokens ${cfg.chain.name.toLowerCase()}' first, or the dust filter will be a no-op.`);
             }
+
+            if (numeraire) {
+                const graphResult = buildPriceGraph(db, numeraire, decimalsOfForPricing);
+                priceGraph = graphResult.prices;
+                console.log(
+                    `[dust filter] Built multi-hop price graph from numeraire: ${priceGraph.size} token(s) priced ` +
+                    `(${graphResult.nodesExpanded} node(s) expanded${graphResult.hitNodeCap ? ', hit node cap — some low-liquidity tokens may be unpriced' : ''})`
+                );
+            }
         } catch (err) {
-            console.log(`[dust filter] Failed to load token decimals: ${(err as Error).message}`);
+            console.log(`[dust filter] Failed to load token decimals or build price graph: ${(err as Error).message}`);
         }
     }
 
@@ -493,6 +499,19 @@ export async function fetchReserves(
                 if (opts.dustThreshold && opts.dustThreshold > 0) {
                     const unit = numeraire ? `${cfg.chain.currency}-numeraire-worth` : 'tokens';
                     console.log(`  Dust threshold: ${opts.dustThreshold} ${unit} (both sides, per-token converted). Dust pairs across run: ${totalDust}.`);
+                    if (numeraire && warnedNoPricePath.size > 0) {
+                        const sample = Array.from(warnedNoPricePath).slice(0, 8).map(a => a.slice(0, 10)).join(', ');
+                        console.log(
+                            `  [!] ${warnedNoPricePath.size} token(s) had no path to the numeraire within the ` +
+                            `price graph's hop/node limits (used flat threshold ${opts.dustThreshold} for these ` +
+                            `instead): ${sample}${warnedNoPricePath.size > 8 ? ', ...' : ''}`
+                        );
+                        console.log(
+                            `      Multi-hop pricing already tried token → X → numeraire paths — these tokens ` +
+                            `genuinely have no reachable pair within maxHops, or the graph's node cap was hit ` +
+                            `first (see the node-count line above).`
+                        );
+                    }
                 }
                 console.log(`${'─'.repeat(72)}`);
 

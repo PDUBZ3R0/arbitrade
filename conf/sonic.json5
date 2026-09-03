@@ -9,9 +9,6 @@
     interval: 3000,
     pagesize: 1000000,
   },
-  reserves: {
-    dust: 0.1
-  },
   evaluate: {
     minProfitTokens: 1,
     minInputTokens: 1,
