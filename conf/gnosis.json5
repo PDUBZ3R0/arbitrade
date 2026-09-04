@@ -10,12 +10,12 @@
     pagesize: 5000,
   },
   reserves: {
-    dust: 0.01
+    dust: 0.001,
   },
   evaluate: {
-    minProfitTokens: 0.1,
+    minProfitTokens: 0.01,
     minInputTokens: 0.1,
-    minLiquidityTokens: 0.5
+    minLiquidityTokens: 0.5,
   },
   factories: {
     v2: {
@@ -253,20 +253,6 @@
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
-        /* PairFactory_ffea867f: {
-          address: '0xffea867fb2cc7c1756b944b591fe5c97eba7a204',
-          feeTarget: 'factory',
-          feeArgSource: 'pair-stable-degen',
-          feeFunction: 'getFee',
-          feeDivisor: 10000,
-        },
-       PairFactory_aecbff8c: {
-          address: '0xaecbff8c0ec76911e7c89ae9f62e41efbd02ac79',
-          feeTarget: 'factory',
-          feeArgSource: 'pair-stable-degen',
-          feeFunction: 'getFee',
-          feeDivisor: 10000,
-        },*/
         Factory_6dfac9e7: {
           address: '0x6dfac9e77c2e25f621ecdcb38bd3c7c726c36caa',
           deployBlock: 30046455,
@@ -285,72 +271,55 @@
     },
   },
   flashloan: {
-    "provider": "aave-v3",
-    "premium": 0.0005,
-    "tokens": [
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0xb50201558B00496A145fE76f7424749556E326D8',
+    tokens: [
       {
-        "symbol": "WETH",
-        "address": "0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1",
-        "decimals": 18
+        symbol: 'WETH',
+        address: '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1',
+        decimals: 18,
       },
       {
-        "symbol": "wstETH",
-        "address": "0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6",
-        "decimals": 18
+        symbol: 'wstETH',
+        address: '0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6',
+        decimals: 18,
       },
       {
-        "symbol": "GNO",
-        "address": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb",
-        "decimals": 18
+        symbol: 'GNO',
+        address: '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb',
+        decimals: 18,
       },
       {
-        "symbol": "USDC",
-        "address": "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83",
-        "decimals": 6
+        symbol: 'USDC',
+        address: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83',
+        decimals: 6,
       },
       {
-        "symbol": "WXDAI",
-        "address": "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
-        "decimals": 18
+        symbol: 'WXDAI',
+        address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
+        decimals: 18,
       },
       {
-        "symbol": "EURe",
-        "address": "0xcB444e90D8198415266c6a2724b7900fb12FC56E",
-        "decimals": 18
+        symbol: 'EURe',
+        address: '0xcB444e90D8198415266c6a2724b7900fb12FC56E',
+        decimals: 18,
       },
       {
-        "symbol": "sDAI",
-        "address": "0xaf204776c7245bF4147c2612BF6e5972Ee483701",
-        "decimals": 18
+        symbol: 'sDAI',
+        address: '0xaf204776c7245bF4147c2612BF6e5972Ee483701',
+        decimals: 18,
       },
       {
-        "symbol": "USDCe",
-        "address": "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0",
-        "decimals": 6
+        symbol: 'USDCe',
+        address: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0',
+        decimals: 6,
       },
       {
-        "symbol": "GHO",
-        "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
-        "decimals": 18
-      }
+        symbol: 'GHO',
+        address: '0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73',
+        decimals: 18,
+      },
     ],
-    "pool": "0xb50201558B00496A145fE76f7424749556E326D8"
-  },
-  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
-  // tokens, not fractions. WXDAI is ~$1, so 0.10 is a meaningful minimum
-  // profit/liquidity floor here without needing a USD price oracle. Applies
-  // the same fraction to every root token on this chain (WETH, GNO, etc.) —
-  // for a non-stablecoin root that's a different real dollar floor; override
-  // per-run with --min-profit-tokens etc. if you want per-root precision.
-  evaluator: {
-    minProfitTokens: 0.10,
-    minLiquidityTokens: 0.10,
-    minInputTokens: 0.10,
-  },
-  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
-  // `evaluator` above, but deliberately looser: this flags factories as
-  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
-  reserves: {
-    dust: 0.01,
   },
 }

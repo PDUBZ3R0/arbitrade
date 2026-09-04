@@ -1,29 +1,19 @@
 {
     factories: [
         {
-            address: "0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6",
-            reason:  "dead (0/5 pairs with real liquidity)",
-            addedAt: "2026-09-02",
-        },
-        {
-            address: "0x796f21efa35bf3b0360ac8e3c108241f88e47a3a",
-            reason:  "dead (0/4 pairs with real liquidity)",
-            addedAt: "2026-09-02",
-        },
-        {
-            address: "0x8164765f5886d43ddaf2454cba6c1acc4479fd18",
+            address: "0x35da19425ce5ce7a1707815e71daaccb76814fe4",
             reason:  "dead (0/3 pairs with real liquidity)",
-            addedAt: "2026-09-02",
-        },
-        {
-            address: "0x8a7fcc7cab476013c759c83a61d427f2c1107116",
-            reason:  "dead (0/4 pairs with real liquidity)",
             addedAt: "2026-09-03",
         },
         {
-            address: "0x15d8d9efd079e0e0633646cb834789d209a5fe5b"
-            reason: "only 1 pair with any liquidity"
+            address: "0x39f6b00479fda92cf4f33752f00faeb087d1354f",
+            reason:  "dead (0/3 pairs with real liquidity)",
             addedAt: "2026-09-03",
-        }
+        },
+        {
+            address: "0xa0bb8f9865f732c277d0c162249a4f6c157ae9d0",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-09-03",
+        },
     ]
 }

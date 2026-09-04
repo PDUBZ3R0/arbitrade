@@ -95,12 +95,19 @@ const SCHEMA = `
         factory_bc   TEXT NOT NULL,
         factory_ca   TEXT NOT NULL,
 
-        -- Canonical dedup key: rotation-invariant string built from sorted pair addresses
-        canonical    TEXT NOT NULL UNIQUE,
+        -- Canonical dedup key: rotation-invariant string built from sorted pair addresses.
+        -- Uniqueness enforced via idx_triangles_canonical below (an explicit,
+        -- named index), NOT an inline UNIQUE column constraint — inline UNIQUE
+        -- creates an internal sqlite_autoindex that can't be dropped/rebuilt by
+        -- name, which blocks the bulk-insert optimization (drop indexes, insert
+        -- millions of rows, rebuild indexes in one sorted pass) used for large
+        -- chains. See insertTriangles() and migrateTrianglesCanonicalIndex().
+        canonical    TEXT NOT NULL,
 
         createdAt    INTEGER NOT NULL
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_triangles_canonical ON triangles(canonical);
     CREATE INDEX IF NOT EXISTS idx_triangles_root ON triangles(root_token);
     CREATE INDEX IF NOT EXISTS idx_triangles_hop  ON triangles(hop_count);
     CREATE INDEX IF NOT EXISTS idx_triangles_pair_ab ON triangles(pair_ab);
@@ -179,6 +186,66 @@ function migrateFactoriesFeeNullable(db: import('better-sqlite3').Database): voi
     `);
 }
 
+/**
+ * Schema migration: triangles.canonical was originally an inline UNIQUE
+ * column constraint, which SQLite backs with an internal sqlite_autoindex_*
+ * that can't be dropped/recreated by name. That blocks the bulk-insert
+ * optimization (drop all indexes before a huge insert, rebuild them in one
+ * sorted pass after — far faster than maintaining 6 B-trees incrementally
+ * across millions of individual row inserts, which is what made triangle
+ * persistence slow on large chains like Polygon).
+ *
+ * Migrates by table-swap (SQLite can't drop an inline constraint via ALTER),
+ * same pattern as migrateFactoriesFeeNullable. Idempotent: detects the old
+ * inline UNIQUE via PRAGMA index_list's autoindex naming and no-ops if
+ * already migrated (or if the table doesn't exist yet — SCHEMA above already
+ * creates the new shape for a fresh DB).
+ */
+function migrateTrianglesCanonicalIndex(db: import('better-sqlite3').Database): void {
+    const tableExists = db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='triangles'`
+    ).get();
+    if (!tableExists) return;
+
+    const indexes = db.prepare(`PRAGMA index_list(triangles)`).all() as Array<{ name: string; unique: number; origin: string }>;
+    const hasInlineUnique = indexes.some(idx => idx.origin === 'u' && idx.name.startsWith('sqlite_autoindex_triangles_'));
+    if (!hasInlineUnique) return;
+
+    db.exec(`
+        BEGIN;
+        CREATE TABLE triangles_new (
+            id           INTEGER PRIMARY KEY,
+            root_token   TEXT NOT NULL,
+            hop_count    INTEGER NOT NULL,
+            token_a      TEXT NOT NULL,
+            token_b      TEXT NOT NULL,
+            token_c      TEXT NOT NULL,
+            pair_ab      TEXT NOT NULL,
+            pair_bc      TEXT NOT NULL,
+            pair_ca      TEXT NOT NULL,
+            factory_ab   TEXT NOT NULL,
+            factory_bc   TEXT NOT NULL,
+            factory_ca   TEXT NOT NULL,
+            canonical    TEXT NOT NULL,
+            createdAt    INTEGER NOT NULL
+        );
+        INSERT INTO triangles_new SELECT
+            id, root_token, hop_count, token_a, token_b, token_c,
+            pair_ab, pair_bc, pair_ca, factory_ab, factory_bc, factory_ca,
+            canonical, createdAt
+        FROM triangles;
+        DROP TABLE triangles;
+        ALTER TABLE triangles_new RENAME TO triangles;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_triangles_canonical ON triangles(canonical);
+        CREATE INDEX IF NOT EXISTS idx_triangles_root ON triangles(root_token);
+        CREATE INDEX IF NOT EXISTS idx_triangles_hop  ON triangles(hop_count);
+        CREATE INDEX IF NOT EXISTS idx_triangles_pair_ab ON triangles(pair_ab);
+        CREATE INDEX IF NOT EXISTS idx_triangles_pair_bc ON triangles(pair_bc);
+        CREATE INDEX IF NOT EXISTS idx_triangles_pair_ca ON triangles(pair_ca);
+        COMMIT;
+    `);
+}
+
 // -----------------------------------------------------------------------------
 
 export type PairRow = {
@@ -212,6 +279,7 @@ export class ArbitradeDB {
         this.db.exec(SCHEMA);
         migratePairsColumns(this.db);
         migrateFactoriesFeeNullable(this.db);
+        migrateTrianglesCanonicalIndex(this.db);
     }
 
     close() {
@@ -679,8 +747,66 @@ export class ArbitradeDB {
     }
 
     /**
-     * Bulk insert triangles. Duplicates (same canonical key) are silently
-     * ignored via ON CONFLICT.
+     * Drop the triangles table's 5 SECONDARY indexes (root/hop/pair_ab/bc/ca).
+     * Deliberately does NOT drop idx_triangles_canonical — that's the
+     * uniqueness constraint that makes INSERT OR IGNORE correctly de-dupe
+     * both within a batch AND against pre-existing rows left by a --root
+     * partial run. The same physical triangle can legitimately be reachable
+     * from more than one flash-loan root (canonical is built from sorted pair
+     * addresses only, not the root token), so cross-root canonical collisions
+     * are a real, expected case — dropping the uniqueness index would let
+     * duplicates land silently and then crash the index rebuild afterward.
+     * Used around bulk inserts — see insertTriangles().
+     */
+    dropTriangleIndexes(): void {
+        this.db.exec(`
+            DROP INDEX IF EXISTS idx_triangles_root;
+            DROP INDEX IF EXISTS idx_triangles_hop;
+            DROP INDEX IF EXISTS idx_triangles_pair_ab;
+            DROP INDEX IF EXISTS idx_triangles_pair_bc;
+            DROP INDEX IF EXISTS idx_triangles_pair_ca;
+        `);
+    }
+
+    /**
+     * Recreate the triangles table's 5 secondary indexes. SQLite builds a
+     * fresh index on a populated table via a single sorted pass —
+     * dramatically faster than the incremental B-tree updates that happen on
+     * every row during a plain INSERT loop, which is what makes this
+     * drop/insert/rebuild pattern worthwhile for millions of rows.
+     */
+    createTriangleIndexes(): void {
+        this.db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_triangles_root ON triangles(root_token);
+            CREATE INDEX IF NOT EXISTS idx_triangles_hop  ON triangles(hop_count);
+            CREATE INDEX IF NOT EXISTS idx_triangles_pair_ab ON triangles(pair_ab);
+            CREATE INDEX IF NOT EXISTS idx_triangles_pair_bc ON triangles(pair_bc);
+            CREATE INDEX IF NOT EXISTS idx_triangles_pair_ca ON triangles(pair_ca);
+        `);
+    }
+
+    /**
+     * Bulk insert triangles, optimized for large batches (Polygon-scale:
+     * millions of rows). Two combined optimizations, both measured against
+     * this exact table shape before landing (see project notes — real gains
+     * were more modest than index theory alone suggested, roughly 1.7x
+     * combined on a 500K-row file-backed benchmark, not a dramatic 5-10x):
+     *
+     *   1. Drop the 5 secondary indexes before inserting, rebuild them in one
+     *      sorted pass after (see dropTriangleIndexes/createTriangleIndexes).
+     *      The canonical uniqueness index stays live throughout — needed for
+     *      correct de-duplication both within a batch and against pre-existing
+     *      rows from a --root partial run (a physical triangle can legitimately
+     *      be reachable from more than one flash-loan root).
+     *   2. Multi-row batched INSERT (BATCH rows bound per statement instead of
+     *      one) to cut JS<->native call overhead. BATCH=75 keeps total bound
+     *      params (75*13=975) safely under SQLite's historic 999-variable
+     *      limit for portability, even though better-sqlite3's bundled SQLite
+     *      defaults much higher in practice.
+     *
+     * `synchronous` is relaxed for the duration (restored after) — safe
+     * because triangles are a fully regenerable cache (see enumerator.ts),
+     * so there's no durability risk worth paying for in this window.
      */
     insertTriangles(rows: Array<{
         root_token: string;
@@ -696,43 +822,63 @@ export class ArbitradeDB {
         factory_ca: string;
         canonical: string;
     }>): number {
+        if (rows.length === 0) return 0;
         const now = Math.floor(Date.now() / 1000);
-        const stmt = this.db.prepare(`
-            INSERT INTO triangles (
+
+        this.dropTriangleIndexes();
+
+        const BATCH = 75;
+        const COLS_PER_ROW = 13;
+        const rowPlaceholder = '(' + Array(COLS_PER_ROW).fill('?').join(',') + ')';
+        const batchStmt = this.db.prepare(`
+            INSERT OR IGNORE INTO triangles (
                 root_token, hop_count, token_a, token_b, token_c,
                 pair_ab, pair_bc, pair_ca,
                 factory_ab, factory_bc, factory_ca,
                 canonical, createdAt
-            ) VALUES (
-                @root_token, @hop_count, @token_a, @token_b, @token_c,
-                @pair_ab, @pair_bc, @pair_ca,
-                @factory_ab, @factory_bc, @factory_ca,
-                @canonical, @createdAt
-            )
-            ON CONFLICT(canonical) DO NOTHING
+            ) VALUES ${Array(BATCH).fill(rowPlaceholder).join(',')}
         `);
-        const tx = this.db.transaction((rs: typeof rows) => {
-            let n = 0;
-            for (const r of rs) {
-                const res = stmt.run({
-                    root_token: r.root_token.toLowerCase(),
-                    hop_count:  r.hop_count,
-                    token_a:    r.token_a.toLowerCase(),
-                    token_b:    r.token_b.toLowerCase(),
-                    token_c:    r.token_c.toLowerCase(),
-                    pair_ab:    r.pair_ab.toLowerCase(),
-                    pair_bc:    r.pair_bc.toLowerCase(),
-                    pair_ca:    r.pair_ca.toLowerCase(),
-                    factory_ab: r.factory_ab.toLowerCase(),
-                    factory_bc: r.factory_bc.toLowerCase(),
-                    factory_ca: r.factory_ca.toLowerCase(),
-                    canonical:  r.canonical,
-                    createdAt:  now,
-                });
-                if (res.changes > 0) n++;
-            }
-            return n;
-        });
-        return tx(rows);
+        const singleStmt = this.db.prepare(`
+            INSERT OR IGNORE INTO triangles (
+                root_token, hop_count, token_a, token_b, token_c,
+                pair_ab, pair_bc, pair_ca,
+                factory_ab, factory_bc, factory_ca,
+                canonical, createdAt
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `);
+
+        const toParams = (r: (typeof rows)[number]) => [
+            r.root_token.toLowerCase(), r.hop_count,
+            r.token_a.toLowerCase(), r.token_b.toLowerCase(), r.token_c.toLowerCase(),
+            r.pair_ab.toLowerCase(), r.pair_bc.toLowerCase(), r.pair_ca.toLowerCase(),
+            r.factory_ab.toLowerCase(), r.factory_bc.toLowerCase(), r.factory_ca.toLowerCase(),
+            r.canonical, now,
+        ];
+
+        const prevSync = this.db.pragma('synchronous', { simple: true }) as number;
+        this.db.pragma('synchronous = OFF'); // safe: triangles are fully regenerable, see doc above
+
+        let totalInserted = 0;
+        try {
+            const tx = this.db.transaction((rs: typeof rows) => {
+                let i = 0;
+                for (; i + BATCH <= rs.length; i += BATCH) {
+                    const flat: Array<string | number> = [];
+                    for (let j = i; j < i + BATCH; j++) flat.push(...toParams(rs[j]));
+                    const res = batchStmt.run(...flat);
+                    totalInserted += res.changes;
+                }
+                for (; i < rs.length; i++) {
+                    const res = singleStmt.run(...toParams(rs[i]));
+                    totalInserted += res.changes;
+                }
+            });
+            tx(rows);
+        } finally {
+            this.db.pragma(`synchronous = ${prevSync}`);
+            this.createTriangleIndexes();
+        }
+
+        return totalInserted;
     }
 }

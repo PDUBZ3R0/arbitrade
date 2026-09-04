@@ -9,10 +9,13 @@
     interval: 3000,
     pagesize: 1000000,
   },
+  reserves: {
+    dust: 1,
+  },
   evaluate: {
-    minProfitTokens: 1,
-    minInputTokens: 1,
-    minLiquidityTokens: 5
+    minProfitTokens: 0.01,
+    minInputTokens: 0.1,
+    minLiquidityTokens: 0.5,
   },
   factories: {
     v2: {
@@ -115,11 +118,6 @@
           deployBlock: 1512100,
           fee: 0.003,
         },
-        Factory_15d8d9ef: {
-          address: '0x15d8d9efd079e0e0633646cb834789d209a5fe5b',
-          deployBlock: 133339,
-          fee: 0.003,
-        },
         Factory_bb13ade0: {
           address: '0xbb13ade01dc6f897ff81ded9bbe3a0d4e845fbb6',
           deployBlock: 298964,
@@ -195,20 +193,6 @@
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
-    /*    PairFactory_cb3e3ce8: {
-          address: '0xcb3e3ce89c6dad2b8ec0e5a56074539a232be924',
-          feeTarget: 'factory',
-          feeArgSource: 'pair-stable-degen',
-          feeFunction: 'getFee',
-          feeDivisor: 10000,
-        },
-        PairFactory_12508dd9: {
-          address: '0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824',
-          feeTarget: 'factory',
-          feeArgSource: 'pair-stable-degen',
-          feeFunction: 'getFee',
-          feeDivisor: 10000,
-        }, */
         PairFactoryUpgradeable_1e58feab: {
           address: '0x1e58feab693e488dc370cf86b38d5625d22b858f',
           feeTarget: 'factory',
@@ -245,20 +229,5 @@
         decimals: 18,
       },
     ],
-  },
-  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
-  // tokens, not fractions. wS is cheap, so 1 wS is a meaningful minimum
-  // profit/liquidity floor here without needing a USD price oracle.
-  // Override per-run with --min-profit-tokens etc.
-  evaluator: {
-    minProfitTokens: 1,
-    minLiquidityTokens: 1,
-    minInputTokens: 1,
-  },
-  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
-  // `evaluator` above, but deliberately looser: this flags factories as
-  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
-  reserves: {
-    dust: 0.1,
   },
 }

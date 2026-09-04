@@ -65,5 +65,15 @@
             reason:  "dead (0/2 pairs with real liquidity)",
             addedAt: "2026-09-02",
         },
+        {
+            address: "0x0de70757de21facd23c3aeb46e8be20620b5269f",
+            reason:  "dead (0/2 pairs with real liquidity)",
+            addedAt: "2026-09-03",
+        },
+        {
+            address: "0x46899f4661f8f9dc05e6cf0dac34819c8177169a",
+            reason:  "dead (0/6 pairs with real liquidity)",
+            addedAt: "2026-09-03",
+        },
     ]
 }
