@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Recycle
+__re_cyc_le__
+
 # Node
 node_modules/
 package-lock.json
