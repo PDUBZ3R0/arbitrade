@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_24-6df1ff8f0fc8c8543e6d00f737f8c6ffbdb72fd9",
+  "solcVersion": "0.8.24",
+  "solcLongVersion": "0.8.24+commit.e11b9ed9",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.15.0"
+  },
+  "userSourceNameMap": {
+    "contracts/FlashArbExecutor.sol": "project/contracts/FlashArbExecutor.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/FlashArbExecutor.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n/// @notice Minimal ERC20 interface\ninterface IERC20 {\n    function transfer(address to, uint256 amount) external returns (bool);\n    function balanceOf(address account) external view returns (uint256);\n    function approve(address spender, uint256 amount) external returns (bool);\n}\n\n/// @notice Aave V3 pool — single-asset flash loan entrypoint\ninterface IPool {\n    function flashLoanSimple(\n        address receiverAddress,\n        address asset,\n        uint256 amount,\n        bytes calldata params,\n        uint16 referralCode\n    ) external;\n}\n\n/// @notice Standard V2-style pair interface. Covers v2, v2fee, and solidly\n/// factory families from the DEX pattern registry — fee mechanics live in\n/// each pair's reserves math (already accounted for off-chain by the\n/// evaluator), not in the swap() call itself, so one interface fits all.\ninterface IUniswapV2Pair {\n    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;\n}\n\n/// @title FlashArbExecutor\n/// @notice Executes a triangular arb as a chain of optimistic V2-style swaps,\n/// funded by an Aave V3 flash loan. Each hop sends its output straight to the\n/// next pair (no intermediate custody), and the final hop returns the root\n/// asset to this contract for repayment. All swap amounts are computed\n/// off-chain by the evaluator (piece 5) from known reserves — this contract\n/// does no pricing math, it only executes and checks solvency.\ncontract FlashArbExecutor {\n    address public immutable owner;\n    address public immutable aavePool;\n\n    /// @param pair       V2-style pair contract for this hop\n    /// @param amount0Out Precomputed off-chain; 0 if token0 is the input side\n    /// @param amount1Out Precomputed off-chain; 0 if token1 is the input side\n    /// @param recipient  Next pair in the chain, or address(this) on the final hop\n    struct Hop {\n        address pair;\n        uint256 amount0Out;\n        uint256 amount1Out;\n        address recipient;\n    }\n\n    error NotOwner();\n    error NotPool();\n    error UntrustedInitiator();\n    error InsufficientRepay();\n    error EmptyHops();\n\n    modifier onlyOwner() {\n        if (msg.sender != owner) revert NotOwner();\n        _;\n    }\n\n    constructor(address _aavePool) {\n        owner = msg.sender;\n        aavePool = _aavePool;\n    }\n\n    /// @notice Kick off a flash-loan arb. Owner-only.\n    /// @param asset Root token to borrow — the triangle's start/end token\n    /// @param amount Amount to borrow, in asset's native units\n    /// @param hops Ordered swap chain; hops[0].pair must accept `asset` as input\n    function executeArb(address asset, uint256 amount, Hop[] calldata hops) external onlyOwner {\n        if (hops.length == 0) revert EmptyHops();\n        bytes memory params = abi.encode(hops, asset);\n        IPool(aavePool).flashLoanSimple(address(this), asset, amount, params, 0);\n    }\n\n    /// @notice Aave V3 flash loan callback. Do not call directly.\n    function executeOperation(\n        address asset,\n        uint256 amount,\n        uint256 premium,\n        address initiator,\n        bytes calldata params\n    ) external returns (bool) {\n        if (msg.sender != aavePool) revert NotPool();\n        if (initiator != address(this)) revert UntrustedInitiator();\n\n        (Hop[] memory hops, address rootAsset) = abi.decode(params, (Hop[], address));\n\n        // Optimistic transfer: fund the first pair directly, V2-swap style.\n        IERC20(rootAsset).transfer(hops[0].pair, amount);\n\n        uint256 len = hops.length;\n        for (uint256 i = 0; i < len; i++) {\n            Hop memory h = hops[i];\n            IUniswapV2Pair(h.pair).swap(h.amount0Out, h.amount1Out, h.recipient, \"\");\n        }\n\n        uint256 amountOwed = amount + premium;\n        uint256 bal = IERC20(asset).balanceOf(address(this));\n        if (bal < amountOwed) revert InsufficientRepay();\n\n        IERC20(asset).approve(aavePool, amountOwed);\n        return true;\n    }\n\n    /// @notice Sweep residual balance (profit, or anything stuck) to owner.\n    function sweep(address token) external onlyOwner {\n        uint256 bal = IERC20(token).balanceOf(address(this));\n        if (bal > 0) IERC20(token).transfer(owner, bal);\n    }\n}\n"
+      }
+    }
+  }
+}

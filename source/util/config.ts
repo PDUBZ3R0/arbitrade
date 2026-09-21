@@ -443,3 +443,14 @@ export function dbPath(chainArg: string): string {
     fs.mkdirSync(dir, { recursive: true });
     return path.join(dir, `${meta.label}.sqlite`);
 }
+
+/**
+ * Absolute path to the cross-chain trade ledger (source/util/ledger.ts).
+ * Deliberately NOT chain-specific — one ledger spans every chain the bot
+ * trades on, unlike dbPath()'s per-chain scan/reserves/triangles caches.
+ */
+export function ledgerPath(): string {
+    const dir = path.join(PROJECT_ROOT, 'db');
+    fs.mkdirSync(dir, { recursive: true });
+    return path.join(dir, 'ledger.sqlite');
+}

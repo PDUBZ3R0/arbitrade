@@ -93,8 +93,19 @@ async function runPass(): Promise<void> {
             console.log(`  #${a.candidate.triangleId} [${root}] — edge decayed on fresh reserves, skipped`);
         } else if (!a.simulated) {
             console.log(`  #${a.candidate.triangleId} [${root}] — simulation reverted: ${a.simulationError}`);
+            if (a.built.inputClamped) {
+                console.log(`      [!] input was clamped from ${a.built.requestedAmountIn} to ${a.built.rootAmountIn} wei ` +
+                    `(evaluator's off-chain size exceeded the safety fraction of live reserves — see build-hops.ts)`);
+            }
+            console.log(`      hops:`);
+            for (const h of a.candidate.hops) {
+                console.log(`        ${h.tokenIn.slice(0,10)} → ${h.tokenOut.slice(0,10)}  pair=${h.pair}  factory=${h.factory}`);
+            }
+        } else if (a.confirmed) {
+            console.log(`  #${a.candidate.triangleId} [${root}] — CONFIRMED on-chain: ${a.txHash} (recorded to ledger)`);
         } else if (a.broadcast) {
-            console.log(`  #${a.candidate.triangleId} [${root}] — SIMULATED CLEAN, BROADCAST: ${a.txHash}`);
+            console.log(`  #${a.candidate.triangleId} [${root}] — broadcast but reverted on-chain: ${a.txHash} (not recorded — see error below)`);
+            console.log(`      ${a.simulationError}`);
         } else {
             console.log(`  #${a.candidate.triangleId} [${root}] — simulated clean (dry run, not broadcast). ` +
                 `Expected profit: ${a.built.expectedProfit} wei`);

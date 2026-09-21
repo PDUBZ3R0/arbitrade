@@ -5,6 +5,7 @@
     currency: 'S',
     token: '0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38',
     contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
+    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
     threads: 20,
     interval: 3000,
     pagesize: 1000000,
@@ -12,7 +13,7 @@
   reserves: {
     dust: 1,
   },
-  evaluate: {
+  evaluator: {
     minProfitTokens: 0.01,
     minInputTokens: 0.1,
     minLiquidityTokens: 0.5,
@@ -204,30 +205,30 @@
     },
   },
   flashloan: {
-    provider: 'aave-v3',
-    addressesProvider: '0x5C2e738F6E27bCE0F7558051Bf90605dD6176900',
-    premium: 0.0005,
-    tokens: [
+    "provider": "aave-v3",
+    "premium": 0.0005,
+    "pool": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3",
+    "tokens": [
       {
-        symbol: 'USDC',
-        address: '0x29219dd400f2Bf60E5a23d13Be72B486D4038894',
-        decimals: 6,
+        "symbol": "WETH",
+        "address": "0x50c42dEAcD8Fc9773493ED674b675bE577f2634b",
+        "decimals": 18
       },
       {
-        symbol: 'WETH',
-        address: '0x50c42dEAcD8Fc9773493ED674b675bE577f2634b',
-        decimals: 18,
+        "symbol": "USDC",
+        "address": "0x29219dd400f2Bf60E5a23d13Be72B486D4038894",
+        "decimals": 6
       },
       {
-        symbol: 'wS',
-        address: '0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38',
-        decimals: 18,
+        "symbol": "wS",
+        "address": "0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38",
+        "decimals": 18
       },
       {
-        symbol: 'stS',
-        address: '0xE5DA20F15420aD15DE0fa650600aFc998bbE3955',
-        decimals: 18,
-      },
-    ],
-  },
+        "symbol": "stS",
+        "address": "0xE5DA20F15420aD15DE0fa650600aFc998bbE3955",
+        "decimals": 18
+      }
+    ]
+  }
 }

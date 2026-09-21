@@ -5,7 +5,7 @@
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
     contract: '0x1860a9f4661a0299A2A745c2A49DB212098414CB',
-
+    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
     threads: 20,
     interval: 3000,
     pagesize: 1000000,
@@ -13,8 +13,8 @@
   reserves: {
     dust: 0.005
   },
-  evaluate: {
-    minProfitTokens: 0.01,
+  evaluator: {
+    minProfitTokens: 0.001,
     minInputTokens: 0.01,
     minLiquidityTokens: 1
   },

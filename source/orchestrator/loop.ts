@@ -21,9 +21,11 @@
 import { Contract, JsonRpcProvider, Wallet, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
-import { dbPath } from '../util/config.ts';
+import { dbPath, ledgerPath } from '../util/config.ts';
 import { evaluateTriangles, type Candidate } from '../evaluator/evaluator.ts';
 import { buildHops, type BuiltArb } from './build-hops.ts';
+import { TradeLedger } from '../util/ledger.ts';
+import { fetchUsdPrice } from '../util/usd-price.ts';
 
 const EXECUTOR_ABI = [
     'function executeArb(address asset, uint256 amount, (address pair, uint256 amount0Out, uint256 amount1Out, address recipient)[] hops) external',
@@ -52,8 +54,17 @@ export type CandidateAttempt = {
     built: BuiltArb | null;
     simulated: boolean;
     simulationError?: string;
+    /** True once a transaction was actually sent (regardless of outcome). */
     broadcast: boolean;
     txHash?: string;
+    /**
+     * True only once the transaction's receipt confirmed with status=1 —
+     * this is what "successful" means for the trade ledger. A broadcast tx
+     * that reverted on-chain (status=0, can still happen despite a clean
+     * eth_call simulation — reserves can move between simulate and land)
+     * has broadcast=true, confirmed=false, and is NOT written to the ledger.
+     */
+    confirmed: boolean;
 };
 
 export type OrchestratorPassResult = {
@@ -128,7 +139,7 @@ export async function runOrchestratorPass(
 
         for (const candidate of evalResult.topCandidates) {
             result.candidatesTried++;
-            const attempt: CandidateAttempt = { candidate, built: null, simulated: false, broadcast: false };
+            const attempt: CandidateAttempt = { candidate, built: null, simulated: false, broadcast: false, confirmed: false };
             result.attempts.push(attempt);
 
             const built = await buildHops(
@@ -161,6 +172,48 @@ export async function runOrchestratorPass(
                 const tx = await signedExecutor.executeArb(candidate.rootToken, built.rootAmountIn, hopsArg);
                 attempt.broadcast = true;
                 attempt.txHash = tx.hash;
+
+                // Wait for confirmation — a clean eth_call simulation doesn't
+                // guarantee the tx lands successfully; reserves can move
+                // between simulate and inclusion. "Successful" for the trade
+                // ledger means status=1 confirmed, not just sent.
+                const receipt = await tx.wait();
+                if (receipt && receipt.status === 1) {
+                    attempt.confirmed = true;
+
+                    const rootTokenCfg = cfg.flashloan?.tokens.find(
+                        t => t.address.toLowerCase() === candidate.rootToken.toLowerCase()
+                    );
+                    const decimals = rootTokenCfg?.decimals ?? 18;
+                    const usdPrice = await fetchUsdPrice(cfg.chain.label, candidate.rootToken);
+                    const profitUsd = usdPrice != null
+                        ? (Number(built.expectedProfit) / 10 ** decimals) * usdPrice
+                        : null;
+
+                    const ledger = new TradeLedger(ledgerPath());
+                    try {
+                        ledger.recordTrade({
+                            timestamp: Math.floor(Date.now() / 1000),
+                            chain: cfg.chain.label,
+                            type: 'arbitrage',
+                            txHash: tx.hash,
+                            blockNumber: receipt.blockNumber,
+                            rootToken: candidate.rootToken,
+                            rootTokenSymbol: rootTokenCfg?.symbol,
+                            profitWei: built.expectedProfit,
+                            profitDecimals: decimals,
+                            profitUsd,
+                            gasCostWei: receipt.gasUsed * (receipt.gasPrice ?? 0n),
+                        });
+                    } finally {
+                        ledger.close();
+                    }
+                } else {
+                    // Broadcast but reverted on-chain — not a trade, not logged
+                    // to the ledger. Surfaced via simulationError so the CLI
+                    // print picks it up.
+                    attempt.simulationError = `transaction broadcast but reverted on-chain (status=0), txHash=${tx.hash}`;
+                }
             }
 
             result.winner = attempt;

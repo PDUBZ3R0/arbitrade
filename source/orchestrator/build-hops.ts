@@ -20,13 +20,17 @@
 // with the same integer arithmetic the contract will actually execute
 // against, so a "profitable" build here means profitable on-chain.
 //
-// What this does NOT do: re-optimize the input amount. It reuses the
-// evaluator's `candidate.inputAmount` as the flash-loan size and just
-// re-verifies the path clears minProfitWei at fresh reserves. Re-running the
-// ternary search against live reserves would find a marginally better input
-// size, but isn't required for correctness — a stale-but-still-profitable
-// input just leaves a little money on the table, it doesn't produce a bad
-// trade. Worth revisiting if profit-per-trade becomes a bottleneck.
+// What this does NOT do: re-optimize the input amount against fresh
+// reserves. It reuses the evaluator's `candidate.inputAmount` as the
+// starting flash-loan size, clamped against the FIRST hop's fresh reserveIn
+// (see MAX_INPUT_FRACTION_BPS below) as a safety bound, then just re-verifies
+// the path clears minProfitWei at fresh reserves. Downstream hops don't need
+// their own clamp — constant-product math already caps each hop's output
+// below that hop's reserveOut, so only the very first transfer-in is
+// unbounded before this clamp. Full re-optimization (ternary search against
+// live reserves) would find a marginally better input size, but isn't
+// required for correctness — worth revisiting if profit-per-trade becomes a
+// bottleneck.
 // -----------------------------------------------------------------------------
 
 import { Interface, type JsonRpcProvider } from 'ethers';
@@ -47,11 +51,28 @@ export type BuiltArb = {
     rootAmountIn: bigint;
     expectedAmountOut: bigint;
     expectedProfit: bigint;
+    /** True if candidate.inputAmount had to be reduced by the first-hop safety clamp. See MAX_INPUT_FRACTION_BPS. */
+    inputClamped: boolean;
+    /** The evaluator's original off-chain-computed input, before any clamping. For diagnostics. */
+    requestedAmountIn: bigint;
 };
 
 const PAIR_IFACE = new Interface([
     'function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
 ]);
+
+// Safety clamp on the flash-loan size: never transfer-in more than this
+// fraction of the FIRST hop's fresh reserveIn (in basis points — 1500 = 15%).
+// The evaluator's off-chain inputAmount comes from a ternary search over a
+// profit curve that isn't guaranteed well-behaved on thin/dust/manipulated
+// pools — an unstable search can return a wildly oversized number. Nothing
+// bounded the resulting transfer-in before this clamp, and an oversized
+// transfer can overflow the pair's own uint112 reserve slot on-chain
+// (observed in practice: "OVERFLOW" / "TRANSFER_FAILED" reverts on real
+// candidates on Polygon). Downstream hops don't need their own clamp —
+// constant-product math already caps each hop's output below that hop's
+// own reserveOut.
+const MAX_INPUT_FRACTION_BPS = 1500n; // 15%
 
 // Integer scale for fee math. Fees are stored off-chain as JS floats
 // (e.g. 0.003, 0.0004) with limited real precision already (see
@@ -120,7 +141,9 @@ export async function buildHops(
 
     // 3. Walk the path with exact integer math, building Hop[] as we go.
     let amountIn = BigInt(Math.round(candidate.inputAmount));
-    const rootAmountIn = amountIn;
+    const requestedAmountIn = amountIn;
+    let rootAmountIn = amountIn;
+    let inputClamped = false;
     const builtHops: Hop[] = [];
 
     for (let i = 0; i < hops.length; i++) {
@@ -133,6 +156,18 @@ export async function buildHops(
         const inIsToken0 = leg.tokenIn.toLowerCase() === order.token0.toLowerCase();
         const reserveIn  = inIsToken0 ? reserves.reserve0 : reserves.reserve1;
         const reserveOut = inIsToken0 ? reserves.reserve1 : reserves.reserve0;
+
+        if (i === 0) {
+            // Safety clamp against the FIRST hop's fresh reserveIn — see
+            // MAX_INPUT_FRACTION_BPS doc above for why this exists.
+            const maxSafeInput = (reserveIn * MAX_INPUT_FRACTION_BPS) / 10_000n;
+            if (amountIn > maxSafeInput) {
+                amountIn = maxSafeInput;
+                inputClamped = true;
+            }
+            rootAmountIn = amountIn;
+            if (rootAmountIn <= 0n) return null; // reserveIn itself is ~0 — dead pool
+        }
 
         const amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, leg.fee);
         if (amountOut <= 0n) return null; // drained pool or dust — abandon rather than build a doomed tx
@@ -159,5 +194,5 @@ export async function buildHops(
         return null;
     }
 
-    return { hops: builtHops, rootAmountIn, expectedAmountOut, expectedProfit };
+    return { hops: builtHops, rootAmountIn, expectedAmountOut, expectedProfit, inputClamped, requestedAmountIn };
 }

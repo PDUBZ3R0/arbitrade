@@ -9,7 +9,7 @@ if (!PRIVATE_KEY && process.argv.some(a => a.includes('deploy') || a === 'run'))
     console.warn('[hardhat] PRIVATE_KEY is not set in .env — deployments will fail');
 }
 
-const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-rpc.com';
+const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-bor-rpc.publicnode.com';
 const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
 const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
 // NOTE: BASE_RPC is also read by source/util/config.ts (env override is
