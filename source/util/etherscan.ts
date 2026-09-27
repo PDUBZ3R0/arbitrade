@@ -246,6 +246,94 @@ export async function getContractSourceInfo(
 }
 
 // -----------------------------------------------------------------------------
+// Full verified source retrieval.
+//
+// getContractSourceInfo above deliberately keeps only metadata. This returns
+// the actual source files, for callers that need to READ the code (e.g.
+// source-fee.ts's LLM-based fee/curve analysis).
+//
+// Etherscan returns SourceCode in one of three shapes:
+//   1. Plain Solidity text (single-file verification)
+//   2. "{{ ...standard-json-input... }}" — double-brace-wrapped JSON with a
+//      `sources: { path: { content } }` map (multi-file / standard-json)
+//   3. "{ path: { content } }" — single-brace JSON map (older multi-file)
+// Proxies: when Proxy=1 with an Implementation address, the implementation's
+// source is fetched instead — that's where the logic lives.
+// -----------------------------------------------------------------------------
+
+export type VerifiedSource = {
+    address: string;             // the address whose source this actually is (implementation if proxied)
+    contractName: string;
+    compilerVersion: string;
+    files: Array<{ path: string; content: string }>;
+};
+
+export function parseEtherscanSourceCode(raw: string): Array<{ path: string; content: string }> {
+    const s = raw.trim();
+    if (!s) return [];
+    if (s.startsWith('{')) {
+        const jsonText = s.startsWith('{{') ? s.slice(1, -1) : s;
+        try {
+            const parsed = JSON.parse(jsonText);
+            const map = parsed.sources ?? parsed;
+            const files: Array<{ path: string; content: string }> = [];
+            for (const [path, v] of Object.entries(map as Record<string, any>)) {
+                if (v && typeof v.content === 'string') files.push({ path, content: v.content });
+            }
+            if (files.length > 0) return files;
+        } catch { /* not JSON after all — fall through to plain text */ }
+    }
+    return [{ path: 'Contract.sol', content: s }];
+}
+
+export async function getVerifiedSource(
+    chainId: number,
+    address: string,
+    apiKey: string,
+    depth = 0,
+): Promise<VerifiedSource | null> {
+    const url = new URL(V2_BASE);
+    url.searchParams.set('chainid', String(chainId));
+    url.searchParams.set('module', 'contract');
+    url.searchParams.set('action', 'getsourcecode');
+    url.searchParams.set('address', address);
+    url.searchParams.set('apikey', apiKey);
+
+    await rateLimit();
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(`Etherscan V2 HTTP ${res.status}`);
+    const data = await res.json() as any;
+    if (data.status !== '1') {
+        const detail = `${data.message ?? ''} ${typeof data.result === 'string' ? data.result : ''}`.trim();
+        // "Not verified" is an answer, not a failure — even when it arrives
+        // wrapped in NOTOK. Check it before the failure pattern, which
+        // would otherwise misreport an unverified contract as an API error.
+        if (/not verified/i.test(detail)) return null;
+        if (ETHERSCAN_FAILURE_RE.test(detail)) {
+            throw new Error(`Etherscan V2 error for ${address} (chain ${chainId}): ${detail}`);
+        }
+        return null;
+    }
+    const r = Array.isArray(data.result) ? data.result[0] : null;
+    if (!r || !r.SourceCode) return null; // unverified
+
+    // Follow one proxy hop to the implementation, where the logic lives.
+    if (r.Proxy === '1' && r.Implementation && depth === 0) {
+        const impl = await getVerifiedSource(chainId, r.Implementation, apiKey, depth + 1);
+        if (impl) return impl;
+    }
+
+    const files = parseEtherscanSourceCode(r.SourceCode);
+    if (files.length === 0) return null;
+    return {
+        address: address.toLowerCase(),
+        contractName: r.ContractName ?? '',
+        compilerVersion: r.CompilerVersion ?? '',
+        files,
+    };
+}
+
+// -----------------------------------------------------------------------------
 // Rate limiter for Etherscan API.
 //
 // Etherscan's stated free-tier rate limit is 5 calls/sec, but their enforcement

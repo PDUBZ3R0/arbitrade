@@ -27,7 +27,7 @@
         'SpookySwap v2': {
           address: '0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741',
           deployBlock: 285950,
-          fee: 0.002,
+          fee: 0.003,
         },
         'Metropolis v2': {
           address: '0x1570300e9cFEC66c9Fb0C8bc14366C86EB170Ad0',
@@ -37,7 +37,7 @@
         'Omni v2': {
           address: '0x7d9d51267f7e9e6b46a48e0a75c0086f46777087',
           deployBlock: 38533708,
-          fee: 0.003,
+          fee: 0.00252,
         },
         'Uniswap v2': {
           address: '0xb45e53277a7e0f1d35f2a77160e91e25507f1763',
@@ -47,76 +47,51 @@
         'DeFive v2': {
           address: '0x47524ca6578e172878abf6fd6f3e1cd106c551e6',
           deployBlock: 2352971,
-          fee: 0.003,
+          fee: 0.0018,
         },
         'NineMM v2': {
           address: '0x0f7b3fcba276a65dd6e41e400055dcb75ba66750',
           deployBlock: 10021858,
-          fee: 0.003,
+          fee: 0.0025,
         },
         'SonicxSwap v2': {
           address: '0x0569f2a6b281b139bc164851cf86e4a792ca6e81',
           deployBlock: 759665,
-          fee: 0.003,
+          fee: 0.0025,
         },
         'Fatfingerdotfun v2': {
           address: '0x765331f7a008c0609543acca6209d91636bceeac',
           deployBlock: 38243201,
-          fee: 0.003,
+          fee: 0.01,
         },
         'MobiusDEX v2': {
           address: '0x475f2ddfa1a5da19f4a3f282f1305f285e742c45',
           deployBlock: 401842,
-          fee: 0.003,
+          fee: 0.0025,
         },
         'PancakeSwap V2': {
           address: '0xde26aa06fc545be2bc8c759c02bdaf72e66ac937',
           deployBlock: 15068750,
-          fee: 0.003,
+          fee: 0.00255,
         },
         'SuperSonic v2': {
           address: '0x4d8ef974fad9b7e323be2c260b7c7712db090e86',
           deployBlock: 12608877,
-          fee: 0.003,
+          fee: 0.00295,
         },
         'ZF v2': {
           address: '0xce98a0e578b639aa90ee96ed5ba8e5a4022de529',
           deployBlock: 19071304,
-          fee: 0.003,
+          fee: 0.002,
         },
         LibreXFactory_2dd26477: {
           address: '0x2dd26477d07a0612ce3336aaaaf270fe6ddbcb26',
           deployBlock: 1186161,
           fee: 0.003,
         },
-        ChickenFactory_796f21ef: {
-          address: '0x796f21efa35bf3b0360ac8e3c108241f88e47a3a',
-          deployBlock: 8579216,
-          fee: 0.003,
-        },
-        StaticDEXFactory_8164765f: {
-          address: '0x8164765f5886d43ddaf2454cba6c1acc4479fd18',
-          deployBlock: 5567828,
-          fee: 0.003,
-        },
-        SaplingFactory_35da1942: {
-          address: '0x35da19425ce5ce7a1707815e71daaccb76814fe4',
-          deployBlock: 13691418,
-          fee: 0.003,
-        },
-        TombSwapFactoryV2_3627ab14: {
-          address: '0x3627ab14c987cc98cea9e8f797d4b61e4de9e734',
-          deployBlock: 65842222,
-          fee: 0.003,
-        },
         UniswapV2Factory_01d6747d: {
           address: '0x01d6747dd2d65ddd90faec2c84727c2706ee28e2',
           deployBlock: 270033,
-          fee: 0.003,
-        },
-        UniswapV2Factory_4c27b432: {
-          address: '0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6',
-          deployBlock: 1512100,
           fee: 0.003,
         },
         Factory_bb13ade0: {
@@ -134,38 +109,15 @@
           deployBlock: 139434,
           fee: 0.003,
         },
-        Factory_03c08d09: {
-          address: '0x03c08d09445268c83e19f838fe9a488916edd2e6',
-          deployBlock: 4470438,
-          fee: 0.003,
-        },
         Factory_273126ba: {
           address: '0x273126ba6fb9c8e28ca47e50fdced6844994659c',
           deployBlock: 1494222,
-          fee: 0.003,
-        },
-        Factory_8a7fcc7c: {
-          address: '0x8a7fcc7cab476013c759c83a61d427f2c1107116',
-          deployBlock: 10152609,
-          fee: 0.003,
-        },
-        Factory_e0dbffaa: {
-          address: '0xe0dbffaa42adbac436080a4047f497d56792a8d3',
-          deployBlock: 66687335,
-          fee: 0.003,
-        },
-        Factory_39f6b004: {
-          address: '0x39f6b00479fda92cf4f33752f00faeb087d1354f',
-          deployBlock: 197388,
-          fee: 0.003,
-        },
-        Factory_a0bb8f98: {
-          address: '0xa0bb8f9865f732c277d0c162249a4f6c157ae9d0',
-          deployBlock: 11266850,
-          fee: 0.003,
-        },
+          fee: 0,
+        }
       },
     },
+   /*
+    Shadow uses different maths than v2, deferring
     v2fee: {
       abi: [
         'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
@@ -178,6 +130,7 @@
         },
       },
     },
+    */
     solidly: {
       abi: [
         'event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint)',

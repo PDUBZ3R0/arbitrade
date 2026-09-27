@@ -11,6 +11,11 @@
             addedAt: "2026-09-01",
         },
         {
+            address: "0x150170a4a4fa8a34dfc407f68cde789e4dffc103",
+            reason:  "honeypot/restricted DEX (Panaromaswap) — pair.swap() reverts UNAUTHORISED for non-deployer callers; DexScreener flags factory as \"Unknown DEX\", associated PANA token scores 0/100 on Token Sniffer with 6 flagged issues on Quick Intel",
+            addedAt: "2026-09-21",
+        },
+        {
             address: "0x3d6aa5217857167d30962be0f3adceb70c41b1d5",
             reason:  "dead (0/17 pairs with real liquidity)",
             addedAt: "2026-09-01",

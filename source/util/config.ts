@@ -39,6 +39,7 @@ export type ChainMeta = {
     hypersyncUrl?: string;     // Envio HyperSync URL (e.g. "https://sonic.hypersync.xyz")
     contract?: string;         // deployed YoBatches address
     executor?: string;         // deployed FlashArbExecutor address (piece 6) — set after `yarn deploy-flasharb <chain>`
+    probe?: string;            // deployed TokenProbe address — set after `yarn deploy-probe <chain>` (used by `yarn probe`)
     threads?: number;
     interval?: number;
     pagesize?: number;

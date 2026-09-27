@@ -15,5 +15,26 @@
             reason:  "dead (0/3 pairs with real liquidity)",
             addedAt: "2026-09-03",
         },
+        {
+            "address": "0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6"
+        },
+        {
+            "address": "0x8a7fcc7cab476013c759c83a61d427f2c1107116"
+        },
+        {
+            "address": "0xe0dbffaa42adbac436080a4047f497d56792a8d3"
+        },
+        {
+            "address": "0x03c08d09445268c83e19f838fe9a488916edd2e6"
+        },
+        {
+            "address": "0x796f21efa35bf3b0360ac8e3c108241f88e47a3a"
+        },
+        {
+            "address": "0x8164765f5886d43ddaf2454cba6c1acc4479fd18"
+        },
+        {
+            "address": "0x3627ab14c987cc98cea9e8f797d4b61e4de9e734"
+        }
     ]
 }

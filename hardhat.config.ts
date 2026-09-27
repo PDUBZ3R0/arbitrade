@@ -9,12 +9,15 @@ if (!PRIVATE_KEY && process.argv.some(a => a.includes('deploy') || a === 'run'))
     console.warn('[hardhat] PRIVATE_KEY is not set in .env — deployments will fail');
 }
 
-const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-bor-rpc.publicnode.com';
-const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
-const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
+
 // NOTE: BASE_RPC is also read by source/util/config.ts (env override is
 // `<LABEL>_RPC`), so setting it in .env repoints the scanner too.
 const BASE_RPC    = process.env.BASE_RPC    || 'https://mainnet.base.org';
+const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-bor-rpc.publicnode.com';
+const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
+const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
+const INK_RPC     = process.env.INK_RPC     || 'https://ink-rpc.publicnode.com';
+const MONAD_RPC   = process.env.MONAD_RP    || 'https://rpc1.monad.xyz';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -45,6 +48,18 @@ export default defineConfig({
         },
         base: {
             url: BASE_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        ink: {
+            url: INK_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        monad: {
+            url: MONAD_RPC,
             accounts,
             type: "http",
             chainType: "generic",

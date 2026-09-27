@@ -46,7 +46,7 @@
     name: 'Monad',
     currency: 'MON',
     hypersyncUrl: 'https://monad.hypersync.xyz',
-    host: 'https://monad-rpc.publicnode.com',
+    host: 'https://rpc3.monad.xyz',
   },
   sonic: {
     id: 146,

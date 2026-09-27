@@ -627,6 +627,25 @@ async function emitReport(
                     nameNote = ' [unverified on explorer]';
                 }
                 console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}${nameNote}`);
+
+                // DexScreener check — surfaces raw dexId/liquidity for the
+                // sample pair so an unrecognized/suspicious factory (like
+                // Polygon's Panaromaswap) is visible right in this report
+                // instead of needing a manual web search later. See
+                // dexscreener.ts's scope note: this flags "worth a look",
+                // it does not confirm anything on its own.
+                if (v.samplePair) {
+                    try {
+                        const { lookupPairOnDexScreener, isWellKnownDex } = await import('./dexscreener.ts');
+                        const dsInfo = await lookupPairOnDexScreener(chainArg, v.samplePair);
+                        if (dsInfo) {
+                            const flag = isWellKnownDex(dsInfo.dexId) ? '' : '  [!] not a well-known dexId — worth a manual look';
+                            const liq = dsInfo.liquidityUsd != null ? `$${dsInfo.liquidityUsd.toLocaleString()}` : 'unknown';
+                            console.log(`    DexScreener: dexId="${dsInfo.dexId}" pair=${dsInfo.baseSymbol}/${dsInfo.quoteSymbol} liquidity=${liq}${flag}`);
+                            console.log(`    ${dsInfo.url}`);
+                        }
+                    } catch { /* best-effort — DexScreener lookup never blocks the report */ }
+                }
                 verified.push({
                     candidate: c,
                     snippet: v.configSnippet,

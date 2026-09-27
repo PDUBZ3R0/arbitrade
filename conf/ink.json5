@@ -1,0 +1,214 @@
+{
+	chain: {
+	    id: 57073,
+	    name: 'Ink',
+	    currency: 'ETH',
+	    hypersyncUrl: 'https://ink.hypersync.xyz',
+	    host: 'https://ink-rpc.publicnode.com',
+	    token: "0x4200000000000000000000000000000000000006",
+	    contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a",
+	    executor: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E"
+	},
+
+
+  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
+  // tokens, not fractions. WETH is expensive, so 0.001 (~a couple dollars at
+  // typical prices) is a meaningful minimum profit/liquidity floor here.
+  // Override per-run with --min-profit-tokens etc.
+  evaluator: {
+    minProfitTokens: 0.00001,
+    minLiquidityTokens: 0.0001,
+    minInputTokens: 0.00001,
+  },
+  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
+  // `evaluator` above, but deliberately looser: this flags factories as
+  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
+  reserves: {
+    dust: 0.0001,
+  },
+	factories: {
+		v2: {
+			list: {
+
+// 440 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_6c86ab20": {
+          address: "0x6c86ab200661512fdbd27da4bb87df15609a2806",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 397 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_458c5d5b": {
+          address: "0x458c5d5b75ccba22651d2c5b61cb1ea1e0b0f95d",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 142 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_63b54dbb": {
+          address: "0x63b54dbbd2dabf89d5c536746e534711f6094199",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 44 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_fe57a6ba": {
+          address: "0xfe57a6ba1951f69ae2ed4abe23e0f095df500c04",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 14 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_bd5b4135": {
+          address: "0xbd5b41358a6601924f1fd708af1535a671f530a9",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 12 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_c3244474": {
+          address: "0xc32444747b46875b45649f84a44579247d0af18f",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 6 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_820bd6bc": {
+          address: "0x820bd6bc3164b65437d2de3bd28e2c485fe45b70",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 3 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_dc99a556": {
+          address: "0xdc99a5567ad727a1994351ee3f3661f715e9366f",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 3 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_9e04c362": {
+          address: "0x9e04c3628466aab8ad1caf4937083dd4c6f953e7",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 3 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_1d1562ee": {
+          address: "0x1d1562ee59aafc1a3915d9ea374c1dc35959f60e",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 2 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_23cc45b1": {
+          address: "0x23cc45b19f6f64f409af2a758ba84b0218f64d47",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 2 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_3644defa": {
+          address: "0x3644defa41a60a8dc4dee8e317138e2446a54ccd",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 1 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_eb85ead0": {
+          address: "0xeb85ead04620a95743855f6627dded4143420b02",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 1 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_da01d36a": {
+          address: "0xda01d36a9efcadca66622e15b2a38ee334144d1e",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        },
+
+// 1 pairs in the sweep window
+    // Add under factories["v2"]:
+        "Factory_ceca1f3d": {
+          address: "0xceca1f3df5221e2ca54882af7a1c1844d1d58641",
+          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        }
+
+			}
+		}
+	},
+
+	flashloan: {
+  "provider": "aave-v3",
+  "premium": 0.0005,
+  "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",
+  "tokens": [
+    {
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": 18
+    },
+    {
+      "symbol": "kBTC",
+      "address": "0x73E0C0d45E048D25Fc26Fa3159b0aA04BfA4Db98",
+      "decimals": 8
+    },
+    {
+      "symbol": "USDT",
+      "address": "0x0200C29006150606B650577BBE7B6248F58470c1",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDG",
+      "address": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+      "decimals": 6
+    },
+    {
+      "symbol": "GHO",
+      "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x2D270e6886d130D724215A266106e6832161EAEd",
+      "decimals": 6
+    },
+    {
+      "symbol": "weETH",
+      "address": "0xA3D68b74bF0528fdD07263c60d6488749044914b",
+      "decimals": 18
+    },
+    {
+      "symbol": "wrsETH",
+      "address": "0x9f0a74A92287E323Eb95c1cd9eCdBEb0e397cAe4",
+      "decimals": 18
+    },
+    {
+      "symbol": "ezETH",
+      "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+      "decimals": 18
+    },
+    {
+      "symbol": "sUSDe",
+      "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDe",
+      "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+      "decimals": 18
+    },
+    {
+      "symbol": "SolvBTC",
+      "address": "0xaE4EFbc7736f963982aACb17EFA37fCBAb924cB3",
+      "decimals": 18
+    },
+    {
+      "symbol": "syrupUSDT",
+      "address": "0x8A76fe7fA6da27f85a626c5C53730B38D13603d7",
+      "decimals": 6
+    }
+  ]
+}
+}

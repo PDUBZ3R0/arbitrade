@@ -155,6 +155,31 @@ function migratePairsColumns(db: import('better-sqlite3').Database): void {
 }
 
 /**
+ * Schema migration: safety-probe columns (see contracts/TokenProbe.sol and
+ * source/probe.ts). Idempotent ALTER TABLE ADD COLUMN, same pattern as
+ * migratePairsColumns.
+ *   tokens.probeStatus  clean | fee-on-transfer | nonstandard | honeypot | dead | untestable | NULL (never probed)
+ *   pairs.probeStatus   ok | pair-restricted | pair-rejects | NULL (never probed)
+ */
+function migrateProbeColumns(db: import('better-sqlite3').Database): void {
+    const tokenCols = new Set((db.prepare("PRAGMA table_info(tokens)").all() as Array<{ name: string }>).map(c => c.name));
+    for (const [col, type] of [['probeStatus', 'TEXT'], ['buyTaxBps', 'INTEGER'], ['sellTaxBps', 'INTEGER'],
+                               ['probeReason', 'TEXT'], ['probedAt', 'INTEGER'], ['probedPair', 'TEXT']] as const) {
+        if (!tokenCols.has(col)) db.exec(`ALTER TABLE tokens ADD COLUMN ${col} ${type}`);
+    }
+    const pairCols = new Set((db.prepare("PRAGMA table_info(pairs)").all() as Array<{ name: string }>).map(c => c.name));
+    for (const [col, type] of [['probeStatus', 'TEXT'], ['probeReason', 'TEXT'], ['probedAt', 'INTEGER']] as const) {
+        if (!pairCols.has(col)) db.exec(`ALTER TABLE pairs ADD COLUMN ${col} ${type}`);
+    }
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_tokens_probe ON tokens(probeStatus)`);
+}
+
+/** Token probe verdicts that make a token unusable for routing (kept in sync with token-probe.ts UNSAFE_TOKEN_VERDICTS). */
+export const UNSAFE_TOKEN_STATUSES = ['fee-on-transfer', 'nonstandard', 'honeypot', 'dead'] as const;
+/** Pair probe verdicts that make a pair unusable for routing. */
+export const UNSAFE_PAIR_STATUSES = ['pair-restricted'] as const;
+
+/**
  * Schema migration: factories.fee was originally NOT NULL DEFAULT 0.003, but
  * v2fee/solidly factories legitimately have NULL fees (per-pair mode). SQLite
  * can't ALTER COLUMN DROP NOT NULL, so we swap the table: create a new one
@@ -280,6 +305,7 @@ export class ArbitradeDB {
         migratePairsColumns(this.db);
         migrateFactoriesFeeNullable(this.db);
         migrateTrianglesCanonicalIndex(this.db);
+        migrateProbeColumns(this.db);
     }
 
     close() {
@@ -689,6 +715,141 @@ export class ArbitradeDB {
         return row ?? null;
     }
 
+    /**
+     * Multiple pairs for a factory (up to `limit`), for callers that need to
+     * try several until one has real trading activity — unlike
+     * getSamplePairForFactory's single deterministic (lowest-address) pick,
+     * which is fine for bytecode-based checks (any pair's code is the same
+     * template) but can land on a long-dead or never-traded pair for anything
+     * that needs REAL history (e.g. empirical fee recovery from Swap events;
+     * see empirical-fee.ts).
+     *
+     * Ordered by raw reserve magnitude (larger of the two sides) descending,
+     * NOT by address. Address ordering has zero correlation with trading
+     * activity — Ethereum addresses are hash-derived, so "lowest address"
+     * is effectively a random pick, and on a factory with hundreds of pairs
+     * where only a handful are ever actually traded, a few random picks can
+     * easily all miss. Reserve magnitude is an imperfect proxy (unnormalized
+     * across token decimals — a low-decimal token with huge raw supply can
+     * rank artificially high) but it's a REAL signal: a pair with reserves
+     * near zero on either side has essentially never had a meaningful trade,
+     * while a pair with substantial raw reserves on both sides is exactly
+     * the kind of pair the evaluator's own liquidity filtering favors when
+     * building real triangle candidates — i.e. this ordering is biased
+     * toward the SAME pairs the orchestrator would actually consider, which
+     * is the pool we actually want fee data from.
+     */
+    getPairsForFactory(factory: string, limit = 5): Array<{ pair: string; token0: string; token1: string }> {
+        return this.db.prepare(`
+            SELECT p.address AS pair, p.token0, p.token1
+            FROM pairs p
+            INNER JOIN reserves r ON r.pair = p.address
+            WHERE p.factory = ?
+            ORDER BY MAX(CAST(r.reserves0 AS REAL), CAST(r.reserves1 AS REAL)) DESC
+            LIMIT ?
+        `).all(factory.toLowerCase(), limit) as Array<{ pair: string; token0: string; token1: string }>;
+    }
+
+    // ------------------------------------------- safety probe (contracts/TokenProbe.sol, source/probe.ts)
+
+    /**
+     * Tokens eligible to appear in a triangle: the non-root side of every live
+     * pair that touches a flash-loan root. (Every triangle the enumerator
+     * builds is root→B→C→root, so B and C always have a direct root pair —
+     * this is exactly the set that needs probing.) Skips tokens probed more
+     * recently than `maxAgeSeconds` unless `refresh`.
+     */
+    getTokensToProbe(roots: string[], opts: { maxAgeSeconds: number; refresh: boolean; limit?: number }): string[] {
+        const r = roots.map(a => a.toLowerCase());
+        if (r.length === 0) return [];
+        const ph = r.map(() => '?').join(',');
+        const cutoff = Math.floor(Date.now() / 1000) - opts.maxAgeSeconds;
+        const rows = this.db.prepare(`
+            WITH eligible AS (
+                SELECT DISTINCT CASE WHEN p.token0 IN (${ph}) THEN p.token1 ELSE p.token0 END AS t
+                FROM pairs p
+                INNER JOIN reserves rs ON rs.pair = p.address
+                WHERE (p.token0 IN (${ph}) OR p.token1 IN (${ph}))
+                  AND rs.reserves0 != '0' AND rs.reserves1 != '0'
+            )
+            SELECT e.t AS address
+            FROM eligible e
+            LEFT JOIN tokens tk ON tk.address = e.t
+            WHERE e.t NOT IN (${ph})
+              AND (? = 1 OR tk.probedAt IS NULL OR tk.probedAt < ?)
+            ORDER BY (tk.probedAt IS NOT NULL), e.t
+            ${opts.limit ? 'LIMIT ?' : ''}
+        `).all(...r, ...r, ...r, ...r, opts.refresh ? 1 : 0, cutoff, ...(opts.limit ? [opts.limit] : [])) as Array<{ address: string }>;
+        return rows.map(x => x.address);
+    }
+
+    /**
+     * Candidate root pairs to probe a token through, most liquid first by the
+     * root side's raw reserve. Skips pairs already known restricted and pairs
+     * from factories outside `allowedFactories` (i.e. blacklisted).
+     */
+    getRootPairsForToken(token: string, roots: string[], allowedFactories: string[], limit = 3): Array<{ pair: string; factory: string; root: string; rootReserve: string }> {
+        const t = token.toLowerCase();
+        const r = roots.map(a => a.toLowerCase());
+        const f = allowedFactories.map(a => a.toLowerCase());
+        if (r.length === 0 || f.length === 0) return [];
+        const rph = r.map(() => '?').join(',');
+        const fph = f.map(() => '?').join(',');
+        return this.db.prepare(`
+            SELECT p.address AS pair, p.factory,
+                   CASE WHEN p.token0 = ? THEN p.token1 ELSE p.token0 END AS root,
+                   CASE WHEN p.token0 = ? THEN rs.reserves1 ELSE rs.reserves0 END AS rootReserve
+            FROM pairs p
+            INNER JOIN reserves rs ON rs.pair = p.address
+            WHERE ((p.token0 = ? AND p.token1 IN (${rph})) OR (p.token1 = ? AND p.token0 IN (${rph})))
+              AND p.factory IN (${fph})
+              AND (p.stable IS NULL OR p.stable = 0)
+              AND (p.probeStatus IS NULL OR p.probeStatus != 'pair-restricted')
+              AND rs.reserves0 != '0' AND rs.reserves1 != '0'
+            ORDER BY CAST(rootReserve AS REAL) DESC
+            LIMIT ?
+        `).all(t, t, t, ...r, t, ...r, ...f, limit) as Array<{ pair: string; factory: string; root: string; rootReserve: string }>;
+    }
+
+    setTokenProbe(address: string, p: { status: string; buyTaxBps: number | null; sellTaxBps: number | null; reason: string; pair: string | null }): void {
+        const now = Math.floor(Date.now() / 1000);
+        this.db.prepare(`
+            INSERT INTO tokens (address, fetchStatus, discoveredAt, probeStatus, buyTaxBps, sellTaxBps, probeReason, probedAt, probedPair)
+            VALUES (@address, 'pending', @now, @status, @buyTaxBps, @sellTaxBps, @reason, @now, @pair)
+            ON CONFLICT(address) DO UPDATE SET
+                probeStatus = excluded.probeStatus,
+                buyTaxBps   = excluded.buyTaxBps,
+                sellTaxBps  = excluded.sellTaxBps,
+                probeReason = excluded.probeReason,
+                probedAt    = excluded.probedAt,
+                probedPair  = excluded.probedPair
+        `).run({ address: address.toLowerCase(), now, status: p.status, buyTaxBps: p.buyTaxBps, sellTaxBps: p.sellTaxBps, reason: p.reason.slice(0, 300), pair: p.pair?.toLowerCase() ?? null });
+    }
+
+    setPairProbe(pair: string, status: string, reason: string): void {
+        this.db.prepare(`UPDATE pairs SET probeStatus = ?, probeReason = ?, probedAt = ? WHERE address = ?`)
+            .run(status, reason.slice(0, 300), Math.floor(Date.now() / 1000), pair.toLowerCase());
+    }
+
+    /** Per-factory tally of probed pairs — a factory whose probed pairs are all restricted is a honeypot/restricted DEX. */
+    getFactoryProbeSummary(): Array<{ factory: string; restricted: number; ok: number; rejects: number }> {
+        return this.db.prepare(`
+            SELECT factory,
+                   SUM(probeStatus = 'pair-restricted') AS restricted,
+                   SUM(probeStatus = 'ok')              AS ok,
+                   SUM(probeStatus = 'pair-rejects')    AS rejects
+            FROM pairs
+            WHERE probeStatus IS NOT NULL
+            GROUP BY factory
+            ORDER BY restricted DESC
+        `).all() as Array<{ factory: string; restricted: number; ok: number; rejects: number }>;
+    }
+
+    getTokenProbeStats(): Record<string, number> {
+        const rows = this.db.prepare(`SELECT COALESCE(probeStatus, 'unprobed') AS s, COUNT(*) AS n FROM tokens GROUP BY s`).all() as Array<{ s: string; n: number }>;
+        return Object.fromEntries(rows.map(r => [r.s, r.n]));
+    }
+
     // ------------------------------------------- triangle enumeration inputs
 
     /**
@@ -697,8 +858,14 @@ export class ArbitradeDB {
      * builds its own indexes from this. Excludes zero-reserve pairs (no arb
      * point) and stable pools by default (constant-product math is wrong for
      * them; separate stable-swap support is future work).
+     *
+     * Also excludes, by default, anything the safety probe flagged: pairs
+     * whose swap() rejects outsiders, and pairs where EITHER token is a
+     * honeypot / fee-on-transfer / nonstandard / dead token. Never-probed
+     * pairs and tokens (probeStatus NULL) are kept — excluding the unknown
+     * would empty the graph before the first probe run.
      */
-    getPairsForEnumeration(opts: { includeStable?: boolean } = {}): Array<{
+    getPairsForEnumeration(opts: { includeStable?: boolean; includeUnsafe?: boolean } = {}): Array<{
         pair:        string;
         factory:     string;
         token0:      string;
@@ -707,13 +874,21 @@ export class ArbitradeDB {
         stable:      number | null;   // 0/1 or NULL
     }> {
         const includeStable = opts.includeStable ?? false;
+        const includeUnsafe = opts.includeUnsafe ?? false;
         const stableClause = includeStable ? '' : 'AND (p.stable IS NULL OR p.stable = 0)';
+        const badTokens = UNSAFE_TOKEN_STATUSES.map(s => `'${s}'`).join(',');
+        const badPairs = UNSAFE_PAIR_STATUSES.map(s => `'${s}'`).join(',');
+        const unsafeClause = includeUnsafe ? '' : `
+            AND (p.probeStatus IS NULL OR p.probeStatus NOT IN (${badPairs}))
+            AND p.token0 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))
+            AND p.token1 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))`;
         return this.db.prepare(`
             SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable
             FROM pairs p
             INNER JOIN reserves r ON r.pair = p.address
             WHERE r.reserves0 != '0' AND r.reserves1 != '0'
             ${stableClause}
+            ${unsafeClause}
             ORDER BY p.address
         `).all() as any;
     }

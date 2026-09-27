@@ -36,6 +36,17 @@ export type OrchestratorPassOptions = {
     candidatesPerPass?: number;
     /** Minimum profit as fraction of root token — same meaning as evaluator's minProfitTokens. Default 0.001. */
     minProfitTokens?: number;
+    /**
+     * Skip candidates whose off-chain-estimated ROI exceeds this percentage.
+     * Same meaning and same default (20) as evaluate.ts's CLI flag — that
+     * default was NOT being applied here before (this function called
+     * evaluateTriangles without passing maxRoiPct at all, silently falling
+     * back to the library's raw default of 100%, not evaluate.ts's stricter
+     * 20%). That gap let a 132% ROI candidate reach a live simulation on
+     * Polygon that a normal `yarn evaluate` run would have filtered as a
+     * likely phantom. Fixed by defaulting to 20 here too.
+     */
+    maxRoiPct?: number;
     /** If true, broadcast the first candidate that simulates clean. Default false (dry-run/simulate only). */
     live?: boolean;
     /**
@@ -107,6 +118,11 @@ export async function runOrchestratorPass(
     // whatever you've calibrated for manual `yarn evaluate` runs, rather
     // than silently using its own separate hardcoded number.
     const minProfitTokens = opts.minProfitTokens ?? cfg.evaluator?.minProfitTokens ?? 0.001;
+    // Same default (20) as evaluate.ts's CLI — real arb rarely exceeds a few
+    // percent; anything above 20% is almost always a math/staleness phantom.
+    // No chain-config equivalent for this one (unlike minProfitTokens) since
+    // it's a sanity bound, not a calibrated-per-chain target.
+    const maxRoiPct = opts.maxRoiPct ?? 20;
 
     const result: OrchestratorPassResult = {
         candidatesTried: 0,
@@ -119,6 +135,7 @@ export async function runOrchestratorPass(
         const evalResult = await evaluateTriangles(cfg, dbFile, {
             limit: candidatesPerPass,
             minProfitTokens,
+            maxRoiPct,
         });
 
         // Per-root-token minProfitWei, using the SAME resolved threshold the

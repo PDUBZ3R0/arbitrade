@@ -1,72 +1,171 @@
-{ 
+{
   chain: {
-    id: 143,   name: "Monad",             currency: "MON",   
+    id: 143,
+    name: 'Monad',
+    currency: 'MON',
+    token: '0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A',
+    contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
+    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
   },
-	flashloan:{
-  "provider": "aave-v3",
-  "premium": 0.0005,
-  "pool": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef",
-  "tokens": [
-    {
-      "symbol": "USDT0",
-      "address": "0xe7cd86e13AC4309349F30B3435a9d337750fC82D",
-      "decimals": 6
+  reserves: {
+    dust: 0.01,
+  },
+  evaluator: {
+    minProfitTokens: 0.001,
+    minInputTokens: 0.01,
+    minLiquidityTokens: 0.05,
+  },
+  factories: {
+    v2: {
+      list: {
+        UniswapV2Factory_182a9271: {
+          address: '0x182a927119d56008d921126764bf884221b10f59',
+          deployBlock: 29255814,
+          fee: 0.003,
+        },
+        PancakeFactory_02a84c1b: {
+          address: '0x02a84c1b3bbd7401a5f7fa98a384ebc70bb5749e',
+          deployBlock: 23457490,
+          fee: 0.003,
+        },
+        NadFunFactory_a25b1312: {
+          address: '0xa25b13127e63ddae6d0b35570ff3d39dbd621001',
+          deployBlock: 73857264,
+          fee: 0.003,
+        },
+        Factory_e78b9c8f: {
+          address: '0xe78b9c8f3e9f46cedc204309e9f387f736d0d278',
+          deployBlock: 37295566,
+          fee: 0.003,
+        },
+        Factory_1d05f7fe: {
+          address: '0x1d05f7fe52a37f41d3b512b4135057bf3eadef57',
+          deployBlock: 57122670,
+          fee: 0.003,
+        },
+        OctoswapFactory_ce104732: {
+          address: '0xce104732685b9d7b2f07a09d828f6b19786cda32',
+          deployBlock: 33816413,
+          fee: 0.003,
+        },
+        UniswapV2Factory_8361060e: {
+          address: '0x8361060ed5f4e8789f1442fb4284eca9b4305985',
+          deployBlock: 36764372,
+          fee: 0.003,
+        },
+        Factory_8c5c4f0b: {
+          address: '0x8c5c4f0b24e1496f50e9ab318eaae24b8b1cb70b',
+          deployBlock: 67892595,
+          fee: 0.003,
+        },
+        PoolFactory_fadee2fb: {
+          address: '0xfadee2fbd4035c03310807f5cfd8514ecccf19b4',
+          deployBlock: 67901265,
+          fee: 0.003,
+        },
+        MoeFactory_e32d45c2: {
+          address: '0xe32d45c2b1c17a0fe0de76f1ebfa7c44b7810034',
+          deployBlock: 32248561,
+          fee: 0.003,
+        },
+        PurpsV2Factory_afe4d3eb: {
+          address: '0xafe4d3eb898591ace6285176b26f0f5beb894447',
+          deployBlock: 31939308,
+          fee: 0.003,
+        },
+        UniswapV2Factory_5d36bfea: {
+          address: '0x5d36bfea5074456d383e47f5b4df12186ed6e858',
+          deployBlock: 42910208,
+          fee: 0.003,
+        },
+        ZFFactory_0ff16867: {
+          address: '0x0ff16867bcac3c5fdc2dc73558e3f8e2ed89eea2',
+          deployBlock: 37605435,
+          fee: 0.003,
+        },
+        LosuriaDexFactory_923f0117: {
+          address: '0x923f01172dff2b7caa5929c393a5f56fdfe2f0f9',
+          deployBlock: 86625902,
+          fee: 0.003,
+        },
+        Factory_82a70cab: {
+          address: '0x82a70cabe732542996a57455affec578b4061322',
+          deployBlock: 36151780,
+          fee: 0.003,
+        },
+        UniswapV2Factory_4cd7d556: {
+          address: '0x4cd7d556b572fbf4e5d78f5e8a10a24fc5ff7113',
+          deployBlock: 37763434,
+          fee: 0.003,
+        },
+      },
     },
-    {
-      "symbol": "USDC",
-      "address": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
-      "decimals": 6
-    },
-    {
-      "symbol": "USDe",
-      "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
-      "decimals": 18
-    },
-    {
-      "symbol": "mUSD",
-      "address": "0xacA92E438df0B2401fF60dA7E4337B687a2435DA",
-      "decimals": 6
-    },
-    {
-      "symbol": "AUSD",
-      "address": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
-      "decimals": 6
-    },
-    {
-      "symbol": "WETH",
-      "address": "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242",
-      "decimals": 18
-    },
-    {
-      "symbol": "cbBTC",
-      "address": "0xd18B7EC58Cdf4876f6AFebd3Ed1730e4Ce10414b",
-      "decimals": 8
-    },
-    {
-      "symbol": "wstETH",
-      "address": "0x10Aeaf63194db8d453d4D85a06E5eFE1dd0b5417",
-      "decimals": 18
-    },
-    {
-      "symbol": "weETH",
-      "address": "0xA3D68b74bF0528fdD07263c60d6488749044914b",
-      "decimals": 18
-    },
-    {
-      "symbol": "syrupUSDC",
-      "address": "0xaB6e5a0C3799d020c790D34F7B2C02639e238AF7",
-      "decimals": 6
-    },
-    {
-      "symbol": "sUSDe",
-      "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
-      "decimals": 18
-    },
-    {
-      "symbol": "GHO",
-      "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
-      "decimals": 18
-    }
-  ]
+  },
+  flashloan: {
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef',
+    tokens: [
+      {
+        symbol: 'USDT0',
+        address: '0xe7cd86e13AC4309349F30B3435a9d337750fC82D',
+        decimals: 6,
+      },
+      {
+        symbol: 'USDC',
+        address: '0x754704Bc059F8C67012fEd69BC8A327a5aafb603',
+        decimals: 6,
+      },
+      {
+        symbol: 'USDe',
+        address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
+        decimals: 18,
+      },
+      {
+        symbol: 'mUSD',
+        address: '0xacA92E438df0B2401fF60dA7E4337B687a2435DA',
+        decimals: 6,
+      },
+      {
+        symbol: 'AUSD',
+        address: '0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a',
+        decimals: 6,
+      },
+      {
+        symbol: 'WETH',
+        address: '0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242',
+        decimals: 18,
+      },
+      {
+        symbol: 'cbBTC',
+        address: '0xd18B7EC58Cdf4876f6AFebd3Ed1730e4Ce10414b',
+        decimals: 8,
+      },
+      {
+        symbol: 'wstETH',
+        address: '0x10Aeaf63194db8d453d4D85a06E5eFE1dd0b5417',
+        decimals: 18,
+      },
+      {
+        symbol: 'weETH',
+        address: '0xA3D68b74bF0528fdD07263c60d6488749044914b',
+        decimals: 18,
+      },
+      {
+        symbol: 'syrupUSDC',
+        address: '0xaB6e5a0C3799d020c790D34F7B2C02639e238AF7',
+        decimals: 6,
+      },
+      {
+        symbol: 'sUSDe',
+        address: '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2',
+        decimals: 18,
+      },
+      {
+        symbol: 'GHO',
+        address: '0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73',
+        decimals: 18,
+      },
+    ],
+  },
 }
-},
