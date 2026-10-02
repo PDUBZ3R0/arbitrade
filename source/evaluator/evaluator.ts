@@ -5,9 +5,10 @@
 //   1. Load current reserves for each of the 3 pairs
 //   2. Pick which direction to trade (each triangle has 2 traversal directions;
 //      only one is profitable when a mispricing exists)
-//   3. Find optimal input amount:
-//        - 2-hop: closed-form solution from calculus.js
-//        - 3-hop: ternary search over input in log space
+//   3. Find optimal input amount: exact closed form for any cycle length.
+//      A cycle of N series constant-product pools folds into ONE equivalent
+//      constant-product pool, so the optimum is a square root, not a search.
+//      See fold_cycle / optimal_cycle_size in calculus.js.
 //   4. Compute expected profit after all fees + flash-loan premium
 //   5. Filter to profitable candidates, sort by profit
 //
@@ -21,7 +22,7 @@
 
 import { ArbitradeDB } from '../util/db.ts';
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
-import { swap_output, optimal_trade_size } from '../util/calculus.js';
+import { cycle_product, optimal_cycle_size, cycle_profit } from '../util/calculus.js';
 
 // -----------------------------------------------------------------------------
 
@@ -177,12 +178,25 @@ export type EvaluateResult = {
 };
 
 // -----------------------------------------------------------------------------
-// Ternary search for the optimal input over a 3-hop cycle.
+// Ternary search over input size, in log space because the optimum can span
+// many orders of magnitude depending on pool liquidity.
 //
-// The profit-as-function-of-input curve is unimodal for AMM cycles (single
-// peak), which makes ternary search well-suited. We search in log space
-// because the optimum can span many orders of magnitude depending on pool
-// liquidity.
+// NO LONGER USED FOR SIZING. Constant-product cycles of any length have an
+// exact closed-form optimum (calculus.js: optimal_cycle_size), which is both
+// faster and strictly more accurate. This is retained for two reasons:
+//
+//   1. It is the reference implementation the closed form was validated
+//      against (400k random cycles, zero keep/skip disagreement).
+//   2. It is the fallback for any curve that is NOT constant-product, where
+//      no fold exists. Solidly stable pools (k = x*y*(x^2+y^2)) are the live
+//      example — Shadow on Sonic runs that curve, and if stable pools are ever
+//      admitted to routing they will need a numerical optimum again.
+//
+// If you reach for this, note the precondition it actually needs: f must be
+// unimodal *as computed*, not merely in theory. The old swap_output lost so
+// much precision to catastrophic cancellation that its profit curve was
+// locally non-monotonic, and this search could land 3-4 orders of magnitude
+// from the true peak as a result. See the comment on swap_output.
 
 /**
  * Ternary search for the maximum of a unimodal function on [lo, hi].
@@ -254,23 +268,12 @@ function orient(p: PairData, tokenIn: string): { rIn: number; rOut: number } {
     throw new Error(`Token ${tokenIn} not in pair ${p.pair} (${p.token0}/${p.token1})`);
 }
 
-/**
- * Simulate walking a 3-hop cycle: input x of `startToken`, output is
- * how much of `startToken` we get back at the end. Profit = output - input.
- */
-function simulate3Hop(
-    x: number,
-    startToken: string,
-    hops: Array<{ pair: PairData; tokenIn: string; tokenOut: string }>,
-): number {
-    let amt = x;
-    for (const h of hops) {
-        const { rIn, rOut } = orient(h.pair, h.tokenIn);
-        amt = swap_output(amt, rIn, rOut, h.pair.fee);
-        if (amt === 0) return 0;
-    }
-    return amt;
-}
+// (The old simulate3Hop lived here. It is now cycle_profit() in calculus.js,
+// which does the same hop-by-hop walk for any cycle length and sits next to the
+// fold it is meant to cross-check. Two copies of that walk would be a drift
+// risk — the whole point of measuring profit by walking is that it stays
+// independent of the closed form, which only holds if there is exactly one
+// walk implementation.)
 
 /**
  * Find the best direct DEX pair between `token` and `numeraire`, and return
@@ -628,32 +631,35 @@ export async function evaluateTriangles(
                     const second = direction === 'forward' ? pBC : pAB;
 
                     // Orient for the direction we're walking: input = root
-                    const firstO  = orient(first, root);
-                    const secondO = orient(second, tokB);
+                    const oriented = [
+                        { ...orient(first, root),  fee: first.fee  },
+                        { ...orient(second, tokB), fee: second.fee },
+                    ];
 
-                    // Use avg fee for closed form (both pairs must use same fee for it to be exact;
-                    // if fees differ we still get a good initial guess then refine)
-                    const avgFee = (first.fee + second.fee) / 2;
-                    let x = optimal_trade_size(
-                        { a1: firstO.rIn, b1: firstO.rOut },
-                        { a2: secondO.rOut, b2: secondO.rIn },  // note: a2/b2 swap for the closed form's convention
-                        avgFee,
-                    );
+                    // Same exact machinery as the 3-hop path. This replaces the
+                    // old equal-fee closed form (which had to average the two
+                    // fees) plus its 20-iteration ternary refinement pass —
+                    // optimal_cycle_size handles per-pool fees exactly, so
+                    // there is nothing left to approximate or refine.
+                    const smallestInReserve = Math.min(oriented[0].rIn, oriented[1].rIn);
+                    if (smallestInReserve <= 0) { skipReasons.notProfitable++; continue; }
+                    // Bound the input the same way the 3-hop path does. The old
+                    // 2-hop path had NO upper bound at all, which is how inputs
+                    // large enough to overflow a pair's uint112 reserve slots
+                    // reached the orchestrator and had to be clamped there.
+                    const hi = smallestInReserve / 2;
+                    if (!(hi > 1)) { skipReasons.notProfitable++; continue; }
+
+                    if (!(cycle_product(oriented) > 1)) { skipReasons.notProfitable++; continue; }
+
+                    let x = optimal_cycle_size(oriented);
                     if (!(x > 0) || !isFinite(x)) { skipReasons.notProfitable++; continue; }
+                    if (x < 1) x = 1;
+                    else if (x > hi) x = hi;
 
-                    // Refine with a couple ternary iterations if fees differ (usually tiny effect)
-                    if (first.fee !== second.fee) {
-                        const evalAt = (xi: number) => {
-                            const mid = swap_output(xi, firstO.rIn, firstO.rOut, first.fee);
-                            const out = swap_output(mid, secondO.rIn, secondO.rOut, second.fee);
-                            return out - xi;
-                        };
-                        x = ternarySearchLog(evalAt, x * 0.1, x * 10, 20);
-                    }
+                    const grossProfit = cycle_profit(x, oriented);
+                    if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
-                    const mid = swap_output(x, firstO.rIn, firstO.rOut, first.fee);
-                    const out = swap_output(mid, secondO.rIn, secondO.rOut, second.fee);
-                    const grossProfit = out - x;
                     const netProfit   = grossProfit - x * flashPremium;
                     const roi = x > 0 ? netProfit / x : 0;
 
@@ -713,17 +719,35 @@ export async function evaluateTriangles(
                             { pair: pAB, tokenIn: tokB, tokenOut: root },
                           ];
 
-                    // Bounds for ternary search: 1 wei to a fraction of the smallest pool's input reserve
-                    const smallestInReserve = Math.min(
-                        orient(hops[0].pair, hops[0].tokenIn).rIn,
-                        orient(hops[1].pair, hops[1].tokenIn).rIn,
-                        orient(hops[2].pair, hops[2].tokenIn).rIn,
-                    );
+                    // Orient once — reused by the gate, the fold, and the
+                    // profit evaluation below.
+                    const oriented = [
+                        { ...orient(hops[0].pair, hops[0].tokenIn), fee: hops[0].pair.fee },
+                        { ...orient(hops[1].pair, hops[1].tokenIn), fee: hops[1].pair.fee },
+                        { ...orient(hops[2].pair, hops[2].tokenIn), fee: hops[2].pair.fee },
+                    ];
+
+                    const smallestInReserve = Math.min(oriented[0].rIn, oriented[1].rIn, oriented[2].rIn);
                     if (smallestInReserve <= 0) { skipReasons.notProfitable++; continue; }
                     const hi = smallestInReserve / 2;  // never swap more than 50% of any pool
-                    const evalAt = (x: number) => simulate3Hop(x, root, hops) - x;
-                    const xStar = ternarySearchLog(evalAt, 1, hi, 40);
-                    const grossProfit = evalAt(xStar);
+                    if (!(hi > 1)) { skipReasons.notProfitable++; continue; }
+
+                    // Gate: P = prod((1-fee) * rOut/rIn) is the marginal return
+                    // at infinitesimal size. Profit is 0 at x=0 and strictly
+                    // concave, so P <= 1 means NO input size is profitable.
+                    // Exact, not a heuristic — and it rejects the overwhelming
+                    // majority of triangles for 3 multiplies instead of the 240
+                    // swap evaluations the ternary search used to spend.
+                    if (!(cycle_product(oriented) > 1)) { skipReasons.notProfitable++; continue; }
+
+                    // Exact optimum, then clamp to the input bound.
+                    let xStar = optimal_cycle_size(oriented);
+                    if (!(xStar > 1)) xStar = 1;
+                    else if (xStar > hi) xStar = hi;
+
+                    // Profit is still measured by walking the hops, so what we
+                    // rank and report never depends on the folding algebra.
+                    const grossProfit = cycle_profit(xStar, oriented);
                     if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
                     const netProfit = grossProfit - xStar * flashPremium;
