@@ -15,6 +15,11 @@
 //      stable) via Multicall3 — dispatched per feeTarget/feeFunction/feeDivisor
 //   7. Update pairs table with fee/stable
 //
+// Concentrated-liquidity pools (pairs.kind = 'v3') take a separate pass first
+// (./v3-state.ts): one YoBatches2.getV3State call per batch stores their
+// state and ticks and writes their virtual reserves. Their token balances are
+// never used — a v3 pool's balances are not its price.
+//
 // Fail-loud: if >80% of a factory's fee calls return no data, we throw with
 // diagnostics pointing at the likely feeTarget/feeFunction misconfig instead
 // of silently declaring "0 pairs updated" like the pre-fix Equalizer bug.
@@ -26,6 +31,7 @@ import { ArbitradeDB } from '../util/db.ts';
 import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 import { buildPriceGraph } from '../util/numeraire-price.ts';
+import { fetchV3States } from './v3-state.ts';
 
 const RESERVES_BATCH_SIZE = 500;   // pairs per YoBatches call (default; see reserves.batchSize)
 const MAX_RESERVES_BATCH_SIZE = 5000;  // sanity bound on the config override
@@ -301,6 +307,44 @@ export async function fetchReserves(
     }
 
     try {
+        // Concentrated-liquidity pools first: a different read (getV3State,
+        // not balances) and a different store (pool_state + virtual reserves).
+        const v3Pools = db.getPairsForReservesFetch({
+            factory: opts.factory,
+            maxAgeSeconds: opts.maxAgeSeconds,
+            factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
+            kinds: ['v3'],
+        });
+        if (v3Pools.length > 0) {
+            const rawC = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
+            const v3Concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawC) || DEFAULT_CONCURRENCY));
+            console.log(`\n[v3] ${v3Pools.length} concentrated-liquidity pools — YoBatches2.getV3State, ` +
+                `±${cfg.reserves?.v3Words ?? 2} bitmap words, ${cfg.reserves?.v3BatchSize ?? 100} pools/call`);
+            const v3t = Date.now();
+            const st = await fetchV3States(provider, db, cfg.chain.contract!, v3Pools, {
+                batchSize: cfg.reserves?.v3BatchSize,
+                words: cfg.reserves?.v3Words,
+                concurrency: v3Concurrency,
+            });
+            console.log(`  [v3] done in ${((Date.now() - v3t) / 1000).toFixed(1)}s: ${st.live} live, ${st.empty} with no in-range ` +
+                `liquidity, ${st.unreadable} unreadable, ${st.ticksStored} ticks stored`);
+            if (st.unreadable > 0) {
+                console.log(`  [!] ${st.unreadable} pool(s) did not answer slot0/tickSpacing — not v3-compatible ` +
+                    `(Algebra?) or chain.contract is not a YoBatches2. Re-check the factory with \`yarn verify\`.`);
+            }
+            result.reservesUpdated += st.live;
+            result.reservesSkipped += st.empty + st.unreadable;
+            result.errors.push(...st.errors);
+            for (const [addr, f] of st.byFactory) {
+                const fac = factoriesByAddr.get(addr);
+                result.factoryStats.push({
+                    name: fac?.name ?? `(orphan) ${addr}`, address: addr, group: 'v3',
+                    totalPairs: f.total, nonZeroPairs: f.live, dustPairs: 0, substantialPairs: f.live,
+                    ratio: f.total > 0 ? f.live / f.total : 0,
+                });
+            }
+        }
+
         // Group all requested pairs by factory address
         const pairs = db.getPairsForReservesFetch({
             factory: opts.factory,
@@ -308,7 +352,7 @@ export async function fetchReserves(
             factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
         });
         if (pairs.length === 0) {
-            console.log('No pairs need refresh.');
+            console.log(v3Pools.length > 0 ? 'No V2-style pairs need refresh.' : 'No pairs need refresh.');
             return result;
         }
 

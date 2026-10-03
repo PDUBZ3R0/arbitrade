@@ -12,6 +12,13 @@
 //   4. Compute expected profit after all fees + flash-loan premium
 //   5. Filter to profitable candidates, sort by profit
 //
+// Concentrated-liquidity (v3) hops: a cycle containing one is scored with the
+// tick-aware math in calculus-v3.js — same gate, closed-form optimum per
+// tick segment, profit by walking — on the pool state in pool_state /
+// pool_ticks. All-V2 cycles take exactly the path they always did; the V2
+// arithmetic is untouched, which keeps `yarn evaluate` and the hot index in
+// agreement (test-index.mjs).
+//
 // This is OFF-CHAIN candidate scoring using float math. Any candidate that
 // looks profitable enough gets confirmed by an on-chain simulation using
 // exact BigInt arithmetic (in the orchestrator, piece 6) before executing.
@@ -23,6 +30,9 @@
 import { ArbitradeDB } from '../util/db.ts';
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
+import {
+    v3_float_hop, mixed_cycle_product, optimal_mixed_cycle, mixed_cycle_profit, mixed_cycle_overflows,
+} from '../util/calculus-v3.js';
 
 // -----------------------------------------------------------------------------
 
@@ -137,6 +147,14 @@ export type EvaluateOptions = {
     debug?: boolean;
     /** Max triangles to print full detail for for when debug=true. Default: 25. */
     debugLimit?: number;
+    /**
+     * Drop cycles the executor cannot trade yet — today, any cycle with a v3
+     * hop (FlashArbExecutor has no V3 swap-callback path). Set by every
+     * caller that ATTEMPTS candidates (orchestrator loop, hot); left off by
+     * `yarn evaluate`, which reports v3 cycles so their value can be judged
+     * before the executor work is done. Counted under skipReasons.v3NotExecutable.
+     */
+    executableOnly?: boolean;
 };
 
 export type Candidate = {
@@ -158,6 +176,8 @@ export type Candidate = {
         tokenIn: string;
         tokenOut: string;
         fee: number;
+        /** 'v3' for a concentrated-liquidity hop; absent/'v2' otherwise. */
+        kind?: 'v2' | 'v3';
     }>;
 };
 
@@ -189,6 +209,10 @@ export type SkipReasons = {
      * ceiling — profitable on paper, unexecutable on chain.
      */
     uint112Overflow: number;
+    /** Cycle has a v3 hop and executableOnly was set — skipped, not scored. */
+    v3NotExecutable: number;
+    /** A v3 pool in the cycle has reserves but no stored pool_state (re-run `yarn reserves`). */
+    v3MissingState: number;
 };
 
 export type EvaluateResult = {
@@ -269,7 +293,47 @@ type PairData = {
     /** Per-token minimum reserve (raw units) for the dust filter — token0/token1's own decimals, not a global flat number. */
     minReserve0: number;
     minReserve1: number;
+    kind: 'v2' | 'v3';
+    /** v3 only: the stored pool state, in calculus-v3's V3Pool shape. */
+    v3?: any;
+    /** v3 only: float hops built on first use, per direction. */
+    hopZf?: any;
+    hopOz?: any;
 };
+
+/**
+ * The hop for swapping `tokenIn` through `p`, in whichever form the math
+ * needs: a plain {rIn, rOut, fee} for a V2-style pair, or a v3_float_hop for a
+ * concentrated-liquidity pool (built once per direction and reused — it only
+ * depends on the pool's stored state).
+ */
+function orientHop(p: PairData, tokenIn: string): any {
+    if (p.kind !== 'v3') return { ...orient(p, tokenIn), fee: p.fee };
+    if (p.token0 === tokenIn) return p.hopZf ??= v3_float_hop(p.v3, true);
+    if (p.token1 === tokenIn) return p.hopOz ??= v3_float_hop(p.v3, false);
+    throw new Error(`Token ${tokenIn} not in pool ${p.pair} (${p.token0}/${p.token1})`);
+}
+
+/**
+ * Size and profit for a cycle with at least one v3 hop. Same contract as the
+ * V2 path: exact gate, closed-form optimum (now per tick segment), clamp,
+ * profit by walking, uint112 check on the V2 hops. V2 hops keep the 50%
+ * input bound; v3 hops are bounded by their tick window instead.
+ */
+function scoreMixed(oriented: any[]): { x: number; grossProfit: number } | { skip: 'notProfitable' | 'uint112Overflow' } {
+    if (!(mixed_cycle_product(oriented) > 1)) return { skip: 'notProfitable' };
+    let hi = Infinity;
+    for (const h of oriented) if (!h.v3) hi = Math.min(hi, h.rIn / 2);
+    if (!(hi > 1)) return { skip: 'notProfitable' };
+    let { x } = optimal_mixed_cycle(oriented);
+    if (!(x > 0) || !isFinite(x)) return { skip: 'notProfitable' };
+    if (x < 1) x = 1;
+    else if (x > hi) x = hi;
+    const grossProfit = mixed_cycle_profit(x, oriented);
+    if (!(grossProfit > 0)) return { skip: 'notProfitable' };
+    if (mixed_cycle_overflows(x, oriented)) return { skip: 'uint112Overflow' };
+    return { x, grossProfit };
+}
 
 /**
  * Resolve the fee for a given pair. For pure v2 pairs, we use the factory's
@@ -393,6 +457,8 @@ export async function evaluateTriangles(
         belowMinInput: 0,
         roiCapExceeded: 0,
         uint112Overflow: 0,
+        v3NotExecutable: 0,
+        v3MissingState: 0,
     };
 
     const result: EvaluateResult = {
@@ -463,7 +529,22 @@ export async function evaluateTriangles(
                 fee: resolveFee(r, factoriesByAddr),
                 minReserve0,
                 minReserve1,
+                kind: r.kind === 'v3' ? 'v3' : 'v2',
             });
+        }
+        // 1b. v3 pool state (pool_state + pool_ticks). Loaded only when the
+        // pair set has v3 pools, so a V2-only chain pays nothing.
+        let v3Count = 0;
+        for (const pd of pairsByAddr.values()) if (pd.kind === 'v3') v3Count++;
+        if (v3Count > 0) {
+            const states = db.loadV3States();
+            let attached = 0;
+            for (const pd of pairsByAddr.values()) {
+                if (pd.kind !== 'v3') continue;
+                const st = states.get(pd.pair);
+                if (st) { pd.v3 = st; pd.fee = st.fee / 1e6; attached++; }
+            }
+            console.log(`Loaded state for ${attached}/${v3Count} concentrated-liquidity pools`);
         }
         // 2. Load reserves and attach
         const reserveRows = db.db.prepare(`
@@ -670,10 +751,24 @@ export async function evaluateTriangles(
                     const second = direction === 'forward' ? pBC : pAB;
 
                     // Orient for the direction we're walking: input = root
-                    const oriented = [
-                        { ...orient(first, root),  fee: first.fee  },
-                        { ...orient(second, tokB), fee: second.fee },
-                    ];
+                    const hasV3 = first.kind === 'v3' || second.kind === 'v3';
+                    if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
+                    if ((first.kind === 'v3' && !first.v3) || (second.kind === 'v3' && !second.v3)) {
+                        skipReasons.v3MissingState++; continue;
+                    }
+                    const oriented = hasV3
+                        ? [orientHop(first, root), orientHop(second, tokB)]
+                        : [
+                            { ...orient(first, root),  fee: first.fee  },
+                            { ...orient(second, tokB), fee: second.fee },
+                        ];
+
+                    let x: number, grossProfit: number;
+                    if (hasV3) {
+                        const sc = scoreMixed(oriented);
+                        if ('skip' in sc) { skipReasons[sc.skip]++; continue; }
+                        ({ x, grossProfit } = sc);
+                    } else {
 
                     // Same exact machinery as the 3-hop path. This replaces the
                     // old equal-fee closed form (which had to average the two
@@ -691,18 +786,19 @@ export async function evaluateTriangles(
 
                     if (!(cycle_product(oriented) > 1)) { skipReasons.notProfitable++; continue; }
 
-                    let x = optimal_cycle_size(oriented);
+                    x = optimal_cycle_size(oriented);
                     if (!(x > 0) || !isFinite(x)) { skipReasons.notProfitable++; continue; }
                     if (x < 1) x = 1;
                     else if (x > hi) x = hi;
 
-                    const grossProfit = cycle_profit(x, oriented);
+                    grossProfit = cycle_profit(x, oriented);
                     if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
                     // Same uint112 feasibility check as the 3-hop path. The
                     // input bound above does NOT subsume it — see
                     // cycle_overflows for the Polygon case that proves it.
                     if (cycle_overflows(x, oriented)) { skipReasons.uint112Overflow++; continue; }
+                    }
 
                     const netProfit   = grossProfit - x * flashPremium;
                     const roi = x > 0 ? netProfit / x : 0;
@@ -743,8 +839,8 @@ export async function evaluateTriangles(
                         grossProfit,
                         netProfit,
                         hops: [
-                            { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee },
-                            { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee },
+                            { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee,  kind: first.kind },
+                            { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee, kind: second.kind },
                         ],
                     });
                 }
@@ -763,13 +859,26 @@ export async function evaluateTriangles(
                             { pair: pAB, tokenIn: tokB, tokenOut: root },
                           ];
 
+                    const hasV3 = hops.some(h => h.pair.kind === 'v3');
+                    if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
+                    if (hops.some(h => h.pair.kind === 'v3' && !h.pair.v3)) { skipReasons.v3MissingState++; continue; }
+
                     // Orient once — reused by the gate, the fold, and the
                     // profit evaluation below.
-                    const oriented = [
-                        { ...orient(hops[0].pair, hops[0].tokenIn), fee: hops[0].pair.fee },
-                        { ...orient(hops[1].pair, hops[1].tokenIn), fee: hops[1].pair.fee },
-                        { ...orient(hops[2].pair, hops[2].tokenIn), fee: hops[2].pair.fee },
-                    ];
+                    const oriented = hasV3
+                        ? hops.map(h => orientHop(h.pair, h.tokenIn))
+                        : [
+                            { ...orient(hops[0].pair, hops[0].tokenIn), fee: hops[0].pair.fee },
+                            { ...orient(hops[1].pair, hops[1].tokenIn), fee: hops[1].pair.fee },
+                            { ...orient(hops[2].pair, hops[2].tokenIn), fee: hops[2].pair.fee },
+                        ];
+
+                    let xStar: number, grossProfit: number;
+                    if (hasV3) {
+                        const sc = scoreMixed(oriented);
+                        if ('skip' in sc) { skipReasons[sc.skip]++; continue; }
+                        ({ x: xStar, grossProfit } = sc);
+                    } else {
 
                     const smallestInReserve = Math.min(oriented[0].rIn, oriented[1].rIn, oriented[2].rIn);
                     if (smallestInReserve <= 0) { skipReasons.notProfitable++; continue; }
@@ -785,13 +894,13 @@ export async function evaluateTriangles(
                     if (!(cycle_product(oriented) > 1)) { skipReasons.notProfitable++; continue; }
 
                     // Exact optimum, then clamp to the input bound.
-                    let xStar = optimal_cycle_size(oriented);
+                    xStar = optimal_cycle_size(oriented);
                     if (!(xStar > 1)) xStar = 1;
                     else if (xStar > hi) xStar = hi;
 
                     // Profit is still measured by walking the hops, so what we
                     // rank and report never depends on the folding algebra.
-                    const grossProfit = cycle_profit(xStar, oriented);
+                    grossProfit = cycle_profit(xStar, oriented);
                     if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
                     // Feasibility, not preference: if any hop's input side
@@ -801,6 +910,7 @@ export async function evaluateTriangles(
                     // the profit filters so the count is attributed honestly
                     // instead of hiding inside belowMinProfit.
                     if (cycle_overflows(xStar, oriented)) { skipReasons.uint112Overflow++; continue; }
+                    }
 
                     const netProfit = grossProfit - xStar * flashPremium;
                     const roi = xStar > 0 ? netProfit / xStar : 0;
@@ -845,6 +955,7 @@ export async function evaluateTriangles(
                             tokenIn: h.tokenIn,
                             tokenOut: h.tokenOut,
                             fee: h.pair.fee,
+                            kind: h.pair.kind,
                         })),
                     });
                 }
@@ -853,7 +964,8 @@ export async function evaluateTriangles(
 
         result.trianglesSkipped =
             skipReasons.missingPair + skipReasons.missingReserves + skipReasons.dustLiquidity +
-            skipReasons.belowMinProfit + skipReasons.belowMinInput + skipReasons.roiCapExceeded;
+            skipReasons.belowMinProfit + skipReasons.belowMinInput + skipReasons.roiCapExceeded +
+            skipReasons.v3NotExecutable + skipReasons.v3MissingState;
 
         candidates.sort((a, b) => b.netProfit - a.netProfit);
         result.profitableCount = candidates.length;

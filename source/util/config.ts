@@ -195,6 +195,20 @@ export type RawChainConfig = {
          *   node --experimental-strip-types scripts/probe-batch-size.mjs <chain>
          */
         batchSize?: number;
+        /**
+         * Concentrated-liquidity pools per YoBatches2.getV3State call.
+         * Default 100. Measured cold on anvil: ~150k gas/pool at v3Words=2,
+         * so 100 pools is ~15M gas — well inside a 50M eth_call cap, with
+         * room for pools with far more initialized ticks than the test had.
+         */
+        v3BatchSize?: number;
+        /**
+         * Tick window half-width, in tickBitmap words (256 tick spacings
+         * each), fetched around every v3 pool's current tick. Default 2.
+         * A swap that walks past the window is scored only up to its edge
+         * (conservative), so too small costs opportunity, not correctness.
+         */
+        v3Words?: number;
     };
 };
 

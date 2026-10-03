@@ -11,13 +11,18 @@ import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
 const DB = process.env.ARB_TEST_DB ?? 'db/sonic.sqlite';
 const db = { db: new DatabaseSync(DB, { readOnly: true }) };
 
-// Mirror getPairsForEnumeration + the evaluator's fee resolution.
+// Mirror getPairsForEnumeration + the evaluator's fee resolution. Honours
+// `kinds` like the real one does: the index asks for ['v2'] only, and on a DB
+// that has v3 pools (pairs.kind, added by the V3 scanner) ignoring that would
+// feed their virtual reserves to V2 arithmetic.
 const UNSAFE_TOKEN = ["'fee-on-transfer'", "'nonstandard'", "'honeypot'", "'dead'"].join(',');
 const UNSAFE_PAIR = ["'pair-restricted'"].join(',');
-db.getPairsForEnumeration = () => db.db.prepare(`
+const HAS_KIND = db.db.prepare('PRAGMA table_info(pairs)').all().some(c => c.name === 'kind');
+db.getPairsForEnumeration = (opts = {}) => db.db.prepare(`
     SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable
     FROM pairs p INNER JOIN reserves r ON r.pair = p.address
     WHERE r.reserves0 != '0' AND r.reserves1 != '0'
+      ${HAS_KIND && opts.kinds ? `AND p.kind IN (${opts.kinds.map(k => `'${k}'`).join(',')})` : ''}
       AND (p.stable IS NULL OR p.stable = 0)
       AND (p.probeStatus IS NULL OR p.probeStatus NOT IN (${UNSAFE_PAIR}))
       AND p.token0 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${UNSAFE_TOKEN}))

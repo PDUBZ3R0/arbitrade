@@ -158,6 +158,9 @@ console.log(`    ROI cap exceeded:    ${result.skipReasons.roiCapExceeded}`);
 // every attempt. Five such candidates topped the Polygon ranking before
 // this filter existed.
 console.log(`    uint112 overflow:    ${result.skipReasons.uint112Overflow}`);
+if (result.skipReasons.v3MissingState > 0) {
+    console.log(`    v3 state missing:    ${result.skipReasons.v3MissingState}   (re-run \`yarn reserves ${cfg.chain.label}\`)`);
+}
 console.log(`  (not counted as "skipped" — no positive spread at all: ${result.skipReasons.notProfitable})`);
 if (result.tokensWithUnknownDecimals > 0) {
     console.log(`  [!] ${result.tokensWithUnknownDecimals} token(s) had unknown decimals (defaulted to 18) — run \`yarn tokens ${cfg.chain.label}\``);
@@ -226,15 +229,18 @@ for (const c of result.topCandidates) {
     const inTokens  = c.inputAmount / divisor;
     const netTokens = c.netProfit / divisor;
     const roi = c.inputAmount > 0 ? (c.netProfit / c.inputAmount) * 100 : 0;
+    // [v3] = has a concentrated-liquidity hop: scored exactly, but the
+    // orchestrator will not attempt it until the executor has a V3 path.
+    const v3Tag = c.hops.some(h => h.kind === 'v3') ? ' [v3]' : '';
     console.log(
-        `  #${c.triangleId.toString().padStart(6)} [${c.hopCount}h ${c.direction.padEnd(7)}] ` +
+        `  #${c.triangleId.toString().padStart(6)}${v3Tag} [${c.hopCount}h ${c.direction.padEnd(7)}] ` +
         `${sym.padEnd(5)}  in=${inTokens.toFixed(6).padStart(14)}  ` +
         `net=+${netTokens.toFixed(6).padStart(12)}  ROI=${roi.toFixed(3).padStart(7)}%`
     );
     if (verbose) {
         for (const h of c.hops) {
             const dex = factoryByAddr.get(h.factory.toLowerCase()) ?? h.factory.slice(0, 10);
-            console.log(`         ${symOf(h.tokenIn).padEnd(5)} → ${symOf(h.tokenOut).padEnd(5)}  ${dex.padEnd(14)}  fee=${(h.fee*100).toFixed(3)}%  pair=${h.pair.slice(0,10)}`);
+            console.log(`         ${symOf(h.tokenIn).padEnd(5)} → ${symOf(h.tokenOut).padEnd(5)}  ${dex.padEnd(14)}  fee=${(h.fee*100).toFixed(3)}%  ${h.kind === 'v3' ? 'pool' : 'pair'}=${h.pair.slice(0,10)}`);
         }
     }
 }

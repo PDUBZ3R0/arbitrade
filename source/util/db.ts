@@ -17,6 +17,15 @@
 //
 //   scan_progress — last block scanned per factory, so we can resume
 //
+//   pool_state / pool_ticks — concentrated-liquidity (kind = 'v3') pool state
+//     as read by YoBatches2.getV3State: price, tick, in-range liquidity, fee,
+//     spacing, and the initialized ticks inside the fetched window. A v3 pool
+//     ALSO gets a reserves row holding its virtual reserves (L/sqrtP, L*sqrtP),
+//     so everything that only needs a price or a depth signal — enumeration,
+//     dust filters, numeraire pricing — works unchanged. Anything that needs
+//     to SIZE a trade must use pool_state instead: virtual reserves are only
+//     valid up to the next initialized tick.
+//
 // -----------------------------------------------------------------------------
 
 import Database from 'better-sqlite3';
@@ -72,6 +81,26 @@ const SCHEMA = `
     );
 
     CREATE INDEX IF NOT EXISTS idx_reserves_block ON reserves(blockNumber);
+
+    CREATE TABLE IF NOT EXISTS pool_state (
+        pool          TEXT PRIMARY KEY,
+        sqrtPriceX96  TEXT NOT NULL,      -- uint160 as decimal string
+        tick          INTEGER NOT NULL,
+        liquidity     TEXT NOT NULL,      -- uint128 as decimal string
+        fee           INTEGER NOT NULL,   -- pips (3000 = 0.3%), from pool.fee()
+        tickSpacing   INTEGER NOT NULL,
+        windowLow     INTEGER NOT NULL,   -- pool_ticks is complete for ticks in
+        windowHigh    INTEGER NOT NULL,   --   [windowLow, windowHigh], nothing beyond
+        blockNumber   INTEGER NOT NULL,
+        updatedAt     INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pool_ticks (
+        pool          TEXT NOT NULL,
+        tick          INTEGER NOT NULL,
+        liquidityNet  TEXT NOT NULL,      -- int128 as decimal string
+        PRIMARY KEY (pool, tick)
+    ) WITHOUT ROWID;
 
     CREATE TABLE IF NOT EXISTS scan_progress (
         factory      TEXT PRIMARY KEY,
@@ -898,14 +927,21 @@ export class ArbitradeDB {
      * pairs and tokens (probeStatus NULL) are kept — excluding the unknown
      * would empty the graph before the first probe run.
      */
-    getPairsForEnumeration(opts: { includeStable?: boolean; includeUnsafe?: boolean } = {}): Array<{
+    getPairsForEnumeration(opts: {
+        includeStable?: boolean;
+        includeUnsafe?: boolean;
+        /** Pool kinds to include. Default: all. The hot index passes ['v2'] until it can score v3. */
+        kinds?: Array<'v2' | 'v3'>;
+    } = {}): Array<{
         pair:        string;
         factory:     string;
         token0:      string;
         token1:      string;
-        fee:         number | null;   // per-pair for v2fee/solidly; NULL for pure v2
+        fee:         number | null;   // per-pair for v2fee/solidly/v3; NULL for pure v2
         stable:      number | null;   // 0/1 or NULL
+        kind:        'v2' | 'v3';
     }> {
+        const kindClause = opts.kinds ? `AND p.kind IN (${opts.kinds.map(k => `'${k === 'v3' ? 'v3' : 'v2'}'`).join(',')})` : '';
         const includeStable = opts.includeStable ?? false;
         const includeUnsafe = opts.includeUnsafe ?? false;
         const stableClause = includeStable ? '' : 'AND (p.stable IS NULL OR p.stable = 0)';
@@ -916,14 +952,107 @@ export class ArbitradeDB {
             AND p.token0 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))
             AND p.token1 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))`;
         return this.db.prepare(`
-            SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable
+            SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable, p.kind
             FROM pairs p
             INNER JOIN reserves r ON r.pair = p.address
             WHERE r.reserves0 != '0' AND r.reserves1 != '0'
+            ${kindClause}
             ${stableClause}
             ${unsafeClause}
             ORDER BY p.address
         `).all() as any;
+    }
+
+    // ------------------------------------------- concentrated-liquidity state
+
+    /**
+     * Store one batch of v3 pool reads, atomically per batch: pool_state is
+     * upserted, the pool's tick table is REPLACED (a tick that was burned to
+     * zero since the last read must disappear, not linger), pairs.fee and
+     * pairs.tickSpacing are refreshed from the pool, and the reserves row is
+     * set to the supplied virtual reserves.
+     *
+     * A pool that did not answer (state === null) gets zero reserves, so a
+     * pool that stops responding drops out of enumeration instead of being
+     * scored on its last known price forever.
+     */
+    upsertV3States(rows: Array<{
+        pool: string;
+        blockNumber: number;
+        state: {
+            sqrtPriceX96: bigint; tick: number; liquidity: bigint; fee: number; tickSpacing: number;
+            windowLow: number; windowHigh: number; ticks: Array<{ index: number; liquidityNet: bigint }>;
+        } | null;
+        reserves0: bigint;
+        reserves1: bigint;
+    }>): number {
+        const now = Math.floor(Date.now() / 1000);
+        const putState = this.db.prepare(`
+            INSERT INTO pool_state (pool, sqrtPriceX96, tick, liquidity, fee, tickSpacing, windowLow, windowHigh, blockNumber, updatedAt)
+            VALUES (@pool, @sqrtPriceX96, @tick, @liquidity, @fee, @tickSpacing, @windowLow, @windowHigh, @blockNumber, @updatedAt)
+            ON CONFLICT(pool) DO UPDATE SET
+                sqrtPriceX96 = excluded.sqrtPriceX96, tick = excluded.tick, liquidity = excluded.liquidity,
+                fee = excluded.fee, tickSpacing = excluded.tickSpacing,
+                windowLow = excluded.windowLow, windowHigh = excluded.windowHigh,
+                blockNumber = excluded.blockNumber, updatedAt = excluded.updatedAt
+        `);
+        const dropTicks = this.db.prepare('DELETE FROM pool_ticks WHERE pool = ?');
+        const putTick = this.db.prepare('INSERT INTO pool_ticks (pool, tick, liquidityNet) VALUES (?, ?, ?)');
+        const putPair = this.db.prepare('UPDATE pairs SET fee = ?, tickSpacing = ? WHERE address = ?');
+        const putRes = this.db.prepare(`
+            INSERT INTO reserves (pair, reserves0, reserves1, blockNumber, updatedAt)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(pair) DO UPDATE SET
+                reserves0 = excluded.reserves0, reserves1 = excluded.reserves1,
+                blockNumber = excluded.blockNumber, updatedAt = excluded.updatedAt
+        `);
+        const tx = this.db.transaction(() => {
+            let n = 0;
+            for (const r of rows) {
+                const pool = r.pool.toLowerCase();
+                if (r.state) {
+                    const s = r.state;
+                    putState.run({
+                        pool, sqrtPriceX96: s.sqrtPriceX96.toString(), tick: s.tick, liquidity: s.liquidity.toString(),
+                        fee: s.fee, tickSpacing: s.tickSpacing, windowLow: s.windowLow, windowHigh: s.windowHigh,
+                        blockNumber: r.blockNumber, updatedAt: now,
+                    });
+                    dropTicks.run(pool);
+                    for (const t of s.ticks) putTick.run(pool, t.index, t.liquidityNet.toString());
+                    putPair.run(s.fee / 1e6, s.tickSpacing, pool);
+                    n++;
+                }
+                putRes.run(pool, r.reserves0.toString(), r.reserves1.toString(), r.blockNumber, now);
+            }
+            return n;
+        });
+        return tx();
+    }
+
+    /**
+     * Load stored v3 state, in the V3Pool shape calculus-v3.js consumes
+     * (ticks ascending). Pass `pools` to restrict; omit for all.
+     */
+    loadV3States(pools?: Iterable<string>): Map<string, {
+        sqrtPriceX96: bigint; tick: number; liquidity: bigint; fee: number; tickSpacing: number;
+        windowLow: number; windowHigh: number; ticks: Array<{ index: number; liquidityNet: bigint }>;
+        blockNumber: number; updatedAt: number;
+    }> {
+        const want = pools ? new Set([...pools].map(p => p.toLowerCase())) : null;
+        const out = new Map<string, any>();
+        for (const r of this.db.prepare('SELECT * FROM pool_state').iterate() as Iterable<any>) {
+            if (want && !want.has(r.pool)) continue;
+            out.set(r.pool, {
+                sqrtPriceX96: BigInt(r.sqrtPriceX96), tick: r.tick, liquidity: BigInt(r.liquidity),
+                fee: r.fee, tickSpacing: r.tickSpacing, windowLow: r.windowLow, windowHigh: r.windowHigh,
+                ticks: [], blockNumber: r.blockNumber, updatedAt: r.updatedAt,
+            });
+        }
+        for (const t of this.db.prepare('SELECT pool, tick, liquidityNet FROM pool_ticks ORDER BY pool, tick').iterate() as Iterable<any>) {
+            const s = out.get(t.pool);
+            if (s) s.ticks.push({ index: t.tick, liquidityNet: BigInt(t.liquidityNet) });
+        }
+        return out;
     }
 
     // ------------------------------------------- triangles

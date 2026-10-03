@@ -141,6 +141,9 @@ export async function runOrchestratorPass(
             limit: candidatesPerPass,
             minProfitTokens,
             maxRoiPct,
+            // Cycles with a v3 hop are scored by `yarn evaluate` but cannot be
+            // traded until FlashArbExecutor has a V3 swap-callback path.
+            executableOnly: true,
             minLiquidityTokens,
             minInputTokens,
         });

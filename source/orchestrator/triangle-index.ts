@@ -141,7 +141,13 @@ export class TriangleIndex {
         const ix = new TriangleIndex();
 
         // 1. pairs
-        const pairRows = (db as any).getPairsForEnumeration({ includeStable: false }) as Array<{
+        // V2-style pairs only. The index scores with V2 arithmetic on res0/res1
+        // and is fed by Sync, which v3 pools never emit; their reserves rows
+        // hold VIRTUAL reserves that are only valid to the next tick. Dropping
+        // v3 pools here drops every triangle through them (step 3 below), which
+        // is also what keeps the live loop from attempting a cycle the executor
+        // cannot trade. Mirrors the evaluator's executableOnly.
+        const pairRows = (db as any).getPairsForEnumeration({ includeStable: false, kinds: ['v2'] }) as Array<{
             pair: string; factory: string; token0: string; token1: string; fee: number | null;
         }>;
         const t0: number[] = [], t1: number[] = [], fee: number[] = [];

@@ -288,6 +288,15 @@ export class CandidateExecutor {
             candidate, built: null, simulated: false, broadcast: false, confirmed: false,
         };
 
+        // Last line of defence: every caller already asks the evaluator for
+        // executableOnly candidates, but a v3 hop reaching buildHops would be
+        // walked as a V2 pair (getReserves on a pool that has none) and sent
+        // to an executor that would call pair.swap() on it.
+        if (candidate.hops.some(h => h.kind === 'v3')) {
+            attempt.simulationError = 'cycle has a v3 hop — FlashArbExecutor has no V3 swap path yet';
+            return attempt;
+        }
+
         await this.ensureGasPrice();
 
         const built = await buildHops(

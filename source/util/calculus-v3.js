@@ -33,7 +33,7 @@
 //     is correctly ignored here.
 // -----------------------------------------------------------------------------
 
-import { swap_output, optimal_cycle_size } from './calculus.js';
+import { swap_output, optimal_cycle_size, UINT112_SAFE } from './calculus.js';
 
 // =============================================================================
 // Constants
@@ -637,4 +637,20 @@ export function optimal_mixed_cycle(hops, maxIter = 256) {
         if (segs[binding].wall) return { x: total, wall: true, iterations: it + 1 };
     }
     return { x: total, wall: false, iterations: maxIter };
+}
+
+/**
+ * cycle_overflows (calculus.js) for a mixed cycle: would any V2 hop's input
+ * reserve pass the uint112 ceiling at input x? V3 hops are skipped — a V3
+ * pool keeps no uint112 reserve slots (its limits are the price bounds, which
+ * hop_output already respects via the tick window).
+ */
+export function mixed_cycle_overflows(x, hops, cap = UINT112_SAFE) {
+    let amt = x;
+    for (const h of hops) {
+        if (!h.v3 && !(h.rIn + amt <= cap)) return true;
+        amt = hop_output(amt, h);
+        if (!(amt > 0)) return true;
+    }
+    return false;
 }

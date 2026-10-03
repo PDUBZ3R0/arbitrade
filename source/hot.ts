@@ -162,6 +162,7 @@ process.stdout.write('Pricing roots (one full evaluator pass)... ');
 const t0 = Date.now();
 const baseline = await evaluateTriangles(cfg, dbFile, {
     limit: 5, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
+    executableOnly: true,   // no v3 execution path yet
 });
 console.log(`${Date.now() - t0}ms — ${Object.keys(baseline.rootPricing).length} root(s), ` +
     `${baseline.candidatesFound.toLocaleString()} candidate(s) in the snapshot`);
@@ -338,6 +339,7 @@ if (repriceSec > 0) {
             try {
                 const r = await evaluateTriangles(cfg, dbFile, {
                     limit: 1, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
+                    executableOnly: true,
                 });
                 pricing = r.rootPricing;
                 thresholds = buildThresholds(pricing);
