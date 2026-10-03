@@ -1,4 +1,4 @@
-{
+          {
     factories: [
         {
             address: "0x35da19425ce5ce7a1707815e71daaccb76814fe4",
@@ -35,6 +35,9 @@
         },
         {
             "address": "0x3627ab14c987cc98cea9e8f797d4b61e4de9e734"
+        },
+        {
+            "address": "0x273126ba6fb9c8e28ca47e50fdced6844994659c"
         }
     ]
 }

@@ -18,7 +18,7 @@ import { JsonRpcProvider } from 'ethers';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { appendToBlacklist } from './util/blacklist.ts';
-import { probePair, TOKEN_VERDICTS, type ProbeOutcome } from './util/token-probe.ts';
+import { probePair, STAGE, TOKEN_VERDICTS, type ProbeOutcome } from './util/token-probe.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -49,6 +49,19 @@ const blacklistRestricted = hasFlag('--blacklist-restricted');
 /** Probe size: this fraction of the root side's reserve (bps). Small enough for minimal price impact, big enough that 1-2 wei rounding doesn't read as a tax. */
 const PROBE_SIZE_BPS = 50n; // 0.5%
 const PAIRS_PER_TOKEN = 3;
+/**
+ * How many independent pairs must let us BUY and then refuse to let us SELL
+ * before we call the token a honeypot.
+ *
+ * This verdict lives here, not in classifyRevertData, because one pair cannot
+ * support it: a failed exit on a single pair is usually a thin pool, a fee above
+ * our feeBpsCap, or a non-constant-product curve. Two independent pairs where
+ * the buy leg completed and the sell leg did not is a property of the token.
+ *
+ * At 1 this collapses back into the bug it replaces (every dust pool becomes a
+ * honeypot). Above PAIRS_PER_TOKEN it can never fire.
+ */
+const HONEYPOT_MIN_FAILED_EXITS = 2;
 
 const cfg = loadChainConfig(chainArg);
 if (!cfg.chain.probe) {
@@ -88,6 +101,11 @@ async function probeToken(token: string): Promise<void> {
 
     let pairLevelOnly = true;
     let lastReason = '';
+    // Pairs where the buy leg completed and the sell leg then failed. Counted
+    // across all candidates because that is the only level at which "cannot
+    // exit" can be distinguished from "that one pool was too thin to trade".
+    let boughtButCouldNotSell = 0;
+    let lastFailedExitReason = '';
     for (const c of candidates) {
         const amount = (BigInt(c.rootReserve) * PROBE_SIZE_BPS) / 10_000n;
         if (amount === 0n) continue;
@@ -96,6 +114,13 @@ async function probeToken(token: string): Promise<void> {
 
         if (out.status === 'pair-restricted' || out.status === 'pair-rejects') {
             db.setPairProbe(c.pair, out.status, out.reason);
+            // Reaching stage 3+ means the buy leg executed: we acquired the
+            // token and the pair is tradeable inbound. Failing after that is
+            // the half of the honeypot signature we can observe per-pair.
+            if (out.stage !== null && out.stage >= STAGE.SELL_TRANSFER) {
+                boughtButCouldNotSell++;
+                lastFailedExitReason = out.reason;
+            }
             continue; // a bad pair says nothing about the token — try the next one
         }
         if (out.status === 'error') {
@@ -106,13 +131,23 @@ async function probeToken(token: string): Promise<void> {
 
         // Token-level verdict. The buy leg executed unless it failed at stage 2
         // (a token refusing transfers to contracts), so the pair itself is fine.
-        if (out.stage === null || out.stage >= 3) db.setPairProbe(c.pair, 'ok', 'round trip reached the sell leg');
+        if (out.stage === null || out.stage >= STAGE.SELL_TRANSFER) db.setPairProbe(c.pair, 'ok', 'round trip reached the sell leg');
         db.setTokenProbe(token, { status: out.status, buyTaxBps: out.buyTaxBps, sellTaxBps: out.sellTaxBps, reason: out.reason, pair: c.pair });
         bump(out.status);
         if (out.status !== 'clean') flagged.push({ token, out, pair: c.pair });
         return;
     }
 
+    // Cross-pair verdict, checked before 'untestable': we bought this token on
+    // several independent pairs and could not sell it back on any of them. That
+    // is the honeypot signature, and it is only visible from here.
+    if (boughtButCouldNotSell >= HONEYPOT_MIN_FAILED_EXITS) {
+        const reason = `bought on ${boughtButCouldNotSell} independent pairs, could not exit any (last: ${lastFailedExitReason})`;
+        db.setTokenProbe(token, { status: 'honeypot', buyTaxBps: null, sellTaxBps: null, reason, pair: null });
+        bump('honeypot');
+        flagged.push({ token, pair: `${boughtButCouldNotSell} pairs`, out: { status: 'honeypot', buyTaxBps: null, sellTaxBps: null, stage: null, reason } });
+        return;
+    }
     if (pairLevelOnly) {
         db.setTokenProbe(token, { status: 'untestable', buyTaxBps: null, sellTaxBps: null, reason: `every root pair rejected the probe (last: ${lastReason})`, pair: null });
         bump('untestable');

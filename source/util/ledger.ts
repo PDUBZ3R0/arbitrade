@@ -7,9 +7,14 @@
 // db/ledger.sqlite, resolved via config.ts's ledgerPath().
 //
 // Only ever written for transactions that actually confirmed on-chain with
-// status=1 — see orchestrator/loop.ts, which waits for the receipt before
+// status=1 — see orchestrator/attempt.ts, which waits for the receipt before
 // calling recordTrade(). A broadcast that reverted on-chain is NOT a trade
 // and does not get a row here.
+//
+// profitWei is the REALISED profit, read from the executor's ArbExecuted
+// event, not the pre-trade estimate. The estimate is an upper bound (reserve
+// drift and transfer taxes can only reduce what lands), so recording it would
+// make this ledger systematically optimistic.
 // -----------------------------------------------------------------------------
 
 import Database from 'better-sqlite3';

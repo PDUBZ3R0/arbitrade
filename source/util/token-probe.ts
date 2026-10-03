@@ -15,6 +15,14 @@
 //   neither:      error (couldn't evaluate — RPC failure, unknown revert)
 // A pair-level verdict must never poison a token's verdict, so callers retry
 // a token through a different pair when they get one.
+//
+// SCOPE: classifyRevertData sees ONE pair. Verdicts that require comparing
+// several pairs are not its job and it must not guess at them. In particular
+// "can buy, cannot exit" — the honeypot signature — is only meaningful once
+// every candidate pair has been tried, because a single failed exit is far more
+// often a thin pool than a malicious token. probe.ts owns that conclusion; see
+// the STAGE.SELL_SWAP comment below for what happens when this boundary is
+// ignored.
 // -----------------------------------------------------------------------------
 
 import { Contract, Interface, type JsonRpcProvider } from 'ethers';
@@ -126,8 +134,39 @@ export function classifyRevertData(data: string | null): ProbeOutcome {
                 if (/(^|[^A-Z])K($|[^A-Z])/.test(r) || r.includes('INSUFFICIENT') || reason.includes('0xa932492f')) return withStage('pair-rejects');
                 return withStage('pair-restricted');
             case STAGE.SELL_TRANSFER:
+                // token.transfer(pair) from this contract was refused. This one
+                // IS about the token: we demonstrably hold the balance (the
+                // probe measured buyReceived as its own balanceOf delta), and
+                // the destination is an ordinary pair that accepted a transfer
+                // on the buy leg moments earlier. A token that won't let us
+                // send it onward is the textbook honeypot.
+                if (r.includes('BALANCE')) return withStage('error'); // our accounting, not the token
+                return withStage('honeypot');
             case STAGE.SELL_SWAP:
-                return withStage('honeypot'); // bought fine, couldn't exit
+                // pair.swap() on the way back — NOT automatically a honeypot.
+                // This is the same ambiguity the buy leg resolves above, for the
+                // same reasons, so it gets the same triage.
+                //
+                // Note what the probe has already done by this point: it sized
+                // the requested output from `arrived`, the pair's MEASURED
+                // balance increase, so a transfer tax is priced in and cannot
+                // cause this revert. What's left are all facts about the pair:
+                //   - real fee above feeBpsCap — we asked for more than the
+                //     K-check allows
+                //   - non-constant-product curve (stable / Solidly)
+                //   - dust reserves, or `requested` rounding down to 0
+                //
+                // Calling those a honeypot labelled 82,501 of Polygon's 162,648
+                // tokens (51%) as honeypots and cut the enumerable pair set from
+                // 192,377 to 97,449 — the long tail of thin pools, not malice.
+                //
+                // "Could buy but can never sell" is still a honeypot, but that
+                // is a CROSS-PAIR conclusion and cannot be drawn here, where
+                // exactly one pair is in view. probe.ts draws it after trying
+                // every candidate pair for the token.
+                if (r.includes('TRANSFER')) return withStage('honeypot');
+                if (/(^|[^A-Z])K($|[^A-Z])/.test(r) || r.includes('INSUFFICIENT') || reason.includes('0xa932492f')) return withStage('pair-rejects');
+                return withStage('pair-restricted');
             default:
                 return withStage('error');
         }

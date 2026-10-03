@@ -5,7 +5,7 @@
     currency: 'xDAI',
     token: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
     contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
-    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
+    executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
     threads: 5,
     interval: 3000,
     pagesize: 5000,
@@ -275,52 +275,53 @@
     provider: 'aave-v3',
     premium: 0.0005,
     pool: '0xb50201558B00496A145fE76f7424749556E326D8',
-    tokens: [
-      {
-        symbol: 'WETH',
-        address: '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1',
-        decimals: 18,
-      },
-      {
-        symbol: 'wstETH',
-        address: '0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6',
-        decimals: 18,
-      },
-      {
-        symbol: 'GNO',
-        address: '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb',
-        decimals: 18,
-      },
-      {
-        symbol: 'USDC',
-        address: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83',
-        decimals: 6,
-      },
-      {
-        symbol: 'WXDAI',
-        address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
-        decimals: 18,
-      },
-      {
-        symbol: 'EURe',
-        address: '0xcB444e90D8198415266c6a2724b7900fb12FC56E',
-        decimals: 18,
-      },
-      {
-        symbol: 'sDAI',
-        address: '0xaf204776c7245bF4147c2612BF6e5972Ee483701',
-        decimals: 18,
-      },
-      {
-        symbol: 'USDCe',
-        address: '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0',
-        decimals: 6,
-      },
-      {
-        symbol: 'GHO',
-        address: '0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73',
-        decimals: 18,
-      },
-    ],
+  "tokens": [
+    {
+      "symbol": "wstETH",
+      "address": "0x6c76971f98945ae98dd7d4dfca8711ebea946ea6",
+      "decimals": 18
+    },
+    {
+      "symbol": "GNO",
+      "address": "0x9c58bacc331c9aa871afd802db6379a98e80cedb",
+      "decimals": 18
+    },
+    {
+      "symbol": "sDAI",
+      "address": "0xaf204776c7245bf4147c2612bf6e5972ee483701",
+      "decimals": 18
+    },
+    {
+      "symbol": "EURe",
+      "address": "0xcb444e90d8198415266c6a2724b7900fb12fc56e",
+      "decimals": 18
+    },
+    {
+      "symbol": "WETH",
+      "address": "0x6a023ccd1ff6f2045c3309768ead9e68f978f6e1",
+      "decimals": 18
+    },
+    {
+      "symbol": "WXDAI",
+      "address": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDCe",
+      "address": "0x2a22f9c3b484c3629090feed35f17ff8f88f76f0",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDC",
+      "address": "0xddafbb505ad214d7b80b1f830fccc89b60fb7a83",
+      "decimals": 6
+    },
+    {
+      "symbol": "GHO",
+      "address": "0xfc421ad3c883bf9e7c4f42de845c4e4405799e73",
+      "decimals": 18
+    }
+  ]
+
   },
 }

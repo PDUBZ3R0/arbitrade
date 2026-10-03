@@ -26,6 +26,41 @@ import { cycle_product, optimal_cycle_size, cycle_profit } from '../util/calculu
 
 // -----------------------------------------------------------------------------
 
+/**
+ * Default ROI cap, in percent. THE one place this number lives — evaluate.ts,
+ * orchestrator.ts, orchestrator/loop.ts and hot.ts all read it from here
+ * rather than each carrying their own default.
+ *
+ * They used to carry their own, and it diverged twice. First the orchestrator
+ * didn't pass maxRoiPct at all, so it silently used this library's default
+ * instead of the CLI's stricter one. Then the default was raised in evaluate.ts
+ * and in the orchestrator's banner but NOT in loop.ts, so `yarn orchestrator`
+ * printed one cap and applied another. A filter whose displayed value differs
+ * from its applied value is worse than no filter, so there is now exactly one
+ * number and every caller imports it.
+ *
+ * Set effectively wide open (2000% = 20x) on purpose. A low cap looks prudent
+ * — real arbitrage is a few percent — but it is the wrong instrument here, and
+ * measurably so. Replaying Sonic's live triangle set with the cap at 20%
+ * surfaced 5 candidates, the best worth 0.016 wS, NONE of which covered their
+ * own gas. Removing the cap surfaced 29, the best worth 0.132 wS, and 20 of
+ * them cleared break-even.
+ *
+ * The reason is that profit = input x ROI, and input is capped by the
+ * shallowest pool in the cycle (see MAX_INPUT_FRACTION_BPS in
+ * orchestrator/build-hops.ts). When pool depth bounds the size, a high ROI is
+ * the ONLY route to an absolute profit that beats a fixed gas cost — so an ROI
+ * cap removes precisely the candidates worth executing.
+ *
+ * What the cap was really for — "don't waste a simulation on a phantom" — is
+ * now handled properly and for free downstream: eth_estimateGas and
+ * eth_call both reject an unexecutable path at no cost, and the executor
+ * enforces minProfit on-chain against the real closing balance, so a phantom
+ * cannot cost anything but two free RPC calls. Keep the cap only as a guard
+ * against absurd arithmetic, not as an opportunity filter.
+ */
+export const DEFAULT_MAX_ROI_PCT = 2000;
+
 export type EvaluateOptions = {
     /** Only evaluate triangles rooted at this token. */
     onlyRoot?: string;
@@ -82,9 +117,8 @@ export type EvaluateOptions = {
     minPairReservesWei?: bigint;
     /**
      * Skip candidates whose ROI exceeds this percentage. Real arbitrage almost
-     * never exceeds a few percent; anything > 100% is provably impossible in
-     * any market that charges fees, and > 20% is a strong phantom signal.
-     * Default: 100 (skip only outright impossibilities).
+     * Default: DEFAULT_MAX_ROI_PCT. See that constant for why it is set
+     * effectively wide open rather than to a "realistic arb" number.
      */
     maxRoiPct?: number;
     /**
@@ -452,10 +486,7 @@ export async function evaluateTriangles(
         // for backwards compat, but decimal-blind. See EvaluateOptions doc.
         const legacyMinLiqWei = Number(opts.minPairReservesWei ?? 0n);
 
-        // ROI cap. Real arb almost never exceeds a few percent. Above 100% is
-        // physically impossible in a market with fees. Default 100 skips only
-        // outright math phantoms; set lower (e.g. 20) for stricter filtering.
-        const maxRoi = (opts.maxRoiPct ?? 100) / 100;
+        const maxRoi = (opts.maxRoiPct ?? DEFAULT_MAX_ROI_PCT) / 100;
 
         // Per-root-token thresholds for profit + input, denominated in the
         // chain's numeraire token (cfg.chain.token), converted per-root via

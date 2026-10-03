@@ -7,7 +7,7 @@
 
 import { ArbitradeDB } from './util/db.ts';
 import { loadChainConfig, dbPath } from './util/config.ts';
-import { evaluateTriangles } from './evaluator/evaluator.ts';
+import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from './evaluator/evaluator.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -36,9 +36,10 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           --min-liquidity-tokens, decimal-BLIND (1e18 wei is "1');
     console.error('                           token" for 18-dec but "1 trillion" for 6-dec like USDC —');
     console.error('                           silently kills every pair on that token). Default 0 (off).');
-    console.error('  --max-roi-pct N          Skip candidates with ROI above N%. Real arb is under');
-    console.error('                           a few percent; default 20 catches phantoms while');
-    console.error('                           keeping legitimate opportunities. Set 100 for raw.');
+    console.error(`  --max-roi-pct N          Skip candidates with ROI above N% (default ${DEFAULT_MAX_ROI_PCT}).`);
+    console.error('                           Deliberately wide: input size is capped by pool depth,');
+    console.error('                           so high ROI is the only route to a profit that beats');
+    console.error('                           gas. Lower it only to debug arithmetic.');
     console.error('  --limit N                Show top N candidates only (default 20)');
     console.error('  --verbose                Show hop details for each candidate');
     console.error('  --debug                  Print per-triangle detail (reserves, decimals, fee,');
@@ -94,10 +95,7 @@ if (minLiqStr) {
 }
 
 const maxRoiStr = getStr('--max-roi-pct');
-// Default 20% — real arb rarely exceeds a few percent; anything above 20%
-// on Sonic/Gnosis/Base/etc is almost always a math phantom. Bump higher
-// (--max-roi-pct 100) if debugging.
-const maxRoiPct = maxRoiStr ? parseFloat(maxRoiStr) : 20;
+const maxRoiPct = maxRoiStr ? parseFloat(maxRoiStr) : DEFAULT_MAX_ROI_PCT;
 const limitStr   = getStr('--limit');
 const limit      = limitStr ? parseInt(limitStr, 10) : 20;
 const verbose    = hasFlag('--verbose');

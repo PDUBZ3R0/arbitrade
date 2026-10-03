@@ -70,5 +70,15 @@
             reason:  "dead (0/15 pairs with real liquidity)",
             addedAt: "2026-09-01",
         },
+        {
+            address: "0x3ee4154c7f42d94e1092ad8ce5debb4b743ed0b2",
+            reason:  "restricted DEX — TokenProbe: 9 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-02",
+        },
+        {
+            address: "0xc2d0e0bc81494adb71ce9aa350cc875dae12d81d",
+            reason:  "restricted DEX — TokenProbe: 5 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-02",
+        },
     ]
 }

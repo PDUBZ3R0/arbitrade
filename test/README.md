@@ -1,0 +1,42 @@
+# test/
+
+Integration tests that run against a real EVM, not mocks of the EVM. They exist
+because the parts of this bot that lose money are the parts a type checker
+cannot see: reserve drift, the K invariant, transfer taxes, event decoding, and
+whether a candidate found off-chain is still executable on-chain.
+
+## Prerequisites
+
+Foundry's `anvil` on PATH (`curl -L https://foundry.paradigm.xyz | bash`,
+then `foundryup`), plus `solc` as a dev dependency:
+
+    npm i -D solc
+    anvil --silent &          # leave running; the suites reuse it
+    node test/compile.mjs     # writes test/artifacts.json
+
+`compile.mjs` compiles the REAL contracts/FlashArbExecutor.sol together with
+the mock venue, so a contract change is picked up with no extra step.
+
+## Suites
+
+Run with `node --experimental-strip-types`:
+
+| file | what it covers |
+|---|---|
+| `test.mjs` | `FlashArbExecutor.executeArb` against a real constant-product K check: on-chain hop sizing, reserve drift mid-trade, transfer-tax tokens, `minProfit` enforcement, `ArbExecuted` accuracy, access control. 16 checks. |
+| `test-watcher.mjs` | `sync-watcher.ts`: topic/decoder, pair filtering, a throwing consumer, multiple Syncs per block collapsing, blocks landing between polls, and the coalescing regression (a slow consumer must not leave the feed permanently behind). |
+| `test-index.mjs` | `triangle-index.ts` against a real chain DB: incremental re-scoring must produce byte-identical candidates to a full scan, for every pair. Set `ARB_TEST_DB=db/<chain>.sqlite`. |
+| `test-hot.mjs` | The whole hot loop end to end — a real Sync event drives the real index, the real handler, the real executor contract, a real flash loan, and the real ledger. Also asserts the gas floor refuses a profitable-but-uneconomic candidate. |
+| `gas.mjs` | Gas measurement for `executeArb`, 2-hop and 3-hop. |
+
+## Notes
+
+`test-hot.mjs` relocates a minimal Multicall3 to the canonical
+`0xcA11bde05977b3631167028862bE2a173976CA11` with `anvil_setCode`, because
+`build-hops.ts` hardcodes that address and `eth_call` to a codeless address
+SUCCEEDS returning `0x`. Without the relocation the test would pass for the
+wrong reason — which is exactly how a misconfigured executor address once
+produced a fake "simulated clean" in this project.
+
+`test-hot.mjs` writes to `ledgerPath()` (`db/ledger.sqlite`) and deletes it
+first. Do not run it on a machine whose ledger you care about.

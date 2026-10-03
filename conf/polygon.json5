@@ -5,7 +5,15 @@
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
     contract: '0x1860a9f4661a0299A2A745c2A49DB212098414CB',
-    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
+    // Was 0x77b9D93a… — copied from sonic/gnosis, where that IS the executor.
+    // On Polygon YoBatches was never deployed, so the deployer's nonce sequence
+    // is shifted by one: FlashArbExecutor landed at 0xB7D2055… (see
+    // ignition/deployments/chain-137/deployed_addresses.json and
+    // log/polygon/deploy-flasharb.log). 0x77b9D93a… had NO CODE on Polygon,
+    // and eth_call to a codeless address succeeds returning 0x — which the
+    // orchestrator read as "simulated clean". It is now the TokenProbe.
+    executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
+    probe: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
     threads: 20,
     interval: 3000,
     pagesize: 1000000,
@@ -14,8 +22,8 @@
     dust: 0.005
   },
   evaluator: {
-    minProfitTokens: 0.001,
-    minInputTokens: 0.01,
+    minProfitTokens: 0.05,
+    minInputTokens: 1,
     minLiquidityTokens: 1
   },
   factories: { 
@@ -57,7 +65,7 @@
         JetswapV2: {
           address: '0x668ad0ed2622c62e24f0d5ab6b6ac1b9d2cd4ac7',
           deployBlock: 16569374,
-          fee: 0.003,
+          fee: 0.001,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         ElkV2: {
           address: '0xe3bd06c7ac7e1ceb17bdd2e5ba83e40d1515af2a',
@@ -72,27 +80,27 @@
         KittenSwapV2: {
           address: '0x7cfb780010e9c861e03bcbc7ac12e013137d47a5',
           deployBlock: 31337344,
-          fee: 0.003,
+          fee: 0.0017,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         PancakeSwapV2: {
           address: '0x709e3c6b22993189327a8cfebd572b6cc459fe40',
           deployBlock: 44112849,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         CafeSwapV2: {
           address: '0x5ede3f4e7203bf1f12d57af1810448e5db20f46c',
           deployBlock: 19199313,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         PolyZapV2: {
           address: '0x34de5ce6c9a395db5710119419a7a29baa435c88',
           deployBlock: 13765180,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         DinoSwapV2: {
           address: '0x624ccf581371f8a4493e6abde46412002555a1b6',
           deployBlock: 22634106,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         FractionSwapV2: {
           address: '0xe19c307024e0ce71fefa0d31f0ae1a1eac57d8f5',
@@ -107,7 +115,7 @@
         GreenhouseV2: {
           address: '0x75ed971834b0e176a053ac959d9cf77f0b4c89d0',
           deployBlock: 25686904,
-          fee: 0.003,
+          fee: 0.00195,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         ThunderSwapV2: {
           address: '0xc36a10fa186bdfe343c504a12168755a43d1eda7',
@@ -122,7 +130,7 @@
         JavaSwapV2: {
           address: '0x672353e4e674dddd7319a4852e49f6e1d2ac6f18',
           deployBlock: 18983076,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         SafeswapV2: {
           address: '0x5be44d6c5634161cdadcc2bc35389325aa493e83',
@@ -132,17 +140,17 @@
         BoltrV2: {
           address: '0x442266042667407329e1729e6bead71424f42021',
           deployBlock: 20918958,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         GravisV2: {
           address: '0x17c1d25d5a2d833c266639de5fbe8896bdbeb234',
           deployBlock: 15328806,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         BullSwapV2: {
           address: '0x79038549c96bbfb1e45914402c3479f65e192787',
           deployBlock: 15515418,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         JMSwapV2: {
           address: '0xd36aba9ec96523b0a89886c76065852adfe2eb39',
@@ -176,17 +184,17 @@
         GalaxyFactory_d7581640: {
           address: '0xd7581640dbfc558b3f4d729b8f8c60e0122511f8',
           deployBlock: 17068437,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         OboswapFactory_3a43c0bc: {
           address: '0x3a43c0bccb4edc19fea8e83c80cfc688da93e7c7',
           deployBlock: 22893539,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         WolfFactory_9679010b: {
           address: '0x9679010bf908225f84cd030b4acf7fd4fa13c8f5',
           deployBlock: 15394465,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         KwikswapV1Factory_0b29d7a9: {
           address: '0x0b29d7a989d6647e4a56ee9899daf7535ff9620c',
@@ -217,32 +225,32 @@
         PhotonFactory_9468f600: {
           address: '0x9468f600149cc9820be931ca78eda5b39b05e3f0',
           deployBlock: 17421834,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         CompactFactory_3dda91f1: {
           address: '0x3dda91f11433892bb77f303ff99f542766e76dcf',
           deployBlock: 19849256,
-          fee: 0.003,
+          fee: 0.00305,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         BazookaFactory_b77185fe: {
           address: '0xb77185feb2037dd4210f035e62d1193e879b849e',
           deployBlock: 30972274,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         BazookaFactory_5c69dded: {
           address: '0x5c69dded27372f3f6bd7f90ef6e9f9fd9cb983ae',
           deployBlock: 32177526,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         AliumFactory_3379b4a4: {
           address: '0x3379b4a4fc0e1614c0687c9f613024e83fe0e8b5',
           deployBlock: 16095853,
-          fee: 0.003,
+          fee: 0.00255,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         ProtofiFactory_d109af9e: {
           address: '0xd109af9eea5849f1a3c7a976995a5c315534dd9c',
           deployBlock: 19168287,
-          fee: 0.003,
+          fee: 0.0015,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         WhiteSwapV2Factory_3f0b5743: {
           address: '0x3f0b5743bba8a552a3aa1e7907f4f44047e93f8f',
@@ -272,7 +280,7 @@
         UniswapV2Factory_58811d99: {
           address: '0x58811d99c057cdd9d55962dd0d55f66ae239ae59',
           deployBlock: 26167272,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_275503ac: {
           address: '0x275503ac956295042b0e57f73bb8a8200a7f0524',
@@ -323,7 +331,7 @@
         UniswapV2Factory_800b0526: {
           address: '0x800b052609c355ca8103e06f022aa30647ead60a',
           deployBlock: 11633169,
-          fee: 0.003,
+          fee: 0.005,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_0f10f5a1: {
           address: '0x0f10f5a1006f50edecd086ccd5704ade25709ab2',
@@ -333,17 +341,17 @@
         UniswapV2Factory_3ed75aff: {
           address: '0x3ed75aff4094d2aaa38fafca64ef1c152ec1cf20',
           deployBlock: 18134755,
-          fee: 0.003,
+          fee: 0.0035,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_be087bed: {
           address: '0xbe087bed88539d28664c9998fe3f180ea7b9749c',
           deployBlock: 11591509,
-          fee: 0.003,
+          fee: 0.00305,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_b581d0a3: {
           address: '0xb581d0a3b7ea5cdc029260e989f768ae167ef39b',
           deployBlock: 24980768,
-          fee: 0.003,
+          fee: 0.001,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_16ed6496: {
           address: '0x16ed649675e6ed9f1480091123409b4b8d228dc1',
@@ -354,7 +362,7 @@
         UniswapV2Factory_3fb1e7d5: {
           address: '0x3fb1e7d5d9c974141a5b6e5fa4edab0a7aa15c6a',
           deployBlock: 35205249,
-          fee: 0.003,
+          fee: 0.005,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_b9dc833a: {
           address: '0xb9dc833a87a61ee4590f189d8fa7282031f4d7ff',
@@ -374,7 +382,7 @@
         Polydex_0xf0681: {
           address: '0xf0681bb7088ac68a62909929554aa22ad89a21fb',
           deployBlock: 14810795,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Polydex_0x5bdd1: {
           address: '0x5bdd1cd910e3307582f213b33699e676e61dead9',
@@ -384,7 +392,7 @@
         DEXFactory_2541dbea: {
           address: '0x2541dbea199a22501d75ea141627776bd4eefc80',
           deployBlock: 59242897,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         DEXFactory_56cfc115: {
           address: '0x56cfc115e04dfcda3ad47eae1db86f70c1f8d8a5',
@@ -419,7 +427,7 @@
         Factory_e2f66738: {
           address: '0xe2f6673805c00f5d8569e5a9b81e3a938104fded',
           deployBlock: 57242115,
-          fee: 0.003,
+          fee: 0.001,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_62c3409c: {
           address: '0x62c3409c5a5f98aef255e7e2df6e9296228a7061',
@@ -429,12 +437,12 @@
         Factory_b4cf380e: {
           address: '0xb4cf380eadcf29177b08058b6a9d84d4ab38f00a',
           deployBlock: 29095386,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_c2d0e0bc: {
           address: '0xc2d0e0bc81494adb71ce9aa350cc875dae12d81d',
           deployBlock: 26497124,
-          fee: 0.003,
+          fee: 0.01,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_150170a4: {
           address: '0x150170a4a4fa8a34dfc407f68cde789e4dffc103',
@@ -460,12 +468,12 @@
         Factory_9405d6a4: {
           address: '0x9405d6a4ae2605b666609c675570cd889fcdaf60',
           deployBlock: 50028182,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_5c347a5b: {
           address: '0x5c347a5b8e21908fe44bb5ae08ab52228196bdb4',
           deployBlock: 14366751,
-          fee: 0.003,
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_3d077c05: {
           address: '0x3d077c05c3abce52257e453607209f81d9db01fc',
@@ -501,17 +509,17 @@
         Factory_8f8c3a7c: {
           address: '0x8f8c3a7ccd2980b9a7b5cfadc5d1cf638dc1427a',
           deployBlock: 18822755,
-          fee: 0.003,
+          fee: 0.0031,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_85039b2e: {
           address: '0x85039b2e95558addccf4379728b8433c447e37be',
           deployBlock: 85577619,
-          fee: 0.003,
+          fee: 0.02,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_f9773e32: {
           address: '0xf9773e320f09f1cf33aa808aaf744a330ff0e279',
           deployBlock: 4750787,
-          fee: 0.003,
+          fee: 0.01005,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_a3482117: {
           address: '0xa3482117b1cdae813bd433a470182baf0c64dbc0',
@@ -526,19 +534,19 @@
         Factory_95c6d24c: {
           address: '0x95c6d24c02f1f2cb4c93dbea8e53d95e12bc4d47',
           deployBlock: 18159604,
-          fee: 0.003,
+          fee: 0.001,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         Factory_4e8d9cb4: {
           address: '0x4e8d9cb43e8fe8af67a92bfa918453517e51ff3c',
           deployBlock: 57149437,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
 
 
         PancakeFactory_dc1b62f7: {
           address: '0xdc1b62f7910f429d4179c8c700c086a604c03f4c',
           deployBlock: 80640592,
-          fee: 0.003,
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         PancakeFactory_d76d8c2a: {
           address: '0xd76d8c2a7ca0a1609aea0b9b5017b3f7782891bf',
@@ -692,110 +700,111 @@
   "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
   "tokens": [
     {
-      "symbol": "USDC",
-      "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-      "decimals": 6
-    },
-    {
-      "symbol": "DAI",
-      "address": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
-      "decimals": 18
-    },
-    {
-      "symbol": "WETH",
-      "address": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDT0",
-      "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-      "decimals": 6
-    },
-    {
       "symbol": "WBTC",
-      "address": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
+      "address": "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6",
       "decimals": 8
     },
     {
-      "symbol": "WPOL",
-      "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-      "decimals": 18
-    },
-    {
-      "symbol": "LINK",
-      "address": "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39",
-      "decimals": 18
-    },
-    {
-      "symbol": "AAVE",
-      "address": "0xD6DF932A45C0f255f85145f286eA0b292B21C90B",
-      "decimals": 18
-    },
-    {
-      "symbol": "SUSHI",
-      "address": "0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a",
-      "decimals": 18
-    },
-    {
-      "symbol": "GHST",
-      "address": "0x385Eeac5cB85A38A9a07A70c73e0a3271CfB54A7",
-      "decimals": 18
-    },
-    {
-      "symbol": "miMATIC",
-      "address": "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDCn",
-      "address": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      "decimals": 6
-    },
-    {
-      "symbol": "CRV",
-      "address": "0x172370d5Cd63279eFa6d502DAB29171933a610AF",
-      "decimals": 18
-    },
-    {
-      "symbol": "BAL",
-      "address": "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3",
-      "decimals": 18
-    },
-    {
-      "symbol": "EURS",
-      "address": "0xE111178A87A3BFf0c8d18DECBa5798827539Ae99",
-      "decimals": 2
-    },
-    {
-      "symbol": "EURA",
-      "address": "0xE0B52e49357Fd4DAf2c15e02058DCE6BC0057db4",
-      "decimals": 18
-    },
-    {
-      "symbol": "stMATIC",
-      "address": "0x3A58a54C066FdC0f2D55FC9C89F0415C92eBf3C4",
-      "decimals": 18
-    },
-    {
-      "symbol": "MaticX",
-      "address": "0xfa68FB4628DFF1028CFEc22b4162FCcd0d45efb6",
+      "symbol": "WETH",
+      "address": "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
       "decimals": 18
     },
     {
       "symbol": "wstETH",
-      "address": "0x03b54A6e9a984069379fae1a4fC4dBAE93B3bCCD",
+      "address": "0x03b54a6e9a984069379fae1a4fc4dbae93b3bccd",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDCn",
+      "address": "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+      "decimals": 6
+    },
+    {
+      "symbol": "USDT0",
+      "address": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+      "decimals": 6
+    },
+    {
+      "symbol": "WPOL",
+      "address": "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+      "decimals": 18
+    },
+    {
+      "symbol": "AAVE",
+      "address": "0xd6df932a45c0f255f85145f286ea0b292b21c90b",
+      "decimals": 18
+    },
+    {
+      "symbol": "LINK",
+      "address": "0x53e0bca35ec356bd5dddfebbd1fc0fd03fabad39",
+      "decimals": 18
+    },
+    {
+      "symbol": "EURS",
+      "address": "0xe111178a87a3bff0c8d18decba5798827539ae99",
+      "decimals": 2
+    },
+    {
+      "symbol": "MaticX",
+      "address": "0xfa68fb4628dff1028cfec22b4162fccd0d45efb6",
+      "decimals": 18
+    },
+    {
+      "symbol": "DAI",
+      "address": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+      "decimals": 6
+    },
+    {
+      "symbol": "GHST",
+      "address": "0x385eeac5cb85a38a9a07a70c73e0a3271cfb54a7",
       "decimals": 18
     },
     {
       "symbol": "DPI",
-      "address": "0x85955046DF4668e1DD369D2DE9f3AEB98DD2A369",
+      "address": "0x85955046df4668e1dd369d2de9f3aeb98dd2a369",
+      "decimals": 18
+    },
+    {
+      "symbol": "stMATIC",
+      "address": "0x3a58a54c066fdc0f2d55fc9c89f0415c92ebf3c4",
+      "decimals": 18
+    },
+    {
+      "symbol": "CRV",
+      "address": "0x172370d5cd63279efa6d502dab29171933a610af",
+      "decimals": 18
+    },
+    {
+      "symbol": "SUSHI",
+      "address": "0x0b3f868e0be5597d5db7feb59e1cadbb0fdda50a",
+      "decimals": 18
+    },
+    {
+      "symbol": "miMATIC",
+      "address": "0xa3fa99a148fa48d14ed51d610c367c61876997f1",
+      "decimals": 18
+    },
+    {
+      "symbol": "EURA",
+      "address": "0xe0b52e49357fd4daf2c15e02058dce6bc0057db4",
+      "decimals": 18
+    },
+    {
+      "symbol": "BAL",
+      "address": "0x9a71012b13ca4d3d0cdc72a177df3ef03b0e76a3",
       "decimals": 18
     },
     {
       "symbol": "jEUR",
-      "address": "0x4e3Decbb3645551B8A19f0eA1678079FCB33fB4c",
+      "address": "0x4e3decbb3645551b8a19f0ea1678079fcb33fb4c",
       "decimals": 18
     }
   ]
+
 }
 }

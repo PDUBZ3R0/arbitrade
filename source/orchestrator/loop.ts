@@ -3,14 +3,18 @@
 //
 // One pass:
 //   1. Run the evaluator (piece 5) fresh — candidates, off-chain float math
-//   2. For each candidate (best first): buildHops() refreshes reserves and
-//      recomputes the exact path with BigInt math (source/orchestrator/build-hops.ts)
-//   3. eth_call-simulate executeArb() against the deployed FlashArbExecutor.
-//      Aave's flashLoanSimple calls back into executeOperation synchronously
-//      within the same call, so a successful eth_call here means the WHOLE
-//      chain — borrow, every swap, repay — would succeed on-chain right now.
-//   4. Dry-run (default): log the simulation result, don't broadcast.
-//      --live: sign and send the transaction that just simulated clean.
+//   2. For each candidate (best first), hand it to CandidateExecutor, which
+//      refreshes reserves, recomputes the path with BigInt math, measures gas,
+//      raises the profit floor to cover it, eth_call-simulates executeArb and
+//      (with --live) broadcasts. Aave's flashLoanSimple calls back into
+//      executeOperation synchronously within the same call, so a successful
+//      eth_call means the WHOLE chain — borrow, every swap, repay — would
+//      succeed on-chain right now.
+//
+// The per-candidate sequence lives in ./attempt.ts because the Sync-driven hot
+// loop (source/hot.ts) needs exactly the same one from a completely different
+// candidate source. See that module's header for why it is shared rather than
+// copied.
 //
 // Deliberately does NOT try every candidate — stops at the first one that
 // simulates clean (or, in --live mode, the first one that lands), since
@@ -18,18 +22,14 @@
 // reserves anyway.
 // -----------------------------------------------------------------------------
 
-import { Contract, JsonRpcProvider, Wallet, type Signer } from 'ethers';
+import { JsonRpcProvider, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
-import { dbPath, ledgerPath } from '../util/config.ts';
-import { evaluateTriangles, type Candidate } from '../evaluator/evaluator.ts';
-import { buildHops, type BuiltArb } from './build-hops.ts';
-import { TradeLedger } from '../util/ledger.ts';
-import { fetchUsdPrice } from '../util/usd-price.ts';
+import { dbPath } from '../util/config.ts';
+import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from '../evaluator/evaluator.ts';
+import { CandidateExecutor, type CandidateAttempt } from './attempt.ts';
 
-const EXECUTOR_ABI = [
-    'function executeArb(address asset, uint256 amount, (address pair, uint256 amount0Out, uint256 amount1Out, address recipient)[] hops) external',
-];
+export type { CandidateAttempt } from './attempt.ts';
 
 export type OrchestratorPassOptions = {
     /** How many top candidates (by evaluator's float-math ranking) to try per pass. Default 5. */
@@ -37,14 +37,22 @@ export type OrchestratorPassOptions = {
     /** Minimum profit as fraction of root token — same meaning as evaluator's minProfitTokens. Default 0.001. */
     minProfitTokens?: number;
     /**
+     * Dust-liquidity floor and minimum input, same meaning as the evaluator's
+     * options of the same names. Default to the chain config's `evaluator`
+     * block so a pass sees the same candidate set `yarn evaluate` does.
+     */
+    minLiquidityTokens?: number;
+    minInputTokens?: number;
+    /**
+     * Safety multiple applied to the measured gas cost when deriving the
+     * on-chain profit floor. See ExecutorOptions.gasMarginMultiple. Default 3.
+     */
+    gasMarginMultiple?: number;
+    /**
      * Skip candidates whose off-chain-estimated ROI exceeds this percentage.
-     * Same meaning and same default (20) as evaluate.ts's CLI flag — that
-     * default was NOT being applied here before (this function called
-     * evaluateTriangles without passing maxRoiPct at all, silently falling
-     * back to the library's raw default of 100%, not evaluate.ts's stricter
-     * 20%). That gap let a 132% ROI candidate reach a live simulation on
-     * Polygon that a normal `yarn evaluate` run would have filtered as a
-     * likely phantom. Fixed by defaulting to 20 here too.
+     * Defaults to DEFAULT_MAX_ROI_PCT, imported from the evaluator — see that
+     * constant for why it is wide open and for the two separate times this
+     * default diverged between here and the CLI.
      */
     maxRoiPct?: number;
     /** If true, broadcast the first candidate that simulates clean. Default false (dry-run/simulate only). */
@@ -58,24 +66,6 @@ export type OrchestratorPassOptions = {
     ownerAddress: string;
     /** Required when live=true — must control ownerAddress. */
     signer?: Signer;
-};
-
-export type CandidateAttempt = {
-    candidate: Candidate;
-    built: BuiltArb | null;
-    simulated: boolean;
-    simulationError?: string;
-    /** True once a transaction was actually sent (regardless of outcome). */
-    broadcast: boolean;
-    txHash?: string;
-    /**
-     * True only once the transaction's receipt confirmed with status=1 —
-     * this is what "successful" means for the trade ledger. A broadcast tx
-     * that reverted on-chain (status=0, can still happen despite a clean
-     * eth_call simulation — reserves can move between simulate and land)
-     * has broadcast=true, confirmed=false, and is NOT written to the ledger.
-     */
-    confirmed: boolean;
 };
 
 export type OrchestratorPassResult = {
@@ -96,6 +86,10 @@ export async function runOrchestratorPass(
 ): Promise<OrchestratorPassResult> {
     const t0 = Date.now();
 
+    // Validate BEFORE the evaluator runs. CandidateExecutor's constructor
+    // checks the same two things, but it is built after evaluateTriangles, and
+    // that pass takes 10-60s — long enough that learning "no executor
+    // deployed" at the end of it is a bad trade for the reader.
     if (!cfg.chain.executor) {
         throw new Error(
             `No executor deployed for ${cfg.chain.name} (chain.executor is unset in config). ` +
@@ -115,14 +109,21 @@ export async function runOrchestratorPass(
     // Chain-tuned default from conf/<chain>.json5's `evaluator` block (same
     // source the evaluate.ts CLI uses), falling back to 0.001 if the chain
     // hasn't set one. Keeps the orchestrator's profit floor consistent with
-    // whatever you've calibrated for manual `yarn evaluate` runs, rather
-    // than silently using its own separate hardcoded number.
+    // whatever you've calibrated for manual `yarn evaluate` runs, rather than
+    // silently using its own separate hardcoded number.
     const minProfitTokens = opts.minProfitTokens ?? cfg.evaluator?.minProfitTokens ?? 0.001;
-    // Same default (20) as evaluate.ts's CLI — real arb rarely exceeds a few
-    // percent; anything above 20% is almost always a math/staleness phantom.
-    // No chain-config equivalent for this one (unlike minProfitTokens) since
-    // it's a sanity bound, not a calibrated-per-chain target.
-    const maxRoiPct = opts.maxRoiPct ?? 20;
+    // One shared constant, not a local literal — this is the line that
+    // previously said 20 while the CLI banner said 2000.
+    const maxRoiPct = opts.maxRoiPct ?? DEFAULT_MAX_ROI_PCT;
+    // Same story as minProfitTokens, and the same bug twice over: these two
+    // were simply not passed through, so the orchestrator evaluated with the
+    // library defaults while `yarn evaluate` used the chain config. On Polygon
+    // that meant the orchestrator scored ~4.3M triangles and kept 278,977
+    // candidates where evaluate scored 174,487 and kept 30,935 — 25x the work
+    // per pass, and ~248k dust candidates competing for the top-5 slots that
+    // get simulated. Ranking is by profit, so dust can outrank real edges.
+    const minLiquidityTokens = opts.minLiquidityTokens ?? cfg.evaluator?.minLiquidityTokens;
+    const minInputTokens = opts.minInputTokens ?? cfg.evaluator?.minInputTokens;
 
     const result: OrchestratorPassResult = {
         candidatesTried: 0,
@@ -136,108 +137,35 @@ export async function runOrchestratorPass(
             limit: candidatesPerPass,
             minProfitTokens,
             maxRoiPct,
+            minLiquidityTokens,
+            minInputTokens,
         });
 
-        // Per-root-token minProfitWei, using the SAME resolved threshold the
-        // evaluator just used to select these candidates (evalResult.rootPricing
-        // — numeraire-converted per root, not a flat fraction recomputed here).
-        // Recomputing independently would silently diverge from what actually
-        // selected the candidate the moment the evaluator's pricing logic
-        // changes; reading it back from the result keeps them locked together.
-        const minProfitWeiFor = (root: string): bigint => {
-            const tokenCfg = cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === root.toLowerCase());
-            const decimals = tokenCfg?.decimals ?? 18;
-            const pricing = evalResult.rootPricing[root.toLowerCase()];
-            const rootUnits = pricing?.minProfitInRootTokens ?? minProfitTokens;
-            return BigInt(Math.round(rootUnits * 10 ** decimals));
-        };
-
-        const executor = new Contract(cfg.chain.executor, EXECUTOR_ABI, provider);
+        const executor = new CandidateExecutor(cfg, provider, evalResult.rootPricing, {
+            ownerAddress: opts.ownerAddress,
+            live: opts.live,
+            signer: opts.signer,
+            gasMarginMultiple: opts.gasMarginMultiple,
+            minProfitTokens,
+        });
 
         for (const candidate of evalResult.topCandidates) {
             result.candidatesTried++;
-            const attempt: CandidateAttempt = { candidate, built: null, simulated: false, broadcast: false, confirmed: false };
+            const attempt = await executor.attempt(candidate, db);
             result.attempts.push(attempt);
-
-            const built = await buildHops(
-                provider,
-                cfg.chain.executor,
-                db,
-                candidate,
-                minProfitWeiFor(candidate.rootToken),
-            );
-            attempt.built = built;
-            if (!built) continue; // edge decayed since evaluation — try next candidate
-
-            const hopsArg = built.hops.map(h => [h.pair, h.amount0Out, h.amount1Out, h.recipient]);
-
-            try {
-                await executor.executeArb.staticCall(
-                    candidate.rootToken,
-                    built.rootAmountIn,
-                    hopsArg,
-                    { from: opts.ownerAddress },
-                );
-                attempt.simulated = true;
-            } catch (err) {
-                attempt.simulationError = (err as Error).message?.slice(0, 300) ?? String(err);
-                continue; // this candidate would revert on-chain — try next
-            }
-
-            if (opts.live) {
-                const signedExecutor = executor.connect(opts.signer!) as Contract;
-                const tx = await signedExecutor.executeArb(candidate.rootToken, built.rootAmountIn, hopsArg);
-                attempt.broadcast = true;
-                attempt.txHash = tx.hash;
-
-                // Wait for confirmation — a clean eth_call simulation doesn't
-                // guarantee the tx lands successfully; reserves can move
-                // between simulate and inclusion. "Successful" for the trade
-                // ledger means status=1 confirmed, not just sent.
-                const receipt = await tx.wait();
-                if (receipt && receipt.status === 1) {
-                    attempt.confirmed = true;
-
-                    const rootTokenCfg = cfg.flashloan?.tokens.find(
-                        t => t.address.toLowerCase() === candidate.rootToken.toLowerCase()
-                    );
-                    const decimals = rootTokenCfg?.decimals ?? 18;
-                    const usdPrice = await fetchUsdPrice(cfg.chain.label, candidate.rootToken);
-                    const profitUsd = usdPrice != null
-                        ? (Number(built.expectedProfit) / 10 ** decimals) * usdPrice
-                        : null;
-
-                    const ledger = new TradeLedger(ledgerPath());
-                    try {
-                        ledger.recordTrade({
-                            timestamp: Math.floor(Date.now() / 1000),
-                            chain: cfg.chain.label,
-                            type: 'arbitrage',
-                            txHash: tx.hash,
-                            blockNumber: receipt.blockNumber,
-                            rootToken: candidate.rootToken,
-                            rootTokenSymbol: rootTokenCfg?.symbol,
-                            profitWei: built.expectedProfit,
-                            profitDecimals: decimals,
-                            profitUsd,
-                            gasCostWei: receipt.gasUsed * (receipt.gasPrice ?? 0n),
-                        });
-                    } finally {
-                        ledger.close();
-                    }
-                } else {
-                    // Broadcast but reverted on-chain — not a trade, not logged
-                    // to the ledger. Surfaced via simulationError so the CLI
-                    // print picks it up.
-                    attempt.simulationError = `transaction broadcast but reverted on-chain (status=0), txHash=${tx.hash}`;
-                }
-            }
-
+            if (!attempt.simulated) continue;   // decayed, would revert, or below the gas floor
+            // A live broadcast that reverted on-chain still ends the pass. It
+            // is tempting to fall through to the next candidate — but gas has
+            // already been spent, the revert means the book moved under us, and
+            // the remaining candidates share pairs with this one, so they are
+            // priced off reserves we now know are stale. Retrying immediately
+            // is how you pay for several reverts in one block.
             result.winner = attempt;
             break; // stop at first clean candidate — see module docstring
         }
     } finally {
         db.close();
+        provider.destroy();
     }
 
     result.elapsedMs = Date.now() - t0;
