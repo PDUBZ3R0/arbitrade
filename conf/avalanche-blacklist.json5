@@ -1,0 +1,57 @@
+{
+    factories: [
+        {
+            address: "0xcfcb643d8f51d640e0b81257340c1ca344238f48",
+            reason:  "verify-fees 2026-10-03 NO-SWAP (44 pairs): no swap(uint256,uint256,address,bytes) at selector 0x022c0d9f, so not a standard V2 pair shape; bytecode is a proxy fallback delegating elsewhere. FlashArbExecutor._hop calls exactly that selector, so these pairs are not executable at all, whatever their fee is. Claude's own analysis of it was additionally rejected by the evidence verifier (EVIDENCE NOT FOUND VERBATIM IN CODE).",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0x26b42c208d8a9d8737a2e5c9c57f4481484d4616",
+            reason:  "verify-fees 2026-10-03 UNKNOWN (224 pairs): decompile and Claude both returned fee=null curve=unknown, conf=low - no recognizable swap() or explicit K-check in the pair bytecode. The CURVE is unidentified, not merely the fee, so the evaluator's constant-product sizing (cycle_product / optimal_cycle_size) would be unsound here rather than just mispriced.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0x45c2c071b503e734b4f05634e57d6997d39534a7",
+            reason:  "verify-fees 2026-10-03 UNKNOWN (60 pairs): fee=null curve=unknown, conf=low - the function at the swap selector decompiles to a token transfer/callback routine with no swap invariant logic. Curve unidentified, so constant-product math is not justified.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0x045d720873f0260e23da812501a7c5930e510aa4",
+            reason:  "verify-fees 2026-10-03 UNKNOWN (59 pairs): fee=null curve=unknown, conf=low - decompiled swap() shows no discernible K-check or fee-adjusted balance calculation; code garbled/incomplete. Curve unidentified.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xe01cf83a89e8c32c0a9f91aca7bfe554ebee7141",
+            reason:  "verify-fees 2026-10-03 UNKNOWN (28 pairs, OVXFactory): fee=null curve=unknown, conf=low - no clear K-check discernible; only stray 0x03/0x03e8 constants hinting at 0.3% that could not be confirmed. Hints are not evidence; curve unidentified.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xaae03702f52f9aab9a32b8ed34496eb122ad44f3",
+            reason:  "verify-fees 2026-10-03 UNKNOWN (20 pairs): fee=null curve=unknown, conf=low - too mangled to identify a swap() function or any fee/curve arithmetic at all.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xc62ca231cd2b0c530c622269da02374134511a36",
+            reason:  "PROVISIONAL 2026-10-03, measured by scripts/probe-fees.mjs. The configured pair.swapFee() does not exist, and NOTHING fee-related answered on either pair or factory - not fee(), getFee(), pairFee(), volatileFee() or stableFee(). getReserves/token0/stable all answered, so the pair is real and the fee is hardcoded in swap(). Would have aborted the reserves run the same way Fldx did. TO RESTORE: `yarn verify-fees avalanche --group solidly --claude --show-snippets` to read the fee out of swap(), then set stableFees: { stable, volatile } on BaseV1Factory_c62ca231 and delete this line. 24 pairs.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xfe926062fb99ca5653080d6c14fe945ad68c265c",
+            reason:  "PROVISIONAL 2026-10-03. Carried the same factory.getFee(bool,bool) / 'pair-stable-degen' config that probe-fees proved nonexistent on its sibling PairFactory_aaa16c01 (both pair.degen() and getFee(bool,bool) revert there), so it would abort the reserves run. Its proxy points at a DIFFERENT implementation than aaa16c01's, so aaa16c01's corrected getFee(bool)/10000 cannot be assumed to apply. TO RESTORE: `node --experimental-strip-types scripts/probe-fees.mjs avalanche` (it is in the target list), set the fee fields, delete this line. 87 pairs.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xac7b7eac8310170109301034b8fdb75eca4cc491",
+            reason:  "PROVISIONAL 2026-10-03. Same as 0xfe926062: inherited the disproven getFee(bool,bool) / 'pair-stable-degen' config from the Retro-degen pattern, different proxy implementation from aaa16c01, so it must be probed rather than copied. TO RESTORE: run scripts/probe-fees.mjs (it is in the target list), set the fee fields, delete this line. 68 pairs.",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xeeee1f1c93836b2caf8b9e929cb978c35d46657e",
+            reason:  "PROVISIONAL 2026-10-03. Same as 0xfe926062: inherited the disproven getFee(bool,bool) / 'pair-stable-degen' config, different proxy implementation, must be probed not copied. TO RESTORE: run scripts/probe-fees.mjs (it is in the target list), set the fee fields, delete this line. 36 pairs.",
+            addedAt: "2026-10-03",
+        },
+        {
+        `   address: "0xaaa16c016bf556fcd620328f0759252e29b1ab57"
+        }
+    ]
+}

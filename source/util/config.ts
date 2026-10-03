@@ -160,6 +160,23 @@ export type RawChainConfig = {
      */
     reserves?: {
         dust?: number;
+        /**
+         * Pairs per YoBatches eth_call. Default 200 (RESERVES_BATCH_SIZE).
+         *
+         * This is the main lever on reserves wall time, because the run is
+         * round-trip bound rather than compute bound: Polygon's 203,832 pairs
+         * took 407s, 94% of it in three factories whose 20-way concurrency
+         * yielded only 1.8x the throughput of the serial small ones.
+         *
+         * Measured on anvil with every account access cold, YoBatches costs
+         * ~16.6k gas/pair, so 200 pairs is ~3.3M gas — roughly 7% of a typical
+         * 50M eth_call cap. There is a lot of headroom, but the biggest batch
+         * that WORKS is not always the fastest: latency and response size both
+         * grow with it, and public endpoints rate-limit on requests, bytes or
+         * compute depending on the vendor. Measure before changing:
+         *   node --experimental-strip-types scripts/probe-batch-size.mjs <chain>
+         */
+        batchSize?: number;
     };
 };
 

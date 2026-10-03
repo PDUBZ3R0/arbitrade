@@ -14,7 +14,7 @@
     // orchestrator read as "simulated clean". It is now the TokenProbe.
     executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
     probe: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
-    threads: 20,
+    threads: 10,
     interval: 3000,
     pagesize: 1000000,
   },

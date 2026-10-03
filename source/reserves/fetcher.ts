@@ -27,10 +27,11 @@ import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 import { buildPriceGraph } from '../util/numeraire-price.ts';
 
-const RESERVES_BATCH_SIZE = 200;   // pairs per YoBatches call
+const RESERVES_BATCH_SIZE = 500;   // pairs per YoBatches call (default; see reserves.batchSize)
+const MAX_RESERVES_BATCH_SIZE = 5000;  // sanity bound on the config override
 const METADATA_BATCH_SIZE = 100;   // pairs per Multicall3 batch (each pair = 1-2 sub-calls)
 const FAIL_LOUD_THRESHOLD = 0.80;  // stop if this fraction of fee calls return no data
-const DEFAULT_CONCURRENCY = 4;     // fallback when chain config has no `threads` setting
+const DEFAULT_CONCURRENCY = 10;     // fallback when chain config has no `threads` setting
 const MAX_CONCURRENCY = 32;        // safety cap; higher hits Node's HTTP socket limit anyway
 
 // Retry policy for transient RPC failures (read timeouts, connection reset,
@@ -159,6 +160,8 @@ export type FetchOptions = {
      * easily); low-tier public RPCs may throttle at 4+.
      */
     concurrency?: number;
+    /** Pairs per YoBatches call. Overrides conf's reserves.batchSize. */
+    batchSize?: number;
     /** Callback for progress updates */
     onProgress?: (info: {
         factoryName: string;
@@ -324,6 +327,16 @@ export async function fetchReserves(
         // Capped at MAX_CONCURRENCY. Anything <= 0 becomes 1 (sequential).
         const rawConcurrency = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
         const concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawConcurrency) || DEFAULT_CONCURRENCY));
+        // Validated, not just defaulted: `?? 200` would let a NaN from a
+        // malformed config through, and NaN batch sizes produce zero-length
+        // slices forever rather than an error.
+        const rawBatch = opts.batchSize ?? cfg.reserves?.batchSize ?? RESERVES_BATCH_SIZE;
+        const batchSize = Number.isFinite(Number(rawBatch)) && Number(rawBatch) >= 1
+            ? Math.min(MAX_RESERVES_BATCH_SIZE, Math.floor(Number(rawBatch)))
+            : RESERVES_BATCH_SIZE;
+        if (batchSize !== RESERVES_BATCH_SIZE) {
+            console.log(`Batch size: ${batchSize} pairs per YoBatches call (default ${RESERVES_BATCH_SIZE})`);
+        }
         if (concurrency > 1) {
             console.log(`Concurrency: ${concurrency} parallel batches per factory`);
         }
@@ -333,7 +346,7 @@ export async function fetchReserves(
             const factoryName = factory?.name ?? `(orphan) ${factoryAddr}`;
             const family = factory?.group ?? 'unknown';
 
-            const batches = Math.ceil(factoryPairs.length / RESERVES_BATCH_SIZE);
+            const batches = Math.ceil(factoryPairs.length / batchSize);
             console.log(`\n[${factoryName}] ${factoryPairs.length} pairs (${family}), ${batches} batch(es)`);
 
             // Per-factory liquidity accumulator — tallies non-zero and dust
@@ -364,7 +377,7 @@ export async function fetchReserves(
             const factoryStart = Date.now();
 
             const processBatch = async (i: number): Promise<void> => {
-                const batch = factoryPairs.slice(i * RESERVES_BATCH_SIZE, (i + 1) * RESERVES_BATCH_SIZE);
+                const batch = factoryPairs.slice(i * batchSize, (i + 1) * batchSize);
                 const triples: Array<[string, string, string]> = batch.map(p => [p.pair, p.token0, p.token1]);
 
                 let reserves;

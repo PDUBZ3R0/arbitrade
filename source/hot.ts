@@ -254,6 +254,11 @@ let lastFeedError = '';
 
 const watcher = await watchSync(cfg.chain.host, wsUrl, {
     isInteresting: (pair) => ix.pairIdx.has(pair),
+    // Needed only if the RPC refuses address-less eth_getLogs (publicnode
+    // answers -32701). The index already holds every pair we care about, so
+    // handing it over costs nothing and is the difference between a working
+    // chunked fallback and no feed at all.
+    addresses: () => [...ix.pairIdx.keys()],
     onBatch: hot.onBatch,
     onError: (err, ctx) => {
         feedErrors++;
@@ -265,27 +270,61 @@ const watcher = await watchSync(cfg.chain.host, wsUrl, {
 
 // Refuse to start blind.
 //
-// watchSync primes itself with one drain before returning, so blocksDrained is
-// 0 here only if that drain never succeeded — an unreachable or wrong RPC host.
-// (blocksDrained, not lastBlock(): a chain legitimately sitting at block 0 is
-// indistinguishable from a dead feed by block number alone.)
+// `ready()` rather than blocksDrained: in subscribe mode no getLogs ever runs,
+// so blocksDrained stays 0 on a perfectly healthy feed and the previous
+// version of this guard would have rejected the best transport outright.
+// lastBlock() is no better — a push subscription honestly reports 0 until the
+// first Sync lands, which on a quiet chain can be minutes.
 //
-// An earlier version printed "Watching Sync from block 0" and then sat in an
-// endless `failed to detect network` retry, which is the worst of both worlds:
-// the process looks alive, the log looks like a quiet market, and no trade can
-// ever happen. A loop with no feed is not a loop.
-if (watcher.stats().blocksDrained === 0) {
+// What ready() means per transport: a range drained (topic/chunked), or the
+// subscription was established (subscribe). Either way the provider has
+// accepted the thing we actually need from it.
+//
+// The guard exists because an earlier version printed "Watching Sync from
+// block 0" and then sat in an endless retry: the process looks alive, the log
+// looks like a quiet market, and no trade can ever happen.
+if (!watcher.ready()) {
     await watcher.stop();
     db.close();
     provider.destroy();
     console.error('');
-    console.error(`[!] Could not read a single block from ${cfg.chain.host} — not starting.`);
+    console.error(`[!] The Sync feed never came up (transport=${watcher.transport()}) — not starting.`);
     if (lastFeedError) console.error(`    Last error: ${lastFeedError}`);
     console.error(`    Check "host" under the chain block in conf/${cfg.chain.label}.json5, or pass --ws.`);
+    console.error(`    If the error mentions -32701 / "specify an address", that RPC forbids`);
+    console.error(`    address-less eth_getLogs; a websocket (--ws) sidesteps it entirely.`);
     process.exit(1);
 }
 
-console.log(`Watching Sync from block ${watcher.lastBlock()}. Ctrl+C to stop.\n`);
+// --- startup sweep -----------------------------------------------------------
+//
+// The hot loop only ever looks at triangles a Sync touched. That is the whole
+// point, and it has a blind spot: a candidate that is ALREADY profitable when
+// the process starts is invisible until one of its three pairs happens to
+// trade. Observed on Sonic — the pricing pass reported 2 candidates, then the
+// loop ran 19 batches and 1,583 re-scores reporting 0, because those two
+// cycles' pairs never moved. A standing arbitrage nobody is taking is exactly
+// the kind this bot should take.
+//
+// A full scan costs ~1ms on Sonic's 7,892 triangles, so this is close to free.
+{
+    const found = ix.scoreAll(thresholds);
+    if (found.length === 0) {
+        console.log('Startup sweep: no candidates at current reserves.\n');
+    } else {
+        console.log(`Startup sweep: ${found.length} candidate(s) already profitable — attempting before waiting on Sync.`);
+        await hot.sweep(found);
+        console.log('');
+    }
+}
+
+const TRANSPORT_NOTE: Record<string, string> = {
+    subscribe: 'eth_subscribe(logs) — pushed, no polling, no getLogs',
+    topic: 'ranged eth_getLogs by topic',
+    chunked: 'ranged eth_getLogs with chunked address filters (this RPC demands addresses)',
+};
+console.log(`Watching Sync via ${watcher.transport()}: ${TRANSPORT_NOTE[watcher.transport()]}`);
+console.log('Ctrl+C to stop.\n');
 
 // --- periodic repricing ------------------------------------------------------
 //
@@ -312,28 +351,36 @@ if (repriceSec > 0) {
 }
 
 // --- heartbeat ---------------------------------------------------------------
-let lastHeartbeatBlock = watcher.lastBlock();
+let lastHeartbeatBlock = watcher.headBlock();
 let quietHeartbeats = 0;
 
 setInterval(() => {
     const s = hot.stats();
-    const block = watcher.lastBlock();
+    const st = watcher.stats();
+    // headBlock for liveness, lastBlock for "how far the Sync cursor got".
+    // The previous version compared lastBlock() and so reported a healthy but
+    // quiet market as a dead feed.
+    const head = watcher.headBlock();
     const age = ((Date.now() - lastRepriceAt) / 60_000).toFixed(0);
-    console.log(`[${new Date().toISOString()}] alive — block ${block}, ` +
+    console.log(`[${new Date().toISOString()}] alive — head ${head}, sync ${watcher.lastBlock()}, ` +
         `${s.batches} batch(es), ${s.trianglesRescored} triangle re-scores, ` +
-        `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed, ` +
-        `pricing ${age}m old`);
+        `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
+        (st.reconnects ? `, ${st.reconnects} reconnect(s)` : '') +
+        `, pricing ${age}m old`);
 
-    // A chain that has not advanced a block in a minute is not quiet, it is
-    // gone. Say so, because the symptom of a dead feed is an absence of output
-    // and an absence of output is indistinguishable from "no opportunities".
-    if (block === lastHeartbeatBlock) {
+    // A chain that has not advanced a BLOCK is gone; one that has not produced
+    // a Sync is merely quiet. The watcher reconnects on its own, so this is a
+    // report rather than an action — but it still needs saying, because the
+    // symptom of a dead feed is an absence of output and that looks exactly
+    // like having no opportunities.
+    if (head === lastHeartbeatBlock) {
         quietHeartbeats++;
-        console.error(`  [!] no new block in ${quietHeartbeats} minute(s) — the feed may be dead ` +
-            `(${feedErrors} feed error(s) so far` + (lastFeedError ? `, last: ${lastFeedError}` : '') + `)`);
+        console.error(`  [!] no new block in ${quietHeartbeats} minute(s) — feed likely dead ` +
+            `(${feedErrors} feed error(s), ${st.reconnects} reconnect(s)` +
+            (lastFeedError ? `, last: ${lastFeedError}` : '') + `)`);
     } else {
         quietHeartbeats = 0;
-        lastHeartbeatBlock = block;
+        lastHeartbeatBlock = head;
     }
 }, 60_000).unref();
 
@@ -341,7 +388,8 @@ const shutdown = async (sig: string) => {
     console.log(`\n${sig} — stopping.`);
     await watcher.stop();
     const s = watcher.stats();
-    console.log(`Drained ${s.blocksDrained} blocks, saw ${s.updatesSeen} Sync logs, kept ${s.updatesKept}, ${s.errors} error(s).`);
+    console.log(`Transport ${watcher.transport()}: drained ${s.blocksDrained} block(s), ` +
+        `${s.logsPushed} pushed log(s), saw ${s.updatesSeen} Sync log(s), kept ${s.updatesKept}, ${s.errors} error(s).`);
     const h = hot.stats();
     console.log(`${h.batches} batch(es) -> ${h.pairsApplied} pair update(s) -> ` +
         `${h.trianglesRescored} re-score(s) (of ${ix.triangleCount.toLocaleString()} total) -> ` +

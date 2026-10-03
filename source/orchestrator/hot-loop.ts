@@ -62,6 +62,13 @@ export type HotLoopDeps = {
 
 export type HotLoop = {
     onBatch: (updates: SyncUpdate[], toBlock: number) => Promise<void>;
+    /**
+     * Attempt an externally-supplied candidate list — used for the startup
+     * sweep, where candidates come from a full scan rather than from a Sync.
+     * Goes through the identical ranking, filter and attempt path as a block,
+     * so a sweep cannot behave differently from the loop that follows it.
+     */
+    sweep: (candidates: IndexedCandidate[]) => Promise<void>;
     stats: () => HotLoopStats;
 };
 
@@ -126,11 +133,21 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         if (found.length === 0) return;
         stats.candidatesFound += found.length;
 
-        found.sort((a, b) => rankValue(b) - rankValue(a));
-
         log(`[${new Date().toISOString()}] block ${toBlock} — ${movedPairs.length} pair(s) moved` +
             `${unknown ? ` (+${unknown} unknown)` : ''}, ${affected.length} triangle(s) re-scored, ` +
             `${found.length} candidate(s)`);
+
+        await attemptAll(found, 'this block');
+    }
+
+    /**
+     * Rank, filter and attempt. Shared by onBatch and sweep so the startup
+     * sweep cannot drift from the steady-state loop — the ranking, the
+     * cooldown, the failed-pair filter and the stop-at-first-clean rule are all
+     * decisions about money, and two copies would eventually disagree.
+     */
+    async function attemptAll(found: IndexedCandidate[], scope: string): Promise<void> {
+        found.sort((a, b) => rankValue(b) - rankValue(a));
 
         // Cooldown. After a broadcast, the chain state we would price from
         // includes our own pending transaction, and racing ourselves into the
@@ -138,11 +155,11 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         const since = now() - lastAttemptAt;
         if (lastAttemptAt > 0 && since < deps.cooldownMs) {
             stats.cooldownSkips++;
-            log(`  (cooldown — ${deps.cooldownMs - since}ms left, skipping this block)`);
+            log(`  (cooldown — ${deps.cooldownMs - since}ms left, skipping ${scope})`);
             return;
         }
 
-        // Fresh per block: a pair that refused us at these reserves may be
+        // Fresh per batch: a pair that refused us at these reserves may be
         // perfectly fine once it moves again, so the memory must not outlive
         // the reserves it was formed from.
         const filter = new AttemptFilter();
@@ -151,7 +168,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             const blocked = filter.blockedBy(ic as Candidate);
             if (blocked) {
                 stats.skippedSharingFailedPair++;
-                log(`  #${ic.triangleId} — skipped: routes through ${blocked}, which already failed this block`);
+                log(`  #${ic.triangleId} — skipped: routes through ${blocked}, which already failed in ${scope}`);
                 continue;
             }
 
@@ -172,5 +189,10 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         }
     }
 
-    return { onBatch, stats: () => ({ ...stats }) };
+    async function sweep(candidates: IndexedCandidate[]): Promise<void> {
+        stats.candidatesFound += candidates.length;
+        await attemptAll(candidates, 'the startup sweep');
+    }
+
+    return { onBatch, sweep, stats: () => ({ ...stats }) };
 }

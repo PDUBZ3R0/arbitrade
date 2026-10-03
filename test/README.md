@@ -27,8 +27,12 @@ Run with `node --experimental-strip-types`:
 | `test-watcher.mjs` | `sync-watcher.ts`: topic/decoder, pair filtering, a throwing consumer, multiple Syncs per block collapsing, blocks landing between polls, and the coalescing regression (a slow consumer must not leave the feed permanently behind). |
 | `test-index.mjs` | `triangle-index.ts` against a real chain DB: incremental re-scoring must produce byte-identical candidates to a full scan, for every pair. Set `ARB_TEST_DB=db/<chain>.sqlite`. |
 | `test-overflow.mjs` | The uint112 feasibility filter (`cycle_overflows`). Pure arithmetic, no chain: the mock pair stores reserves as `uint112` and would silently truncate a reserve near the ceiling, so anvil cannot reproduce the real revert, and no Sonic token is anywhere near 2^112 so `test-index.mjs` never reaches the branch. |
+| `test-transport.mjs` | The three Sync transports: `subscribe` (eth_subscribe over ws), `topic` (address-less eth_getLogs) and `chunked` (address filters, for providers that answer -32701). Spins up a local proxy that refuses address-less getLogs the way publicnode does, and checks that a restricted RPC with no address list fails loudly rather than looking like a quiet chain. |
+| `test-reconnect.mjs` | A websocket log subscription dying silently, which is what publicnode did to the Sonic run after ~3 minutes with zero errors. Routes the socket through a killable proxy, severs it, trades *during* the outage, and requires the recovered reserves to match the chain — proving the gap was backfilled rather than skipped. Needs the `ws` package (ethers already depends on it). |
 | `test-hot.mjs` | The whole hot loop end to end — a real Sync event drives the real index, the real handler, the real executor contract, a real flash loan, and the real ledger. Also asserts the gas floor refuses a profitable-but-uneconomic candidate. |
 | `gas.mjs` | Gas measurement for `executeArb`, 2-hop and 3-hop. |
+
+| `bench-yobatches.mjs` | Gas and returndata per pair for `YoBatches` vs the candidate `YoBatches2`, with every account access cold (240 freshly deployed tokens — reusing a few tokens measures the warm path and flatters the result by ~25x). Prints the max pairs per `eth_call` at common node gas caps. |
 
 ## Notes
 

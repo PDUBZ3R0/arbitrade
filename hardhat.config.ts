@@ -13,6 +13,7 @@ if (!PRIVATE_KEY && process.argv.some(a => a.includes('deploy') || a === 'run'))
 // NOTE: BASE_RPC is also read by source/util/config.ts (env override is
 // `<LABEL>_RPC`), so setting it in .env repoints the scanner too.
 const BASE_RPC    = process.env.BASE_RPC    || 'https://mainnet.base.org';
+const AVALANCHE_RPC = process.env.AVALANCHE_RPC || 'https://avalanche-rpc.publicnode.com';
 const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-bor-rpc.publicnode.com';
 const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
 const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
@@ -28,6 +29,12 @@ export default defineConfig({
     plugins: [HardhatIgnitionViem],
     defaultNetwork: "polygon",
     networks: {
+        avalanche: {
+            url: AVALANCHE_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
         polygon: {
             url: POLYGON_RPC,
             accounts,

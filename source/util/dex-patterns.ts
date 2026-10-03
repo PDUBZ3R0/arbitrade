@@ -208,13 +208,48 @@ export const DEX_PATTERNS: Record<string, DexPattern> = {
 
     // --- V2fee family (V2-event PairCreated + per-pair fees) -------------
 
+    // Matches contracts whose explorer name is literally "ShadowV3Factory".
+    //
+    // DO NOT read this as "the pattern for Shadow". It is the pattern for
+    // factories that populate factory.pairFee(pair), which some Shadow-family
+    // forks do and Shadow-on-Sonic does NOT:
+    //
+    //   * Avalanche 0x85448bf2 — interface-probe called factory.pairFee(pair)
+    //     on three sample pairs and all three returned a fee in 0.0030-0.0100,
+    //     so the mapping is populated there. This pattern is correct for it.
+    //   * Sonic Shadow (the legacy PairFactory, 0x2da25e74) — createPair()
+    //     calls IPair(pair).setFee(fee) and never writes _pairFee, so
+    //     pairFee() returns 0 for every pair governance has not overridden.
+    //     A 0 fee overstates every output and reverts on the pair's K check.
+    //     conf/sonic.json5 therefore overrides to feeTarget 'pair' /
+    //     feeFunction 'fee', and does not rely on this entry.
+    //
+    // Keep the key spelled exactly as the explorer name, since that is what
+    // lookupDexPattern matches on. Note also that a config entry named
+    // Factory_<hex8> strips to "Factory" and matches nothing here, so such an
+    // entry must spell its fee fields out in full.
     'ShadowV3Factory': {
         family:        'v2fee',
-        feeTarget:     'factory',
-        feeFunction:   'pairFee',
+        feeTarget:     'pair',
+        feeFunction:   'fee',
         feeDivisor:    1_000_000,
         hasStableFlag: true,
-        notes:         'Shadow (Sonic) — factory.pairFee(pair) / 1e6. Pairs expose stable() bool.',
+        notes:         'Shadow-family — pair.fee() / 1e6, pairs expose stable(). Measured on Avalanche ' +
+                       '0x85448bf2 (pair.fee() and factory.pairFee() both answer 3000) and on Sonic Shadow ' +
+                       '(pair.fee() answers; factory.pairFee() returns 0 because createPair never writes ' +
+                       '_pairFee). pair.fee() is the variable swap() enforces, so it is correct in both.',
+    },
+
+    'FldxFactory': {
+        family:      'solidly',
+        feeTarget:   'pair',
+        feeFunction: 'getFee',
+        feeDivisor:  10_000,
+        notes:       'Flair Dex (Avalanche) — pair.getFee() / 10000, zero-arg and already curve-aware ' +
+                     '(20 = 0.2% volatile, 2 = 0.02% stable). Velodrome-V1 shaped: the factory also ' +
+                     'exposes volatileFee()/stableFee() with the same values. Registered because no ' +
+                     'previous pattern tried getFee() on the PAIR, which is why interface-probe reported ' +
+                     '"no matching pattern" for a factory that answers readily.',
     },
 
     'DXswapFactory': {

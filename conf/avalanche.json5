@@ -1,102 +1,260 @@
-{ 
+{
   chain: {
-    id: 43114, name: "Avalanche C-Chain", currency: "AVAX", 
+    id: 43114,
+    name: 'Avalanche C-Chain',
+    currency: 'AVAX',
+    token: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+    contract: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
+    executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
+    probe: '0x2A7e091B283846835f536a889201cbD48365B37E',
+    threads: 10,
+    interval: 3000,
+    pagesize: 1000000,
   },
-	"flashloan": {
-  "provider": "aave-v3",
-  "premium": 0.0005,
-  "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-  "tokens": [
-    {
-      "symbol": "DAIe",
-      "address": "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70",
-      "decimals": 18
+  reserves: {
+    dust: 1,
+  },
+  evaluator: {
+    minProfitTokens: 0.002,
+    minInputTokens: 0.02,
+    minLiquidityTokens: 0.1,
+  },
+  factories: {
+    v2: {
+      list: {
+        JoeFactory_9ad6c38b: {
+          address: '0x9ad6c38be94206ca50bb0d90783181662f0cfa10',
+          fee: 0.003,
+        },
+        UniswapV2Factory_9e5a52f5: {
+          address: '0x9e5a52f57b3038f1b8eee45f28b3c1967e22799c',
+          fee: 0.003,
+        },
+        PangolinFactory_efa94de7: {
+          address: '0xefa94de7a4656d787667c749f7e1223d71e9fd88',
+          fee: 0.003,
+        },
+        ArenaFactory_f16784dc: {
+          address: '0xf16784dcaf838a3e16bef7711a62d12413c39bd1',
+          fee: 0.003,
+        },
+        UniswapV2Factory_c35dadb6: {
+          address: '0xc35dadb65012ec5796536bd9864ed8773abc74c4',
+          fee: 0.003,
+        },
+        ElkFactory_091d35d7: {
+          address: '0x091d35d7f63487909c863001ddca481c6de47091',
+          fee: 0.003,
+        },
+        VaporDEXFactory_c009a670: {
+          address: '0xc009a670e2b02e21e7e75ae98e254f467f7ae257',
+          fee: 0.0029,
+        },
+        LydiaFactory_e0c1bb6d: {
+          address: '0xe0c1bb6df4851feeedc3e14bd509feaf428f7655',
+          fee: 0.002,
+        },
+        SicleFactory_9c60c867: {
+          address: '0x9c60c867ce07a3c403e2598388673c10259ec768',
+          fee: 0.003,
+        },
+        Factory_3587b8c0: {
+          address: '0x3587b8c0136c2c3605a9e5b03ab54da3e4044b50',
+          fee: 0.003,
+        },
+        CanaryFactory_cfba329d: {
+          address: '0xcfba329d49c24b70f3a8b9cc0853493d4645436b',
+          fee: 0.003,
+        },
+        YetiSwapFactory_58c8cd29: {
+          address: '0x58c8cd291fa36130119e6deb9e520fbb6aca1c3a',
+          fee: 0.003,
+        },
+        PartyFactory_58a08bc2: {
+          address: '0x58a08bc28f3e8dab8fb2773d8f243bc740398b09',
+          fee: 0.002,
+        },
+        UniswapV2Factory_5c69bee7: {
+          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+          fee: 0.003,
+        },
+        Factory_4fe4d8b0: {
+          address: '0x4fe4d8b01a56706bc6cad26e8c59d0c7169976b3',
+          fee: 0.002,
+        },
+        Factory_c7e37a28: {
+          address: '0xc7e37a28bb17edb59e99d5485dc8c51bc87ae699',
+          fee: 0.003,
+        },
+        Factory_5c02e78a: {
+          address: '0x5c02e78a3969d0e64aa2cfa765acc1d671914ac0',
+          fee: 0.003,
+        },
+        UniswapV2Factory_a0fbfda0: {
+          address: '0xa0fbfda09b8815dd42ddc70e4f9fe794257cd9b6',
+          fee: 0.001,
+        },
+        ThorusFactory_a98ea635: {
+          address: '0xa98ea6356a316b44bf710d5f9b6b4ea0081409ef',
+          fee: 0.001,
+        },
+        RuggyFactory_9a89fa37: {
+          address: '0x9a89fa373186ecc1ccb3b9fe08335ffd9cdf35d8',
+          fee: 0.002,
+        },
+        HakuswapFactory_2db46feb: {
+          address: '0x2db46feb38c57a6621bca4d97820e1fc1de40f41',
+          fee: 0.002,
+        },
+        AlligatorFactory_d9362aa8: {
+          address: '0xd9362aa8e0405c93299c573036e7fb4ec3be1240',
+          fee: 0.003,
+        },
+        VavalonFactory_16871f3c: {
+          address: '0x16871f3c042a9b0467f8166dbe6cddc6ec557a74',
+          fee: 0.003,
+        },
+        Factory_fba56493: {
+          address: '0xfba564939397e71c75c9cbb29e6e23b89e4272be',
+          fee: 0.003,
+        },
+        Factory_ada3def2: {
+          address: '0xada3def2cac007496e85b52e854b0aada6691353',
+          fee: 0.003,
+        },
+      },
     },
-    {
-      "symbol": "LINKe",
-      "address": "0x5947BB275c521040051D82396192181b413227A3",
-      "decimals": 18
+    v2fee: {
+      list: {
+        HcSwapAvaxFactory_7009b361: {
+          address: '0x7009b3619d5ee60d0665ba27cf85edf95fd8ad01',
+          fee: 0.005,
+        },
+        HcSwapAvaxFactory_8e6f4af0: {
+          address: '0x8e6f4af0b6c26d16febdd6f28fa7c694bd49c6bf',
+          fee: 0.005,
+        },
+        Factory_85448bf2: {
+          address: '0x85448bf2f589ab1f56225df5167c63f57758f8c1',
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000000,
+          hasStableFlag: true,
+        },
+      },
     },
-    {
-      "symbol": "USDC",
-      "address": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
-      "decimals": 6
+    solidly: {
+      list: {
+        PairFactory_fe926062: {
+          address: '0xfe926062fb99ca5653080d6c14fe945ad68c265c',
+        },
+        PairFactory_ac7b7eac: {
+          address: '0xac7b7eac8310170109301034b8fdb75eca4cc491',
+        },
+        FldxFactory_634e02eb: {
+          address: '0x634e02eb048eb1b5bddc0cfdc20d34503e9b362d',
+          feeTarget: 'pair',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+      },
     },
-    {
-      "symbol": "WBTCe",
-      "address": "0x50b7545627a5162F82A992c33b87aDc75187B218",
-      "decimals": 8
-    },
-    {
-      "symbol": "WETHe",
-      "address": "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDt",
-      "address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7",
-      "decimals": 6
-    },
-    {
-      "symbol": "AAVEe",
-      "address": "0x63a72806098Bd3D9520cC43356dD78afe5D386D9",
-      "decimals": 18
-    },
-    {
-      "symbol": "WAVAX",
-      "address": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
-      "decimals": 18
-    },
-    {
-      "symbol": "sAVAX",
-      "address": "0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE",
-      "decimals": 18
-    },
-    {
-      "symbol": "FRAX",
-      "address": "0xD24C2Ad096400B6FBcd2ad8B24E7acBc21A1da64",
-      "decimals": 18
-    },
-    {
-      "symbol": "MAI",
-      "address": "0x5c49b268c9841AFF1Cc3B0a418ff5c3442eE3F3b",
-      "decimals": 18
-    },
-    {
-      "symbol": "BTCb",
-      "address": "0x152b9d0FdC40C096757F570A51E494bd4b943E50",
-      "decimals": 8
-    },
-    {
-      "symbol": "AUSD",
-      "address": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
-      "decimals": 6
-    },
-    {
-      "symbol": "GHO",
-      "address": "0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73",
-      "decimals": 18
-    },
-    {
-      "symbol": "EURC",
-      "address": "0xC891EB4cbdEFf6e073e859e987815Ed1505c2ACD",
-      "decimals": 6
-    },
-    {
-      "symbol": "USDe",
-      "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
-      "decimals": 18
-    },
-    {
-      "symbol": "sUSDe",
-      "address": "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2",
-      "decimals": 18
-    },
-    {
-      "symbol": "wrsETH",
-      "address": "0x7bFd4CA2a6Cf3A3fDDd645D10B323031afe47FF0",
-      "decimals": 18
-    }
-  ]
-}
+  },
+  flashloan: {
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
+    tokens: [
+      {
+        symbol: 'DAIe',
+        address: '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70',
+        decimals: 18,
+      },
+      {
+        symbol: 'LINKe',
+        address: '0x5947BB275c521040051D82396192181b413227A3',
+        decimals: 18,
+      },
+      {
+        symbol: 'USDC',
+        address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
+        decimals: 6,
+      },
+      {
+        symbol: 'WBTCe',
+        address: '0x50b7545627a5162F82A992c33b87aDc75187B218',
+        decimals: 8,
+      },
+      {
+        symbol: 'WETHe',
+        address: '0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB',
+        decimals: 18,
+      },
+      {
+        symbol: 'USDt',
+        address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
+        decimals: 6,
+      },
+      {
+        symbol: 'AAVEe',
+        address: '0x63a72806098Bd3D9520cC43356dD78afe5D386D9',
+        decimals: 18,
+      },
+      {
+        symbol: 'WAVAX',
+        address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+        decimals: 18,
+      },
+      {
+        symbol: 'sAVAX',
+        address: '0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE',
+        decimals: 18,
+      },
+      {
+        symbol: 'FRAX',
+        address: '0xD24C2Ad096400B6FBcd2ad8B24E7acBc21A1da64',
+        decimals: 18,
+      },
+      {
+        symbol: 'MAI',
+        address: '0x5c49b268c9841AFF1Cc3B0a418ff5c3442eE3F3b',
+        decimals: 18,
+      },
+      {
+        symbol: 'BTCb',
+        address: '0x152b9d0FdC40C096757F570A51E494bd4b943E50',
+        decimals: 8,
+      },
+      {
+        symbol: 'AUSD',
+        address: '0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a',
+        decimals: 6,
+      },
+      {
+        symbol: 'GHO',
+        address: '0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73',
+        decimals: 18,
+      },
+      {
+        symbol: 'EURC',
+        address: '0xC891EB4cbdEFf6e073e859e987815Ed1505c2ACD',
+        decimals: 6,
+      },
+      {
+        symbol: 'USDe',
+        address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
+        decimals: 18,
+      },
+      {
+        symbol: 'sUSDe',
+        address: '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2',
+        decimals: 18,
+      },
+      {
+        symbol: 'wrsETH',
+        address: '0x7bFd4CA2a6Cf3A3fDDd645D10B323031afe47FF0',
+        decimals: 18,
+      },
+    ],
+  },
 }

@@ -7,7 +7,7 @@
     contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
     executor: '0x2A7e091B283846835f536a889201cbD48365B37E',
     probe: "0x9301c3F24DDB4E953df31D51df23F102680155c6",
-    threads: 20,
+    threads: 10,
     interval: 3000,
     pagesize: 1000000,
   },
@@ -38,7 +38,7 @@
         'Omni v2': {
           address: '0x7d9d51267f7e9e6b46a48e0a75c0086f46777087',
           deployBlock: 38533708,
-          fee: 0.00252,
+          fee: 0.0025,
         },
         'Uniswap v2': {
           address: '0xb45e53277a7e0f1d35f2a77160e91e25507f1763',
@@ -78,7 +78,7 @@
         'SuperSonic v2': {
           address: '0x4d8ef974fad9b7e323be2c260b7c7712db090e86',
           deployBlock: 12608877,
-          fee: 0.00295,
+          fee: 0.0029,
         },
         'ZF v2': {
           address: '0xce98a0e578b639aa90ee96ed5ba8e5a4022de529',
@@ -112,8 +112,46 @@
         },
       },
     },
-   /*
-    Shadow uses different maths than v2, deferring
+    // Shadow Exchange — the LEGACY (Solidly-family) factory only.
+    //
+    // This was previously commented out as "Shadow uses different maths than
+    // v2". Half true, and the half that matters is fine. Read from
+    // Shadow-Exchange/shadow-core, contracts/Pair.sol:
+    //
+    //   _k(x, y)          stable -> x3y+y3x (Solidly); else -> x * y
+    //   _getAmountOut()   stable -> Newton solve via _get_y()
+    //                     else   -> (amountIn * reserveB) / (reserveA + amountIn)
+    //
+    // The volatile branch is plain constant product, identical in form to
+    // swap_output() in source/util/calculus.js. swap(), getReserves() and
+    // Sync(uint112,uint112) all match UniswapV2 exactly, so the executor's
+    // on-chain hop sizing and the hot loop's Sync feed need no changes at all.
+    // The stable pools DO need different maths and are excluded automatically:
+    // getPairsForEnumeration() drops stable = 1, exactly as it already does
+    // for Equalizer's 39 stable pairs.
+    //
+    // FEE SOURCE — the one thing that is NOT the v2fee default.
+    //
+    // The v2fee group defaults to factory.pairFee(pair), and PairFactory does
+    // expose that function. It is the wrong source here: createPair() calls
+    // IPair(pair).setFee(fee) but never writes the factory's _pairFee mapping,
+    // which only governance's setPairFee() populates. So
+    // factory.pairFee(pair) returns 0 for essentially every pair, and a fee of
+    // 0 makes the evaluator overstate every output and the pair's K check
+    // reject every trade. The authoritative value is the pair's own zero-arg
+    // fee() getter, denominated in FEE_DENOM = 1_000_000.
+    //
+    // Scope: this is Shadow's legacy venue only (~$1.79M TVL, ~$27k/day
+    // volume). Shadow's main product is concentrated liquidity
+    // (contracts/CL, a Ramses V3 fork) and is NOT reachable by this pipeline —
+    // RamsesV3Pool has no getReserves() and no V2 swap(). The thin volume is
+    // not purely bad news for us: ~1.5% daily turnover means these pools lag
+    // the market, which is where cross-DEX spread comes from.
+    //
+    // VERIFY BEFORE TRUSTING: the factory address and the fee path are from
+    // source reading, not from a chain call --
+    //   yarn verify sonic         (factory address emits the expected event)
+    //   yarn verify-fees sonic    (empirical fee per pair, as on Polygon)
     v2fee: {
       abi: [
         'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
@@ -123,10 +161,13 @@
           address: '0x2da25e7446a70d7be65fd4c053948becaa6374c8',
           deployBlock: 4028276,
           hasStableFlag: true,
+          // See the FEE SOURCE note above: pair.fee(), not factory.pairFee(pair).
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000000,
         },
       },
     },
-    */
     solidly: {
       abi: [
         'event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint)',
