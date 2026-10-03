@@ -18,11 +18,14 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                      (must be in chain.flashloan.tokens list)');
     console.error('  --include-stable    Include stable pools (constant-product math will');
     console.error('                      give wrong prices for them — dev only)');
+    console.error('  --prune-same-factory  Skip 3-hop cycles whose three pairs share a factory');
+    console.error('                      (old default; a memory lever, not a correctness one)');
     console.error('  --limit N           Cap total triangles emitted (dev sanity)');
     console.error('');
     console.error('Enumerates 2-hop (cross-DEX) and 3-hop (triangular) arb candidates,');
-    console.error('rooted at each flash-loan token. Skips zero-reserve pairs, stable pools,');
-    console.error('and same-factory-for-all-hops (no arb possible).');
+    console.error('rooted at each flash-loan token. Skips zero-reserve pairs and stable pools.');
+    console.error('Same-factory cycles ARE kept: V3 fee tiers and Solidly stable/volatile pairs');
+    console.error('are distinct pools from one factory, and one DEX\'s pairs drift like any others.');
     process.exit(1);
 }
 
@@ -34,6 +37,7 @@ const hasFlag = (flag: string): boolean => args.indexOf(flag) >= 0;
 
 const onlyRoot      = getStr('--root');
 const includeStable = hasFlag('--include-stable');
+const pruneSameFactory3 = hasFlag('--prune-same-factory');
 const limitStr      = getStr('--limit');
 const limit         = limitStr ? parseInt(limitStr, 10) : undefined;
 
@@ -45,10 +49,11 @@ console.log(`DB: ${dbFile}`);
 console.log(`Flash-loan tokens: ${cfg.flashloan?.tokens.map(t => t.symbol).join(', ') ?? '(none)'}`);
 if (onlyRoot) console.log(`Restricting to root: ${onlyRoot}`);
 if (includeStable) console.log(`Including stable pools (WARNING: prices will be wrong)`);
+if (pruneSameFactory3) console.log(`Pruning 3-hop cycles whose pairs all share a factory`);
 if (limit) console.log(`Limit: ${limit}`);
 console.log('');
 
-const result = await enumerateTriangles(cfg, dbFile, { onlyRoot, includeStable, limit });
+const result = await enumerateTriangles(cfg, dbFile, { onlyRoot, includeStable, pruneSameFactory3, limit });
 
 console.log('\n' + '─'.repeat(60));
 console.log(`Done in ${(result.elapsedMs / 1000).toFixed(2)}s`);
@@ -59,6 +64,8 @@ if (result.duplicatesSkipped > 0) {
 }
 console.log(`  2-hop count:         ${result.hops2Count}`);
 console.log(`  3-hop count:         ${result.hops3Count}`);
+console.log(`  same-factory 2-hop:  ${result.sameFactory2}   (fee tiers / stable+volatile — previously dropped)`);
+console.log(`  same-factory 3-hop:  ${result.sameFactory3}   ${pruneSameFactory3 ? '(pruned)' : '(previously dropped)'}`);
 console.log(`  By root token:`);
 for (const [root, count] of Object.entries(result.byRoot)) {
     const sym = cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === root)?.symbol ?? '???';

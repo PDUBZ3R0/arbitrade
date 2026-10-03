@@ -33,6 +33,7 @@
 // -----------------------------------------------------------------------------
 
 import type { FactoryCandidate } from './find-factories.ts';
+import { parseCreationLog, type EventLayout } from './pool-events.ts';
 
 const RUNAWAY_LIMIT = 10_000_000;  // sanity cap on total logs
 
@@ -49,7 +50,7 @@ export async function sweepHyperSync(
     fromBlock: number,
     toBlock: number,
     topic: string,
-    topicLabel: 'v2' | 'solidly',
+    topicLabel: EventLayout,
     into?: Map<string, FactoryCandidate>,
     abortSignal?: AbortSignal,
 ): Promise<Map<string, FactoryCandidate>> {
@@ -239,8 +240,8 @@ export async function samplePairsFromFactoryHyperSync(
     fromBlock: number,
     toBlock: number,
     topic: string,
-    isSolidly: boolean,
-): Promise<Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }>> {
+    layout: EventLayout | boolean,
+): Promise<ScannedPair[]> {
     const mod: any = await import('@envio-dev/hypersync-client');
     const HypersyncClient = mod.HypersyncClient;
     if (!HypersyncClient) throw new Error('HypersyncClient not exported by @envio-dev/hypersync-client');
@@ -261,40 +262,30 @@ export async function samplePairsFromFactoryHyperSync(
             topics: [[topic]],
         }],
         fieldSelection: {
-            // Need Data + Topic1/Topic2 to parse token addresses + pair.
+            // Need Data + Topic1/Topic2 to parse token addresses + pair, and
+            // Topic3 for the V3 shapes (fee or tick spacing is indexed there).
             // Topic0 is redundant (we already know it) but selecting doesn't cost.
-            log: ['Address', 'BlockNumber', 'Data', 'Topic0', 'Topic1', 'Topic2'],
+            log: ['Address', 'BlockNumber', 'Data', 'Topic0', 'Topic1', 'Topic2', 'Topic3'],
         },
         joinMode: mod.JoinMode?.JoinNothing ?? 2,
     };
 
-    const hits: Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }> = [];
+    const hits: ScannedPair[] = [];
     // Cap iterations — for verify-factory we typically want one sample pair,
     // not the whole history. Two full batches is more than enough.
     for (let i = 0; i < 5; i++) {
         const res: any = await client.get(query);
         const logs: any[] = res?.data?.logs ?? [];
         for (const log of logs) {
-            const topics: any[] = log.topics ?? [];
+            // HyperSync returns null for topic slots the log does not have;
+            // drop them so topics.length is the real count.
+            const topics: string[] = (log.topics ?? []).filter((t: any) => t != null);
             const data: string = log.data ?? log.Data ?? '';
-            if (topics.length < 3 || data.length < 66) continue;
-
-            const token0 = '0x' + (topics[1] ?? '').slice(-40);
-            const token1 = '0x' + (topics[2] ?? '').slice(-40);
-            let pair: string;
-            let stable: boolean | null = null;
-            if (isSolidly) {
-                stable = BigInt('0x' + data.slice(2, 66)) === 1n;
-                pair = '0x' + data.slice(66, 130).slice(-40);
-            } else {
-                pair = '0x' + data.slice(2, 66).slice(-40);
-            }
+            const parsed = parseCreationLog(topics, data, layout);
+            if (!parsed) continue;
             hits.push({
-                pair,
-                token0,
-                token1,
+                ...parsed,
                 blockNumber: log.blockNumber ?? log.block_number ?? fromBlock,
-                stable,
             });
         }
 
@@ -320,6 +311,9 @@ export type ScannedPair = {
     token1: string;
     blockNumber: number;
     stable: boolean | null;
+    /** V3 shapes only, when the event carries them; see pool-events.ts. */
+    feePips?: number | null;
+    tickSpacing?: number | null;
 };
 
 /**
@@ -334,6 +328,7 @@ export type ScannedPair = {
  * Data layout:
  *   V2 topic:      token0 in topic[1], token1 in topic[2], pair in data[0]
  *   Solidly topic: token0 in topic[1], token1 in topic[2], data = [bool stable][address pair]
+ *   V3 shapes:     pool is the last data word; see pool-events.ts
  */
 export async function scanFactoryHyperSync(
     hypersyncUrl: string,
@@ -342,7 +337,7 @@ export async function scanFactoryHyperSync(
     fromBlock: number,
     toBlock: number,
     topic: string,
-    isSolidly: boolean,
+    layout: EventLayout | boolean,
     onBatch: (pairs: ScannedPair[], progressBlock: number) => Promise<void> | void,
     abortSignal?: AbortSignal,
 ): Promise<{ totalPairs: number; batches: number }> {
@@ -363,7 +358,7 @@ export async function scanFactoryHyperSync(
             topics: [[topic]],
         }],
         fieldSelection: {
-            log: ['Address', 'BlockNumber', 'Data', 'Topic0', 'Topic1', 'Topic2'],
+            log: ['Address', 'BlockNumber', 'Data', 'Topic0', 'Topic1', 'Topic2', 'Topic3'],
         },
         joinMode: mod.JoinMode?.JoinNothing ?? 2,
     };
@@ -383,26 +378,15 @@ export async function scanFactoryHyperSync(
 
         const pairs: ScannedPair[] = [];
         for (const log of logs) {
-            const topics: any[] = log.topics ?? [];
+            // HyperSync returns null for topic slots the log does not have;
+            // drop them so topics.length is the real count.
+            const topics: string[] = (log.topics ?? []).filter((t: any) => t != null);
             const data: string = log.data ?? log.Data ?? '';
-            if (topics.length < 3 || data.length < 66) continue;
-
-            const token0 = '0x' + (topics[1] ?? '').slice(-40);
-            const token1 = '0x' + (topics[2] ?? '').slice(-40);
-            let pair: string;
-            let stable: boolean | null = null;
-            if (isSolidly) {
-                stable = BigInt('0x' + data.slice(2, 66)) === 1n;
-                pair = '0x' + data.slice(66, 130).slice(-40);
-            } else {
-                pair = '0x' + data.slice(2, 66).slice(-40);
-            }
+            const parsed = parseCreationLog(topics, data, layout);
+            if (!parsed) continue;
             pairs.push({
-                pair,
-                token0,
-                token1,
+                ...parsed,
                 blockNumber: log.blockNumber ?? log.block_number ?? query.fromBlock,
-                stable,
             });
         }
 

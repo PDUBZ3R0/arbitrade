@@ -6,7 +6,8 @@
 //   factories  — one row per known DEX factory, per chain
 //     (we also store name/type/fee here for reference; source of truth is config)
 //
-//   pairs      — one row per V2 pair, discovered via PairCreated events
+//   pairs      — one row per pool: V2-family pairs (PairCreated) and, with
+//                kind = 'v3', concentrated-liquidity pools (PoolCreated)
 //     UNIQUE(factory, address) prevents duplicate inserts on rescan
 //     Indexed by token0, token1, and (token0, token1) for triangle enumeration
 //
@@ -46,6 +47,13 @@ const SCHEMA = `
         -- NULL = use factory-level defaults; only V2/V3 assumptions apply.
         fee         REAL,
         stable      INTEGER,  -- 0/1, NULL for pure V2 (no stable/volatile distinction)
+        -- 'v2' = tokens held in the pair, priced from balances (V2, v2fee, solidly).
+        -- 'v3' = concentrated liquidity, priced from slot0/liquidity/ticks via
+        --        YoBatches2.getV3State. Anything reading reserves as balances
+        --        or calling pair.swap(amount0Out, amount1Out, ...) must filter
+        --        on kind = 'v2'.
+        kind        TEXT NOT NULL DEFAULT 'v2',
+        tickSpacing INTEGER,  -- v3 only
         PRIMARY KEY (factory, address)
     );
 
@@ -90,7 +98,8 @@ const SCHEMA = `
         pair_bc      TEXT NOT NULL,
         pair_ca      TEXT NOT NULL,
 
-        -- Factories used at each hop (for filtering: same-factory triangles have no arb)
+        -- Factories used at each hop (reporting/filtering; one factory can still
+        -- supply several hops — V3 fee tiers, Solidly stable+volatile)
         factory_ab   TEXT NOT NULL,
         factory_bc   TEXT NOT NULL,
         factory_ca   TEXT NOT NULL,
@@ -151,6 +160,13 @@ function migratePairsColumns(db: import('better-sqlite3').Database): void {
     }
     if (!names.has('stable')) {
         db.exec('ALTER TABLE pairs ADD COLUMN stable INTEGER');
+    }
+    if (!names.has('kind')) {
+        // Every pre-existing row came from a PairCreated scan, so 'v2' is right.
+        db.exec("ALTER TABLE pairs ADD COLUMN kind TEXT NOT NULL DEFAULT 'v2'");
+    }
+    if (!names.has('tickSpacing')) {
+        db.exec('ALTER TABLE pairs ADD COLUMN tickSpacing INTEGER');
     }
 }
 
@@ -279,9 +295,14 @@ export type PairRow = {
     token0: string;
     token1: string;
     blockNumber: number;
-    // Solidly-family only; NULL for pure V2 pairs.
+    // Solidly-family only; NULL for pure V2 pairs. For v3, the pool's fee
+    // tier as a fraction (0.003) when the creation event carried it.
     fee?: number | null;
     stable?: boolean | null;
+    /** 'v2' (default) or 'v3'. */
+    kind?: 'v2' | 'v3';
+    /** v3 only. */
+    tickSpacing?: number | null;
 };
 
 export type ReserveRow = {
@@ -351,8 +372,8 @@ export class ArbitradeDB {
      */
     insertPairs(rows: PairRow[]): number {
         const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO pairs (address, factory, token0, token1, blockNumber, fee, stable)
-            VALUES (@address, @factory, @token0, @token1, @blockNumber, @fee, @stable)
+            INSERT OR IGNORE INTO pairs (address, factory, token0, token1, blockNumber, fee, stable, kind, tickSpacing)
+            VALUES (@address, @factory, @token0, @token1, @blockNumber, @fee, @stable, @kind, @tickSpacing)
         `);
         const tx = this.db.transaction((rs: PairRow[]) => {
             let n = 0;
@@ -365,6 +386,8 @@ export class ArbitradeDB {
                     blockNumber: r.blockNumber,
                     fee: r.fee ?? null,
                     stable: r.stable == null ? null : (r.stable ? 1 : 0),
+                    kind: r.kind ?? 'v2',
+                    tickSpacing: r.tickSpacing ?? null,
                 });
                 if (res.changes > 0) n++;
             }
@@ -523,9 +546,18 @@ export class ArbitradeDB {
         maxAgeSeconds?: number;
         /** If set, only return pairs whose factory is in this allowlist (lowercase). */
         factoryAllowlist?: string[];
+        /**
+         * Pool kinds to return. Default ['v2']: the balanceOf-based fetch is
+         * WRONG for a v3 pool (its token balances are not its price), so v3
+         * pools only come back when a caller asks for them explicitly.
+         */
+        kinds?: Array<'v2' | 'v3'>;
     } = {}): Array<{ pair: string; factory: string; token0: string; token1: string }> {
         const wheres: string[] = [];
         const params: any[] = [];
+        const kinds = opts.kinds ?? ['v2'];
+        wheres.push(`p.kind IN (${kinds.map(() => '?').join(',')})`);
+        params.push(...kinds);
         if (opts.factory) {
             wheres.push('p.factory = ?');
             params.push(opts.factory.toLowerCase());
@@ -744,7 +776,7 @@ export class ArbitradeDB {
             SELECT p.address AS pair, p.token0, p.token1
             FROM pairs p
             INNER JOIN reserves r ON r.pair = p.address
-            WHERE p.factory = ?
+            WHERE p.factory = ? AND p.kind = 'v2'
             ORDER BY MAX(CAST(r.reserves0 AS REAL), CAST(r.reserves1 AS REAL)) DESC
             LIMIT ?
         `).all(factory.toLowerCase(), limit) as Array<{ pair: string; token0: string; token1: string }>;
@@ -803,6 +835,7 @@ export class ArbitradeDB {
             INNER JOIN reserves rs ON rs.pair = p.address
             WHERE ((p.token0 = ? AND p.token1 IN (${rph})) OR (p.token1 = ? AND p.token0 IN (${rph})))
               AND p.factory IN (${fph})
+              AND p.kind = 'v2'   -- the probe swaps through pair.swap(); v3 pools need a callback
               AND (p.stable IS NULL OR p.stable = 0)
               AND (p.probeStatus IS NULL OR p.probeStatus != 'pair-restricted')
               AND rs.reserves0 != '0' AND rs.reserves1 != '0'

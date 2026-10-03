@@ -55,6 +55,24 @@ export type FactoryGroup = {
 export type FactoryEntry = {
     address: string;
     deployBlock?: number;
+
+    // --- Concentrated-liquidity (v3 group) ---
+
+    /**
+     * Which creation event the factory emits (see source/util/pool-events.ts):
+     *   "uniswap"     PoolCreated(token0, token1, uint24 indexed fee, int24 tickSpacing, pool)
+     *                 — Uniswap V3, PancakeV3 and most forks. Default.
+     *   "tickspacing" PoolCreated(token0, token1, int24 indexed tickSpacing, pool)
+     *                 — factories keyed by spacing with the fee set per pool.
+     * verify-v3-factory measures this; copy it from its snippet.
+     */
+    poolEvent?: 'uniswap' | 'tickspacing';
+    /**
+     * Swap callback the factory's pools call on the swapper, as found in the
+     * pool bytecode by verify-v3-factory (e.g. "uniswapV3SwapCallback",
+     * "pancakeV3SwapCallback"). The executor must implement this to pay the pool.
+     */
+    callback?: string;
     /** Factory-wide fee for pure v2 (unused for v2fee/solidly — those use per-pair). */
     fee?: number;
 
@@ -190,7 +208,8 @@ export type NormalizedFactory = {
     deployBlock: number;
     /**
      * Flat fee (used directly, no metadata multicall).
-     * - v2/v3: always populated (default 0.003 for canonical Uniswap V2).
+     * - v2: always populated (default 0.003 for canonical Uniswap V2).
+     * - v3/algebra: undefined — fees are per pool (pairs.fee, pool.fee()).
      * - v2fee/solidly: optional. When set, opts into flat-fee mode. When
      *   undefined, per-pair fee is fetched via feeTarget/feeFunction/feeDivisor.
      */
@@ -212,6 +231,10 @@ export type NormalizedFactory = {
     feeDivisor: number;
     /** For v2fee only: does the pair have a stable() view? Default false. */
     hasStableFlag: boolean;
+    /** v3 group only: creation event shape. Defaults to "uniswap". */
+    poolEvent: 'uniswap' | 'tickspacing' | undefined;
+    /** v3 group only: measured swap-callback name, if configured. */
+    callback: string | undefined;
     abi: string[];
 };
 
@@ -396,7 +419,12 @@ export function loadChainConfig(chainArg: string): ChainConfig {
             // per-pair metadata fetch (flat-fee fast path fires when factory.fee
             // is defined), which is a subtle bug that produces mostly-correct
             // math but hides real per-pair fee variance.
-            const defaultFee = group === 'v2' || group === 'v3' || group === 'algebra' ? 0.003 : undefined;
+            // v3/algebra: NO factory-wide fee. Every pool has its own (fee
+            // tiers, per-pool dynamic fees); it is read from the PoolCreated
+            // event at scan time and from pool.fee() at reserves time. A
+            // 0.003 default here would silently misprice every 0.05% and 1%
+            // pool that had not been read yet.
+            const defaultFee = group === 'v2' ? 0.003 : undefined;
 
             // Pattern registry auto-populate: extract the base pattern name from
             // the config key by stripping the `_[a-f0-9]{8}` address suffix,
@@ -422,6 +450,8 @@ export function loadChainConfig(chainArg: string): ChainConfig {
                 feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction ?? pattern?.feeFunction ?? defaultFeeFunction),
                 feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor  ?? pattern?.feeDivisor  ?? defaultFeeDivisor),
                 hasStableFlag: isString ? false : (entry.hasStableFlag ?? pattern?.hasStableFlag ?? false),
+                poolEvent: group === 'v3' ? (isString ? 'uniswap' : (entry.poolEvent ?? 'uniswap')) : undefined,
+                callback:  isString ? undefined : entry.callback,
                 abi: g.abi,
             });
         }

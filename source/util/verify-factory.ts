@@ -476,8 +476,8 @@ export async function verifyFactory(
     if (pairs.length === 0) {
         notes.push(
             `✗ No PairCreated events found (tried both V2 and Solidly signatures). ` +
-            `Factory likely uses a different event shape (V3 PoolCreated, Algebra Pool, ` +
-            `Balancer vault, custom, etc.) — not compatible with our scanner.`
+            `If it emits V3 PoolCreated or Algebra Pool, verify-v3-factory.ts handles it ` +
+            `(the CLI tries that automatically); anything else is not scannable.`
         );
         return result;
     }
@@ -701,6 +701,17 @@ if (isMain()) {
     }
 
     const result = await verifyFactory(chainArg, addressArg, process.env.ETHERSCAN_API_KEY);
+
+    // No PairCreated at all: it may be a concentrated-liquidity factory.
+    // Hand over to the V3 verifier instead of printing a V2 "not compatible".
+    if (!result.isV2) {
+        const { verifyV3Factory, printV3Report } = await import('./verify-v3-factory.ts');
+        const v3 = await verifyV3Factory(chainArg, addressArg, process.env.ETHERSCAN_API_KEY);
+        if (v3.layout) {
+            printV3Report(v3);
+            process.exit(0);
+        }
+    }
 
     console.log('\n' + '═'.repeat(70));
     console.log(`Factory verification report — ${addressArg}`);

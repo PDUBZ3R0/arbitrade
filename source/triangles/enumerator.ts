@@ -15,10 +15,16 @@
 //     4 tokens out of 26K pairs — a huge reduction from general triangle
 //     enumeration.
 //
-//   - 2-hop cycles: two pairs (R,T) from different factories — classic
-//     cross-DEX arb.
+//   - 2-hop cycles: two distinct pools for the same token pair. Usually two
+//     factories (classic cross-DEX arb), but NOT necessarily: a V3 factory
+//     has one pool per fee tier, and a Solidly factory has a stable and a
+//     volatile pair, so two pools from ONE factory are a real candidate.
+//     The rule is "different pool", never "different factory".
 //   - 3-hop cycles: R → B → C → R where all three pairs exist. Any factory
-//     mix is a distinct candidate (but same-factory-for-all-3 is pruned).
+//     mix is a distinct candidate, including all three from one factory —
+//     three pairs on one DEX drift out of line with each other just as pairs
+//     on different DEXes do (opt back into the old prune with
+//     pruneSameFactory3 / --prune-same-factory).
 //
 //   - Stable pools excluded by default (constant-product math is wrong for
 //     x³y+xy³=k curves; add stable-swap support later as an opt-in).
@@ -38,6 +44,16 @@ export type EnumerateOptions = {
     onlyRoot?: string;
     /** If true, include stable pools (constant-product math will be wrong for them). */
     includeStable?: boolean;
+    /**
+     * Skip 3-hop cycles whose three pairs all come from the same factory.
+     * This was the original default, on the theory that one DEX cannot be
+     * arbitraged against itself. That theory is wrong — a cycle of three
+     * pairs is mispriced whenever one of them trades and the other two lag,
+     * regardless of who deployed them — and for V3 it would discard real
+     * cycles across one factory's fee tiers. Kept only as a size lever for
+     * chains where the extra triangles cost more memory than they are worth.
+     */
+    pruneSameFactory3?: boolean;
     /** Max triangles to emit; helpful during dev to bound explosion. Default: unlimited. */
     limit?: number;
     /** Callback fired periodically with progress info. */
@@ -54,6 +70,10 @@ export type EnumerateResult = {
     duplicatesSkipped: number;
     hops2Count: number;
     hops3Count: number;
+    /** 2-hop cycles whose two pools share a factory (fee tiers, stable/volatile). */
+    sameFactory2: number;
+    /** 3-hop cycles whose three pools share a factory (kept, or pruned if asked). */
+    sameFactory3: number;
     byRoot: Record<string, number>;
     pairsUsed: number;
     elapsedMs: number;
@@ -80,8 +100,8 @@ function canonicalKey(pairAB: string, pairBC: string, pairCA: string): string {
 }
 
 /**
- * Canonical dedup key for a 2-hop cycle. Two pairs share the same two tokens
- * from different factories — order between them doesn't matter.
+ * Canonical dedup key for a 2-hop cycle. Two pools share the same two tokens
+ * — order between them doesn't matter.
  */
 function canonical2HopKey(pair1: string, pair2: string): string {
     return pair1 < pair2 ? `${pair1}|${pair2}` : `${pair2}|${pair1}`;
@@ -121,6 +141,8 @@ export async function enumerateTriangles(
         duplicatesSkipped: 0,
         hops2Count: 0,
         hops3Count: 0,
+        sameFactory2: 0,
+        sameFactory3: 0,
         byRoot: {},
         pairsUsed: 0,
         elapsedMs: 0,
@@ -172,9 +194,10 @@ export async function enumerateTriangles(
 
             let rootTriangles = 0;
 
-            // --- 2-hop cycles: two pairs with the same token pair, different factories ---
-            // For each unique token pair involving root, if there's more than one pair,
-            // every pair-of-pairs (with different factories) is a 2-hop candidate.
+            // --- 2-hop cycles: two distinct pools for the same token pair ---
+            // For each unique token pair involving root, if there's more than one
+            // pool, every pair-of-pools is a 2-hop candidate. i < j already
+            // guarantees the two are different pools; the factory does not matter.
             const rootTokenPairs = new Set<string>();
             for (const p of rootPairs) {
                 const other = p.token0 === root ? p.token1 : p.token0;
@@ -189,7 +212,7 @@ export async function enumerateTriangles(
                     for (let j = i + 1; j < pairs.length; j++) {
                         const p1 = pairs[i];
                         const p2 = pairs[j];
-                        if (p1.factory === p2.factory) continue;  // no arb same-factory
+                        if (p1.factory === p2.factory) result.sameFactory2++;
 
                         const key = canonical2HopKey(p1.pair, p2.pair);
                         if (seen2Hop.has(key)) continue;
@@ -239,8 +262,8 @@ export async function enumerateTriangles(
                         for (const pCA of closingPairs) {
                             if (pCA.pair === pAB.pair || pCA.pair === pBC.pair) continue;
 
-                            // Prune: same factory for all three = no arb possible
-                            if (pAB.factory === pBC.factory && pBC.factory === pCA.factory) continue;
+                            const sameFactory = pAB.factory === pBC.factory && pBC.factory === pCA.factory;
+                            if (sameFactory && opts.pruneSameFactory3) continue;
 
                             const canon = `3h|${canonicalKey(pAB.pair, pBC.pair, pCA.pair)}`;
                             if (seenCanonical.has(canon)) continue;
@@ -262,6 +285,7 @@ export async function enumerateTriangles(
                             });
                             rootTriangles++;
                             result.hops3Count++;
+                            if (sameFactory) result.sameFactory3++;
                             if (opts.limit && pending.length >= opts.limit) break;
                         }
                         if (opts.limit && pending.length >= opts.limit) break;

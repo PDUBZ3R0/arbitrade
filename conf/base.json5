@@ -7,7 +7,7 @@
     host: 'https://base-rpc.publicnode.com',
 
     token: '0x4200000000000000000000000000000000000006',
-    contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a"
+    contract: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E"
   },
 
   // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole

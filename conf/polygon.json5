@@ -4,7 +4,7 @@
     id: 137,
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
-    contract: '0x1860a9f4661a0299A2A745c2A49DB212098414CB',
+    contract: '0x2A7e091B283846835f536a889201cbD48365B37E',
     // Was 0x77b9D93a… — copied from sonic/gnosis, where that IS the executor.
     // On Polygon YoBatches was never deployed, so the deployer's nonce sequence
     // is shifted by one: FlashArbExecutor landed at 0xB7D2055… (see

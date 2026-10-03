@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
-// PairCreated event scanner.
+// Pair / pool creation event scanner.
 //
-// For each V2 factory in the chain's config, walk `PairCreated` events from
+// For each factory in the chain's config (V2-family PairCreated, or V3
+// PoolCreated for the v3 group), walk its creation events from
 // the factory's deployment block (or the last scanned block on resume) up to
 // the current head, in chunks. Store discovered pairs in SQLite.
 //
@@ -22,16 +23,15 @@ import { ArbitradeDB } from '../util/db.ts';
 import { discoverDeployBlock } from '../util/discover-deploy-block.ts';
 import { etherscanGetLogs, rateLimit as etherscanRateLimit } from '../util/etherscan.ts';
 
-// PairCreated event topic0 hashes. There are two variants in the wild:
-//   V2:      PairCreated(address,address,address,uint256)          - standard Uniswap V2
-//   Solidly: PairCreated(address,address,bool,address,uint256)     - has stable flag in event
-// They have DIFFERENT keccak hashes and index separately on-chain, so a
-// factory-family scanner must know which topic to filter for.
-const PAIR_CREATED_V2_TOPIC      = ethers.id('PairCreated(address,address,address,uint256)');
-const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
-
-// Kept for backward compat with the earlier code that only knew about V2
-const PAIR_CREATED_TOPIC = PAIR_CREATED_V2_TOPIC;
+// Creation-event topics and decoding live in pool-events.ts, shared with
+// find-factories / verify-*. Each factory group scans exactly one shape:
+//   v2, v2fee : PairCreated(address,address,address,uint256)
+//   solidly   : PairCreated(address,address,bool,address,uint256)
+//   v3        : PoolCreated — fee-keyed (poolEvent "uniswap", default) or
+//               tick-spacing-keyed (poolEvent "tickspacing")
+// They have DIFFERENT keccak hashes and index separately on-chain, so the
+// scanner must know which topic to filter for.
+import { TOPIC_BY_LAYOUT, LAYOUT_BY_POOL_EVENT, parseCreationLog, type EventLayout } from '../util/pool-events.ts';
 
 // Chunk-size defaults. These are the FALLBACKS; both the per-chain config
 // (chain.pagesize) and env vars (SCAN_CHUNK_*) can override them.
@@ -149,10 +149,10 @@ export async function scanFactory(
     factory: NormalizedFactory,
     opts: ScanOptions = {},
 ): Promise<number> {
-    if (factory.group !== 'v2'
-        && factory.group !== 'v2fee'
-        && factory.group !== 'solidly') {
-        // V3/Algebra use different event shapes; separate scanner needed.
+    if (factory.group === 'algebra') {
+        // Algebra pools are discovered by find-factories but not modelled
+        // downstream (globalState/tickTable, dynamic fee), so scanning them
+        // would only fill the DB with pools nothing can price.
         return 0;
     }
 
@@ -164,10 +164,31 @@ export async function scanFactory(
     //               pair.stable() too — see hasStableFlag config.
     //   'solidly' : Canonical Solidly / Aerodrome / Velodrome / Equalizer.
     //               Different topic. Stable flag IS in the event data.
-    const eventTopic = factory.group === 'solidly'
-        ? PAIR_CREATED_SOLIDLY_TOPIC
-        : PAIR_CREATED_V2_TOPIC;
-    const parseStableFromEvent = factory.group === 'solidly';
+    //   'v3'      : PoolCreated in the shape named by factory.poolEvent. The
+    //               pool is stored with kind 'v3', its fee tier (when the
+    //               event carries it) and its tick spacing.
+    const layout: EventLayout =
+        factory.group === 'solidly' ? 'solidly' :
+        factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[factory.poolEvent ?? 'uniswap'] :
+        'v2';
+    const eventTopic = TOPIC_BY_LAYOUT[layout];
+    const isV3 = factory.group === 'v3';
+
+    // One row shape for all three transports.
+    const toRow = (p: { pair: string; token0: string; token1: string; stable: boolean | null;
+                        feePips?: number | null; tickSpacing?: number | null; blockNumber: number }) => ({
+        address:     p.pair,
+        factory:     factory.address,
+        token0:      p.token0,
+        token1:      p.token1,
+        blockNumber: p.blockNumber,
+        // v2fee/solidly: populated later by the reserves fetcher. v3: the
+        // fee tier from the event, as a fraction, when the shape carries it.
+        fee:         isV3 && p.feePips != null ? p.feePips / 1e6 : null,
+        stable:      p.stable,
+        kind:        isV3 ? 'v3' as const : 'v2' as const,
+        tickSpacing: isV3 ? (p.tickSpacing ?? null) : null,
+    } satisfies import('../util/db.ts').PairRow);
 
     const head = opts.toBlock ?? await provider.getBlockNumber();
     const resumeBlock = db.getScanProgress(factory.address);
@@ -238,18 +259,10 @@ export async function scanFactory(
                 fromBlock,
                 head,
                 eventTopic,
-                parseStableFromEvent,
+                layout,
                 async (batchPairs, progressBlock) => {
                     if (batchPairs.length > 0) {
-                        const rows = batchPairs.map(p => ({
-                            address:     p.pair,
-                            factory:     factory.address,
-                            token0:      p.token0,
-                            token1:      p.token1,
-                            blockNumber: p.blockNumber,
-                            fee:         null,
-                            stable:      p.stable,
-                        } satisfies import('../util/db.ts').PairRow));
+                        const rows = batchPairs.map(toRow);
                         const inserted = db.insertPairs(rows);
                         totalFound += inserted;
                     }
@@ -434,41 +447,12 @@ export async function scanFactory(
         }
 
         if (logs.length > 0) {
-            const rows = logs.map(log => {
-                // topics: [topic0, token0 (padded), token1 (padded)]
-                // data: pair (address) + allPairsLength (uint256)
-                const token0 = '0x' + log.topics[1].slice(-40);
-                const token1 = '0x' + log.topics[2].slice(-40);
-                // Extract pair (and stable flag if the event has one).
-                //
-                // V2 event data:      [pair (32B), index (32B)]
-                //   pair = data[0..32]  → hex chars 2..66  → address in last 40 chars
-                //
-                // Solidly-native data: [stable (32B), pair (32B), index (32B)]
-                //   stable = data[0..32] (bool, LSB)
-                //   pair   = data[32..64]  → hex chars 66..130  → last 40 chars
-                let pair: string;
-                let stable: boolean | null = null;
-                if (parseStableFromEvent) {
-                    // solidly: word 0 = stable bool, word 1 = pair
-                    stable = BigInt('0x' + log.data.slice(2, 66)) === 1n;
-                    pair = '0x' + log.data.slice(66, 130).slice(-40);
-                } else {
-                    // v2 or v2fee (Shadow-style): word 0 = pair
-                    pair = '0x' + log.data.slice(2, 66).slice(-40);
-                }
-
-                return {
-                    address: pair,
-                    factory: factory.address,
-                    token0,
-                    token1,
-                    blockNumber: log.blockNumber,
-                    // fee is populated later by reserves fetcher for v2fee/solidly
-                    fee: null,
-                    stable,  // set from event for solidly; null otherwise
-                } satisfies import('../util/db.ts').PairRow;
-            });
+            const rows: import('../util/db.ts').PairRow[] = [];
+            for (const log of logs) {
+                const parsed = parseCreationLog(log.topics, log.data, layout);
+                if (!parsed) continue;   // malformed log for this shape; never store a garbage address
+                rows.push(toRow({ ...parsed, blockNumber: log.blockNumber }));
+            }
             const inserted = db.insertPairs(rows);
             totalFound += inserted;
         }
@@ -500,7 +484,7 @@ export async function scanFactory(
 }
 
 /**
- * Scan every V2 factory in a chain's config.
+ * Scan every factory in a chain's config (all groups except algebra).
  */
 export async function scanChain(
     cfg: ChainConfig,
@@ -539,9 +523,10 @@ export async function scanChain(
 
     try {
         for (const factory of cfg.factories) {
-            if (factory.group !== 'v2'
-                && factory.group !== 'v2fee'
-                && factory.group !== 'solidly') continue;
+            if (factory.group === 'algebra') {
+                console.log(`\n[skip] ${factory.name}: algebra pools are not modelled yet — not scanned`);
+                continue;
+            }
 
             // Prefer DB-cached deploy block over config, since discovery caches to DB
             const cachedBlock = db.getFactoryDeployBlock(factory.address);

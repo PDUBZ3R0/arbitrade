@@ -4,7 +4,7 @@
     name: 'Avalanche C-Chain',
     currency: 'AVAX',
     token: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-    contract: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
+    contract: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
     executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
     probe: '0x2A7e091B283846835f536a889201cbD48365B37E',
     threads: 10,

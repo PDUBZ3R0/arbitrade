@@ -10,5 +10,15 @@
             reason:  "dead (0/17 pairs with real liquidity)",
             addedAt: "2026-09-21",
         },
+        {
+            address: "0x02a84c1b3bbd7401a5f7fa98a384ebc70bb5749e",
+            reason:  "dead (0/13060 pairs with real liquidity)",
+            addedAt: "2026-10-03",
+        },
+        {
+            address: "0xa25b13127e63ddae6d0b35570ff3d39dbd621001",
+            reason:  "dead (0/3412 pairs with real liquidity)",
+            addedAt: "2026-10-03",
+        },
     ]
 }

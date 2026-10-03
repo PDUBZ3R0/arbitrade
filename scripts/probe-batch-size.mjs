@@ -48,12 +48,12 @@ const samplePairs = num('--pairs', 4000);
 const maxTry = num('--max', 5000);
 
 if (!cfg.chain.contract) {
-    console.error(`chain.contract (YoBatches) is unset in conf/${cfg.chain.label}.json5 — nothing to probe.`);
+    console.error(`chain.contract (YoBatches2) is unset in conf/${cfg.chain.label}.json5 — nothing to probe.`);
     process.exit(1);
 }
 
 const iface = new Interface([
-    'function getReservesByPairs(address[3][] args) view returns ((address pair, address token0, uint256 reserves0, address token1, uint256 reserves1)[])',
+    'function getReserves(address[3][] args) view returns (uint256[])',   // YoBatches2
 ]);
 
 const db = new ArbitradeDB(dbPath(chainArg));
@@ -83,13 +83,13 @@ try {
 
 const callBatch = async (n, offset = 0) => {
     const slice = triples.slice(offset, offset + n);
-    const data = iface.encodeFunctionData('getReservesByPairs', [slice]);
+    const data = iface.encodeFunctionData('getReserves', [slice]);
     const raw = await provider.call({ to: cfg.chain.contract, data });
-    const decoded = iface.decodeFunctionResult('getReservesByPairs', raw)[0];
-    if (decoded.length !== slice.length) {
-        throw new Error(`returned ${decoded.length} rows for ${slice.length} pairs`);
+    const decoded = iface.decodeFunctionResult('getReserves', raw)[0];
+    if (decoded.length !== slice.length * 2) {
+        throw new Error(`returned ${decoded.length} words for ${slice.length} pairs (old YoBatches at chain.contract?)`);
     }
-    return { bytes: (raw.length - 2) / 2, rows: decoded.length };
+    return { bytes: (raw.length - 2) / 2, rows: slice.length };
 };
 
 // --- gas per pair, from this chain's own node -------------------------------
@@ -98,11 +98,11 @@ let gasPerPair = null;
 try {
     const probe = async (n) => Number(await provider.estimateGas({
         to: cfg.chain.contract,
-        data: iface.encodeFunctionData('getReservesByPairs', [triples.slice(0, n)]),
+        data: iface.encodeFunctionData('getReserves', [triples.slice(0, n)]),
     }));
     const [g50, g200] = [await probe(50), await probe(200)];
     gasPerPair = (g200 - g50) / 150;
-    console.log(`  ${gasPerPair.toFixed(0)} gas/pair measured here (anvil, all-cold: 16,583)`);
+    console.log(`  ${gasPerPair.toFixed(0)} gas/pair measured here (YoBatches v1 on anvil, all-cold, was 16,583)`);
     for (const cap of [10e6, 30e6, 50e6]) {
         console.log(`    a ${(cap / 1e6)}M eth_call cap would fit ~${Math.floor(cap / gasPerPair).toLocaleString()} pairs`);
     }

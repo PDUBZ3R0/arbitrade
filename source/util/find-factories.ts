@@ -113,8 +113,17 @@ function isProxyName(name: string): boolean {
     return PROXY_NAME_PATTERNS.some(re => re.test(name));
 }
 
-const PAIR_CREATED_V2_TOPIC      = ethers.id('PairCreated(address,address,address,uint256)');
-const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
+import {
+    PAIR_CREATED_V2_TOPIC, PAIR_CREATED_SOLIDLY_TOPIC,
+    POOL_CREATED_V3_TOPIC, POOL_CREATED_V3_TS_TOPIC, POOL_CREATED_ALGEBRA_TOPIC,
+    CL_LAYOUTS, type EventLayout,
+} from './pool-events.ts';
+
+/** A candidate whose events are concentrated-liquidity pool creations. */
+function isClCandidate(c: FactoryCandidate): boolean {
+    for (const t of c.matchedTopics) if (CL_LAYOUTS.has(t)) return true;
+    return false;
+}
 
 // -----------------------------------------------------------------------------
 
@@ -123,7 +132,10 @@ export type FactoryCandidate = {
     pairCreatedCount: number;
     firstBlockSeen: number;
     lastBlockSeen: number;
-    matchedTopics: Set<'v2' | 'solidly'>;  // which PairCreated shape(s) this factory emits
+    /** Which creation event shape(s) this factory emits — PairCreated (v2, solidly)
+     *  or a concentrated-liquidity PoolCreated/Pool (v3, v3ts, algebra). The
+     *  count field is named for pairs but counts pools too. */
+    matchedTopics: Set<EventLayout>;
 };
 
 export type FindOptions = {
@@ -152,7 +164,7 @@ async function sweepEtherscan(
     apiKey: string,
     chunkSize: number,
     topic: string,
-    topicLabel: 'v2' | 'solidly',
+    topicLabel: EventLayout,
     into?: Map<string, FactoryCandidate>,
     abortSignal?: AbortSignal,
 ): Promise<Map<string, FactoryCandidate>> {
@@ -250,7 +262,7 @@ async function sweepRpc(
     toBlock: number,
     chunkSize: number,
     topic: string,
-    topicLabel: 'v2' | 'solidly',
+    topicLabel: EventLayout,
     into?: Map<string, FactoryCandidate>,
     abortSignal?: AbortSignal,
 ): Promise<Map<string, FactoryCandidate>> {
@@ -360,7 +372,7 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     const totalBlocks = to - from + 1;
     const isFullChainScan = opts.fromBlock === undefined && opts.toBlock === undefined && opts.lookbackBlocks === undefined;
 
-    console.log(`\nSweeping ${cfg.chain.name} for PairCreated emitters (both V2 and Solidly-native event shapes)`);
+    console.log(`\nSweeping ${cfg.chain.name} for pool-creation emitters (V2/Solidly PairCreated, V3 PoolCreated, Algebra Pool)`);
     console.log(`  Range: blocks ${from} → ${to} (${totalBlocks} blocks${isFullChainScan ? ', full chain from genesis' : ''})`);
     console.log(`  Transport: ${opts.transport ?? 'auto'}`);
 
@@ -378,9 +390,12 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     }
 
     const emitters = new Map<string, FactoryCandidate>();
-    const topics: Array<{ hash: string; label: 'v2' | 'solidly' }> = [
-        { hash: PAIR_CREATED_V2_TOPIC, label: 'v2' },
+    const topics: Array<{ hash: string; label: EventLayout }> = [
+        { hash: PAIR_CREATED_V2_TOPIC,      label: 'v2' },
         { hash: PAIR_CREATED_SOLIDLY_TOPIC, label: 'solidly' },
+        { hash: POOL_CREATED_V3_TOPIC,      label: 'v3' },
+        { hash: POOL_CREATED_V3_TS_TOPIC,   label: 'v3ts' },
+        { hash: POOL_CREATED_ALGEBRA_TOPIC, label: 'algebra' },
     ];
 
     // Periodic autosave via onProgress callback, if provided.
@@ -496,7 +511,7 @@ async function emitReport(
     console.log('\n' + '═'.repeat(72));
     if (aborted) console.log(`Sweep INTERRUPTED at blocks ${scannedRange.from}-${scannedRange.to}`);
     else         console.log(`Sweep complete over blocks ${scannedRange.from}-${scannedRange.to}`);
-    console.log(`  Unique factories emitting PairCreated: ${candidates.length}`);
+    console.log(`  Unique factories emitting a pool-creation event: ${candidates.length}`);
     console.log(`  Known (already in config): ${knownCount}`);
     console.log(`  Unknown (candidates to investigate): ${unknown.length}`);
     console.log('═'.repeat(72));
@@ -509,7 +524,7 @@ async function emitReport(
     console.log('\nTop unknown factories by activity:\n');
     for (const c of unknown.slice(0, 20)) {
         const topicHint = Array.from(c.matchedTopics).join('+');
-        console.log(`  [${topicHint.padEnd(11)}] ${c.address}  (${c.pairCreatedCount} pairs, blocks ${c.firstBlockSeen}-${c.lastBlockSeen})`);
+        console.log(`  [${topicHint.padEnd(11)}] ${c.address}  (${c.pairCreatedCount} ${isClCandidate(c) ? 'pools' : 'pairs'}, blocks ${c.firstBlockSeen}-${c.lastBlockSeen})`);
     }
     if (unknown.length > 20) {
         console.log(`  ... and ${unknown.length - 20} more`);
@@ -546,6 +561,23 @@ async function emitReport(
 
     const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean }> = [];
     for (const c of toVerify) {
+        if (isClCandidate(c)) {
+            console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pools, concentrated liquidity)`);
+            try {
+                const { verifyV3Factory } = await import('./verify-v3-factory.ts');
+                const v = await withTimeout(verifyV3Factory(chainArg, c.address, explorerApiKey), VERIFY_TIMEOUT_MS, `verifyV3Factory(${c.address})`);
+                if (v.usable) {
+                    console.log(`  ✓ [V3] callback ${v.callback}, poolEvent ${v.poolEvent}, fees ${v.feesSeen.join('/')} pips` +
+                        (v.lensChecked ? ', YoBatches2 reads it' : ''));
+                    verified.push({ candidate: c, snippet: v.configSnippet, family: 'v3', explorerVerified: false });
+                } else {
+                    console.log(`  ✗ Not usable: ${v.notes[v.notes.length - 1] ?? 'unknown reason'}`);
+                }
+            } catch (err) {
+                console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 120)}`);
+            }
+            continue;
+        }
         console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pairs)`);
         try {
             const v = await withTimeout(
@@ -663,7 +695,7 @@ async function emitReport(
         }
     }
 
-    const byFamily = { v2: 0, v2fee: 0, solidly: 0 } as Record<string, number>;
+    const byFamily = { v2: 0, v2fee: 0, solidly: 0, v3: 0 } as Record<string, number>;
     for (const v of verified) byFamily[v.family] = (byFamily[v.family] ?? 0) + 1;
 
     console.log('\n' + '═'.repeat(72));
@@ -671,6 +703,7 @@ async function emitReport(
     console.log(`  Pure V2: ${byFamily['v2']}`);
     console.log(`  V2Fee:   ${byFamily['v2fee']}`);
     console.log(`  Solidly: ${byFamily['solidly']}`);
+    console.log(`  V3 (CL): ${byFamily['v3']}`);
     console.log('═'.repeat(72));
 
     if (verified.length > 0) {
@@ -694,7 +727,8 @@ async function emitReport(
             // template, we can emit a pre-filled snippet with the right
             // family + feeTarget/feeFunction/feeDivisor and drop the
             // generic placeholder comments.
-            const pattern = lookupDexPattern(implementationName) ?? lookupDexPattern(contractName);
+            // V3 snippets come straight from measurement; the pattern registry is V2-family only.
+            const pattern = family === 'v3' ? null : (lookupDexPattern(implementationName) ?? lookupDexPattern(contractName));
 
             let nameHint = '';
             if (implementationName && contractName) {
@@ -736,6 +770,8 @@ async function emitReport(
         console.log('     name ("QuickSwap", "MeshSwap") once you\'ve identified it.');
         console.log('  2. For pure V2 entries: VERIFY the fee — check pair swap() source for .mul(N) constant');
         console.log('  3. For solidly-* entries: the config comment says which factories group to use');
+        console.log('  4. For v3 entries: callback is what the executor must implement for these pools;');
+        console.log('     it was read from the pool bytecode, so trust it over the factory\'s name.');
     }
 }
 
