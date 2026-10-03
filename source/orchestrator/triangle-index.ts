@@ -39,7 +39,7 @@
 
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
-import { cycle_product, optimal_cycle_size, cycle_profit } from '../util/calculus.js';
+import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
 
 /** A hop as the scoring loop needs it — oriented, with its fee. */
 type OrientedHop = { rIn: number; rOut: number; fee: number };
@@ -368,6 +368,12 @@ export class TriangleIndex {
 
             const grossProfit = cycle_profit(x, hops);
             if (grossProfit <= 0) continue;
+
+            // uint112 feasibility. Mirrors the evaluator's check at the same
+            // point in the same order — this whole method is required to be
+            // byte-identical to the batch evaluator's scoring, and test-index
+            // enforces it.
+            if (cycle_overflows(x, hops)) continue;
 
             const netProfit = grossProfit - x * th.flashPremium;
             const roi = x > 0 ? netProfit / x : 0;

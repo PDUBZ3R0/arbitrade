@@ -28,6 +28,7 @@ import { ArbitradeDB } from '../util/db.ts';
 import { dbPath } from '../util/config.ts';
 import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from '../evaluator/evaluator.ts';
 import { CandidateExecutor, type CandidateAttempt } from './attempt.ts';
+import { AttemptFilter } from './select.ts';
 
 export type { CandidateAttempt } from './attempt.ts';
 
@@ -70,6 +71,8 @@ export type OrchestratorPassOptions = {
 
 export type OrchestratorPassResult = {
     candidatesTried: number;
+    /** Candidates passed over because a pair of theirs already failed. See ./select.ts. */
+    skippedSharingFailedPair: number;
     attempts: CandidateAttempt[];
     /** The attempt that simulated clean (and was broadcast, if live) — or null if none did. */
     winner: CandidateAttempt | null;
@@ -127,6 +130,7 @@ export async function runOrchestratorPass(
 
     const result: OrchestratorPassResult = {
         candidatesTried: 0,
+        skippedSharingFailedPair: 0,
         attempts: [],
         winner: null,
         elapsedMs: 0,
@@ -149,11 +153,27 @@ export async function runOrchestratorPass(
             minProfitTokens,
         });
 
+        // See ./select.ts: without this, a pass can spend every attempt on
+        // permutations of one broken cycle.
+        const filter = new AttemptFilter();
+
         for (const candidate of evalResult.topCandidates) {
+            const blocked = filter.blockedBy(candidate);
+            if (blocked) {
+                result.skippedSharingFailedPair++;
+                console.log(`  #${candidate.triangleId} — skipped: routes through ${blocked}, which already failed this pass`);
+                continue;
+            }
+
             result.candidatesTried++;
             const attempt = await executor.attempt(candidate, db);
             result.attempts.push(attempt);
-            if (!attempt.simulated) continue;   // decayed, would revert, or below the gas floor
+            if (!attempt.simulated) {
+                // Decayed, would revert, or below the gas floor. Either way
+                // these pairs just refused us; don't pay to find out twice.
+                filter.noteFailure(candidate);
+                continue;
+            }
             // A live broadcast that reverted on-chain still ends the pass. It
             // is tempting to fall through to the next candidate — but gas has
             // already been spent, the revert means the book moved under us, and

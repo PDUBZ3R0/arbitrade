@@ -22,14 +22,14 @@
 
 import { ArbitradeDB } from '../util/db.ts';
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
-import { cycle_product, optimal_cycle_size, cycle_profit } from '../util/calculus.js';
+import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
 
 // -----------------------------------------------------------------------------
 
 /**
  * Default ROI cap, in percent. THE one place this number lives — evaluate.ts,
- * orchestrator.ts, orchestrator/loop.ts and hot.ts all read it from here
- * rather than each carrying their own default.
+ * orchestrator.ts and orchestrator/loop.ts all read it from here rather than
+ * each carrying their own default.
  *
  * They used to carry their own, and it diverged twice. First the orchestrator
  * didn't pass maxRoiPct at all, so it silently used this library's default
@@ -182,6 +182,13 @@ export type SkipReasons = {
     belowMinInput: number;
     /** ROI exceeded maxRoiPct — almost always a phantom (impossible or wildly unrealistic spread). */
     roiCapExceeded: number;
+    /**
+     * A hop would push a pair's reserve past uint112, so the cycle reverts with
+     * "OVERFLOW" no matter how it is sized. See cycle_overflows in calculus.js.
+     * A non-zero count here means some token's pools are sitting at the uint112
+     * ceiling — profitable on paper, unexecutable on chain.
+     */
+    uint112Overflow: number;
 };
 
 export type EvaluateResult = {
@@ -385,6 +392,7 @@ export async function evaluateTriangles(
         belowMinProfit: 0,
         belowMinInput: 0,
         roiCapExceeded: 0,
+        uint112Overflow: 0,
     };
 
     const result: EvaluateResult = {
@@ -691,6 +699,11 @@ export async function evaluateTriangles(
                     const grossProfit = cycle_profit(x, oriented);
                     if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
 
+                    // Same uint112 feasibility check as the 3-hop path. The
+                    // input bound above does NOT subsume it — see
+                    // cycle_overflows for the Polygon case that proves it.
+                    if (cycle_overflows(x, oriented)) { skipReasons.uint112Overflow++; continue; }
+
                     const netProfit   = grossProfit - x * flashPremium;
                     const roi = x > 0 ? netProfit / x : 0;
 
@@ -780,6 +793,14 @@ export async function evaluateTriangles(
                     // rank and report never depends on the folding algebra.
                     const grossProfit = cycle_profit(xStar, oriented);
                     if (grossProfit <= 0) { skipReasons.notProfitable++; continue; }
+
+                    // Feasibility, not preference: if any hop's input side
+                    // would cross uint112, the pair reverts with OVERFLOW and
+                    // no size fixes it. Checked here rather than earlier
+                    // because it depends on the chosen size, and placed before
+                    // the profit filters so the count is attributed honestly
+                    // instead of hiding inside belowMinProfit.
+                    if (cycle_overflows(xStar, oriented)) { skipReasons.uint112Overflow++; continue; }
 
                     const netProfit = grossProfit - xStar * flashPremium;
                     const roi = xStar > 0 ? netProfit / xStar : 0;

@@ -152,6 +152,12 @@ console.log(`    dust liquidity:      ${result.skipReasons.dustLiquidity}`);
 console.log(`    below min profit:    ${result.skipReasons.belowMinProfit}`);
 console.log(`    below min input:     ${result.skipReasons.belowMinInput}`);
 console.log(`    ROI cap exceeded:    ${result.skipReasons.roiCapExceeded}`);
+// Worth its own line rather than folding into another bucket: a non-zero
+// count means some token's pools sit at the uint112 ceiling, which looks
+// like a profitable opportunity in float64 and reverts with OVERFLOW on
+// every attempt. Five such candidates topped the Polygon ranking before
+// this filter existed.
+console.log(`    uint112 overflow:    ${result.skipReasons.uint112Overflow}`);
 console.log(`  (not counted as "skipped" — no positive spread at all: ${result.skipReasons.notProfitable})`);
 if (result.tokensWithUnknownDecimals > 0) {
     console.log(`  [!] ${result.tokensWithUnknownDecimals} token(s) had unknown decimals (defaulted to 18) — run \`yarn tokens ${cfg.chain.label}\``);

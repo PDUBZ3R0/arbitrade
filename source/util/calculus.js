@@ -230,6 +230,92 @@ export function cycle_profit(x, hops) {
     return amt - x;
 }
 
+/**
+ * Largest value a UniswapV2 pair can hold in a reserve slot.
+ *
+ * UniswapV2Pair._update ends with
+ *
+ *     require(balance0 <= uint112(-1) && balance1 <= uint112(-1), 'UniswapV2: OVERFLOW');
+ *
+ * and that require is the ONLY source of the string "OVERFLOW" in the whole
+ * contract. So an `OVERFLOW` revert always means exactly one thing: a post-swap
+ * ERC20 balance exceeded 2^112 - 1.
+ *
+ * Note that float64 cannot represent 2^112 - 1 distinctly from 2^112 (it needs
+ * 113 bits of mantissa), so an exact comparison at this scale is meaningless
+ * anyway. UINT112_SAFE therefore keeps 0.1% of headroom, which also absorbs
+ * reserve movement between scoring and execution — the margin we would want
+ * regardless of the representation question.
+ */
+export const UINT112_MAX = 2 ** 112;
+export const UINT112_SAFE = UINT112_MAX * 0.999;
+
+/**
+ * Would executing this cycle at input `x` push any pair past the uint112
+ * ceiling?
+ *
+ * WHY THIS IS NOT COVERED BY THE INPUT BOUND
+ *
+ * The evaluator already caps x at half the smallest INPUT-side reserve, which
+ * sounds like it should make overflow impossible. It does not, and a real
+ * Polygon run shows why: WPOL -> Dogma -> MegaDoge -> WPOL, where the
+ * WPOL/Dogma pool held ~299 WPOL and the Dogma/MegaDoge pool held a Dogma
+ * reserve already sitting near 2^112. Capping x at ~149 WPOL is irrelevant;
+ * 45 WPOL buys an enormous number of Dogma, and depositing that into the next
+ * pair tips its Dogma balance over the ceiling. All five top-ranked Polygon
+ * candidates reverted this way.
+ *
+ * The off-chain math is not wrong about those candidates — the profit is real
+ * in float64. It is simply denominated in a number the chain cannot store at
+ * that size.
+ *
+ * REJECT, NOT CLAMP, AND THIS IS A CHOICE
+ *
+ * Note "at that size": a cycle flagged here is usually still executable if you
+ * shrink it to fit the remaining headroom. For the Polygon case above the
+ * Dogma side had ~1e32 units of room left, which works out to a ~6 WPOL input
+ * against a 149 WPOL optimum. So clamping is possible and would not be
+ * nonsense. We reject anyway, for two reasons:
+ *
+ *   1. The candidate was RANKED at its optimal size. A trade cut to 4% of that
+ *      size no longer has the profit that won it a slot, so honouring the
+ *      ranking would mean acting on a number that is no longer true.
+ *   2. A token whose pools sit against the uint112 ceiling has an absurd
+ *      supply, which is a reliable scam/joke-token signal. Sizing a trade to
+ *      fit such a token's leftover headroom is not a trade worth engineering.
+ *
+ * If that ever looks like money being left behind, the fix is to bound the
+ * size by per-hop headroom BEFORE optimising, so the candidate is ranked at a
+ * size it can actually execute at — not to clamp after ranking.
+ *
+ * PRECISION, AND WHY THE MARGIN IS NOT COSMETIC
+ *
+ * At this magnitude float64's spacing is 2^112 * 2^-52 = 2^60, about 1.15e18
+ * — roughly 1.15 whole tokens at 18 decimals. Near the ceiling, adding
+ * anything smaller than that to a reserve is a no-op in float64, so this check
+ * genuinely cannot resolve small headroom and must not pretend to. That is
+ * what UINT112_SAFE's margin is for, and it is why build-hops.ts repeats the
+ * check in BigInt, where it is exact, before spending an eth_estimateGas.
+ *
+ * Checks the INPUT side of each hop only. The output side always decreases, so
+ * it cannot overflow.
+ *
+ * @param {number} x
+ * @param {Array<{rIn: number, rOut: number, fee: number}>} hops
+ * @param {number} [cap]
+ * @returns {boolean} true if the cycle is unexecutable at this size
+ */
+export function cycle_overflows(x, hops, cap = UINT112_SAFE) {
+    let amt = x;
+    for (let i = 0; i < hops.length; i++) {
+        const h = hops[i];
+        if (!(h.rIn + amt <= cap)) return true;
+        amt = swap_output(amt, h.rIn, h.rOut, h.fee);
+        if (!(amt > 0)) return true;
+    }
+    return false;
+}
+
 // ----- Convenience wrappers matching the original public API ----------------
 
 /**

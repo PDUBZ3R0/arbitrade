@@ -94,6 +94,21 @@ const PAIR_IFACE = new Interface([
 const MAX_INPUT_FRACTION_BPS = 1500n; // 15%
 
 /**
+ * Exact uint112 ceiling for a pair reserve slot.
+ *
+ * UniswapV2Pair._update reverts with "UniswapV2: OVERFLOW" if either
+ * post-swap balance exceeds this. Unlike the evaluator's float64 check in
+ * calculus.js, the walk below is BigInt, so this comparison is exact and
+ * needs no safety margin.
+ *
+ * The evaluator already filters these out, so reaching the check here means
+ * the index or the DB reserves were stale relative to the chain. Rejecting
+ * costs nothing; letting it through costs an eth_estimateGas and a confusing
+ * "simulation reverted: OVERFLOW" line in the log.
+ */
+const UINT112_MAX = (1n << 112n) - 1n;
+
+/**
  * Fee scale, parts per million. MUST stay equal to FlashArbExecutor's
  * FEE_SCALE — the contract and this prediction have to agree bit for bit, so
  * changing one without the other silently desynchronises them.
@@ -195,6 +210,10 @@ export async function buildHops(
             rootAmountIn = amountIn;
             if (rootAmountIn <= 0n) return null; // reserveIn itself is ~0 — dead pool
         }
+
+        // Feasibility: the pair must be able to RECEIVE amountIn. The output
+        // side always decreases, so only the input side can overflow.
+        if (reserveIn + amountIn > UINT112_MAX) return null;
 
         const feePpm = feeToPpm(leg.fee);
         const amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, feePpm);

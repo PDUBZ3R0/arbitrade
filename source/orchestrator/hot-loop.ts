@@ -18,6 +18,7 @@ import type { CandidateAttempt } from './attempt.ts';
 import type { RootPricing } from './attempt.ts';
 import { TriangleIndex, type ScoreThresholds, type IndexedCandidate } from './triangle-index.ts';
 import type { SyncUpdate } from './sync-watcher.ts';
+import { AttemptFilter } from './select.ts';
 
 export type HotLoopStats = {
     /** Sync batches delivered (roughly, blocks that touched a pair we know). */
@@ -31,6 +32,8 @@ export type HotLoopStats = {
     candidatesFound: number;
     /** Blocks skipped because a broadcast was too recent. */
     cooldownSkips: number;
+    /** Candidates passed over because a pair of theirs already failed. See ./select.ts. */
+    skippedSharingFailedPair: number;
     attempts: number;
     simulatedClean: number;
     confirmed: number;
@@ -69,7 +72,8 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
 
     const stats: HotLoopStats = {
         batches: 0, pairsApplied: 0, pairsUnknown: 0, trianglesRescored: 0,
-        candidatesFound: 0, cooldownSkips: 0, attempts: 0, simulatedClean: 0, confirmed: 0,
+        candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
+        attempts: 0, simulatedClean: 0, confirmed: 0,
     };
 
     let lastAttemptAt = 0;
@@ -138,7 +142,19 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             return;
         }
 
+        // Fresh per block: a pair that refused us at these reserves may be
+        // perfectly fine once it moves again, so the memory must not outlive
+        // the reserves it was formed from.
+        const filter = new AttemptFilter();
+
         for (const ic of found.slice(0, deps.candidatesPerBlock)) {
+            const blocked = filter.blockedBy(ic as Candidate);
+            if (blocked) {
+                stats.skippedSharingFailedPair++;
+                log(`  #${ic.triangleId} — skipped: routes through ${blocked}, which already failed this block`);
+                continue;
+            }
+
             stats.attempts++;
             lastAttemptAt = now();
             // IndexedCandidate is structurally the evaluator's Candidate — the
@@ -146,6 +162,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             const attempt = await deps.attempt(ic as Candidate, deps.db);
             deps.report(attempt);
             if (attempt.simulated) stats.simulatedClean++;
+            else filter.noteFailure(ic as Candidate);
             if (attempt.confirmed) stats.confirmed++;
             // Stop at the first candidate that reached a clean simulation, for
             // the same reason the batch pass does: the remaining candidates
