@@ -559,6 +559,87 @@ async function emitReport(
         });
     };
 
+    // Classifier signal: look up the verified contract name on the block
+    // explorer. Turns anonymous `Factory_800b0526` into e.g. `MeshSwapFactory`
+    // — an immediate quality signal (verified source = someone published it)
+    // and often enough to identify a well-known DEX at a glance. Used for both
+    // V2-family and V3 candidates; the config key is built from it.
+    //
+    // Proxy resolution: if the top-level contract name looks like a proxy
+    // wrapper (TransparentUpgradeableProxy, ERC1967Proxy, BeaconProxy, etc.),
+    // read EIP-1967 storage to find the implementation address, then look up
+    // ITS contract name. The implementation name is what actually identifies
+    // the DEX (e.g. "PairFactory" for Retro Finance behind its proxy).
+    const resolveExplorerIdentity = async (address: string) => {
+        let displayName: string | undefined;
+        let explorerVerified = false;
+        let implementationName: string | undefined;
+        let implementationAddress: string | undefined;
+        if (explorerApiKey) {
+            try {
+                const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
+                await esRateLimit();
+                const info = await withTimeout(
+                    getContractSourceInfo(loadChainConfig(chainArg).chain.id, address, explorerApiKey),
+                    10_000,
+                    `getContractSourceInfo(${address})`,
+                );
+                if (info?.contractName) {
+                    displayName = info.contractName;
+                    explorerVerified = true;
+                }
+            } catch { /* best-effort; classifier tolerates missing name */ }
+        }
+        if (displayName && isProxyName(displayName)) {
+            try {
+                const proxyProvider = new JsonRpcProvider(loadChainConfig(chainArg).chain.host);
+                const proxyInfo = await withTimeout(detectProxy(proxyProvider, address), 10_000, `detectProxy(${address})`);
+                if (proxyInfo.isProxy && proxyInfo.implementation && explorerApiKey) {
+                    implementationAddress = proxyInfo.implementation;
+                    const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
+                    await esRateLimit();
+                    const implInfo = await withTimeout(
+                        getContractSourceInfo(loadChainConfig(chainArg).chain.id, proxyInfo.implementation, explorerApiKey),
+                        10_000,
+                        `getContractSourceInfo(impl ${proxyInfo.implementation})`,
+                    );
+                    if (implInfo?.contractName) implementationName = implInfo.contractName;
+                }
+            } catch { /* proxy detect / impl lookup best-effort */ }
+        }
+        // Display: the implementation name when the top level is a proxy
+        // wrapper (both shown, so the proxy hop is legible), else the top level.
+        const effectiveName = implementationName ?? displayName;
+        let nameNote = '';
+        if (effectiveName) {
+            nameNote = implementationName && displayName
+                ? ` ["${displayName}" → "${implementationName}"]`
+                : ` ["${effectiveName}"]`;
+        } else if (explorerApiKey) {
+            nameNote = ' [unverified on explorer]';
+        }
+        return { displayName, explorerVerified, implementationName, implementationAddress, nameNote };
+    };
+
+    // DexScreener check — surfaces raw dexId/liquidity for a sample pair or
+    // pool so an unrecognized/suspicious factory (like Polygon's Panaromaswap)
+    // is visible right in this report instead of needing a manual web search
+    // later. See dexscreener.ts's scope note: this flags "worth a look", it
+    // does not confirm anything on its own. DexScreener indexes V3 pools by
+    // pool address the same way it indexes V2 pairs.
+    const printDexScreener = async (pair: string) => {
+        try {
+            const { lookupPairOnDexScreener, isWellKnownDex } = await import('./dexscreener.ts');
+            const dsInfo = await lookupPairOnDexScreener(chainArg, pair);
+            if (dsInfo) {
+                const flag = isWellKnownDex(dsInfo.dexId) ? '' : '  [!] not a well-known dexId — worth a manual look';
+                const liq = dsInfo.liquidityUsd != null ? `$${dsInfo.liquidityUsd.toLocaleString()}` : 'unknown';
+                console.log(`    DexScreener: dexId="${dsInfo.dexId}" pair=${dsInfo.baseSymbol}/${dsInfo.quoteSymbol} liquidity=${liq}${flag}`);
+                console.log(`    ${dsInfo.url}`);
+            }
+        } catch { /* best-effort — DexScreener lookup never blocks the report */ }
+    };
+
     const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean }> = [];
     for (const c of toVerify) {
         if (isClCandidate(c)) {
@@ -567,9 +648,15 @@ async function emitReport(
                 const { verifyV3Factory } = await import('./verify-v3-factory.ts');
                 const v = await withTimeout(verifyV3Factory(chainArg, c.address, explorerApiKey), VERIFY_TIMEOUT_MS, `verifyV3Factory(${c.address})`);
                 if (v.usable) {
+                    const { displayName, explorerVerified, implementationName, implementationAddress, nameNote } =
+                        await resolveExplorerIdentity(c.address);
                     console.log(`  ✓ [V3] callback ${v.callback}, poolEvent ${v.poolEvent}, fees ${v.feesSeen.join('/')} pips` +
-                        (v.lensChecked ? ', YoBatches2 reads it' : ''));
-                    verified.push({ candidate: c, snippet: v.configSnippet, family: 'v3', explorerVerified: false });
+                        (v.lensChecked ? ', YoBatches2 reads it' : '') + nameNote);
+                    if (v.samplePool) await printDexScreener(v.samplePool);
+                    verified.push({
+                        candidate: c, snippet: v.configSnippet, family: 'v3',
+                        contractName: displayName, implementationName, implementationAddress, explorerVerified,
+                    });
                 } else {
                     console.log(`  ✗ Not usable: ${v.notes[v.notes.length - 1] ?? 'unknown reason'}`);
                 }
@@ -586,98 +673,13 @@ async function emitReport(
                 `verifyFactory(${c.address})`
             );
             if (v.isV2 && v.isYoBatchesCompatible && v.configSnippet) {
-                // Classifier signal: look up the verified contract name on the
-                // block explorer. Turns anonymous `Factory_800b0526` into e.g.
-                // `MeshSwapFactory` — an immediate quality signal (verified source
-                // = someone published it) and often enough to identify a
-                // well-known DEX at a glance.
-                let displayName: string | undefined;
-                let explorerVerified = false;
-                let implementationName: string | undefined;
-                let implementationAddress: string | undefined;
-                if (explorerApiKey) {
-                    try {
-                        const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
-                        await esRateLimit();
-                        const info = await withTimeout(
-                            getContractSourceInfo(loadChainConfig(chainArg).chain.id, c.address, explorerApiKey),
-                            10_000,
-                            `getContractSourceInfo(${c.address})`,
-                        );
-                        if (info?.contractName) {
-                            displayName = info.contractName;
-                            explorerVerified = true;
-                        }
-                    } catch { /* best-effort; classifier tolerates missing name */ }
-                }
-
-                // Proxy resolution: if the top-level contract name looks like
-                // a proxy wrapper (TransparentUpgradeableProxy, ERC1967Proxy,
-                // BeaconProxy, etc.), read EIP-1967 storage to find the
-                // implementation address, then look up ITS contract name.
-                // The implementation name is what actually identifies the DEX
-                // (e.g. "PairFactory" for Retro Finance behind its proxy).
-                if (displayName && isProxyName(displayName)) {
-                    try {
-                        const proxyProvider = new JsonRpcProvider(loadChainConfig(chainArg).chain.host);
-                        const proxyInfo = await withTimeout(
-                            detectProxy(proxyProvider, c.address),
-                            10_000,
-                            `detectProxy(${c.address})`,
-                        );
-                        if (proxyInfo.isProxy && proxyInfo.implementation && explorerApiKey) {
-                            implementationAddress = proxyInfo.implementation;
-                            const { getContractSourceInfo, rateLimit: esRateLimit } = await import('./etherscan.ts');
-                            await esRateLimit();
-                            const implInfo = await withTimeout(
-                                getContractSourceInfo(loadChainConfig(chainArg).chain.id, proxyInfo.implementation, explorerApiKey),
-                                10_000,
-                                `getContractSourceInfo(impl ${proxyInfo.implementation})`,
-                            );
-                            if (implInfo?.contractName) {
-                                implementationName = implInfo.contractName;
-                            }
-                        }
-                    } catch { /* proxy detect / impl lookup best-effort */ }
-                }
-
+                const { displayName, explorerVerified, implementationName, implementationAddress, nameNote } =
+                    await resolveExplorerIdentity(c.address);
                 const feeInfo = v.family === 'v2fee' || v.family === 'solidly'
                     ? 'fee per-pair'
                     : `fee ${v.fee} (${v.feeConfidence})`;
-                // Effective name for display: the implementation contract name
-                // when the top-level is a proxy wrapper, otherwise the top-level.
-                const effectiveName = implementationName ?? displayName;
-                let nameNote = '';
-                if (effectiveName) {
-                    if (implementationName && displayName) {
-                        // Show both to make the proxy-hop legible in logs
-                        nameNote = ` ["${displayName}" → "${implementationName}"]`;
-                    } else {
-                        nameNote = ` ["${effectiveName}"]`;
-                    }
-                } else if (explorerApiKey) {
-                    nameNote = ' [unverified on explorer]';
-                }
                 console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}${nameNote}`);
-
-                // DexScreener check — surfaces raw dexId/liquidity for the
-                // sample pair so an unrecognized/suspicious factory (like
-                // Polygon's Panaromaswap) is visible right in this report
-                // instead of needing a manual web search later. See
-                // dexscreener.ts's scope note: this flags "worth a look",
-                // it does not confirm anything on its own.
-                if (v.samplePair) {
-                    try {
-                        const { lookupPairOnDexScreener, isWellKnownDex } = await import('./dexscreener.ts');
-                        const dsInfo = await lookupPairOnDexScreener(chainArg, v.samplePair);
-                        if (dsInfo) {
-                            const flag = isWellKnownDex(dsInfo.dexId) ? '' : '  [!] not a well-known dexId — worth a manual look';
-                            const liq = dsInfo.liquidityUsd != null ? `$${dsInfo.liquidityUsd.toLocaleString()}` : 'unknown';
-                            console.log(`    DexScreener: dexId="${dsInfo.dexId}" pair=${dsInfo.baseSymbol}/${dsInfo.quoteSymbol} liquidity=${liq}${flag}`);
-                            console.log(`    ${dsInfo.url}`);
-                        }
-                    } catch { /* best-effort — DexScreener lookup never blocks the report */ }
-                }
+                if (v.samplePair) await printDexScreener(v.samplePair);
                 verified.push({
                     candidate: c,
                     snippet: v.configSnippet,

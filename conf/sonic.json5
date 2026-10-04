@@ -193,6 +193,130 @@
         },
       },
     },
+    v3: {
+      list: {
+      // 3397 pairs in the sweep window (verified on explorer as "RamsesV3Factory")
+    // Add under factories["v3"]:
+        "RamsesV3Factory_cd2d0637": {
+          // measured: fees 10000/4001/95/94/1500 pips, spacings 100/50/5/1
+          address: "0xcd2d0637c94fe77c2896bbcbb174ceffb08de6d7",
+          deployBlock: 1705781,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 906 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_56cfc796": {
+          // measured: fees 10000/3000 pips, spacings 200/60
+          address: "0x56cfc796bc88c9c7e1b38c2b0af9b7120b079aef",
+          deployBlock: 276406,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 580 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_3d91b700": {
+          // measured: fees 3000/10000 pips, spacings 60/200
+          address: "0x3d91b700252e0e3ee7805d12e048a988ab69c8ad",
+          deployBlock: 286535,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 179 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_46b3fdf7": {
+          // measured: fees 3000/10000 pips, spacings 60/200
+          address: "0x46b3fdf7b5cde91ac049936bf0bdb12c5d22202e",
+          deployBlock: 347590,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 106 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_5f209f01": {
+          // measured: fees 10000/5000 pips, spacings 200/100
+          address: "0x5f209f01a3faac0f0ed6abec41da640384aaf673",
+          deployBlock: 52770735,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 104 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_f2548ea6": {
+          // measured: fees 10000/5000 pips, spacings 200/100
+          address: "0xf2548ea6b811bf0ae2e36b58a37c40e88dd51680",
+          deployBlock: 14574310,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 73 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_7ca1dccf": {
+          // measured: fees 1500/1000/1275/10000 pips, spacings 8
+          address: "0x7ca1dccfb4f49564b8f13e18a67747fd428f1c40",
+          deployBlock: 548413,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 72 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_cb243677": {
+          // measured: fees 3000/100/500 pips, spacings 60/1/10
+          address: "0xcb2436774c3e191c85056d248ef4260ce5f27a9d",
+          deployBlock: 322744,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 46 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_3a1713b6": {
+          // measured: fees 3000/500 pips, spacings 60/10
+          address: "0x3a1713b6c3734cfc883a3897647f3128fe789f39",
+          deployBlock: 57508444,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 31 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_bdd2e72d": {
+          // measured: fees 10000/5000/500 pips, spacings 200/100/10
+          address: "0xbdd2e72d5177317a171796c33fe223f01dbb9f4a",
+          deployBlock: 52205086,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 30 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_32c0c830": {
+          // measured: fees 10000/5000/500 pips, spacings 200/100/10
+          address: "0x32c0c830bd6cf07893fa6095a64059886112d6df",
+          deployBlock: 7998029,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 30 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_887b9f49": {
+          // measured: fees 10000/5000/500 pips, spacings 200/100/10
+          address: "0x887b9f4977046d83552a59f9a36ed08a1e68964d",
+          deployBlock: 51524902,
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        }
+
+      }
+    }
   },
   flashloan: {
     "provider": "aave-v3",

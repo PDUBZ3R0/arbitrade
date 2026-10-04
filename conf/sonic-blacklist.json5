@@ -1,4 +1,4 @@
-          {
+{
     factories: [
         {
             address: "0x35da19425ce5ce7a1707815e71daaccb76814fe4",
@@ -16,28 +16,193 @@
             addedAt: "2026-09-03",
         },
         {
-            "address": "0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6"
+            address: "0x4c27b43222bf092f7e1c70395af8f82c7f9edcf6",
         },
         {
-            "address": "0x8a7fcc7cab476013c759c83a61d427f2c1107116"
+            address: "0x8a7fcc7cab476013c759c83a61d427f2c1107116",
         },
         {
-            "address": "0xe0dbffaa42adbac436080a4047f497d56792a8d3"
+            address: "0xe0dbffaa42adbac436080a4047f497d56792a8d3",
         },
         {
-            "address": "0x03c08d09445268c83e19f838fe9a488916edd2e6"
+            address: "0x03c08d09445268c83e19f838fe9a488916edd2e6",
         },
         {
-            "address": "0x796f21efa35bf3b0360ac8e3c108241f88e47a3a"
+            address: "0x796f21efa35bf3b0360ac8e3c108241f88e47a3a",
         },
         {
-            "address": "0x8164765f5886d43ddaf2454cba6c1acc4479fd18"
+            address: "0x8164765f5886d43ddaf2454cba6c1acc4479fd18",
         },
         {
-            "address": "0x3627ab14c987cc98cea9e8f797d4b61e4de9e734"
+            address: "0x3627ab14c987cc98cea9e8f797d4b61e4de9e734",
         },
         {
-            "address": "0x273126ba6fb9c8e28ca47e50fdced6844994659c"
-        }
+            address: "0x273126ba6fb9c8e28ca47e50fdced6844994659c",
+        },
+        {
+            address: "0x32c0c830bd6cf07893fa6095a64059886112d6df",
+            reason:  "dead (0/30 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x3a1713b6c3734cfc883a3897647f3128fe789f39",
+            reason:  "dead (0/46 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x3d91b700252e0e3ee7805d12e048a988ab69c8ad",
+            reason:  "dead (0/580 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x46b3fdf7b5cde91ac049936bf0bdb12c5d22202e",
+            reason:  "dead (0/179 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x56cfc796bc88c9c7e1b38c2b0af9b7120b079aef",
+            reason:  "dead (0/906 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x5f209f01a3faac0f0ed6abec41da640384aaf673",
+            reason:  "dead (0/106 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x7ca1dccfb4f49564b8f13e18a67747fd428f1c40",
+            reason:  "dead (0/73 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x887b9f4977046d83552a59f9a36ed08a1e68964d",
+            reason:  "dead (0/30 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xbdd2e72d5177317a171796c33fe223f01dbb9f4a",
+            reason:  "dead (0/31 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xcb2436774c3e191c85056d248ef4260ce5f27a9d",
+            reason:  "dead (0/72 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xcd2d0637c94fe77c2896bbcbb174ceffb08de6d7",
+            reason:  "dead (0/3397 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xf2548ea6b811bf0ae2e36b58a37c40e88dd51680",
+            reason:  "dead (0/104 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x01d6747dd2d65ddd90faec2c84727c2706ee28e2",
+            reason:  "dead (0/24 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x0569f2a6b281b139bc164851cf86e4a792ca6e81",
+            reason:  "dead (0/48 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x05c1be79d3ac21cc4b727eed58c9b2ff757f5663",
+            reason:  "dead (0/462 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x0f7b3fcba276a65dd6e41e400055dcb75ba66750",
+            reason:  "dead (0/61 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x1570300e9cfec66c9fb0c8bc14366c86eb170ad0",
+            reason:  "dead (0/1082 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x1e58feab693e488dc370cf86b38d5625d22b858f",
+            reason:  "dead (0/6 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x2da25e7446a70d7be65fd4c053948becaa6374c8",
+            reason:  "dead (0/31 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x2dd26477d07a0612ce3336aaaaf270fe6ddbcb26",
+            reason:  "dead (0/7 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x3638ca700d67d560be2a2d0dd471640957564829",
+            reason:  "dead (0/9 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x47524ca6578e172878abf6fd6f3e1cd106c551e6",
+            reason:  "dead (0/84 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x475f2ddfa1a5da19f4a3f282f1305f285e742c45",
+            reason:  "dead (0/27 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x4d8ef974fad9b7e323be2c260b7c7712db090e86",
+            reason:  "dead (0/19 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x765331f7a008c0609543acca6209d91636bceeac",
+            reason:  "dead (0/37 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x7d9d51267f7e9e6b46a48e0a75c0086f46777087",
+            reason:  "dead (0/9 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xb45e53277a7e0f1d35f2a77160e91e25507f1763",
+            reason:  "dead (0/149 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xbb13ade01dc6f897ff81ded9bbe3a0d4e845fbb6",
+            reason:  "dead (0/38 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xce98a0e578b639aa90ee96ed5ba8e5a4022de529",
+            reason:  "dead (0/10 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xd8863d794520285185197f97215c8b8ad04e8815",
+            reason:  "dead (0/2050 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc",
+            reason:  "dead (0/2263 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xde26aa06fc545be2bc8c759c02bdaf72e66ac937",
+            reason:  "dead (0/27 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xee4bc42157cf65291ba2fe839ae127e3cc76f741",
+            reason:  "dead (0/5326 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
     ]
 }

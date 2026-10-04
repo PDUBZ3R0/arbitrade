@@ -148,3 +148,42 @@ contract MockAavePool {
         require(IERC20M(asset).transferFrom(receiver, address(this), amount + premium), "repay");
     }
 }
+
+interface IBalancerRecipient {
+    function receiveFlashLoan(address[] calldata tokens, uint256[] calldata amounts, uint256[] calldata fees, bytes calldata data) external;
+}
+
+/// Mock Balancer V2 vault: lends, calls back, then checks it was paid back by
+/// transfer (balance-based, like the real vault). feeBps models a non-zero
+/// protocol flash fee.
+contract MockBalancerVault {
+    uint256 public feeBps;
+    constructor(uint256 _feeBps) { feeBps = _feeBps; }
+
+    function flashLoan(address recipient, address[] calldata tokens, uint256[] calldata amounts, bytes calldata data) external {
+        uint256[] memory fees = new uint256[](tokens.length);
+        uint256[] memory before = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            before[i] = IERC20M(tokens[i]).balanceOf(address(this));
+            fees[i] = (amounts[i] * feeBps) / 10_000;
+            IERC20M(tokens[i]).transfer(recipient, amounts[i]);
+        }
+        IBalancerRecipient(recipient).receiveFlashLoan(tokens, amounts, fees, data);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            require(IERC20M(tokens[i]).balanceOf(address(this)) >= before[i] + fees[i], "BAL#602");
+        }
+    }
+}
+
+interface IMorphoCallback {
+    function onMorphoFlashLoan(uint256 assets, bytes calldata data) external;
+}
+
+/// Mock Morpho Blue: free flash loan, repaid by transferFrom after the callback.
+contract MockMorpho {
+    function flashLoan(address token, uint256 assets, bytes calldata data) external {
+        IERC20M(token).transfer(msg.sender, assets);
+        IMorphoCallback(msg.sender).onMorphoFlashLoan(assets, data);
+        require(IERC20M(token).transferFrom(msg.sender, address(this), assets), "repay");
+    }
+}

@@ -64,6 +64,12 @@ export type ScoreThresholds = {
     minReserveByToken: Float64Array;
     maxRoi: number;
     flashPremium: number;
+    /**
+     * Per-root flash fee, keyed by root token address (lowercase), when roots
+     * borrow from different lenders. Falls back to flashPremium. Must match
+     * the evaluator's flashPremiumFor, which uses the same flashTermsFor.
+     */
+    flashPremiumByRoot?: Map<string, number>;
 };
 
 export class TriangleIndex {
@@ -381,7 +387,7 @@ export class TriangleIndex {
             // enforces it.
             if (cycle_overflows(x, hops)) continue;
 
-            const netProfit = grossProfit - x * th.flashPremium;
+            const netProfit = grossProfit - x * (th.flashPremiumByRoot?.get(rootAddr) ?? th.flashPremium);
             const roi = x > 0 ? netProfit / x : 0;
             if (netProfit <= minProfit) continue;
             if (x < minInput) continue;

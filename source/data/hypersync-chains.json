@@ -1,0 +1,559 @@
+{
+ "source": "docs/Supported Chains _ Envio HyperIndex, HyperSync, HyperRPC.pdf",
+ "note": "HyperSync endpoint for any listed chain: https://<chainId>.hypersync.xyz (HyperRPC: https://<chainId>.rpc.hypersync.xyz)",
+ "chains": {
+  "1": {
+   "name": "Ethereum Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "10": {
+   "name": "OP Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "14": {
+   "name": "Flare Mainnet",
+   "currency": "FLR",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "30": {
+   "name": "Rootstock Mainnet",
+   "currency": "RBTC",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "42": {
+   "name": "LUKSO Mainnet",
+   "currency": "LYX",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "56": {
+   "name": "BNB Smart Chain Mainnet",
+   "currency": "BNB",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "97": {
+   "name": "BNB Smart Chain Testnet",
+   "currency": "tBNB",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "100": {
+   "name": "Gnosis",
+   "currency": "XDAI",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "130": {
+   "name": "Unichain",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "137": {
+   "name": "Polygon Mainnet",
+   "currency": "POL",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "143": {
+   "name": "Monad",
+   "currency": "MON",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "146": {
+   "name": "Sonic Mainnet",
+   "currency": "S",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "148": {
+   "name": "ShimmerEVM",
+   "currency": "SMR",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "169": {
+   "name": "Manta Pacific Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "204": {
+   "name": "opBNB Mainnet",
+   "currency": "BNB",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "250": {
+   "name": "Fantom Opera",
+   "currency": "FTM",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "252": {
+   "name": "Fraxtal",
+   "currency": "FRAX",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "255": {
+   "name": "Kroma",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "288": {
+   "name": "Boba Network",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "324": {
+   "name": "zkSync Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "480": {
+   "name": "World Chain",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "999": {
+   "name": "Hyperliquid",
+   "currency": "HYPE",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1101": {
+   "name": "Polygon zkEVM",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1135": {
+   "name": "Lisk",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1284": {
+   "name": "Moonbeam",
+   "currency": "GLMR",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1328": {
+   "name": "Sei Testnet",
+   "currency": "SEI",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1329": {
+   "name": "Sei Network",
+   "currency": "SEI",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1750": {
+   "name": "Metal L2",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1776": {
+   "name": "Injective",
+   "currency": "INJ",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1868": {
+   "name": "Soneium",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1923": {
+   "name": "Swellchain",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "2741": {
+   "name": "Abstract",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "2818": {
+   "name": "Morph",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4114": {
+   "name": "Citrea Mainnet",
+   "currency": "cBTC",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4200": {
+   "name": "Merlin Mainnet",
+   "currency": "BTC",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4201": {
+   "name": "LUKSO Testnet",
+   "currency": "LYXt",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4217": {
+   "name": "Tempo Mainnet Presto",
+   "currency": "USD",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4326": {
+   "name": "MegaETH Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "4663": {
+   "name": "Robinhood Chain",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "5000": {
+   "name": "Mantle",
+   "currency": "MNT",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "5115": {
+   "name": "Citrea Testnet",
+   "currency": "cBTC",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "5330": {
+   "name": "Superseed",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "6343": {
+   "name": "MegaETH Testnet",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "7000": {
+   "name": "ZetaChain Mainnet",
+   "currency": "ZETA",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "7560": {
+   "name": "Cyber Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "8453": {
+   "name": "Base",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "9745": {
+   "name": "Plasma Mainnet",
+   "currency": "XPL",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "10143": {
+   "name": "Monad Testnet",
+   "currency": "MON",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "10200": {
+   "name": "Gnosis Chiado Testnet",
+   "currency": "XDAI",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "14601": {
+   "name": "Sonic Testnet",
+   "currency": "S",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "33111": {
+   "name": "Curtis",
+   "currency": "APE",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "34443": {
+   "name": "Mode",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "36888": {
+   "name": "AB Core Mainnet",
+   "currency": "AB",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "42161": {
+   "name": "Arbitrum One",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "42170": {
+   "name": "Arbitrum Nova",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "42220": {
+   "name": "Celo Mainnet",
+   "currency": "CELO",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "42793": {
+   "name": "Etherlink Mainnet",
+   "currency": "XTZ",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "43113": {
+   "name": "Avalanche Fuji Testnet",
+   "currency": "AVAX",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "43114": {
+   "name": "Avalanche C-Chain",
+   "currency": "AVAX",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "50104": {
+   "name": "Sophon",
+   "currency": "SOPH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "57073": {
+   "name": "Ink",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "59144": {
+   "name": "Linea",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "80002": {
+   "name": "Amoy",
+   "currency": "POL",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "80094": {
+   "name": "Berachain",
+   "currency": "BERA",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "81457": {
+   "name": "Blast",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "84532": {
+   "name": "Base Sepolia Testnet",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "88888": {
+   "name": "Chiliz Chain Mainnet",
+   "currency": "CHZ",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "98866": {
+   "name": "Plume Mainnet",
+   "currency": "PLUME",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "421614": {
+   "name": "Arbitrum Sepolia",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "534352": {
+   "name": "Scroll",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "560048": {
+   "name": "Ethereum Hoodi",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "747474": {
+   "name": "katana",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "5042002": {
+   "name": "Arc Network Testnet",
+   "currency": "USDC",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "7777777": {
+   "name": "Zora",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "11155111": {
+   "name": "Ethereum Sepolia",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "11155420": {
+   "name": "OP Sepolia Testnet",
+   "currency": "ETH",
+   "network": "testnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "728126428": {
+   "name": "Tron Mainnet",
+   "currency": "TRX",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1313161554": {
+   "name": "Aurora Mainnet",
+   "currency": "ETH",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  },
+  "1666600000": {
+   "name": "Harmony Mainnet Shard 0",
+   "currency": "ONE",
+   "network": "mainnet",
+   "hypersync": true,
+   "hyperrpc": true
+  }
+ }
+}

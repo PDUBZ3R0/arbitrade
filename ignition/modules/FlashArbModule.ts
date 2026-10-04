@@ -10,6 +10,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 // not put the address on the command line. There's no safe default here —
 // deploying with the wrong chain's pool address silently breaks flash loans,
 // so this deliberately has no fallback value.
+//
+// On a chain WITHOUT Aave pass the zero address (yarn add-chain writes it).
+// The pool only backs the legacy executeArb entry point; executeArbFrom takes
+// its lender per call (Balancer V2 vault, Uniswap V3 pool, Morpho, or Aave).
 export default buildModule("FlashArbModule", (m) => {
   const aavePool = m.getParameter<string>("aavePool");
   const executor = m.contract("FlashArbExecutor", [aavePool]);

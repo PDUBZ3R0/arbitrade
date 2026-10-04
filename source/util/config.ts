@@ -36,6 +36,15 @@ export type ChainMeta = {
     currency: string;
     token?: string;            // native wrapped (WETH, WMATIC, wS...)
     host: string;              // RPC URL
+    /**
+     * Websocket RPC (wss://…). Used by `yarn hot` for push delivery of Sync
+     * logs instead of HTTP polling; `--ws` on the command line overrides it,
+     * and so does `<LABEL>_WS` in .env (same pattern as `<LABEL>_RPC`).
+     * Filled in by `yarn add-chain` when chainlist lists a working one.
+     */
+    ws?: string;
+    /** Block explorer base URL, for humans (set by `yarn add-chain`). */
+    explorer?: string;
     hypersyncUrl?: string;     // Envio HyperSync URL (e.g. "https://sonic.hypersync.xyz")
     contract?: string;         // deployed YoBatches address
     executor?: string;         // deployed FlashArbExecutor address (piece 6) — set after `yarn deploy-flasharb <chain>`
@@ -127,6 +136,69 @@ export type FactoryEntry = {
     hasStableFlag?: boolean;
 };
 
+// ---- flash-loan sources ---------------------------------------------------------
+
+export type FlashProvider = 'aave-v3' | 'balancer-v2' | 'uniswap-v3' | 'morpho';
+
+/** FlashArbExecutor's SOURCE_* constants — the `source` argument of executeArbFrom. */
+export const FLASH_SOURCES: Record<FlashProvider, number> = {
+    'aave-v3': 0,
+    'balancer-v2': 1,
+    'uniswap-v3': 2,
+    'morpho': 3,
+};
+
+/** Balancer V2's Vault lives at the same address on every chain it is deployed to. */
+export const BALANCER_V2_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8';
+
+export type FlashToken = {
+    symbol: string;
+    address: string;
+    decimals: number;
+    /** Override the chain-level provider for this token. */
+    provider?: FlashProvider;
+    /**
+     * Override the lender contract for this token. REQUIRED for uniswap-v3:
+     * the V3 pool to flash() from — one holding this token, deep enough, and
+     * never one the cycle trades through (it is locked during the loan).
+     */
+    lender?: string;
+    /** Override the fee for this token (for uniswap-v3: the pool's fee tier, e.g. 0.0005). */
+    premium?: number;
+};
+
+export type FlashTerms = { provider: FlashProvider; source: number; lender: string; premium: number };
+
+/**
+ * How to borrow `token`: which executor source, from which contract, at what
+ * fee. Token-level fields win over chain-level ones. Returns null when the
+ * token is not a configured flash token or no lender can be resolved — the
+ * caller must then not attempt the trade.
+ *
+ *   aave-v3      lender = token.lender ?? flashloan.pool
+ *   balancer-v2  lender = token.lender ?? flashloan.vault ?? BALANCER_V2_VAULT
+ *   morpho       lender = token.lender ?? flashloan.morpho
+ *   uniswap-v3   lender = token.lender (a pool; no chain-wide default exists)
+ */
+export function flashTermsFor(cfg: { flashloan?: RawChainConfig['flashloan'] }, token: string): FlashTerms | null {
+    const fl = cfg.flashloan;
+    if (!fl) return null;
+    const t = fl.tokens.find(x => x.address.toLowerCase() === token.toLowerCase());
+    if (!t) return null;
+    const provider = t.provider ?? fl.provider;
+    const lender = t.lender ?? (
+        provider === 'aave-v3'     ? fl.pool :
+        provider === 'balancer-v2' ? (fl.vault ?? BALANCER_V2_VAULT) :
+        provider === 'morpho'      ? fl.morpho :
+        undefined);
+    if (!lender || !(provider in FLASH_SOURCES)) return null;
+    // A V3 pool's fee is its own tier; a chain-wide number cannot be right for
+    // it, and guessing low would overstate every candidate's profit.
+    if (provider === 'uniswap-v3' && t.premium == null) return null;
+    const premium = t.premium ?? (provider === fl.provider ? fl.premium : (provider === 'aave-v3' ? 0.0005 : 0));
+    return { provider, source: FLASH_SOURCES[provider], lender, premium };
+}
+
 export type RawChainConfig = {
     chain: ChainMeta;
     factories: {
@@ -136,14 +208,24 @@ export type RawChainConfig = {
         v2fee?: FactoryGroup;    // V2 event, per-pair fee (Shadow, DXSwap)
         solidly?: FactoryGroup;  // Solidly event with stable flag, per-pair fee (Equalizer)
     };
+    /**
+     * Where flash loans come from. FlashArbExecutor can borrow from any of
+     * four lenders (see FLASH_SOURCES); this picks the default for the chain,
+     * and each token may override it — e.g. borrow WETH from a free Balancer
+     * vault and USDC from Aave. See flashTermsFor() for the resolution rules.
+     */
     flashloan?: {
-        provider: 'aave-v3' | 'balancer-v2';
+        provider: FlashProvider;
         /** Aave V3 Pool contract (NOT the addresses provider) — flashLoanSimple lives here. Required for aave-v3. */
         pool?: string;
         addressesProvider?: string;
+        /** Balancer V2 Vault. Defaults to the canonical 0xBA12…2C8 when provider is balancer-v2. */
         vault?: string;
+        /** Morpho Blue singleton. Required for provider morpho (address differs per chain). */
+        morpho?: string;
+        /** Fee as a fraction of the amount borrowed (0.0005 = 0.05%). Default for every token. */
         premium: number;
-        tokens: Array<{ symbol: string; address: string; decimals: number }>;
+        tokens: FlashToken[];
     };
     /**
      * Chain-tuned evaluator thresholds (piece 5), denominated in the CHAIN's
@@ -320,6 +402,8 @@ export function loadChainRegistry(): Record<string, ChainMeta> {
             token:         entry.token,
             host:          entry.host,
             hypersyncUrl:  entry.hypersyncUrl,
+            ws:            entry.ws,
+            explorer:      entry.explorer,
             contract:      entry.contract,
             threads:       entry.threads,
             interval:      entry.interval,
@@ -382,6 +466,10 @@ export function loadChainConfig(chainArg: string): ChainConfig {
     const envKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_RPC`;
     if (process.env[envKey]) {
         raw.chain.host = process.env[envKey]!;
+    }
+    const wsKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_WS`;
+    if (process.env[wsKey]) {
+        raw.chain.ws = process.env[wsKey]!;
     }
 
     // Flatten the factory groups

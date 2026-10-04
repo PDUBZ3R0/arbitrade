@@ -26,6 +26,7 @@
     currency: 'xDAI',
     hypersyncUrl: 'https://gnosis.hypersync.xyz',
     host: 'https://gnosis-rpc.publicnode.com',
+    wss: "wss://gnosis-rpc.publicnode.com"
   },
   unichain: {
     id: 130,
@@ -40,6 +41,7 @@
     currency: 'POL',
     hypersyncUrl: 'https://polygon.hypersync.xyz',
     host: 'https://polygon-bor-rpc.publicnode.com',
+    wss: "wss://polygon-bor-rpc.publicnode.com"
   },
   monad: {
     id: 143,
@@ -54,6 +56,7 @@
     currency: 'S',
     hypersyncUrl: 'https://sonic.hypersync.xyz',
     host: 'https://sonic-rpc.publicnode.com',
+    wss: "wss://sonic-rpc.publicnode.com"
   },
   xlayer: {
     id: 196,

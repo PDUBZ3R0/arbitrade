@@ -28,7 +28,7 @@
 // -----------------------------------------------------------------------------
 
 import { ArbitradeDB } from '../util/db.ts';
-import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
+import { flashTermsFor, type ChainConfig, type NormalizedFactory } from '../util/config.ts';
 import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
 import {
     v3_float_hop, mixed_cycle_product, optimal_mixed_cycle, mixed_cycle_profit, mixed_cycle_overflows,
@@ -443,7 +443,20 @@ export async function evaluateTriangles(
     const factoriesByAddr = new Map<string, NormalizedFactory>();
     for (const f of cfg.factories) factoriesByAddr.set(f.address.toLowerCase(), f);
 
-    const flashPremium = cfg.flashloan?.premium ?? 0.0005;
+    // Flash-loan fee per root token: it depends on where that token is
+    // borrowed from (Aave ~0.05%, Balancer/Morpho usually 0, a V3 pool its fee
+    // tier) — see flashTermsFor. Tokens with no resolvable lender fall back to
+    // the chain-level premium so they are still scored and reported; the
+    // executor refuses to trade them.
+    const premiumByRoot = new Map<string, number>();
+    const flashPremiumFor = (root: string): number => {
+        let p = premiumByRoot.get(root);
+        if (p === undefined) {
+            p = flashTermsFor(cfg, root)?.premium ?? cfg.flashloan?.premium ?? 0.0005;
+            premiumByRoot.set(root, p);
+        }
+        return p;
+    };
     const debug = opts.debug ?? false;
     const debugLimit = opts.debugLimit ?? 25;
     let debugPrinted = 0;
@@ -800,7 +813,7 @@ export async function evaluateTriangles(
                     if (cycle_overflows(x, oriented)) { skipReasons.uint112Overflow++; continue; }
                     }
 
-                    const netProfit   = grossProfit - x * flashPremium;
+                    const netProfit   = grossProfit - x * flashPremiumFor(root);
                     const roi = x > 0 ? netProfit / x : 0;
 
                     if (netProfit <= minProfit) {
@@ -912,7 +925,7 @@ export async function evaluateTriangles(
                     if (cycle_overflows(xStar, oriented)) { skipReasons.uint112Overflow++; continue; }
                     }
 
-                    const netProfit = grossProfit - xStar * flashPremium;
+                    const netProfit = grossProfit - xStar * flashPremiumFor(root);
                     const roi = xStar > 0 ? netProfit / xStar : 0;
 
                     if (netProfit <= minProfit) {

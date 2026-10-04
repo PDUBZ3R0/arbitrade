@@ -23,7 +23,7 @@
 import { Contract, type JsonRpcProvider, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
-import { ledgerPath } from '../util/config.ts';
+import { ledgerPath, flashTermsFor } from '../util/config.ts';
 import type { Candidate, EvaluateResult } from '../evaluator/evaluator.ts';
 import { buildHops, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
@@ -34,6 +34,11 @@ export const EXECUTOR_ABI = [
     // reserves and the amount that actually arrived. minProfit is the on-chain
     // floor enforced against the real closing balance.
     'function executeArb(address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient)[] hops) external',
+    // Same, from any supported lender: source = FLASH_SOURCES[provider]
+    // (0 Aave V3, 1 Balancer V2, 2 Uniswap V3 pool flash, 3 Morpho Blue).
+    // This is what the orchestrator calls; see flashTermsFor in config.ts.
+    'function executeArbFrom(uint8 source, address lender, address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient)[] hops) external',
+    'function SOURCE_MORPHO() view returns (uint8)',
     // Carries the REALISED profit. The off-chain prediction is an upper bound,
     // so the ledger records this rather than what we expected.
     'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
@@ -193,6 +198,27 @@ export class CandidateExecutor {
         }
     }
 
+    /**
+     * The deployed executor must have executeArbFrom (multi-provider). An
+     * older deployment would revert every call with EMPTY revert data, which
+     * reads like a liquidity problem; say what it actually is, once, instead.
+     * Checked by calling a view only the new contract has; cached.
+     */
+    private executorVersionError: string | null | undefined;
+    private async checkExecutorVersion(): Promise<string | null> {
+        if (this.executorVersionError !== undefined) return this.executorVersionError;
+        try {
+            await this.executor.SOURCE_MORPHO();
+            this.executorVersionError = null;
+        } catch {
+            this.executorVersionError =
+                `executor at ${this.cfg.chain.executor} predates multi-provider flash loans (no executeArbFrom) — ` +
+                `redeploy: yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then update chain.executor`;
+            console.warn(`  [!] ${this.executorVersionError}`);
+        }
+        return this.executorVersionError;
+    }
+
     /** Replace the pricing table, e.g. after the hot loop re-runs the evaluator. */
     setRootPricing(p: RootPricing): void { this.rootPricing = p; }
 
@@ -297,6 +323,25 @@ export class CandidateExecutor {
             return attempt;
         }
 
+        // Where this root is borrowed from. No lender, no trade.
+        const terms = flashTermsFor(this.cfg, candidate.rootToken);
+        if (!terms) {
+            attempt.simulationError = `no flash lender configured for root ${candidate.rootToken} ` +
+                `(flashloan.provider / pool / vault / morpho, or the token's own provider+lender in conf/${this.cfg.chain.label}.json5)`;
+            return attempt;
+        }
+        // A V3 pool is locked for the length of its own flash loan, so a
+        // cycle that trades through the lending pool cannot execute.
+        if (terms.provider === 'uniswap-v3' && candidate.hops.some(h => h.pair.toLowerCase() === terms.lender.toLowerCase())) {
+            attempt.simulationError = `cycle trades through its own flash-loan pool ${terms.lender}`;
+            return attempt;
+        }
+        const versionError = await this.checkExecutorVersion();
+        if (versionError) {
+            attempt.simulationError = versionError;
+            return attempt;
+        }
+
         await this.ensureGasPrice();
 
         const built = await buildHops(
@@ -315,7 +360,9 @@ export class CandidateExecutor {
         // path is not executable, so it doubles as a first validation.
         let gasUnits: bigint;
         try {
-            gasUnits = await this.executor.executeArb.estimateGas(
+            gasUnits = await this.executor.executeArbFrom.estimateGas(
+                terms.source,
+                terms.lender,
                 candidate.rootToken,
                 built.rootAmountIn,
                 built.minProfitWei,
@@ -351,7 +398,9 @@ export class CandidateExecutor {
         // 3. Simulate at the floor we would actually broadcast with, so
         // "simulated clean" means clean under the real constraint.
         try {
-            await this.executor.executeArb.staticCall(
+            await this.executor.executeArbFrom.staticCall(
+                terms.source,
+                terms.lender,
                 candidate.rootToken,
                 built.rootAmountIn,
                 effectiveMinProfit,
@@ -370,7 +419,9 @@ export class CandidateExecutor {
         // point of the gas floor is that it binds the broadcast, not just the
         // simulation.
         const signed = this.executor.connect(this.opts.signer!) as Contract;
-        const tx = await signed.executeArb(
+        const tx = await signed.executeArbFrom(
+            terms.source,
+            terms.lender,
             candidate.rootToken,
             built.rootAmountIn,
             effectiveMinProfit,

@@ -14,6 +14,7 @@
     "deploy-probe": "bash scripts/deploy-probe.sh",
     "discover": "sh scripts/log.sh source/util discover-deploy-block",
     "verify": "sh scripts/log.sh source/util verify-factory",
+    "add-chain": "sh scripts/log.sh source add-chain",
     "verify-fees": "sh scripts/log.sh source verify-fees",
     "factories": "sh scripts/log.sh source/util find-factories",
     "scan": "sh scripts/log.sh source scan",

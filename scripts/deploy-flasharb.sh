@@ -1,7 +1,9 @@
 #!/bin/bash
 # Deploy FlashArbExecutor (piece 6) to a chain using its Aave V3 pool address
-# from ignition/parameters/<chain>.json (kept in sync with conf/<chain>.json5's
-# flashloan.pool by hand for now — there are only a few chains wired up).
+# from ignition/parameters/<chain>.json (written by `yarn add-chain`; the zero
+# address on a chain without Aave — the executor then borrows from Balancer V2,
+# a Uniswap V3 pool or Morpho via executeArbFrom, per conf/<chain>.json5's
+# flashloan block).
 #
 # Usage: yarn deploy-flasharb <chain> [--redeploy]
 #
@@ -50,7 +52,8 @@ fi
 
 PARAMS="ignition/parameters/${CHAIN}.json"
 if [ ! -f "$PARAMS" ]; then
-    echo "Missing $PARAMS — create it with the chain's Aave V3 pool address:" >&2
+    echo "Missing $PARAMS — run \`yarn add-chain <chainId> ${CHAIN}\`, or create it with the" >&2
+    echo "chain's Aave V3 pool address (0x0000000000000000000000000000000000000000 if it has none):" >&2
     echo '  { "FlashArbModule": { "aavePool": "0x..." } }' >&2
     exit 1
 fi

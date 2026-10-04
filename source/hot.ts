@@ -44,7 +44,7 @@
 // -----------------------------------------------------------------------------
 
 import { Wallet, JsonRpcProvider } from 'ethers';
-import { loadChainConfig, dbPath, type NormalizedFactory } from './util/config.ts';
+import { loadChainConfig, dbPath, flashTermsFor, type NormalizedFactory } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from './evaluator/evaluator.ts';
 import { CandidateExecutor } from './orchestrator/attempt.ts';
@@ -60,7 +60,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('');
     console.error('  --live                   Broadcast candidates that simulate clean. Without this');
     console.error('                           flag nothing is ever sent. Requires PRIVATE_KEY.');
-    console.error('  --ws URL                 Websocket endpoint for real push. Without it, the loop');
+    console.error('  --ws URL                 Websocket endpoint for real push (default: chain.ws / <LABEL>_WS). Without one, the loop');
     console.error('                           polls the HTTP host, which costs one block of latency.');
     console.error('  --candidates N           Candidates to attempt per block (default 3). Each costs');
     console.error('                           an estimateGas + staticCall round trip.');
@@ -101,7 +101,9 @@ const num = (flag: string, dflt: number, predicate: (n: number) => boolean, what
 };
 
 const live = hasFlag('--live');
-const wsUrl = getStr('--ws');
+// --ws wins; otherwise the chain's configured websocket (conf `ws`, or
+// <LABEL>_WS in .env). Resolved after cfg is loaded, below.
+const wsFlag = getStr('--ws');
 const candidatesPerBlock = num('--candidates', 3, v => v >= 1, 'at least 1');
 const minProfitTokensStr = getStr('--min-profit-tokens');
 const minProfitTokensOpt = minProfitTokensStr ? num('--min-profit-tokens', 0, v => v > 0, 'a positive number') : undefined;
@@ -113,6 +115,7 @@ const pollMs = num('--poll-ms', 1000, v => v >= 50, 'at least 50');
 const ownerArg = getStr('--owner');
 
 const cfg = loadChainConfig(chainArg);
+const wsUrl = wsFlag ?? cfg.chain.ws;
 
 const provider = new JsonRpcProvider(cfg.chain.host);
 let signer: Wallet | undefined;
@@ -213,6 +216,10 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
         minReserveByToken,
         maxRoi: maxRoiPct / 100,
         flashPremium: cfg.flashloan?.premium ?? 0.0005,
+        flashPremiumByRoot: new Map((cfg.flashloan?.tokens ?? []).map(t => [
+            t.address.toLowerCase(),
+            flashTermsFor(cfg, t.address)?.premium ?? cfg.flashloan?.premium ?? 0.0005,
+        ])),
     };
 }
 
