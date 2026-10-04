@@ -29,6 +29,7 @@ import { dbPath } from '../util/config.ts';
 import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from '../evaluator/evaluator.ts';
 import { CandidateExecutor, type CandidateAttempt } from './attempt.ts';
 import { AttemptFilter } from './select.ts';
+import { makeProvider } from '../util/rpc.ts';
 
 export type { CandidateAttempt } from './attempt.ts';
 
@@ -104,7 +105,7 @@ export async function runOrchestratorPass(
         throw new Error('live=true requires a signer (set PRIVATE_KEY and pass a Wallet).');
     }
 
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
     const dbFile = dbPath(cfg.chain.label);
     const db = new ArbitradeDB(dbFile);
 

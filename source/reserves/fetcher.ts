@@ -32,6 +32,7 @@ import { getReservesByPairs } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 import { buildPriceGraph } from '../util/numeraire-price.ts';
 import { fetchV3States } from './v3-state.ts';
+import { makeProvider } from '../util/rpc.ts';
 
 const RESERVES_BATCH_SIZE = 500;   // pairs per YoBatches call (default; see reserves.batchSize)
 const MAX_RESERVES_BATCH_SIZE = 5000;  // sanity bound on the config override
@@ -216,7 +217,7 @@ export async function fetchReserves(
     if (!cfg.chain.contract) {
         throw new Error(`YoBatches is not deployed for ${cfg.chain.name} (chain.contract is unset in config).`);
     }
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
     const db = new ArbitradeDB(dbFilePath);
     const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [], factoryStats: [] };
 

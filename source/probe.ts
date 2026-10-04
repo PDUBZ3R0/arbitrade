@@ -19,6 +19,7 @@ import { loadChainConfig, dbPath } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { appendToBlacklist } from './util/blacklist.ts';
 import { probePair, STAGE, TOKEN_VERDICTS, type ProbeOutcome } from './util/token-probe.ts';
+import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -78,7 +79,7 @@ const allowedFactories = cfg.factories.map(f => f.address.toLowerCase());
 const factoryName = new Map(cfg.factories.map(f => [f.address.toLowerCase(), f.name]));
 
 const db = new ArbitradeDB(dbPath(chainArg));
-const provider = new JsonRpcProvider(cfg.chain.host);
+const provider = makeProvider(cfg.chain);
 
 const tokens = db.getTokensToProbe(roots, { maxAgeSeconds: maxAgeDays * 86_400, refresh, limit });
 console.log(`Probing ${tokens.length} token(s) on ${cfg.chain.name} via TokenProbe ${cfg.chain.probe}`);

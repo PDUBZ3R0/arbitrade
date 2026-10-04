@@ -402,7 +402,9 @@ export function loadChainRegistry(): Record<string, ChainMeta> {
             token:         entry.token,
             host:          entry.host,
             hypersyncUrl:  entry.hypersyncUrl,
-            ws:            entry.ws,
+            // `wss` accepted as an alias: it is the natural thing to type for a
+            // wss:// URL, and a silently ignored key means silent HTTP polling.
+            ws:            entry.ws ?? (entry as any).wss,
             explorer:      entry.explorer,
             contract:      entry.contract,
             threads:       entry.threads,
@@ -467,6 +469,8 @@ export function loadChainConfig(chainArg: string): ChainConfig {
     if (process.env[envKey]) {
         raw.chain.host = process.env[envKey]!;
     }
+    // Same alias in the per-chain file's chain block.
+    if (!raw.chain.ws && (raw.chain as any).wss) raw.chain.ws = (raw.chain as any).wss;
     const wsKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_WS`;
     if (process.env[wsKey]) {
         raw.chain.ws = process.env[wsKey]!;

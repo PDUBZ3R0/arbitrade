@@ -52,6 +52,7 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
+import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -117,7 +118,7 @@ const ownerArg = getStr('--owner');
 const cfg = loadChainConfig(chainArg);
 const wsUrl = wsFlag ?? cfg.chain.ws;
 
-const provider = new JsonRpcProvider(cfg.chain.host);
+const provider = makeProvider(cfg.chain);
 let signer: Wallet | undefined;
 let ownerAddress: string;
 if (process.env.PRIVATE_KEY) {

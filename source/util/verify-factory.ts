@@ -18,6 +18,7 @@ import { ethers, JsonRpcProvider, Contract } from 'ethers';
 import { loadChainConfig } from './config.ts';
 import { etherscanGetLogs, getContractCreation, rateLimit } from './etherscan.ts';
 import { realpathSync } from 'node:fs';
+import { sharedProvider } from './rpc.ts';
 
 const PAIR_CREATED_TOPIC         = ethers.id('PairCreated(address,address,address,uint256)');
 const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
@@ -423,7 +424,7 @@ export async function verifyFactory(
     explorerApiKey?: string,
 ): Promise<VerifyResult> {
     const cfg = loadChainConfig(chainName);
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = sharedProvider(cfg.chain);
 
     const notes: string[] = [];
     const result: VerifyResult = {

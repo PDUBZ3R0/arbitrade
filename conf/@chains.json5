@@ -83,6 +83,8 @@
     currency: 'HYPE',
     hypersyncUrl: 'https://hyperliquid.hypersync.xyz',
     host: 'https://hyperliquid-rpc.publicnode.com',
+    ws: 'wss://hyperliquid.drpc.org',
+    explorer: 'https://testnet.wanscan.org',
   },
   metis: {
     id: 1088,
@@ -97,6 +99,15 @@
     hypersyncUrl: 'https://soneium.hypersync.xyz',
     host: 'https://soneium-rpc.publicnode.com',
   },
+  megaeth: {
+    id: 4326,
+    name: 'MegaETH',
+    currency: 'ETH',
+    hypersyncUrl: 'https://megaeth.hypersync.xyz',
+    host: 'https://megaeth.drpc.org',
+    ws: 'wss://mainnet.megaeth.com/ws',
+    explorer: 'https://mega.etherscan.io',
+  },
   mantle: {
     id: 5000,
     name: 'Mantle',
@@ -110,6 +121,8 @@
     currency: 'ETH',
     hypersyncUrl: 'https://robinhood.hypersync.xyz',
     host: 'https://robinhood-rpc.publicnode.com',
+    ws: 'wss://robinhood-rpc.publicnode.com',
+    explorer: 'https://robinscan.io',
   },
   base: {
     id: 8453,
@@ -124,6 +137,16 @@
     currency: 'XPL',
     hypersyncUrl: 'https://plasma.hypersync.xyz',
     host: 'https://plasma-rpc.publicnode.com',
+    explorer: 'https://plasmascan.to',
+  },
+  mode: {
+    id: 34443,
+    name: 'Mode',
+    currency: 'ETH',
+    hypersyncUrl: 'https://34443.hypersync.xyz',
+    host: 'https://mode.drpc.org',
+    ws: 'wss://mode.drpc.org',
+    explorer: 'https://explorer.mode.network',
   },
   arbitrum: {
     id: 42161,
@@ -138,6 +161,7 @@
     currency: 'AVAX',
     hypersyncUrl: 'https://avalanche.hypersync.xyz',
     host: 'https://avalanche-rpc.publicnode.com',
+    wss: "wss://avalanche-c-chain-rpc.publicnode.com"
   },
   ink: {
     id: 57073,
@@ -153,11 +177,29 @@
     hypersyncUrl: 'https://linea.hypersync.xyz',
     host: 'https://linea-rpc.publicnode.com',
   },
+  berachain: {
+    id: 80094,
+    name: 'Berachain',
+    currency: 'BERA',
+    hypersyncUrl: 'https://80094.hypersync.xyz',
+    host: 'https://berachain-rpc.publicnode.com',
+    ws: 'wss://berachain-rpc.publicnode.com',
+    explorer: 'https://berascan.com',
+  },
   scroll: {
     id: 534352,
     name: 'Scroll',
     currency: 'ETH',
     hypersyncUrl: 'https://scroll.hypersync.xyz',
     host: 'https://scroll-rpc.publicnode.com',
+  },
+  katana: {
+    id: 747474,
+    name: 'katana',
+    currency: 'ETH',
+    hypersyncUrl: 'https://747474.hypersync.xyz',
+    host: 'https://katana.gateway.tenderly.co',
+    ws: 'wss://katana.drpc.org',
+    explorer: 'https://katanascan.com',
   },
 }

@@ -33,6 +33,7 @@ import { ArbitradeDB } from './util/db.ts';
 import { deriveFeeFromBytecode } from './util/decompile-fee.ts';
 import { empiricallyVerifyFee } from './util/empirical-fee.ts';
 import { acquireCode, analyzeFeeWithClaude, type ClaudeFeeAnalysis } from './util/source-fee.ts';
+import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -76,7 +77,7 @@ if (useClaude && !anthropicKey) {
 const cfg = loadChainConfig(chainArg);
 const dbFile = dbPath(chainArg);
 const db = new ArbitradeDB(dbFile);
-const provider = new JsonRpcProvider(cfg.chain.host);
+const provider = makeProvider(cfg.chain);
 const cacheFile = `log/${cfg.chain.label}/fee-analysis-cache.json`;
 
 const factories = cfg.factories.filter(f => f.group === group);

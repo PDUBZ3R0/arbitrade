@@ -19,6 +19,13 @@ const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
 const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
 const INK_RPC     = process.env.INK_RPC     || 'https://ink-rpc.publicnode.com';
 const MONAD_RPC   = process.env.MONAD_RPC   || 'https://rpc1.monad.xyz';
+const KATANA_RPC    = process.env.KATANA_RPC || 'https://katana.gateway.tenderly.co';
+const MEGAETH_RPC   = process.env.MEGAETH_RPC || 'https://megaeth.drpc.org';
+const BERACHAIN_RPC = process.env.BERACHAIN_RPC || 'https://berachain-rpc.publicnode.com';
+const MODE_RPC      = process.env.MODE_RPC || 'https://mode.drpc.org';
+const PLASMA_RPC    = process.env.PLASMA_RPC || 'https://rpc.plasma.to';
+const ROBINHOOD_RPC = process.env.ROBINHOOD_RPC || 'https://robinhood-rpc.publicnode.com';
+const HYPERLIQUID_RPC = process.env.HYPERLIQUID_RPC || 'https://hyperliquid.drpc.org';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -67,6 +74,48 @@ export default defineConfig({
         },
         monad: {
             url: MONAD_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        katana: {
+            url: KATANA_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        megaeth: {
+            url: MEGAETH_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        berachain: {
+            url: BERACHAIN_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        mode: {
+            url: MODE_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        plasma: {
+            url: PLASMA_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        robinhood: {
+            url: ROBINHOOD_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        hyperliquid: {
+            url: HYPERLIQUID_RPC,
             accounts,
             type: "http",
             chainType: "generic",

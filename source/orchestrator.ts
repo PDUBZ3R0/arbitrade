@@ -12,6 +12,7 @@ import { loadChainConfig } from './util/config.ts';
 import { runOrchestratorPass } from './orchestrator/loop.ts';
 import { printAttempt } from './orchestrator/report.ts';
 import { DEFAULT_MAX_ROI_PCT } from './evaluator/evaluator.ts';
+import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -71,7 +72,7 @@ let signer: Wallet | undefined;
 let ownerAddress: string;
 
 if (process.env.PRIVATE_KEY) {
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
     signer = new Wallet(process.env.PRIVATE_KEY, provider);
     ownerAddress = ownerArg ?? signer.address;
 } else if (ownerArg) {

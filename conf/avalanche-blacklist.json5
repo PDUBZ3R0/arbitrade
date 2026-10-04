@@ -51,7 +51,52 @@
             addedAt: "2026-10-03",
         },
         {
-        `   address: "0xaaa16c016bf556fcd620328f0759252e29b1ab57"
-        }
+            address: "0xaaa16c016bf556fcd620328f0759252e29b1ab57",
+        },
+        {
+            address: "0xf069a628255cf3cd39f850178e548559b2395cea",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_f069a628, 20 pairs): fee=null curve=unknown, conf=low - no swap() with a K-check or fee arithmetic identifiable. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xec51b7ecffb0ff7d2dd9ee2dd6e65f4c27ed0c7f",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (ReinsureXFactory, 16 pairs): fee=null curve=unknown, conf=low - swap selector present but no recognizable K-invariant (no x*y or stable math). Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x06530550a48f990360dfd642d2132354a144f31d",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_06530550, 14 pairs): fee=null curve=unknown, conf=low - no identifiable swap()/K-check; 1000 constants only in unrelated overflow checks. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x4dfcab2c14eea4e321cbb95d695f874b6d90b525",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_4dfcab2c, 14 pairs): fee=null curve=unknown, conf=low - decompile ambiguous; no swap() with K-check visible. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x1307a7c0e89c67014e5e1abd18fd19e6f910b87b",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_1307a7c0, 14 pairs): fee=null curve=unknown, conf=low - decompile ambiguous; swap() not present in decompiled code. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xa4efbb9f1d6745927a5f03e3f8f32970b57b5300",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_a4efbb9f, 14 pairs): fee=null curve=unknown, conf=low - decompile ambiguous; swap-like function lacks fee/K computation. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x15de32a0842ce2335ef6c33f1643afb1a81c4738",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (BlackbullFactory, 13 pairs): fee=null curve=unknown, conf=low - swap-like function mangled; no fee pattern or K-check discernible. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x6fea5651fac99b854a961dbb41380adb9f8f9a8b",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_6fea5651, 11 pairs): fee=null curve=unknown, conf=low - decompile ambiguous; K-check not identifiable. Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0x839547067bc885db205f5fa42dcfeecdff5a8530",
+            reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_83954706, 10 pairs): fee=null curve=unknown, conf=low - no swap() present in decompiled code (ERC20 functions only). Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
+            addedAt: "2026-10-04",
+        },
     ]
 }

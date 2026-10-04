@@ -18,6 +18,7 @@
 import { JsonRpcProvider } from 'ethers';
 import { loadChainConfig } from './util/config.ts';
 import { fetchAaveReserves, type AaveReserveState } from './util/aave-reserves.ts';
+import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -41,7 +42,7 @@ if (cfg.flashloan.provider !== 'aave-v3') {
     process.exit(1);
 }
 
-const provider = new JsonRpcProvider(cfg.chain.host);
+const provider = makeProvider(cfg.chain);
 const snap = await fetchAaveReserves(provider, cfg);
 
 if (asJson) {

@@ -35,6 +35,7 @@ import { realpathSync } from 'node:fs';
 import { loadChainConfig } from './config.ts';
 import { getContractCreation } from './etherscan.ts';
 import { TOPIC_BY_LAYOUT, parseCreationLog, type EventLayout, type ParsedCreation } from './pool-events.ts';
+import { sharedProvider } from './rpc.ts';
 
 /** Swap callbacks we know how to recognise. The executor implements by name. */
 export const KNOWN_CALLBACKS = [
@@ -200,7 +201,7 @@ export async function verifyV3Factory(
     ctx: V3VerifyContext = {},
 ): Promise<V3VerifyResult> {
     const cfg = ctx.chain ? { chain: ctx.chain } : loadChainConfig(chainName);
-    const provider = ctx.provider ?? new JsonRpcProvider(cfg.chain.host);
+    const provider = ctx.provider ?? sharedProvider(cfg.chain as any);
     const notes: string[] = [];
     const r: V3VerifyResult = {
         address: address.toLowerCase(), usable: false, family: 'unknown', layout: null, poolEvent: null,

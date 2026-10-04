@@ -21,6 +21,7 @@ import { JsonRpcProvider } from 'ethers';
 import { loadChainConfig } from './config.ts';
 import { getContractCreation } from './etherscan.ts';
 import { realpathSync } from 'node:fs';
+import { makeProvider } from './rpc.ts';
 
 /** Detects the various ways RPCs signal "state at this old block is pruned". */
 const ARCHIVE_UNAVAILABLE_RE = /(state.*not available|missing trie node|no historical|historical state|archive|pruned)/i;
@@ -201,7 +202,7 @@ if (isMain()) {
         process.exit(1);
     }
     const cfg = loadChainConfig(chainArg);
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
     console.log(`Discovering deployment block of ${address} on ${cfg.chain.name}...`);
     const t0 = Date.now();
     const block = await discoverDeployBlock(provider, address, {

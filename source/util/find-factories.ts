@@ -118,6 +118,7 @@ import {
     POOL_CREATED_V3_TOPIC, POOL_CREATED_V3_TS_TOPIC, POOL_CREATED_ALGEBRA_TOPIC,
     CL_LAYOUTS, type EventLayout,
 } from './pool-events.ts';
+import { makeProvider, sharedProvider } from './rpc.ts';
 
 /** A candidate whose events are concentrated-liquidity pool creations. */
 function isClCandidate(c: FactoryCandidate): boolean {
@@ -331,7 +332,7 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     aborted: boolean;
 }> {
     const cfg = loadChainConfig(chainName);
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
 
     const chunkSize = opts.chunkSize ?? 10_000;
 
@@ -592,7 +593,7 @@ async function emitReport(
         }
         if (displayName && isProxyName(displayName)) {
             try {
-                const proxyProvider = new JsonRpcProvider(loadChainConfig(chainArg).chain.host);
+                const proxyProvider = sharedProvider(loadChainConfig(chainArg).chain);
                 const proxyInfo = await withTimeout(detectProxy(proxyProvider, address), 10_000, `detectProxy(${address})`);
                 if (proxyInfo.isProxy && proxyInfo.implementation && explorerApiKey) {
                     implementationAddress = proxyInfo.implementation;

@@ -290,9 +290,11 @@ function upsertRegistry(text: string, slug: string, e: RegEntry, existing: Recor
         for (const field of ['hypersyncUrl', 'host', 'ws', 'explorer'] as const) {
             const v = e[field];
             if (!v) continue;
-            const has = new RegExp(`^    ${field}:`, 'm').test(block);
+            // `wss:` is accepted by the loader as an alias for `ws:`; treat it as present.
+            const keyPat = field === 'ws' ? '(?:ws|wss)' : field;
+            const has = new RegExp(`^    ${keyPat}:`, 'm').test(block);
             if (has && !force) continue;
-            if (has) block = block.replace(new RegExp(`^    ${field}:.*$`, 'm'), `    ${field}: ${q(v)},`);
+            if (has) block = block.replace(new RegExp(`^    ${keyPat}:.*$`, 'm'), `    ${field}: ${q(v)},`);
             else block += `\n    ${field}: ${q(v)},`;
             changes.push(`${has ? 'updated' : 'added'} ${field}`);
         }

@@ -32,6 +32,7 @@ import { etherscanGetLogs, rateLimit as etherscanRateLimit } from '../util/ether
 // They have DIFFERENT keccak hashes and index separately on-chain, so the
 // scanner must know which topic to filter for.
 import { TOPIC_BY_LAYOUT, LAYOUT_BY_POOL_EVENT, parseCreationLog, type EventLayout } from '../util/pool-events.ts';
+import { makeProvider } from '../util/rpc.ts';
 
 // Chunk-size defaults. These are the FALLBACKS; both the per-chain config
 // (chain.pagesize) and env vars (SCAN_CHUNK_*) can override them.
@@ -491,7 +492,7 @@ export async function scanChain(
     dbFilePath: string,
     opts: ScanOptions = {},
 ): Promise<Record<string, number>> {
-    const provider = new JsonRpcProvider(cfg.chain.host);
+    const provider = makeProvider(cfg.chain);
     const db = new ArbitradeDB(dbFilePath);
 
     // Register factories in the db. IMPORTANT: preserve any DB-cached

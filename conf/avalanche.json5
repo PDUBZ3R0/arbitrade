@@ -5,7 +5,7 @@
     currency: 'AVAX',
     token: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
     contract: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
-    executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
+    executor: '0x461834B561E3d193AF97EB02172be56420FF7053',
     probe: '0x2A7e091B283846835f536a889201cbD48365B37E',
     threads: 10,
     interval: 3000,
@@ -122,6 +122,57 @@
           address: '0xada3def2cac007496e85b52e854b0aada6691353',
           fee: 0.003,
         },
+        // ---- added 2026-10-04 from avalanche-50.txt (find-factories), fees per
+        // `yarn verify-fees avalanche --claude` the same night. Entries it could not
+        // identify a curve for were moved to avalanche-blacklist.json5 with the reason.
+        Factory_2ef422f3: {   // 19 pairs
+          address: '0x2ef422f30cdb7c5f1f7267ab5cf567a88974b308',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, low confidence
+        },
+        RytellFactory_e5e970fe: {   // 19 pairs
+          address: '0xe5e970fe3a90f314977a9fd41e349486a9e8c4fe',
+          fee: 0.0005,   // verify-fees 2026-10-04: MISMATCH, was 0.003 (claude)
+        },
+        SoulSwapFactory_5bb2a998: {   // 16 pairs
+          address: '0x5bb2a9984de4a69c05c996f7ef09597ac8c9d63a',
+          fee: 0.002,   // verify-fees 2026-10-04: MISMATCH, was 0.003 (claude)
+        },
+        Factory_a2e02151: {   // 16 pairs
+          address: '0xa2e0215146460315b9c51af82f4a50fe4492b102',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, low confidence
+        },
+        HakuswapFactory_b8cfa0e3: {   // 15 pairs; sibling HakuswapFactory_2db46feb is 0.002 — likely the same here
+          address: '0xb8cfa0e3016ed655f72fe9a9a5850c90c372fe99',
+          fee: 0.002,   // verify-fees 2026-10-04: MISMATCH, was 0.003 (claude) — matches sibling 2db46feb
+        },
+        Factory_d9f58f79: {   // 14 pairs
+          address: '0xd9f58f79bcdfb5cf5e7741eb14ca4060d32f2b21',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, low confidence
+        },
+        UniswapV2Factory_0c6a0061: {   // 14 pairs
+          address: '0x0c6a0061f9d0afb30152b8761a273786e51bec6d',
+          fee: 0.003,   // verify-fees 2026-10-04: MATCH (claude)
+        },
+        Factory_dfd34be2: {   // 14 pairs
+          address: '0xdfd34be29a8ffb58dea78bd7a6340b89ebeebbe2',
+          fee: 0.003,   // verify-fees 2026-10-04: MATCH (claude)
+        },
+        Factory_231df4d4: {   // 13 pairs
+          address: '0x231df4d421f1f9e0aae9ba3634a87ebc87a09c39',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, medium confidence
+        },
+        DEXFactory_0c5f0d90: {   // 12 pairs
+          address: '0x0c5f0d90b4058973a7351a546188e58e635546ed',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, low confidence
+        },
+        PangolinFactory_cdeea31e: {   // 10 pairs
+          address: '0xcdeea31e087f0cf463043d246a45b87f4e959737',
+          fee: 0.003,   // verify-fees 2026-10-04: MATCH (claude)
+        },
+        OTBSwapFactory_cdf5ebcf: {   // 10 pairs
+          address: '0xcdf5ebcfb2b9608ee81ff043100abbc45c9e4599',
+          fee: 0.003,   // verify-fees 2026-10-04: UNKNOWN by decompile/empirical; claude says 0.3% constant-product, low confidence
+        },
       },
     },
     v2fee: {
@@ -141,6 +192,10 @@
           feeDivisor: 1000000,
           hasStableFlag: true,
         },
+        // ForwardFactory_2131bdb0: {   // 14 pairs — verify-fees 2026-10-04: per-pair fee in pair storage
+        //   address: '0x2131bdb0e0b451bc1c5a53f2cbc80b16d43634fa',   // (pair.fee(), manager-settable, capped < 100)
+        //   feeTarget: 'pair', feeFunction: 'fee', feeDivisor: ???,   // divisor unproven — probe-fees before enabling
+        // },
       },
     },
     solidly: {
@@ -156,6 +211,60 @@
           feeTarget: 'pair',
           feeFunction: 'getFee',
           feeDivisor: 10000,
+        },
+        // ---- from avalanche-50.txt, NOT enabled yet. Each would abort `yarn reserves`
+        // if its fee config is wrong (fail-loud), and the finder's guesses here are the
+        // exact patterns probe-fees already disproved on siblings:
+        //   * Retro-degen getFee(bool,bool) failed on PairFactory_aaa16c01;
+        //   * pair.swapFee() did not exist on BaseV1Factory_c62ca231.
+        // Probe first (node --experimental-strip-types scripts/probe-fees.mjs avalanche),
+        // then uncomment with the measured fields.
+        // PairFactory_e32c9e12: {   // 16 pairs, proxy -> PairFactory impl 0x2e20ac0f…
+        //   address: '0xe32c9e122c8374e9478f1bf2bb19a77627b5f332',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,   // finder's guess
+        // },
+        // BaseV1Factory_ef104bea: {   // 12 pairs
+        //   address: '0xef104beacdfbc8e4a9b9a662530fd5827c4042fc',
+        //   feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,   // finder's guess
+        // },
+        // BaseV1Factory_b334a709: {   // 11 pairs
+        //   address: '0xb334a709dd2146caced08e698c05d4d22e2ac046',
+        //   feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,   // finder's guess
+        // },
+        // TransparentUpgradeableProxy_3ee0b1e4: {   // 12 pairs — no fee pattern matched at all
+        //   address: '0x3ee0b1e413575213e9f5220cd7cb0a5d25471361',
+        // },
+      },
+    },
+    // Concentrated liquidity. Fees are read per pool (pool.fee()) at reserves
+    // time; poolEvent/callback were measured by verify-v3-factory. Scored by
+    // `yarn evaluate` (marked [v3]); not traded until the executor's V3 swap path.
+    v3: {
+      list: {
+        UniswapV3Factory_740b1c1d: {   // 3032 pools; fees 3000/100, spacings 60/1
+          address: '0x740b1c1de25031c31ff4fc9a62f554a55cdc1bad',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        RamsesV3Factory_ae6e5c62: {   // 577 pools; fees 450/500/250/10000/50 (per-pool, can change), spacings 10/5/1
+          address: '0xae6e5c62328ade73ceefd42228528b70c8157d0d',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_3e603c14: {   // 143 pools; fees 500/3000/100, spacings 10/60/1
+          address: '0x3e603c14af37ebdad31709c4f848fc6ad5bec715',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        HaydenV3Factory_e06b9a3c: {   // 43 pools; fees 10000/500, spacings 200/10
+          address: '0xe06b9a3c0a4314e00b33d9090a190ddc00a4dd01',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_62b672e5: {   // 39 pools; fees 3000/10000/100, spacings 60/200/1
+          address: '0x62b672e531f8c11391019f6fba0b8b6143504169',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
       },
     },
