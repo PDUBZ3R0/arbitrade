@@ -5,6 +5,12 @@
 // triangle on a timer, this subscribes to Sync (V2 uint112 and Solidly uint256 forms) across every
 // V2-style pair and re-scores only the cycles whose reserves actually changed.
 //
+// V3 pools join in when the deployed executor can trade them (HOP_V3) and the
+// chain has a YoBatches contract to read them with: the index then holds their
+// state, the feed also watches V3 Swap/Mint/Burn, and every pool those touch is
+// re-read (one getV3States call per block) before its cycles are re-scored.
+// --no-v3 keeps the loop V2-only.
+//
 // WHY THIS SHAPE
 //
 // `yarn orchestrator --loop` has a structural problem that no amount of tuning
@@ -53,7 +59,7 @@ import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-ind
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
 import { makeProvider } from './util/rpc.ts';
-import { getReservesByPairs } from './util/yobatches.ts';
+import { getReservesByPairs, getV3States } from './util/yobatches.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -74,6 +80,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --reprice-sec N          How often to re-run the evaluator for fresh per-root');
     console.error('                           pricing (default 900). 0 disables.');
     console.error('  --poll-ms N              HTTP block poll interval when --ws is absent (default 1000).');
+    console.error('  --no-v3                  Leave V3 pools out even when the executor can trade them.');
     console.error('');
     console.error('Requires an executor deployed first: yarn deploy-flasharb <chain>,');
     console.error('then set "executor": "0x..." under the chain block in conf/<chain>.json5.');
@@ -115,6 +122,7 @@ const cooldownMs = num('--cooldown-ms', 2000, v => v >= 0, 'zero or more');
 const repriceSec = num('--reprice-sec', 900, v => v >= 0, 'zero or more');
 const pollMs = num('--poll-ms', 1000, v => v >= 50, 'at least 50');
 const ownerArg = getStr('--owner');
+const noV3 = hasFlag('--no-v3');
 
 const cfg = loadChainConfig(chainArg);
 const wsUrl = wsFlag ?? cfg.chain.ws;
@@ -157,6 +165,24 @@ console.log('');
 const dbFile = dbPath(cfg.chain.label);
 const db = new ArbitradeDB(dbFile);
 
+// Built before pricing so it can say whether the deployed contract trades V3
+// hops; pricing is handed over once the evaluator pass below has it.
+const executor = new CandidateExecutor(cfg, provider, {}, {
+    ownerAddress,
+    live,
+    signer,
+    gasMarginMultiple,
+    minProfitTokens,
+    // Short, because this process runs for hours. See ExecutorOptions.
+    gasPriceMaxAgeMs: 12_000,
+});
+const executorV3 = await executor.supportsV3();
+const v3 = !noV3 && executorV3 && !!cfg.chain.contract;
+console.log(`V3 pools:  ${v3 ? 'on — re-read on every Swap/Mint/Burn'
+    : noV3 ? 'off (--no-v3)'
+    : !executorV3 ? `off — executor predates V3 hops (yarn deploy-flasharb ${cfg.chain.label} --redeploy)`
+    : 'off — no chain.contract (YoBatches) to read them with'}`);
+
 // --- startup: one full evaluator pass, for pricing ---------------------------
 //
 // Deliberately not for its candidates — the index supersedes those within a
@@ -167,7 +193,7 @@ process.stdout.write('Pricing roots (one full evaluator pass)... ');
 const t0 = Date.now();
 const baseline = await evaluateTriangles(cfg, dbFile, {
     limit: 5, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
-    executableOnly: true,   // the index is Sync-fed and V2-only; V3 cycles go through yarn orchestrator
+    executableOnly: !v3,
 });
 console.log(`${Date.now() - t0}ms — ${Object.keys(baseline.rootPricing).length} root(s), ` +
     `${baseline.candidatesFound.toLocaleString()} candidate(s) in the snapshot`);
@@ -178,9 +204,10 @@ for (const f of cfg.factories ?? []) factoriesByAddr.set(f.address.toLowerCase()
 
 process.stdout.write('Building triangle index... ');
 const tIx = Date.now();
-const ix = TriangleIndex.build(db, factoriesByAddr);
-console.log(`${ix.triangleCount.toLocaleString()} triangles over ${ix.pairCount.toLocaleString()} pairs, ` +
-    `${(ix.bytes() / 1e6).toFixed(1)} MB, ${Date.now() - tIx}ms`);
+const ix = TriangleIndex.build(db, factoriesByAddr, { v3 });
+console.log(`${ix.triangleCount.toLocaleString()} triangles over ${ix.pairCount.toLocaleString()} pairs` +
+    (ix.v3Count ? ` (${ix.v3Count.toLocaleString()} v3)` : '') +
+    `, ${(ix.bytes() / 1e6).toFixed(1)} MB, ${Date.now() - tIx}ms`);
 
 if (ix.triangleCount === 0) {
     console.error(`No triangles in the index. Run \`yarn triangulate ${cfg.chain.label}\` (and \`yarn reserves ${cfg.chain.label}\`) first.`);
@@ -228,15 +255,20 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
 let thresholds = buildThresholds(baseline.rootPricing);
 let pricing = baseline.rootPricing;
 
-const executor = new CandidateExecutor(cfg, provider, pricing, {
-    ownerAddress,
-    live,
-    signer,
-    gasMarginMultiple,
-    minProfitTokens,
-    // Short, because this process runs for hours. See ExecutorOptions.
-    gasPriceMaxAgeMs: 12_000,
-});
+executor.setRootPricing(pricing);
+
+// V3 state reads: tick window as wide as `yarn reserves` fetches, chunked so a
+// block that touches many pools is still a handful of eth_calls.
+const V3_WORDS = cfg.reserves?.v3Words ?? 2;
+async function readV3(pools: string[]) {
+    const out: Array<{ pair: string; state: any }> = [];
+    for (let i = 0; i < pools.length; i += 50) {
+        const chunk = pools.slice(i, i + 50);
+        const st = await getV3States(provider, cfg.chain.contract!, chunk, V3_WORDS);
+        chunk.forEach((p, k) => out.push({ pair: p, state: st.pools[k] }));
+    }
+    return out;
+}
 
 // --- the loop ----------------------------------------------------------------
 //
@@ -270,6 +302,7 @@ const hot = createHotLoop({
         const rows = await getReservesByPairs(provider, cfg.chain.contract!, triples, { canonical: true });
         return rows.map(r => ({ pair: r.pair, reserve0: Number(r.reserves0), reserve1: Number(r.reserves1) }));
     } : undefined,
+    refreshV3: ix.v3Count > 0 ? readV3 : undefined,
 });
 
 let feedErrors = 0;
@@ -283,6 +316,7 @@ const watcher = await watchSync(cfg.chain.host, wsUrl, {
     // chunked fallback and no feed at all.
     addresses: () => [...ix.pairIdx.keys()],
     onBatch: hot.onBatch,
+    watchV3: ix.v3Count > 0,
     onError: (err, ctx) => {
         feedErrors++;
         lastFeedError = `${ctx}: ${err.message}`;
@@ -361,7 +395,7 @@ if (repriceSec > 0) {
             try {
                 const r = await evaluateTriangles(cfg, dbFile, {
                     limit: 1, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
-                    executableOnly: true,
+                    executableOnly: !v3,
                 });
                 pricing = r.rootPricing;
                 thresholds = buildThresholds(pricing);
@@ -389,6 +423,7 @@ setInterval(() => {
     console.log(`[${new Date().toISOString()}] alive — head ${head}, sync ${watcher.lastBlock()}, ` +
         `${s.batches} batch(es), ${s.trianglesRescored} triangle re-scores, ` +
         `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
+        (s.skippedBelowGas ? `, ${s.skippedBelowGas} skipped below gas` : '') +
         (st.reconnects ? `, ${st.reconnects} reconnect(s)` : '') +
         `, pricing ${age}m old`);
 
@@ -420,7 +455,10 @@ const shutdown = async (sig: string) => {
         `${h.candidatesFound} candidate(s) -> ${h.attempts} attempt(s) -> ${h.confirmed} confirmed` +
         (h.cooldownSkips ? `, ${h.cooldownSkips} block(s) skipped on cooldown` : '') +
         (h.pairsResynced ? `, ${h.pairsResynced} pair(s) resynced after a bad attempt` : '') +
+        (h.v3PoolsRefreshed ? `, ${h.v3PoolsRefreshed} v3 pool re-read(s)` : '') +
+        (h.v3RefreshErrors ? `, ${h.v3RefreshErrors} failed v3 re-read batch(es)` : '') +
         (h.skippedMuted ? `, ${h.skippedMuted} candidate(s) skipped as muted` : '') +
+        (h.skippedBelowGas ? `, ${h.skippedBelowGas} candidate(s) skipped below a known gas floor` : '') +
         (h.pairsUnknown ? `, ${h.pairsUnknown} update(s) for unknown pairs (re-run \`yarn reserves\`)` : ''));
     db.close();
     provider.destroy();

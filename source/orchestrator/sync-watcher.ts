@@ -47,6 +47,13 @@
 // also work, but collapsing means the scorer re-scores each affected triangle
 // once per block instead of once per swap.
 //
+// V3 pools (opts.watchV3). A concentrated-liquidity pool emits no Sync: its
+// price moves in Swap, its liquidity in Mint and Burn, and neither carries the
+// tick-table change a Mint/Burn makes. So these are delivered as a TOUCH — the
+// pool's address with `v3: true` and no reserves — and the consumer re-reads
+// the pool's state. That also makes PancakeV3's longer Swap event (two extra
+// protocol-fee words, so a different topic) cost nothing to support.
+//
 // Overlap on restart. After a reconnect we re-fetch a few blocks we have
 // already seen. Sync is idempotent — it carries absolute reserves, not deltas —
 // so replaying it is harmless, and it is much cheaper than missing a block.
@@ -71,12 +78,26 @@ export const SOLIDLY_SYNC_TOPIC = '0xcf2aa50876cdfbb541206f89af0ee78d44a2abf8d32
 /** Topic-0 filter matching either Sync event (an OR inside position 0). */
 export const SYNC_TOPICS: string[] = [SYNC_TOPIC, SOLIDLY_SYNC_TOPIC];
 
+/** Uniswap V3 Swap(address,address,int256,int256,uint160,uint128,int24). */
+export const V3_SWAP_TOPIC = '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67';
+/** PancakeV3 Swap(...,int24,uint128,uint128) — the same plus two protocol-fee words. */
+export const PANCAKE_V3_SWAP_TOPIC = '0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83';
+/** V3 Mint(address,address,int24,int24,uint128,uint256,uint256). */
+export const V3_MINT_TOPIC = '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde';
+/** V3 Burn(address,int24,int24,uint128,uint256,uint256). */
+export const V3_BURN_TOPIC = '0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c';
+/** Every event after which a V3 pool's state must be re-read. */
+export const V3_POOL_TOPICS: string[] = [V3_SWAP_TOPIC, PANCAKE_V3_SWAP_TOPIC, V3_MINT_TOPIC, V3_BURN_TOPIC];
+const V3_TOPIC_SET = new Set(V3_POOL_TOPICS);
+
 export type SyncUpdate = {
     pair: string;          // lowercase
-    reserve0: number;      // float, matching the index's storage
+    reserve0: number;      // float, matching the index's storage (0 for a v3 touch)
     reserve1: number;
     blockNumber: number;
     logIndex: number;
+    /** A V3 pool emitted Swap/Mint/Burn: no reserves here — re-read its state. */
+    v3?: boolean;
 };
 
 export type SyncWatcherOptions = {
@@ -129,6 +150,13 @@ export type SyncWatcherOptions = {
      * so a slow consumer sees fewer, fresher batches rather than a queue.
      */
     coalesceMs?: number;
+    /**
+     * Also deliver V3 pool activity (Swap — Uniswap and PancakeV3 forms — Mint,
+     * Burn) as `v3: true` touches. Off by default: the topics are emitted by
+     * every V3 pool on the chain, which is traffic a V2-only consumer would
+     * only throw away.
+     */
+    watchV3?: boolean;
 };
 
 export type SyncTransport = 'subscribe' | 'topic' | 'chunked';
@@ -228,12 +256,24 @@ export async function watchSync(
      */
     let primed = false;
 
+    const topic0: string[] = opts.watchV3 ? [...SYNC_TOPICS, ...V3_POOL_TOPICS] : SYNC_TOPICS;
+
+    /** A raw log as an update, or null when it is neither a Sync nor (if watched) a V3 touch. */
+    const toUpdate = (lg: any, pair: string, bn: number, li: number): SyncUpdate | null => {
+        const t = String(lg.topics?.[0] ?? '').toLowerCase();
+        if (opts.watchV3 && V3_TOPIC_SET.has(t)) {
+            return { pair, reserve0: 0, reserve1: 0, blockNumber: bn, logIndex: li, v3: true };
+        }
+        const d = decodeSync(lg.data);
+        return d ? { pair, reserve0: d.reserve0, reserve1: d.reserve1, blockNumber: bn, logIndex: li } : null;
+    };
+
     const fail = (e: unknown, ctx: string) => {
         stats.errors++;
         opts.onError?.(e instanceof Error ? e : new Error(String(e)), ctx);
     };
 
-    type RawLog = { address: string; data: string; blockNumber: number; index: number };
+    type RawLog = { address: string; data: string; topics?: readonly string[]; blockNumber: number; index: number };
 
     /**
      * Logs for a block range, by whichever getLogs shape this provider allows.
@@ -248,7 +288,7 @@ export async function watchSync(
     async function fetchRange(from: number, to: number): Promise<RawLog[]> {
         if (transport !== 'chunked') {
             try {
-                return await provider.getLogs({ fromBlock: from, toBlock: to, topics: [SYNC_TOPICS] }) as any;
+                return await provider.getLogs({ fromBlock: from, toBlock: to, topics: [topic0] }) as any;
             } catch (e) {
                 if (!needsAddressFilter(e)) throw e;
                 const addrs = opts.addresses?.() ?? [];
@@ -273,7 +313,7 @@ export async function watchSync(
         for (let i = 0; i < addrs.length && !stopped; i += chunkSize) {
             const slice = addrs.slice(i, i + chunkSize);
             const part = await provider.getLogs({
-                fromBlock: from, toBlock: to, address: slice as any, topics: [SYNC_TOPICS],
+                fromBlock: from, toBlock: to, address: slice as any, topics: [topic0],
             }) as any as RawLog[];
             for (const lg of part) out.push(lg);
         }
@@ -304,7 +344,7 @@ export async function watchSync(
             const until = target;
             while (from <= until && !stopped) {
                 const to = Math.min(from + maxSpan - 1, until);
-                let logs: Array<{ address: string; data: string; blockNumber: number; index: number }>;
+                let logs: RawLog[];
                 try {
                     logs = await fetchRange(from, to);
                 } catch (e) {
@@ -325,16 +365,13 @@ export async function watchSync(
                     stats.updatesSeen++;
                     const pair = String(lg.address).toLowerCase();
                     if (!opts.isInteresting(pair)) continue;
-                    const d = decodeSync(lg.data);
-                    if (!d) continue;
-                    const prev = latest.get(pair);
                     const li = (lg as any).index ?? (lg as any).logIndex ?? 0;
+                    const u = toUpdate(lg, pair, lg.blockNumber, li);
+                    if (!u) continue;
+                    const prev = latest.get(pair);
                     if (prev && (prev.blockNumber > lg.blockNumber ||
                         (prev.blockNumber === lg.blockNumber && prev.logIndex >= li))) continue;
-                    latest.set(pair, {
-                        pair, reserve0: d.reserve0, reserve1: d.reserve1,
-                        blockNumber: lg.blockNumber, logIndex: li,
-                    });
+                    latest.set(pair, u);
                 }
 
                 stats.blocksDrained += to - from + 1;
@@ -401,14 +438,14 @@ export async function watchSync(
             lastActivityAt = Date.now();
             const pair = String(lg.address).toLowerCase();
             if (!opts.isInteresting(pair)) return;
-            const d = decodeSync(lg.data);
-            if (!d) return;
             const li = lg.index ?? lg.logIndex ?? 0;
             const bn = lg.blockNumber ?? 0;
+            const u = toUpdate(lg, pair, bn, li);
+            if (!u) return;
             if (bn > last) last = bn;
             const prev = pending.get(pair);
             if (prev && (prev.blockNumber > bn || (prev.blockNumber === bn && prev.logIndex >= li))) return;
-            pending.set(pair, { pair, reserve0: d.reserve0, reserve1: d.reserve1, blockNumber: bn, logIndex: li });
+            pending.set(pair, u);
             schedule();
         } catch (e) {
             fail(e, 'onPushedLog');
@@ -424,7 +461,7 @@ export async function watchSync(
 
     /** Attach both subscriptions to whatever `provider` currently is. */
     async function attachSubscriptions(): Promise<void> {
-        await (provider as WebSocketProvider).on({ topics: [SYNC_TOPICS] } as any, onPushedLog);
+        await (provider as WebSocketProvider).on({ topics: [topic0] } as any, onPushedLog);
         provider.on('block', onHead);
     }
 

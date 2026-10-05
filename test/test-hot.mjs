@@ -41,9 +41,10 @@ const WORK = process.env.ARB_TEST_WORK ?? '/tmp/arbitrade-hot-test';
 
 rmSync(WORK, { recursive: true, force: true });
 mkdirSync(WORK, { recursive: true });
-// ledgerPath() is <project root>/db/ledger.sqlite, and the project root here
-// is ./src/../.. = /home/claude/exec — a scratch tree, not the real repo. Clear
-// it so the count assertion below means something.
+// The ledger goes in the scratch dir. Without ARB_LEDGER, ledgerPath() is the
+// repo's real db/ledger.sqlite — which the lines below DELETE so the count
+// assertion means something. Never let a test run point at the real one.
+process.env.ARB_LEDGER = `${WORK}/ledger.sqlite`;
 const LEDGER = ledgerPath();
 rmSync(LEDGER, { force: true });
 rmSync(`${LEDGER}-wal`, { force: true });

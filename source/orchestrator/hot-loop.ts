@@ -16,7 +16,7 @@ import type { ArbitradeDB } from '../util/db.ts';
 import type { Candidate } from '../evaluator/evaluator.ts';
 import type { CandidateAttempt } from './attempt.ts';
 import type { RootPricing } from './attempt.ts';
-import { TriangleIndex, type ScoreThresholds, type IndexedCandidate } from './triangle-index.ts';
+import { TriangleIndex, type ScoreThresholds, type IndexedCandidate, type V3PoolState } from './triangle-index.ts';
 import type { SyncUpdate } from './sync-watcher.ts';
 import { AttemptFilter } from './select.ts';
 
@@ -41,6 +41,13 @@ export type HotLoopStats = {
     pairsResynced: number;
     /** Candidates passed over because their triangle is muted. */
     skippedMuted: number;
+    /** V3 pools re-read after a Swap/Mint/Burn touched them. */
+    v3PoolsRefreshed: number;
+    /** Batches whose V3 re-read failed (those pools kept their old state). */
+    v3RefreshErrors: number;
+    /** Candidates not attempted because a recent attempt showed their profit
+     *  does not cover gas, and it has not grown past that floor since. */
+    skippedBelowGas: number;
 };
 
 export type HotLoopDeps = {
@@ -71,10 +78,23 @@ export type HotLoopDeps = {
      * re-found and re-attempted on every block. Optional: tests may omit it.
      */
     refresh?: (pairs: string[]) => Promise<Array<{ pair: string; reserve0: number; reserve1: number }>>;
+    /**
+     * Re-read V3 pools' state (YoBatches getV3States). Called for every V3
+     * pool a batch touched, before re-scoring — V3 events carry no reserves —
+     * and for a cycle's V3 pools when self-healing. A null entry means the
+     * pool no longer answers. Without it, V3 touches are counted as unknown.
+     */
+    refreshV3?: (pools: string[]) => Promise<Array<{ pair: string; state: V3PoolState | null }>>;
     /** Simulation reverts before a triangle is muted. Default 3. */
     muteAfterFailures?: number;
     /** How long a muted triangle is skipped, ms. Default 30 minutes. */
     muteMs?: number;
+    /**
+     * How long a measured gas floor is remembered, ms. Default 5 minutes —
+     * long enough to stop re-estimating a dust cycle every block, short
+     * enough that a gas-price drop is noticed. 0 disables.
+     */
+    gasMemoryMs?: number;
 };
 
 export type HotLoop = {
@@ -98,6 +118,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         batches: 0, pairsApplied: 0, pairsUnknown: 0, trianglesRescored: 0,
         candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
         attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0,
+        v3PoolsRefreshed: 0, v3RefreshErrors: 0, skippedBelowGas: 0,
     };
 
     // Set on BROADCAST, not on every attempt: the cooldown exists so we do
@@ -123,11 +144,46 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         return false;
     };
 
+    // Gas floors measured for cycles that did not cover them, per triangle and
+    // direction, in the root token's raw units (the unit netProfit is in).
+    //
+    // Observed on Sonic: one dust cycle was estimated 55 times in 30 minutes,
+    // refused for gas every time — an estimateGas round trip per block for an
+    // answer already known. Its profit is what moves between blocks, and gas
+    // per cycle barely does, so the floor from the last estimate is a sound
+    // pre-filter: re-try only once the index scores the cycle above it, or
+    // when the memory expires and gas price may have moved.
+    const gasMemoryMs = deps.gasMemoryMs ?? 5 * 60_000;
+    const gasFloors = new Map<string, { floor: number; until: number }>();
+    const cycleKey = (c: IndexedCandidate) => `${c.triangleId}:${c.direction}`;
+    const belowKnownGas = (c: IndexedCandidate): boolean => {
+        const g = gasFloors.get(cycleKey(c));
+        if (!g) return false;
+        if (now() >= g.until) { gasFloors.delete(cycleKey(c)); return false; }
+        return c.netProfit < g.floor;
+    };
+
     /** Re-read a candidate's pairs and write the truth into the index. */
     async function resync(c: IndexedCandidate, why: string): Promise<void> {
-        if (!deps.refresh) return;
+        const all = [...new Set(c.hops.map(h => h.pair.toLowerCase()))];
+        const v3 = all.filter(p => ix.isV3Pool(p));
+        const pairs = all.filter(p => !ix.isV3Pool(p));
+        if (v3.length > 0 && deps.refreshV3) {
+            try {
+                let moved = 0;
+                for (const f of await deps.refreshV3(v3)) {
+                    const pi = ix.pairIdx.get(f.pair.toLowerCase());
+                    if (pi !== undefined && ix.v3State[pi]?.sqrtPriceX96 !== f.state?.sqrtPriceX96) moved++;
+                    ix.applyV3State(f.pair, f.state);
+                }
+                stats.pairsResynced += v3.length;
+                if (moved > 0) log(`      re-read ${v3.length} v3 pool(s) after ${why}: ${moved} had moved`);
+            } catch (err) {
+                log(`      [!] v3 re-read after ${why} failed: ${(err as Error).message}`);
+            }
+        }
+        if (!deps.refresh || pairs.length === 0) return;
         try {
-            const pairs = [...new Set(c.hops.map(h => h.pair.toLowerCase()))];
             const fresh = await deps.refresh(pairs);
             let moved = 0;
             for (const f of fresh) {
@@ -173,7 +229,13 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         stats.batches++;
         movedPairs.length = 0;
         let unknown = 0;
+        const touchedV3: string[] = [];
         for (const u of updates) {
+            if (u.v3) {
+                if (ix.isV3Pool(u.pair) && deps.refreshV3) touchedV3.push(u.pair);
+                else unknown++;
+                continue;
+            }
             const pi = ix.applySync(u.pair, u.reserve0, u.reserve1);
             // -1 means a pair the index has never heard of: created after the
             // last `yarn reserves`, or filtered out as unsafe/stable. Not an
@@ -181,6 +243,21 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             // the signal that the index is going stale.
             if (pi < 0) { unknown++; continue; }
             movedPairs.push(pi);
+        }
+        // V3 events carry no state: re-read every touched pool in one call
+        // before re-scoring, so the cycles through it are priced on the block
+        // that moved it (or a newer one), never on the previous state.
+        if (touchedV3.length > 0) {
+            try {
+                for (const f of await deps.refreshV3!(touchedV3)) {
+                    const pi = ix.applyV3State(f.pair, f.state);
+                    if (pi >= 0) movedPairs.push(pi);
+                }
+                stats.v3PoolsRefreshed += touchedV3.length;
+            } catch (err) {
+                stats.v3RefreshErrors++;
+                log(`  [!] re-reading ${touchedV3.length} v3 pool(s) failed, keeping their previous state: ${(err as Error).message}`);
+            }
         }
         stats.pairsUnknown += unknown;
         stats.pairsApplied += movedPairs.length;
@@ -226,9 +303,9 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         const filter = new AttemptFilter();
 
         const live = found.filter(ic => {
-            if (!isMuted(ic.triangleId)) return true;
-            stats.skippedMuted++;
-            return false;
+            if (isMuted(ic.triangleId)) { stats.skippedMuted++; return false; }
+            if (belowKnownGas(ic)) { stats.skippedBelowGas++; return false; }
+            return true;
         });
         for (const ic of live.slice(0, deps.candidatesPerBlock)) {
             const blocked = filter.blockedBy(ic as Candidate);
@@ -245,7 +322,14 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             if (attempt.broadcast) lastAttemptAt = now();
             deps.report(attempt);
             if (attempt.simulated) stats.simulatedClean++;
-            else filter.noteFailure(ic as Candidate);
+            // A gas refusal says the CYCLE is too small, not that its pairs
+            // are broken: a bigger cycle through the same pool may well pay.
+            // Blocking the pairs here knocked out every other cycle through
+            // two busy Sonic pools, 55 times each.
+            else if (!attempt.belowGasFloor) filter.noteFailure(ic as Candidate);
+            if (attempt.belowGasFloor && attempt.gasFloorWei != null && gasMemoryMs > 0) {
+                gasFloors.set(cycleKey(ic), { floor: Number(attempt.gasFloorWei), until: now() + gasMemoryMs });
+            }
             if (attempt.confirmed) stats.confirmed++;
 
             if (!attempt.simulated) {

@@ -674,6 +674,9 @@ export function dbPath(chainArg: string): string {
  * trades on, unlike dbPath()'s per-chain scan/reserves/triangles caches.
  */
 export function ledgerPath(): string {
+    // ARB_LEDGER: tests point this at a scratch file, so running them can never
+    // touch (or, in test-hot's case, delete) the real trade ledger.
+    if (process.env.ARB_LEDGER) return process.env.ARB_LEDGER;
     const dir = path.join(PROJECT_ROOT, 'db');
     fs.mkdirSync(dir, { recursive: true });
     return path.join(dir, 'ledger.sqlite');

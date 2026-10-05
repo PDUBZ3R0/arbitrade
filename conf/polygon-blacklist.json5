@@ -80,5 +80,10 @@
             reason:  "restricted DEX — TokenProbe: 5 probed pair(s) rejected swap() from outsiders, 0 accepted",
             addedAt: "2026-10-02",
         },
+        {
+            address: "0xe859a7685c906dd7a53919da5891cae0cb531f6e",
+            reason:  "dead (0/2 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
     ]
 }

@@ -120,6 +120,7 @@ console.log('\n3. hot loop: resync, mute, cooldown');
         pairIdx: new Map([[P, 0]]), res0: new Float64Array([100]), res1: new Float64Array([100]),
         applySync(p, r0, r1) { const i = this.pairIdx.get(p); if (i === undefined) return -1; this.res0[i] = r0; this.res1[i] = r1; return i; },
         affectedTriangles: () => [0],
+        isV3Pool: () => false,
         scoreMany: () => [{ triangleId: 7, rootToken: '0xroot', netProfit: 1, hopCount: 2,
                             hops: [{ pair: P, factory: '0xf', tokenIn: '0xroot', tokenOut: '0xb', fee: 0.003 }] }],
     };
@@ -161,6 +162,54 @@ console.log('\n3. hot loop: resync, mute, cooldown');
     t += 61_000; await sync(7);
     ok(attempts === atMute + 1, 'mute expires', `attempts ${attempts}`);
     ok(hot.stats().pairsResynced >= 4, 'InsufficientRepay reverts resync too', `${hot.stats().pairsResynced} resynced`);
+}
+
+console.log('\n4. hot loop: gas refusals');
+{
+    // Two cycles sharing pool P: a dust one (#1, refused for gas) ranked first,
+    // and a bigger one (#2) behind it. Both direction 'forward'.
+    const P = '0x00000000000000000000000000000000000000bb', Q = '0x00000000000000000000000000000000000000cc';
+    let dust = 50, big = 500;
+    const hop = (pair) => ({ pair, factory: '0xf', tokenIn: '0xroot', tokenOut: '0xb', fee: 0.003 });
+    const ix = {
+        pairIdx: new Map([[P, 0]]), res0: new Float64Array([1]), res1: new Float64Array([1]),
+        applySync(p) { return this.pairIdx.get(p) ?? -1; },
+        affectedTriangles: () => [0], isV3Pool: () => false,
+        scoreMany: () => [
+            { triangleId: 1, direction: 'forward', rootToken: '0xroot', netProfit: dust, hopCount: 2, hops: [hop(P), hop(Q)] },
+            { triangleId: 2, direction: 'forward', rootToken: '0xroot', netProfit: big, hopCount: 2, hops: [hop(P), hop(Q)] },
+        ],
+    };
+    let t = 5_000_000;
+    const tried = [];
+    const hot = createHotLoop({
+        index: ix, db: null, thresholds: () => ({}), pricing: () => ({}),
+        decimalsByToken: new Map(), candidatesPerBlock: 5, cooldownMs: 0,
+        now: () => t, log: () => {}, report: () => {}, gasMemoryMs: 60_000,
+        attempt: async (c) => {
+            tried.push(c.triangleId);
+            // Gas floor 100 raw units: #1 below it, #2 above (and then the edge decays).
+            if (c.netProfit < 100) return { candidate: c, built: {}, simulated: false, broadcast: false, confirmed: false, belowGasFloor: true, gasFloorWei: 100n };
+            return { candidate: c, built: null, simulated: false, broadcast: false, confirmed: false };
+        },
+    });
+    const block = (n) => hot.onBatch([{ pair: P, reserve0: 1, reserve1: 1, blockNumber: n, logIndex: 0 }], n);
+
+    // pricing() is empty, so both rank equally and keep their order: #1 first.
+    await block(1);
+    ok(tried.join() === '1,2', 'a gas refusal does not block the next cycle through the same pool', `tried ${tried.join()}`);
+    tried.length = 0; t += 10;
+    await block(2);
+    ok(!tried.includes(1) && hot.stats().skippedBelowGas === 1, 'the refused cycle is not re-estimated while still below its floor', `tried ${tried.join() || 'none'}`);
+    tried.length = 0; t += 10; dust = 150;
+    await block(3);
+    ok(tried.includes(1), 'once the index scores it above the remembered floor, it is tried again');
+    tried.length = 0; t += 10; dust = 50;
+    await block(4);
+    ok(!tried.includes(1), 'back below the floor: skipped again (the floor is kept)', `tried ${tried.join() || 'none'}`);
+    tried.length = 0; t += 61_000;
+    await block(6);
+    ok(tried.includes(1), 'the memory expires (gas price may have moved)');
 }
 
 console.log(fails === 0 ? '\nALL SYNC-TOPIC CHECKS PASS' : `\n${fails} FAILED`);

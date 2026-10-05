@@ -177,9 +177,11 @@ export async function runOrchestratorPass(
             const attempt = await executor.attempt(candidate, db);
             result.attempts.push(attempt);
             if (!attempt.simulated) {
-                // Decayed, would revert, or below the gas floor. Either way
-                // these pairs just refused us; don't pay to find out twice.
-                filter.noteFailure(candidate);
+                // Decayed or would revert: these pairs just refused us; don't
+                // pay to find out twice. A gas refusal is different — the
+                // cycle is too small, its pairs are fine, and a bigger cycle
+                // through them may pay — so it blocks nothing.
+                if (!attempt.belowGasFloor) filter.noteFailure(candidate);
                 continue;
             }
             // A live broadcast that reverted on-chain still ends the pass. It

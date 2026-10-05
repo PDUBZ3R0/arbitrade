@@ -29,6 +29,18 @@
 // is that everything is an integer index rather than a string, which is what
 // the id-interning below is for.
 //
+// CONCENTRATED LIQUIDITY (opt-in: build(..., { v3: true })). A V3 pool never
+// emits Sync, and its reserves row holds VIRTUAL reserves only valid to the
+// next tick, so it cannot be scored on res0/res1. With v3 on, the index also
+// holds each pool's full state (price, liquidity, the fetched tick window) and
+// scores any cycle through one with the evaluator's own scoreMixed and
+// v3_float_hop, exactly as `yarn evaluate` does. The state is replaced
+// wholesale by applyV3State — the hot loop re-reads a pool whenever it emits a
+// Swap, Mint or Burn, rather than replaying those events — and res0/res1 hold
+// the matching virtual reserves, which is what the dust filter reads for a v3
+// pool in the evaluator too. A pool with no stored state is left out (the
+// evaluator skips it as v3MissingState).
+//
 // SCORING MUST MATCH THE BATCH EVALUATOR EXACTLY. It uses the same
 // cycle_product / optimal_cycle_size / cycle_profit from calculus.js, the same
 // clamp, the same filters in the same order. If these two ever disagree, the
@@ -40,6 +52,16 @@
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
 import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
+import { v3_float_hop } from '../util/calculus-v3.js';
+import { scoreMixed } from '../evaluator/evaluator.ts';
+import { virtualReserves } from '../reserves/v3-state.ts';
+
+/** calculus-v3's V3Pool: what getV3States returns and loadV3States stores. */
+export type V3PoolState = {
+    sqrtPriceX96: bigint; tick: number; liquidity: bigint; fee: number; tickSpacing: number;
+    ticks: Array<{ index: number; liquidityNet: bigint }>;
+    windowLow?: number; windowHigh?: number;
+};
 
 /** A hop as the scoring loop needs it — oriented, with its fee. */
 type OrientedHop = { rIn: number; rOut: number; fee: number };
@@ -52,7 +74,7 @@ export type IndexedCandidate = {
     inputAmount: number;
     grossProfit: number;
     netProfit: number;
-    hops: Array<{ pair: string; factory: string; tokenIn: string; tokenOut: string; fee: number }>;
+    hops: Array<{ pair: string; factory: string; tokenIn: string; tokenOut: string; fee: number; kind: 'v2' | 'v3' }>;
 };
 
 export type ScoreThresholds = {
@@ -86,9 +108,19 @@ export class TriangleIndex {
     pairToken0!: Int32Array;
     pairToken1!: Int32Array;
     pairFee!: Float64Array;
-    /** Mutated in place by applySync — this is the live state. */
+    /** Mutated in place by applySync — this is the live state. For a v3
+     *  pool, the virtual reserves of its current state (dust filter only). */
     res0!: Float64Array;
     res1!: Float64Array;
+    /** 1 for a concentrated-liquidity pool. */
+    pairIsV3!: Uint8Array;
+    /** v3 pools only: current state, and its float hops per direction (built
+     *  on first use, dropped whenever the state is replaced). */
+    readonly v3State: Array<V3PoolState | undefined> = [];
+    private readonly v3HopZf: any[] = [];
+    private readonly v3HopOz: any[] = [];
+    /** Number of v3 pools held. */
+    v3Count = 0;
 
     // --- per-triangle columns ------------------------------------------------
     /** 3 entries per triangle: AB, BC, CA. CA is -1 for a 2-hop. */
@@ -143,33 +175,46 @@ export class TriangleIndex {
      * dropped here rather than skipped at score time, which is what keeps the
      * hot path branch-free.
      */
-    static build(db: ArbitradeDB, factoriesByAddr: Map<string, NormalizedFactory>): TriangleIndex {
+    static build(
+        db: ArbitradeDB,
+        factoriesByAddr: Map<string, NormalizedFactory>,
+        /** v3: also hold concentrated-liquidity pools (see the header). Off by
+         *  default: without a V3-capable executor and a V3 feed, a cycle through
+         *  one could be found but neither kept current nor traded. */
+        opts: { v3?: boolean } = {},
+    ): TriangleIndex {
         const ix = new TriangleIndex();
 
         // 1. pairs
-        // V2-style pairs only. The index scores with V2 arithmetic on res0/res1
-        // and is fed by Sync, which v3 pools never emit; their reserves rows
-        // hold VIRTUAL reserves that are only valid to the next tick. Dropping
-        // v3 pools here drops every triangle through them (step 3 below), which
-        // is also what keeps the live loop from attempting a cycle the executor
-        // cannot trade. Mirrors the evaluator's executableOnly.
-        const pairRows = (db as any).getPairsForEnumeration({ includeStable: false, kinds: ['v2'] }) as Array<{
-            pair: string; factory: string; token0: string; token1: string; fee: number | null;
-        }>;
-        const t0: number[] = [], t1: number[] = [], fee: number[] = [];
+        // V2-style pairs always; v3 pools only when asked AND their state is
+        // stored. Leaving a pool out drops every triangle through it (step 3).
+        const pairRows = (db as any).getPairsForEnumeration({
+            includeStable: false, kinds: opts.v3 ? ['v2', 'v3'] : ['v2'],
+        }) as Array<{ pair: string; factory: string; token0: string; token1: string; fee: number | null; kind?: string }>;
+        const states: Map<string, V3PoolState> = opts.v3 && pairRows.some(r => r.kind === 'v3')
+            ? (db as any).loadV3States() : new Map();
+        const t0: number[] = [], t1: number[] = [], fee: number[] = [], isV3: number[] = [];
         for (const r of pairRows) {
+            const v3 = r.kind === 'v3';
+            const st = v3 ? states.get(String(r.pair).toLowerCase()) : undefined;
+            if (v3 && !st) continue;
             const pi = ix.internPair(r.pair, r.factory);
             t0[pi] = ix.internToken(r.token0);
             t1[pi] = ix.internToken(r.token1);
             // Same resolution as the evaluator's resolveFee: per-pair wins,
-            // else factory-level, else the 0.3% default.
-            fee[pi] = r.fee != null ? r.fee
+            // else factory-level, else the 0.3% default. A v3 pool's fee is its
+            // stored state's, in pips — as the evaluator overrides it.
+            fee[pi] = st ? st.fee / 1e6
+                : r.fee != null ? r.fee
                 : (factoriesByAddr.get(r.factory.toLowerCase())?.fee ?? 0.003);
+            isV3[pi] = v3 ? 1 : 0;
+            if (st) { ix.v3State[pi] = st; ix.v3Count++; }
         }
         ix.pairCount = ix.pairAddr.length;
         ix.pairToken0 = Int32Array.from(t0);
         ix.pairToken1 = Int32Array.from(t1);
         ix.pairFee = Float64Array.from(fee);
+        ix.pairIsV3 = Uint8Array.from(isV3);
         ix.res0 = new Float64Array(ix.pairCount);
         ix.res1 = new Float64Array(ix.pairCount);
 
@@ -252,7 +297,7 @@ export class TriangleIndex {
 
     /** Approximate retained bytes, for the startup log. */
     bytes(): number {
-        const arrs = [this.pairToken0, this.pairToken1, this.pairFee, this.res0, this.res1,
+        const arrs = [this.pairToken0, this.pairToken1, this.pairFee, this.res0, this.res1, this.pairIsV3,
             this.triPairs, this.triRoot, this.triTokB, this.triTokC, this.triHops,
             this.triDbId, this.csrOffset, this.csrTri, this.stamp];
         return arrs.reduce((n, a) => n + (a?.byteLength ?? 0), 0);
@@ -267,9 +312,46 @@ export class TriangleIndex {
     applySync(pair: string, reserve0: number, reserve1: number): number {
         const pi = this.pairIdx.get(pair.toLowerCase());
         if (pi === undefined) return -1;
+        // A Sync-shaped update for a v3 pool would overwrite its virtual
+        // reserves with something else entirely; v3 pools change only through
+        // applyV3State.
+        if (this.pairIsV3[pi]) return -1;
         this.res0[pi] = reserve0;
         this.res1[pi] = reserve1;
         return pi;
+    }
+
+    /** Is this address a v3 pool held by the index? */
+    isV3Pool(pair: string): boolean {
+        const pi = this.pairIdx.get(pair.toLowerCase());
+        return pi !== undefined && this.pairIsV3[pi] === 1;
+    }
+
+    /**
+     * Replace a v3 pool's state with a fresh read (getV3States). Returns the
+     * pool index, or -1 when it is not a v3 pool in the index. A null state (the
+     * pool stopped answering slot0) zeroes its virtual reserves, which the dust
+     * filter then rejects, so cycles through it stop scoring.
+     */
+    applyV3State(pair: string, st: V3PoolState | null): number {
+        const pi = this.pairIdx.get(pair.toLowerCase());
+        if (pi === undefined || !this.pairIsV3[pi]) return -1;
+        this.v3HopZf[pi] = undefined;
+        this.v3HopOz[pi] = undefined;
+        if (!st) { this.res0[pi] = 0; this.res1[pi] = 0; return pi; }
+        this.v3State[pi] = st;
+        this.pairFee[pi] = st.fee / 1e6;
+        const [r0, r1] = virtualReserves(st.sqrtPriceX96, st.liquidity);
+        this.res0[pi] = Number(r0);
+        this.res1[pi] = Number(r1);
+        return pi;
+    }
+
+    /** The hop for swapping tokenIn through v3 pool pi — evaluator.ts's orientHop. */
+    private v3Hop(pi: number, tokenIn: number): any {
+        if (this.pairToken0[pi] === tokenIn) return this.v3HopZf[pi] ??= v3_float_hop(this.v3State[pi] as any, true);
+        if (this.pairToken1[pi] === tokenIn) return this.v3HopOz[pi] ??= v3_float_hop(this.v3State[pi] as any, false);
+        return null;
     }
 
     /**
@@ -336,6 +418,8 @@ export class TriangleIndex {
         const rootAddr = this.tokenAddr[root];
         const minProfit = th.minProfitByRoot.get(rootAddr) ?? 0;
         const minInput = th.minInputByRoot.get(rootAddr) ?? 0;
+        let mixed = false;
+        for (const p of members) if (this.pairIsV3[p]) { mixed = true; break; }
 
         for (let d = 0; d < 2; d++) {
             const forward = d === 0;
@@ -368,17 +452,32 @@ export class TriangleIndex {
                 hops = this.hops3;
             }
 
+            let x: number, grossProfit: number;
+            if (mixed) {
+                // The evaluator's mixed path, verbatim: v3 hops as float hops
+                // over their tick window, V2 hops as {rIn, rOut, fee}.
+                const oriented: any[] = [];
+                for (let k = 0; k < legs.length; k++) {
+                    const l = legs[k];
+                    oriented.push(this.pairIsV3[l.pi]
+                        ? this.v3Hop(l.pi, l.tokenIn)
+                        : { rIn: hops[k].rIn, rOut: hops[k].rOut, fee: hops[k].fee });
+                }
+                const sc = scoreMixed(oriented);
+                if ('skip' in sc) continue;
+                ({ x, grossProfit } = sc);
+            } else {
             const smallest = Math.min(...hops.map(h => h.rIn));
             if (!(smallest > 0)) continue;
             const hi = smallest / 2;
             if (!(hi > 1)) continue;
             if (!(cycle_product(hops) > 1)) continue;
 
-            let x = optimal_cycle_size(hops);
+            x = optimal_cycle_size(hops);
             if (!(x > 0) || !isFinite(x)) continue;
             if (x < 1) x = 1; else if (x > hi) x = hi;
 
-            const grossProfit = cycle_profit(x, hops);
+            grossProfit = cycle_profit(x, hops);
             if (grossProfit <= 0) continue;
 
             // uint112 feasibility. Mirrors the evaluator's check at the same
@@ -386,6 +485,7 @@ export class TriangleIndex {
             // byte-identical to the batch evaluator's scoring, and test-index
             // enforces it.
             if (cycle_overflows(x, hops)) continue;
+            }
 
             const netProfit = grossProfit - x * (th.flashPremiumByRoot?.get(rootAddr) ?? th.flashPremium);
             const roi = x > 0 ? netProfit / x : 0;
@@ -407,6 +507,7 @@ export class TriangleIndex {
                     tokenIn: this.tokenAddr[l.tokenIn],
                     tokenOut: this.tokenAddr[l.tokenOut],
                     fee: this.pairFee[l.pi],
+                    kind: this.pairIsV3[l.pi] ? 'v3' as const : 'v2' as const,
                 })),
             });
         }

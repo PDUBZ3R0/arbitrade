@@ -149,9 +149,9 @@ export type EvaluateOptions = {
     debugLimit?: number;
     /**
      * Drop any cycle with a v3 hop. Set by callers that attempt candidates
-     * with something that cannot trade them: the orchestrator loop when the
-     * deployed executor predates HOP_V3, and the hot loop, whose Sync-fed
-     * index has no V3 state. Counted under skipReasons.v3NotExecutable.
+     * with something that cannot trade them: the orchestrator loop and the hot
+     * loop when the deployed executor predates HOP_V3 (or `yarn hot --no-v3`).
+     * Counted under skipReasons.v3NotExecutable.
      */
     executableOnly?: boolean;
 };
@@ -319,7 +319,7 @@ function orientHop(p: PairData, tokenIn: string): any {
  * profit by walking, uint112 check on the V2 hops. V2 hops keep the 50%
  * input bound; v3 hops are bounded by their tick window instead.
  */
-function scoreMixed(oriented: any[]): { x: number; grossProfit: number } | { skip: 'notProfitable' | 'uint112Overflow' } {
+export function scoreMixed(oriented: any[]): { x: number; grossProfit: number } | { skip: 'notProfitable' | 'uint112Overflow' } {
     if (!(mixed_cycle_product(oriented) > 1)) return { skip: 'notProfitable' };
     let hi = Infinity;
     for (const h of oriented) if (!h.v3) hi = Math.min(hi, h.rIn / 2);
