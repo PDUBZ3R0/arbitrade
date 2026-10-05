@@ -54,8 +54,22 @@
 
 import { JsonRpcProvider, WebSocketProvider, type Provider } from 'ethers';
 
-/** keccak256("Sync(uint112,uint112)") — verified, not recalled. */
+/** keccak256("Sync(uint112,uint112)") — Uniswap V2 and its forks. Verified, not recalled. */
 export const SYNC_TOPIC = '0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1';
+/**
+ * keccak256("Sync(uint256,uint256)") — Solidly and its forks (Velodrome,
+ * Aerodrome, Equalizer, Shadow's legacy pairs, Ramses...). Same two-word data
+ * layout as the V2 event, so decodeSync reads both; only the topic differs.
+ *
+ * Watching only the V2 topic left every Solidly-family pair frozen at its
+ * `yarn reserves` snapshot: on Sonic that is Shadow (18k pairs) and Equalizer,
+ * and the hot loop kept re-finding the same phantom cycles through them —
+ * "edge decayed on fresh reserves" every block, and InsufficientRepay reverts
+ * where a stale hop overstated the output.
+ */
+export const SOLIDLY_SYNC_TOPIC = '0xcf2aa50876cdfbb541206f89af0ee78d44a2abf8d328e37fa4917f982149848a';
+/** Topic-0 filter matching either Sync event (an OR inside position 0). */
+export const SYNC_TOPICS: string[] = [SYNC_TOPIC, SOLIDLY_SYNC_TOPIC];
 
 export type SyncUpdate = {
     pair: string;          // lowercase
@@ -100,6 +114,21 @@ export type SyncWatcherOptions = {
      * part a naive restart would miss.
      */
     staleAfterMs?: number;
+    /**
+     * `subscribe` mode only: how long to hold pushed logs so that everything
+     * one block emits reaches onBatch together. Default 15ms; 0 = one onBatch
+     * per log.
+     *
+     * Per-log delivery let the hot loop attempt on the FIRST Sync of a busy
+     * block, priced on that block's intermediate reserves, and then put the
+     * remaining logs of the same block on cooldown — observed on Sonic as six
+     * handlings of one block, the attempt made on the stale one. A block's
+     * logs arrive as a burst within a millisecond or two, so a short window
+     * costs almost nothing. While a batch is still being handled, newer logs
+     * keep merging (latest per pair) and go out as one batch when it returns,
+     * so a slow consumer sees fewer, fresher batches rather than a queue.
+     */
+    coalesceMs?: number;
 };
 
 export type SyncTransport = 'subscribe' | 'topic' | 'chunked';
@@ -219,7 +248,7 @@ export async function watchSync(
     async function fetchRange(from: number, to: number): Promise<RawLog[]> {
         if (transport !== 'chunked') {
             try {
-                return await provider.getLogs({ fromBlock: from, toBlock: to, topics: [SYNC_TOPIC] }) as any;
+                return await provider.getLogs({ fromBlock: from, toBlock: to, topics: [SYNC_TOPICS] }) as any;
             } catch (e) {
                 if (!needsAddressFilter(e)) throw e;
                 const addrs = opts.addresses?.() ?? [];
@@ -244,7 +273,7 @@ export async function watchSync(
         for (let i = 0; i < addrs.length && !stopped; i += chunkSize) {
             const slice = addrs.slice(i, i + chunkSize);
             const part = await provider.getLogs({
-                fromBlock: from, toBlock: to, address: slice as any, topics: [SYNC_TOPIC],
+                fromBlock: from, toBlock: to, address: slice as any, topics: [SYNC_TOPICS],
             }) as any as RawLog[];
             for (const lg of part) out.push(lg);
         }
@@ -332,7 +361,37 @@ export async function watchSync(
 
     const onBlock = (n: number) => { void drain(n).catch(e => fail(e, 'drain')); };
 
-    /** One pushed log, applied through the same collapse/report path as a range. */
+    // Pushed logs waiting to go out as one batch (see opts.coalesceMs).
+    const coalesceMs = opts.coalesceMs ?? 15;
+    let pending = new Map<string, SyncUpdate>();
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const schedule = () => {
+        if (stopped || inFlight || pendingTimer || pending.size === 0) return;
+        if (coalesceMs <= 0) { void flush(); return; }
+        pendingTimer = setTimeout(() => { pendingTimer = null; void flush(); }, coalesceMs);
+    };
+    async function flush(): Promise<void> {
+        if (stopped || inFlight || pending.size === 0) return;
+        const batch = [...pending.values()];
+        pending = new Map();
+        let toBlock = 0;
+        for (const u of batch) if (u.blockNumber > toBlock) toBlock = u.blockNumber;
+        inFlight = true;
+        stats.updatesKept += batch.length;
+        stats.batches++;
+        try {
+            await opts.onBatch(batch, toBlock);
+        } catch (e) {
+            fail(e, 'onBatch');
+        } finally {
+            inFlight = false;
+        }
+        schedule();
+    }
+
+    /** One pushed log: merged into the pending batch, latest per pair wins. */
     const onPushedLog = (lg: any) => {
         if (stopped) return;
         try {
@@ -347,11 +406,10 @@ export async function watchSync(
             const li = lg.index ?? lg.logIndex ?? 0;
             const bn = lg.blockNumber ?? 0;
             if (bn > last) last = bn;
-            stats.updatesKept++;
-            stats.batches++;
-            void Promise.resolve(opts.onBatch(
-                [{ pair, reserve0: d.reserve0, reserve1: d.reserve1, blockNumber: bn, logIndex: li }], bn,
-            )).catch(e => fail(e, 'onBatch'));
+            const prev = pending.get(pair);
+            if (prev && (prev.blockNumber > bn || (prev.blockNumber === bn && prev.logIndex >= li))) return;
+            pending.set(pair, { pair, reserve0: d.reserve0, reserve1: d.reserve1, blockNumber: bn, logIndex: li });
+            schedule();
         } catch (e) {
             fail(e, 'onPushedLog');
         }
@@ -366,7 +424,7 @@ export async function watchSync(
 
     /** Attach both subscriptions to whatever `provider` currently is. */
     async function attachSubscriptions(): Promise<void> {
-        await (provider as WebSocketProvider).on({ topics: [SYNC_TOPIC] } as any, onPushedLog);
+        await (provider as WebSocketProvider).on({ topics: [SYNC_TOPICS] } as any, onPushedLog);
         provider.on('block', onHead);
     }
 
@@ -421,12 +479,9 @@ export async function watchSync(
         // eth_subscribe('logs'). No getLogs, so a provider that refuses the
         // address-less form is irrelevant here.
         //
-        // Per-log delivery rather than per-block batching is a real tradeoff:
-        // two swaps on one pair in one block re-score that pair's triangles
-        // twice. Correctness is unaffected (Sync carries absolute reserves, so
-        // the later one simply wins) and the cost is a few extra microseconds
-        // of scoring, which is cheaper than holding logs back to guess where a
-        // block ends.
+        // Logs are held for opts.coalesceMs so one block's burst reaches the
+        // consumer as one batch — see the option for why per-log delivery
+        // was wrong for the hot loop.
         try {
             await attachSubscriptions();
             ready = true;
@@ -465,6 +520,7 @@ export async function watchSync(
             // transport.
             stopped = true;
             if (staleTimer) { clearInterval(staleTimer); staleTimer = null; }
+            if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
             try { provider.off('block', onBlock); } catch { /* ignore */ }
             try { provider.off('block', onHead); } catch { /* ignore */ }
             // Deliberately NOT unsubscribing the log filter before destroy().

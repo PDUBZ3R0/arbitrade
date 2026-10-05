@@ -2,7 +2,7 @@
 // CLI: yarn hot <chain> [options]
 //
 // The Sync-event-driven hot loop. Where `yarn orchestrator` re-evaluates every
-// triangle on a timer, this subscribes to Sync(uint112,uint112) across every
+// triangle on a timer, this subscribes to Sync (V2 uint112 and Solidly uint256 forms) across every
 // V2-style pair and re-scores only the cycles whose reserves actually changed.
 //
 // WHY THIS SHAPE
@@ -53,6 +53,7 @@ import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-ind
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
 import { makeProvider } from './util/rpc.ts';
+import { getReservesByPairs } from './util/yobatches.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -256,6 +257,19 @@ const hot = createHotLoop({
     report: (a) => printAttempt(cfg, a),
     candidatesPerBlock,
     cooldownMs,
+    // Self-healing: when an attempt shows the index was wrong about a cycle,
+    // re-read its pairs (token balances, the same thing `yarn reserves` and
+    // Sync carry) and correct the index.
+    refresh: cfg.chain.contract ? async (pairs) => {
+        const triples: Array<[string, string, string]> = [];
+        for (const p of pairs) {
+            const pi = ix.pairIdx.get(p);
+            if (pi === undefined) continue;
+            triples.push([p, ix.tokenAddr[ix.pairToken0[pi]], ix.tokenAddr[ix.pairToken1[pi]]]);
+        }
+        const rows = await getReservesByPairs(provider, cfg.chain.contract!, triples);
+        return rows.map(r => ({ pair: r.pair, reserve0: Number(r.reserves0), reserve1: Number(r.reserves1) }));
+    } : undefined,
 });
 
 let feedErrors = 0;
@@ -405,6 +419,8 @@ const shutdown = async (sig: string) => {
         `${h.trianglesRescored} re-score(s) (of ${ix.triangleCount.toLocaleString()} total) -> ` +
         `${h.candidatesFound} candidate(s) -> ${h.attempts} attempt(s) -> ${h.confirmed} confirmed` +
         (h.cooldownSkips ? `, ${h.cooldownSkips} block(s) skipped on cooldown` : '') +
+        (h.pairsResynced ? `, ${h.pairsResynced} pair(s) resynced after a bad attempt` : '') +
+        (h.skippedMuted ? `, ${h.skippedMuted} candidate(s) skipped as muted` : '') +
         (h.pairsUnknown ? `, ${h.pairsUnknown} update(s) for unknown pairs (re-run \`yarn reserves\`)` : ''));
     db.close();
     provider.destroy();

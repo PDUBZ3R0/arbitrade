@@ -26,6 +26,8 @@ const MODE_RPC      = process.env.MODE_RPC || 'https://mode.drpc.org';
 const PLASMA_RPC    = process.env.PLASMA_RPC || 'https://rpc.plasma.to';
 const ROBINHOOD_RPC = process.env.ROBINHOOD_RPC || 'https://robinhood-rpc.publicnode.com';
 const HYPERLIQUID_RPC = process.env.HYPERLIQUID_RPC || 'https://hyperliquid.drpc.org';
+const ARBITRUM_RPC  = process.env.ARBITRUM_RPC || 'https://arbitrum-one-rpc.publicnode.com';
+const OPTIMISM_RPC  = process.env.OPTIMISM_RPC || 'https://optimism-rpc.publicnode.com';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -116,6 +118,18 @@ export default defineConfig({
         },
         hyperliquid: {
             url: HYPERLIQUID_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        arbitrum: {
+            url: ARBITRUM_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        optimism: {
+            url: OPTIMISM_RPC,
             accounts,
             type: "http",
             chainType: "generic",

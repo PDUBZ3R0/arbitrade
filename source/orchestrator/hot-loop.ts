@@ -37,6 +37,10 @@ export type HotLoopStats = {
     attempts: number;
     simulatedClean: number;
     confirmed: number;
+    /** Pairs re-read from the chain after an attempt showed the index was wrong. */
+    pairsResynced: number;
+    /** Candidates passed over because their triangle is muted. */
+    skippedMuted: number;
 };
 
 export type HotLoopDeps = {
@@ -58,6 +62,19 @@ export type HotLoopDeps = {
     log?: (s: string) => void;
     /** Injectable for tests. */
     now?: () => number;
+    /**
+     * Read these pairs' reserves from the chain, for self-healing. Called
+     * after an attempt shows the in-memory reserves were wrong: the edge was
+     * gone at fresh reserves, or the executor came up short. Without it a
+     * pair whose Syncs are not reaching us (an unwatched event, a gap the
+     * backfill missed) stays wrong forever, and the same phantom candidate is
+     * re-found and re-attempted on every block. Optional: tests may omit it.
+     */
+    refresh?: (pairs: string[]) => Promise<Array<{ pair: string; reserve0: number; reserve1: number }>>;
+    /** Simulation reverts before a triangle is muted. Default 3. */
+    muteAfterFailures?: number;
+    /** How long a muted triangle is skipped, ms. Default 30 minutes. */
+    muteMs?: number;
 };
 
 export type HotLoop = {
@@ -80,10 +97,54 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
     const stats: HotLoopStats = {
         batches: 0, pairsApplied: 0, pairsUnknown: 0, trianglesRescored: 0,
         candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
-        attempts: 0, simulatedClean: 0, confirmed: 0,
+        attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0,
     };
 
+    // Set on BROADCAST, not on every attempt: the cooldown exists so we do
+    // not race our own pending transaction. Stamping it on every simulation
+    // made a dry run skip the rest of a busy block for two seconds after
+    // each look.
     let lastAttemptAt = 0;
+
+    // Triangles whose simulation keeps reverting at fresh reserves — a
+    // transfer tax, a wrong fee, a pair the executor cannot drive. They score
+    // as profitable on every block their pairs move, so without a memory the
+    // loop spends its per-block attempts on them forever.
+    const muteAfter = deps.muteAfterFailures ?? 3;
+    const muteMs = deps.muteMs ?? 30 * 60_000;
+    const failures = new Map<number, number>();
+    const mutedUntil = new Map<number, number>();
+    const isMuted = (id: number) => {
+        const until = mutedUntil.get(id);
+        if (until === undefined) return false;
+        if (now() < until) return true;
+        mutedUntil.delete(id);
+        failures.delete(id);
+        return false;
+    };
+
+    /** Re-read a candidate's pairs and write the truth into the index. */
+    async function resync(c: IndexedCandidate, why: string): Promise<void> {
+        if (!deps.refresh) return;
+        try {
+            const pairs = [...new Set(c.hops.map(h => h.pair.toLowerCase()))];
+            const fresh = await deps.refresh(pairs);
+            let moved = 0;
+            for (const f of fresh) {
+                const pi = ix.pairIdx.get(f.pair.toLowerCase());
+                if (pi === undefined) continue;
+                const r0 = ix.res0[pi], r1 = ix.res1[pi];
+                // A relative change beyond float noise means the index was stale.
+                const off = (a: number, b: number) => Math.abs(a - b) > 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1);
+                if (off(r0, f.reserve0) || off(r1, f.reserve1)) moved++;
+                ix.applySync(f.pair.toLowerCase(), f.reserve0, f.reserve1);
+            }
+            stats.pairsResynced += fresh.length;
+            if (moved > 0) log(`      resynced ${fresh.length} pair(s) after ${why}: ${moved} were stale in the index`);
+        } catch (err) {
+            log(`      [!] resync after ${why} failed: ${(err as Error).message}`);
+        }
+    }
     // Reused across blocks so a hot block allocates nothing for the dirty set.
     const movedPairs: number[] = [];
 
@@ -164,7 +225,12 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         // the reserves it was formed from.
         const filter = new AttemptFilter();
 
-        for (const ic of found.slice(0, deps.candidatesPerBlock)) {
+        const live = found.filter(ic => {
+            if (!isMuted(ic.triangleId)) return true;
+            stats.skippedMuted++;
+            return false;
+        });
+        for (const ic of live.slice(0, deps.candidatesPerBlock)) {
             const blocked = filter.blockedBy(ic as Candidate);
             if (blocked) {
                 stats.skippedSharingFailedPair++;
@@ -173,14 +239,32 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             }
 
             stats.attempts++;
-            lastAttemptAt = now();
             // IndexedCandidate is structurally the evaluator's Candidate — the
             // index produces the same field names deliberately, so no mapping.
             const attempt = await deps.attempt(ic as Candidate, deps.db);
+            if (attempt.broadcast) lastAttemptAt = now();
             deps.report(attempt);
             if (attempt.simulated) stats.simulatedClean++;
             else filter.noteFailure(ic as Candidate);
             if (attempt.confirmed) stats.confirmed++;
+
+            if (!attempt.simulated) {
+                const decayed = attempt.built === null && !attempt.simulationError;
+                const shortfall = /InsufficientRepay|0x305792c3/.test(attempt.simulationError ?? '');
+                // Either way the index priced this cycle from reserves the
+                // chain no longer has (or never had): fix that first.
+                if (decayed || shortfall) await resync(ic, decayed ? 'a decayed edge' : 'an InsufficientRepay revert');
+                if (attempt.simulationError) {
+                    const n = (failures.get(ic.triangleId) ?? 0) + 1;
+                    failures.set(ic.triangleId, n);
+                    if (n >= muteAfter) {
+                        mutedUntil.set(ic.triangleId, now() + muteMs);
+                        log(`      muting #${ic.triangleId} for ${Math.round(muteMs / 60_000)}m after ${n} failed simulations`);
+                    }
+                }
+            } else {
+                failures.delete(ic.triangleId);
+            }
             // Stop at the first candidate that reached a clean simulation, for
             // the same reason the batch pass does: the remaining candidates
             // share pairs with this one, so they are priced off reserves this

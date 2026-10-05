@@ -3,8 +3,6 @@
     id: 8453,
     name: 'Base',
     currency: 'ETH',
-    hypersyncUrl: 'https://base.hypersync.xyz',
-    host: 'https://base-rpc.publicnode.com',
 
     token: '0x4200000000000000000000000000000000000006',
     contract: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E"
@@ -24,6 +22,13 @@
   // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
   reserves: {
     dust: 0.0001,
+    // Uniswap V3 alone has ~1.9M pools here; getV3State on all of them is
+    // ~19k eth_calls. The prefilter reads only pools a triangle can reach:
+    // root pools holding at least this much of their root (in that root's
+    // own units — 0.05 WETH, 0.05 USDC, 0.05 cbBTC...), and pools between
+    // tokens that have one. Raise it if reserves is still slow; 0 = only
+    // empty pools drop.
+    v3MinRootBalance: 0.05,
   },
   factories: {
     v2: {
@@ -315,6 +320,22 @@
           address: "0x1a62a841e83ecc3d72b0de6002af7a7dbf921cd5",
           fee: 0.003  // ← UNVERIFIED
         },
+
+        // ---- added 2026-10-04 from find-factories: standard V2 swap() present,
+        // but the decompiler found no fee constant in it. Same status as every
+        // entry above (fee assumed) — `yarn verify-fees base` decides.
+        "Factory_3fa23184": {   // 729 pairs
+          address: "0x3fa23184d88975bd78c0c8d26de173b17547c27e",
+          fee: 0.003  // ← UNVERIFIED, fee constant not found by decompile
+        },
+        "Factory_079463f8": {   // 43 pairs
+          address: "0x079463f811e6eb2e226908e79144cddb59a7fb71",
+          fee: 0.003  // ← UNVERIFIED, fee constant not found by decompile
+        },
+        "Factory_fb2fc6e0": {   // 27 pairs
+          address: "0xfb2fc6e01b6d5af48fbc3ecba2ca1b69e811f74c",
+          fee: 0.003  // ← UNVERIFIED, fee constant not found by decompile
+        },
       },
     },
     solidly: {
@@ -356,11 +377,161 @@
         },
       },
     },
+    // Concentrated liquidity, imported 2026-10-04 from find-factories (all 22
+    // verified: callback read from pool bytecode, YoBatches2 reads them).
+    // Fees are per pool, read at reserves time. Scored by `yarn evaluate`
+    // (marked [v3]); not traded until the executor has a V3 swap path.
+    // Brand names are from DexScreener where it matched a pool.
+    v3: {
+      list: {
+        UniswapV3_33128a8f: {   // 1,882,644 pools; fees 3000/500 pips, spacings 60/10
+          address: '0x33128a8fc17869897dce68ed026d694621f6fdfd',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        SushiSwapV3_c35dadb6: {   // 4,559 pools; fees 3000/10000 pips, spacings 60/200; DexScreener sushiswap axlUSDC/WETH $1,679.51
+          address: '0xc35dadb65012ec5796536bd9864ed8773abc74c4',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        AerodromeCL_5e7bb104: {   // 3,650 pools; fees 100/654/60/90/2400 pips, spacings 1/100/200; DexScreener aerodrome USDC/USDbC $143,277.13
+          address: '0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        PancakeV3_0bfbcf9f: {   // 3,616 pools; fees 500/100/2500/10000 pips, spacings 10/1/50/200
+          address: '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        AerodromeCL_f8f2eb49: {   // 3,217 pools; fees 500/8000/1500/2700/100 pips, spacings 10/200/100; DexScreener aerodrome WETH/USDC $2,280.45
+          address: '0xf8f2eb4940cfe7d13603dddd87f123820fc061ef',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        AerodromeCL_ade65c38: {   // 2,260 pools; fees 9500/100/10000/3000 pips, spacings 200/1/2000; DexScreener aerodrome LITKEY/WETH $20,336.58
+          address: '0xade65c38cd4849adba595a4323a8c7ddfe89716a',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_38015d05: {   // 429 pools; fees 80/450/10000 pips, spacings 1/10/200
+          address: '0x38015d05f4fec8afe15d7cc0386a126574e8077b',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        AlienBaseV3_0fd83557: {   // 275 pools; fees 750/3000/10000 pips, spacings 15/60/200; DexScreener alien-base WETH/USDbC $617.8
+          address: '0x0fd83557b2be93617c9c1c1b6fd549401c74558c',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        DackieV3_3d237ac6: {   // 217 pools; fees 2500/500/10000 pips, spacings 50/10/200; DexScreener dackieswap axlUSDC/WETH $3,518.34
+          address: '0x3d237ac6d2f425d2e890cc99198818cc1fa48870',
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        SwapBasedV3_b5620f90: {   // 105 pools; fees 2500/10000/35 pips, spacings 50/200/1; DexScreener swapbased WETH/USDC $106.74
+          address: '0xb5620f90e803c7f957a9ef351b8db3c746021bea',
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        UniswapV3Factory_576a1301: {   // 62 pools; fees 3000/10000/1500 pips, spacings 60/200/30; DexScreener 0x576A1301B42942537d38FB147895fE83fB418fD4 WETH/USDC $56.31
+          address: '0x576a1301b42942537d38fb147895fe83fb418fd4',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_7ca1dccf: {   // 47 pools; fees 10000/34567 pips, spacings 64/1
+          address: '0x7ca1dccfb4f49564b8f13e18a67747fd428f1c40',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_e82fa4d4: {   // 45 pools; fees 100/10000 pips, spacings 1/200
+          address: '0xe82fa4d4ff25bad8b07c4d1ebd50e83180dd5eb8',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        EqualizerV3_e6da85fe: {   // 38 pools; fees 500/3000/1337/10000 pips, spacings 10/60/200; DexScreener equalizer WETH/USDbC $2,326.63
+          address: '0xe6da85feb3b4e0d6aed95c41a125fba859bb9d24',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        RubiconV3Factory_b5e5a9e6: {   // 32 pools; fees 3000/500 pips, spacings 60/10
+          address: '0xb5e5a9e628fef819150a6e5127ab481cee5d6ca9',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_dc323d16: {   // 23 pools; fees 3000/500 pips, spacings 60/10
+          address: '0xdc323d16c451819890805737997f4ede96b95e3e',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_e84947d6: {   // 22 pools; fees 100 pips, spacings 1
+          address: '0xe84947d6ce63647b7c4dcf9624f3eb68ea081c04',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_d0de7ca3: {   // 22 pools; fees 3000/10000/100 pips, spacings 60/200/1
+          address: '0xd0de7ca3298fff085e2cb82f8a861a0254256ba0',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_a0927f77: {   // 22 pools; fees 10000 pips, spacings 200
+          address: '0xa0927f7741acf24dae26dfad86fa16b0da74e739',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_95af9563: {   // 22 pools; fees 10000 pips, spacings 200
+          address: '0x95af956376fa33993d3fcdf0787d319ce4fcd560',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_9592cd9b: {   // 22 pools; fees 100/500/3000 pips, spacings 1
+          address: '0x9592cd9b267748cbfbde90ac9f7df3c437a6d51b',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_ddf5a325: {   // 21 pools; fees 100/500/3000 pips, spacings 1/10/60
+          address: '0xddf5a3259a88ab79d5530eb3eb14c1c92cd97fcf',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
+
+    // ---- find-factories 2026-10-04: candidates verified and REJECTED, by reason.
+    // None of these is configured, so no blacklist entries are needed.
+    //
+    // (a) V2 PairCreated, but the pair has no swap(uint256,uint256,address,bytes).
+    //     FlashArbExecutor._hop calls exactly that selector, so these cannot be
+    //     routed whatever their price. The big three are one product: 0xd7d3…
+    //     stops at block 43,898,438 and 0x488d… starts at 43,899,749 — a
+    //     factory redeployed in place, the usual shape of a token launchpad
+    //     whose "pairs" are bonding curves rather than AMMs.
+    //       0xd7d3c85b4f2e9bee1998cd2e98820e647792d284  21,877   0x488db0978b34c6fd901760b9024b565c1117c7c8  21,319
+    //       0x158d7ccaa23dc3c8861c3323ed546e3d25e74309  17,357   0x25e89b02f0c62b67622b4ebd629c882a73d8cabc   3,915
+    //       0x2f77b40c124645d25782cfbdfb1f54c1d76f2cce   1,931   0x80f510b37dc4541e96b851725c8c6e527bca5a06     620
+    //       + 25 smaller (19-173 pairs): bb95f2f9 adcf328a e47c9de2 25510795 fc7fe12a 6b52d962 5c05983f
+    //         6e5f6061 420b57eb a266d50b cd9809f4 66d2cf2e b60ffba6 f0ebc391 41b612ed a4ee225e dd4536dd
+    //         e1571382 5d5fd72b 0b545387 1d5852b9 49cbad99 3e491452 5e8e8b2d 669bab4a
+    // (b) Sampled pair has no bytecode — dead: 0xe2fb132c… (97), 0xf0f84abc… (28).
+    // (c) V3 PoolCreated, but no swap callback we recognise in the pool code.
+    //     Irrelevant until the executor trades V3; then identify the callback
+    //     from a pool's bytecode and add it to KNOWN_CALLBACKS:
+    //       0x1d470e77e9980aa342646434c800f439ed3489c1  961   0x27c960dedfb96c74c30d77972b3394a5621f65d0  922
+    //       0x7b72c4002ea7c276dd717b96b20f4956c5c904e7  894   + d6ab0566 (50), 5fd88cd0 (30), e8839bf8 (24), c05a5aa5 (20)
+    // (d) Algebra (globalState/tickTable, dynamic fee) — not modelled yet:
+    //       0x36077d39cdc65e1e3fb65810430e5b2c4d5fa29e  954   + ac900f12 (173), c5396866 (144), efcb993e (51),
+    //       6e606cf9 (35), c207628e (23)
+    // (e) PoolCreated emitters whose pools are not slot0-shaped at all:
+    //       0x70fe4a44… (120), 0x07aced56… (53), 0x8799a65b… (20), and
+    //       0xc7a590291e07b9fe9e64b86c58fd8fc764308c4a (38) — the KyberSwap
+    //       Elastic factory address, which uses its own state layout and was
+    //       deprecated after the Nov 2023 exploit.
+    // Not looked at: ~2,100 smaller candidates beyond --verify-limit 75 (all <20 pools).
   },
 
   flashloan: {
   "provider": "aave-v3",
-  "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
+  "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
   "premium": 0.0005,
   "tokens": [
     {
