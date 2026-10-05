@@ -5,15 +5,25 @@
     id: 4663,
     name: 'Robinhood',
     currency: 'ETH',
-    // token: '0x…',   // TODO wrapped native (WETH) — not found automatically
-    // contract: '0x…',  // YoBatches2 — yarn deploy-contract robinhood
-    // executor: '0x…',  // FlashArbExecutor — yarn deploy-flasharb robinhood
+    token: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
+
+    contract: "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a",
+    executor: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
+    probe: "0x9301c3F24DDB4E953df31D51df23F102680155c6",
+
+
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
   },
   reserves: {
     dust: 0,
+    // Skip getV3State for pools no triangle can use: root (WETH) pools holding
+    // less than this much WETH, and pools whose tokens have no such root pool.
+    // Set to minInputTokens: a root pool that can't hold one minimum-size
+    // trade's worth of WETH can't carry a profitable cycle. 0 = only drop
+    // empty pools; v3Prefilter: false = read every pool.
+    v3MinRootBalance: 0.01,
   },
   evaluator: {
     // Denominated in chain.token. Tune after the first yarn evaluate.
@@ -21,8 +31,320 @@
     minInputTokens: 0.01,
     minLiquidityTokens: 0,
   },
-  // yarn find-factories robinhood, then paste the verified snippets here.
+  // Imported 2026-10-04 from log/robinhood/find-factories.log (verify-limit 75):
+  // 48 verified, 46 enabled. Every pure-V2 fee is the finder's 0.003 ASSUMPTION —
+  // run `yarn reserves robinhood` then `yarn verify-fees robinhood` before trusting them.
   factories: {
+    v2: {
+      list: {
+        UniswapV2Factory_8bceaa40: {   // 90979 pairs
+          address: '0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f',
+          deployBlock: 8928,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_02a84c1b: {   // 287 pairs
+          address: '0x02a84c1b3bbd7401a5f7fa98a384ebc70bb5749e',
+          deployBlock: 519572,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_e52abd50: {   // 66 pairs
+          address: '0xe52abd50ad151ecdf56427effd715e703696a6b1',
+          deployBlock: 6269958,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        TransparentUpgradeableProxy_45fe696c: {   // 52 pairs
+          address: '0x45fe696ca4d794b1e669343e7c0359cf3b72ba3c',
+          deployBlock: 996399,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_919c4d6c: {   // 47 pairs
+          address: '0x919c4d6c58b4c885707a2b9ded879742a13b0baa',
+          deployBlock: 53296148,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        UniswapV2Factory_2a2d5d51: {   // 38 pairs
+          address: '0x2a2d5d51ee7e6ab4ffc1222b0a12b78532b2ac45',
+          deployBlock: 53071317,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_49ce1b25: {   // 29 pairs
+          address: '0x49ce1b256ddd0d9522f869e9dd179820c3f294ac',
+          deployBlock: 2195120,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_002ec978: {   // 26 pairs
+          address: '0x002ec9782d70f4e79396c58964d4691ca648fb49',
+          deployBlock: 9560673,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        UniswapV2Factory_3f9010f8: {   // 24 pairs
+          address: '0x3f9010f882f532e680a79875ab3e0e525e5e13fb',
+          deployBlock: 54097224,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        // BrownFiV3Factory_831880bd: {   // 13 pairs
+        //   NOT ENABLED: BrownFi is an oracle-priced AMM, not x*y=k, so constant-product sizing would be wrong even though getReserves/swap look V2-shaped. Leave off unless verify-fees says CP.
+        //   address: '0x831880bd3b331249df63bacc6e21495e5e8f1eaa',
+        //   deployBlock: 22157362,
+        //   fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        // },
+        UniswapV2Factory_c802a440: {   // 11 pairs
+          address: '0xc802a440559cee8a66e2023403d34be9084a720e',
+          deployBlock: 52041634,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_38ca1727: {   // 7 pairs
+          address: '0x38ca172774fc3b6fa0a39702249fd060b43cd8f8',
+          deployBlock: 1713317,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_fa6253ee: {   // 7 pairs
+          address: '0xfa6253ee74f7956b022998f7bfa271990c8a82a8',
+          deployBlock: 21868607,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_e1b78e03: {   // 7 pairs
+          address: '0xe1b78e03e91141cb8ff7303592590027e5cca77a',
+          deployBlock: 24930226,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        UniswapV2Factory_e5419884: {   // 6 pairs
+          address: '0xe54198846f4c7c066fdc856dae83ead462379f93',
+          deployBlock: 926205,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        UniswapV2Factory_85039b2e: {   // 6 pairs
+          address: '0x85039b2e95558addccf4379728b8433c447e37be',
+          deployBlock: 32281199,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        Factory_6cf8e6c0: {   // 5 pairs
+          address: '0x6cf8e6c06845da9979b057838e22cfc03676e1cd',
+          deployBlock: 35348683,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+        UniswapV2Factory_f3e3f49b: {   // 5 pairs
+          address: '0xf3e3f49bcf467fc2b710ab9997af53aa0f1ced02',
+          deployBlock: 77283230,
+          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+        },
+      },
+    },
+    v2fee: {
+      list: {
+        Factory_e7206eca: {   // 39 pairs; DXswapFactory [high] — all 3 sample(s) in typical fee band (0.0100 to 0.0100)
+          address: '0xe7206ecac3a51afe7e6179182ad4130a26068dd1',
+          deployBlock: 5399882,
+          feeTarget: 'pair',
+          feeFunction: 'swapFee',
+          feeDivisor: 10000,
+        },
+      },
+    },
+    solidly: {
+      list: {
+        // PairFactory_43b2bf9f: {   // 63 pairs; Retro-degen family — factory.getFee(bool stable, bool degen) / 10000. degen is mutable; refetched at reserves time.
+        //   NOT ENABLED: finder's Retro-degen guess (factory.getFee(bool,bool) / 'pair-stable-degen') was NOT probed — the same guess was disproved on avalanche (PairFactory_aaa16c01) and would abort `yarn reserves`. Probe it first (scripts/probe-fees.mjs, add this address to its targets), then uncomment with the measured fields.
+        //   address: '0x43b2bf9f33036a02fc7a00935571c2a6b0108e66',
+        //   feeTarget: 'factory',
+        //   feeArgSource: 'pair-stable-degen',
+        //   feeFunction: 'getFee',
+        //   feeDivisor: 10000,
+        // },
+        TransparentUpgradeableProxy_c4c1d1d9: {   // 10 pairs; PairFactoryUpgradeable [high] — all 3 sample(s) in typical fee band (0.0020 to 0.0020)
+          address: '0xc4c1d1d9df3c70d7f008640f6e889a25787c73b2',
+          deployBlock: 9015328,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        TransparentUpgradeableProxy_0c01c546: {   // 6 pairs; PairFactoryUpgradeable [high] — all 3 sample(s) in typical fee band (0.0020 to 0.0020)
+          address: '0x0c01c54611e1877bfd8999a292d72a8c62742298',
+          deployBlock: 7575497,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+      },
+    },
+    // Concentrated liquidity. Fees are read per pool (pool.fee()) at reserves
+    // time; poolEvent/callback were measured by verify-v3-factory. Scored by
+    // `yarn evaluate` (marked [v3]); not traded until the executor's V3 swap path.
+    v3: {
+      list: {
+        UniswapV3Factory_1f7d7550: {   // 440083 pools; fees 3000/100/10000 pips, spacings 60/1/200
+          address: '0x1f7d7550b1b028f7571e69a784071f0205fd2efa',
+          deployBlock: 8930,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_e51960f1: {   // 11222 pools; fees 3000/10000 pips, spacings 60/200
+          address: '0xe51960f1b45f1c9fb6d166e6a884f866fc70433b',
+          deployBlock: 6292626,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_1ac9db4a: {   // 1909 pools; fees 10000/100 pips, spacings 200/1
+          address: '0x1ac9db4a2608ba45d6127b1737949b51bb54b7f3',
+          deployBlock: 6184096,
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        RamsesV3Factory_e0c4ceb9: {   // 542 pools; fees 500/3000/42/20000 pips, spacings 5/100/1/200/10
+          address: '0xe0c4ceb92d08ca985bb70fe0a22feb121a9854a8',
+          deployBlock: 15761673,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_0bfbcf9f: {   // 395 pools; fees 500/2500/100 pips, spacings 10/50/1
+          address: '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+          deployBlock: 535378,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        CLFactory_ece6ecd6: {   // 295 pools; fees 500/3000/100/10000 pips, spacings 10/60/1/200
+          address: '0xece6ecd61177336ea6fb9b17937ac439d85ee20b',
+          deployBlock: 10357399,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        Factory_ca8152ab: {   // 134 pools; fees 1000/500/2500 pips, spacings 60/10
+          address: '0xca8152ab363dc2f23bb30f6c6c2678028e7cf30a',
+          deployBlock: 11694916,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        PancakeV3Factory_0ec554f0: {   // 84 pools; fees 500/10000/2500 pips, spacings 10/200/50
+          address: '0x0ec554f0bff0be6c99d1e95c8015bb0950f6a2c7',
+          deployBlock: 6052562,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        UniswapV3Factory_a177ff77: {   // 57 pools; fees 10000 pips, spacings 200
+          address: '0xa177ff772ee843bf54c3fd37df486086f9c366d3',
+          deployBlock: 12938492,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_46c695d1: {   // 52 pools; fees 2500/9500 pips, spacings 50/100
+          address: '0x46c695d1eba2411824c22df59b8f488493a72aa5',
+          deployBlock: 8893775,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_221a6239: {   // 50 pools; fees 10000 pips, spacings 200
+          address: '0x221a6239e40709792b0d4bdc140fa36158cd41c7',
+          deployBlock: 73266947,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_81918e03: {   // 49 pools; fees 10000 pips, spacings 200
+          address: '0x81918e03042a9265c2d246452adeb90516fa5327',
+          deployBlock: 12937107,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_5481864d: {   // 49 pools; fees 100/3000/110/500 pips, spacings 1/200
+          address: '0x5481864ddd46a2d798df0925c23b7846e776e5e3',
+          deployBlock: 54366500,
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        AbyssFactory_e7fef2bc: {   // 42 pools; fees 3000/10000/500 pips, spacings 60/200/10
+          address: '0xe7fef2bc860b25bbdeb6f6ab96d88baaa77ddad7',
+          deployBlock: 50161538,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_ea561e05: {   // 31 pools; fees 3000/500/10000 pips, spacings 60/10/200
+          address: '0xea561e058313b96011e5070ca7d0f027a44e3748',
+          deployBlock: 6027503,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_70fb47db: {   // 30 pools; fees 15000/1544/50/646/13244 pips, spacings 50/5/1
+          address: '0x70fb47db7ca14a04cae64dd4bdc2e86c8656943d',
+          deployBlock: 41764666,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_3fdabf7a: {   // 25 pools; fees 3000/500/10000 pips, spacings 60/10/200
+          address: '0x3fdabf7ab5d871b89f1d9da04dc2e0733db70caf',
+          deployBlock: 22361711,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_d09ecb37: {   // 17 pools; fees 1000/7500/3000 pips, spacings 10/75/60
+          address: '0xd09ecb37748938e6997cc90c3ea1b051d94b0085',
+          deployBlock: 72372096,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_0841f30f: {   // 16 pools; fees 10000 pips, spacings 200
+          address: '0x0841f30f311376bdb35ed36bb6a67ce42360b291',
+          deployBlock: 23736133,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_cefc5da4: {   // 14 pools; fees 100/500/1000 pips, spacings 1/10/20
+          address: '0xcefc5da47d766fb6b48da92d75d66b3264593d0f',
+          deployBlock: 58245132,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_aa5865dc: {   // 13 pools; fees 60/320/680/3000/100 pips, spacings 50/200
+          address: '0xaa5865dc3a60b25d305226d66fd573021f0d8ffb',
+          deployBlock: 60744015,
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_d479e71c: {   // 11 pools; fees 3000/10000 pips, spacings 60/200
+          address: '0xd479e71c45aeb1e846a7b549c346d62fe77b39ba',
+          deployBlock: 14320075,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_1d7e090d: {   // 8 pools; fees 10000/50000/20000/30000 pips, spacings 200
+          address: '0x1d7e090dd27d806f0e8459323d3cb320eccd3f85',
+          deployBlock: 55685274,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_0445cf00: {   // 6 pools; fees 10000/30000 pips, spacings 200
+          address: '0x0445cf0002130cc44dbcd4ea3ec8516d16221d66',
+          deployBlock: 14922721,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_5c0f590d: {   // 5 pools; fees 3000/10000/500 pips, spacings 60/200/10
+          address: '0x5c0f590dbbcf1e8184eb121e6ed7cb924bbc4cf6',
+          deployBlock: 40461943,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_f4e9c653: {   // 5 pools; fees 3000/1000/10000 pips, spacings 200/100/2000
+          address: '0xf4e9c6533285377e45125baf1e38170d4a4bf6f7',
+          deployBlock: 11542707,
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
+    // ---- Swept but NOT usable yet (find-factories 2026-10-04). Not configured, so
+    // no blacklist entries needed; listed so the big ones aren't forgotten.
+    //   No standard V2 swap(uint256,uint256,address,bytes) — the executor can't call them:
+    //     0x0d1ebb179cdbca88d74c923c4255cb2b17474afd  228,333 pairs  <- 2nd biggest emitter on the chain; worth identifying
+    //     0xfc2e4da3edb2e18100473339c763705d263d20a9   25,965 pairs  <- also large
+    //     0x1a4989fd… 288, 0x5818fddd… 116, 0x47b3770b… 20, 0xa22cac40… 19, 0xce624c9a… 9,
+    //     0x61b70b1c… 8, 0x625fbcab… 8, 0x6b9cb5c8… 7, 0x4e7cf093… 6, 0xfc4fac00… 5
+    //   Algebra (not modelled yet): 0x16494a80… 62, 0x28a57a40… 60, 0xf03875b5… 29, 0x10253594… 20, 0x21fd9ab0… 17
+    //   V3 with an unknown swap callback: 0x8ed4510a… 170, 0xd3504c3a… 45, 0x7bb25782… 25,
+    //     0xba04837d… 21, 0x6307fc23… 9, 0x4051e7ac… 8, 0x06846355… 7
+    //   V3 whose pools didn't answer slot0/liquidity sanely: 0xb4b80e12… 33
+    //   Solidly with no fee pattern found: 0x6fdf38f9… 75
+    //   No bytecode at the sampled pair: 0xb0b28de8… 18
   },
   // No Aave V3 market here. Balancer V2 vault found (flash fee 0.000%).
   // It can only lend what it holds — check before adding tokens.

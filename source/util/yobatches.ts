@@ -45,6 +45,28 @@ export type ReservesRow = {
  * doesn't matter to the contract — it just does balanceOf(token, pair) for
  * both — but the reserves in the response follow the order you passed.
  */
+/**
+ * Fail fast, with a fix, when chain.contract is not a YoBatches2.
+ *
+ * The usual cause: the retired YoBatches and YoBatches2 were deployed from the
+ * same key, and the FIRST deploy on every chain lands at the same address. On
+ * a chain where YoBatches went first, that address is the old contract, and
+ * every reserves call reverts with "missing revert data" after three retries
+ * per batch instead of saying why.
+ */
+export async function assertYoBatches2(provider: JsonRpcProvider, address: string, chainId?: number): Promise<void> {
+    const code = (await provider.getCode(address)).toLowerCase();
+    const where = `chain.contract ${address}`;
+    const fix = `Deploy it with \`yarn deploy-contract <chain>\` (or look up Yo2Module#YoBatches2 in ` +
+        `ignition/deployments/chain-${chainId ?? '<id>'}/deployed_addresses.json) and set chain.contract to that address.`;
+    if (code === '0x') throw new Error(`${where} has no code on this chain. ${fix}`);
+    const missing = ['getReserves', 'getV3State'].filter(fn => !code.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
+    if (missing.length) {
+        throw new Error(`${where} is not a YoBatches2 (no ${missing.join('/')} in its bytecode) — probably the ` +
+            `retired YoBatches. ${fix}`);
+    }
+}
+
 export async function getReservesByPairs(
     provider: JsonRpcProvider,
     yobatchesAddress: string,

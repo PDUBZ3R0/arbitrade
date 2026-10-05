@@ -74,6 +74,9 @@ export class WsFirstProvider extends JsonRpcProvider {
     private readonly timeoutMs: number;
     private readonly netw?: Network;
     private closed = false;
+    /** Rejects every request in flight on the current socket when it drops. */
+    private failInflight: ((e: Error) => void) | null = null;
+    private downSignal: Promise<never> | null = null;
     /** Counters, for logs and tests. */
     readonly stats = { ws: 0, http: 0, fallbacks: 0, reconnects: 0 };
 
@@ -103,6 +106,8 @@ export class WsFirstProvider extends JsonRpcProvider {
     private markDown(): void {
         const ws = this.ws;
         this.ws = null;
+        this.failInflight?.(new Error('websocket down'));
+        this.failInflight = null;
         if (ws) { try { ws.destroy(); } catch { /* already gone */ } }
         this.retryAt = Date.now() + this.backoffMs;
         this.backoffMs = Math.min(this.backoffMs * 2, 60_000);
@@ -121,8 +126,15 @@ export class WsFirstProvider extends JsonRpcProvider {
                 let failConnect!: (e: Error) => void;
                 const connectFailed = new Promise<never>((_, rej) => { failConnect = rej; });
                 connectFailed.catch(() => { /* handled by the race below */ });
+                // ethers never settles requests that were in flight when the
+                // socket closes; they would hang until the timeout. Fail them
+                // at once instead, so they retry over HTTP immediately.
+                let failInflight!: (e: Error) => void;
+                const down = new Promise<never>((_, rej) => { failInflight = rej; });
+                down.catch(() => { /* raced per request */ });
                 const onDown = () => {
                     failConnect(new Error('websocket closed'));
+                    failInflight(new Error('websocket closed'));
                     if (this.ws === ws) this.markDown();
                 };
                 if (raw?.on) { raw.on('close', onDown); raw.on('error', onDown); }
@@ -140,6 +152,8 @@ export class WsFirstProvider extends JsonRpcProvider {
                 await withTimeout(Promise.race([(ws as any)._start(), connectFailed]), Math.min(this.timeoutMs, 10_000));
                 this.socketOf(ws)?.unref?.();
                 this.ws = ws;
+                this.downSignal = down;
+                this.failInflight = failInflight;
                 this.backoffMs = 1000;
                 this.stats.reconnects++;
                 return ws;
@@ -158,9 +172,10 @@ export class WsFirstProvider extends JsonRpcProvider {
     private async viaSocket(p: JsonRpcPayload): Promise<Result | typeof TRANSPORT_FAIL> {
         const ws = await this.socket();
         if (!ws) return TRANSPORT_FAIL;
+        const down = this.downSignal!;
         this.hold(+1);
         try {
-            const res = await withTimeout((ws as any)._send(p) as Promise<Result[]>, this.timeoutMs);
+            const res = await withTimeout(Promise.race([(ws as any)._send(p) as Promise<Result[]>, down]), this.timeoutMs);
             this.stats.ws++;
             return res[0];
         } catch {
@@ -209,7 +224,13 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
     let t: ReturnType<typeof setTimeout>;
     return Promise.race([
         p.finally(() => clearTimeout(t)),
-        new Promise<T>((_, rej) => { t = setTimeout(() => rej(new Error(`rpc timeout ${ms}ms`)), ms); t.unref?.(); }),
+        // Deliberately NOT unref'd: while a request is pending this timer is
+        // what keeps Node alive if the socket underneath has been torn down.
+        // An unref'd timer let `yarn reserves` exit mid-run ("unsettled
+        // top-level await") when a socket dropped with requests in flight.
+        // It is cleared as soon as the request settles, so a finished CLI
+        // still exits at once.
+        new Promise<T>((_, rej) => { t = setTimeout(() => rej(new Error(`rpc timeout ${ms}ms`)), ms); }),
     ]);
 }
 

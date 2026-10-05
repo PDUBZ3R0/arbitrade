@@ -12,6 +12,7 @@
     currency: 'ETH',
     hypersyncUrl: 'https://optimism.hypersync.xyz',
     host: 'https://optimism-rpc.publicnode.com',
+    ws: "wss://optimism.gateway.tenderly.co"
   },
   bsc: {
     id: 56,
@@ -19,6 +20,7 @@
     currency: 'BNB',
     hypersyncUrl: 'https://bsc.hypersync.xyz',
     host: 'https://bsc-rpc.publicnode.com',
+    ws: "wss://bsc.drpc.org"
   },
   gnosis: {
     id: 100,
@@ -26,7 +28,7 @@
     currency: 'xDAI',
     hypersyncUrl: 'https://gnosis.hypersync.xyz',
     host: 'https://gnosis-rpc.publicnode.com',
-    wss: "wss://gnosis-rpc.publicnode.com"
+    ws: "wss://gnosis-rpc.publicnode.com"
   },
   unichain: {
     id: 130,
@@ -41,7 +43,7 @@
     currency: 'POL',
     hypersyncUrl: 'https://polygon.hypersync.xyz',
     host: 'https://polygon-bor-rpc.publicnode.com',
-    wss: "wss://polygon-bor-rpc.publicnode.com"
+    ws: "wss://polygon-bor-rpc.publicnode.com"
   },
   monad: {
     id: 143,
@@ -49,6 +51,7 @@
     currency: 'MON',
     hypersyncUrl: 'https://monad.hypersync.xyz',
     host: 'https://rpc3.monad.xyz',
+    ws: "wss://wss.monad-rpc.huginn.tech"
   },
   sonic: {
     id: 146,
@@ -56,7 +59,7 @@
     currency: 'S',
     hypersyncUrl: 'https://sonic.hypersync.xyz',
     host: 'https://sonic-rpc.publicnode.com',
-    wss: "wss://sonic-rpc.publicnode.com"
+    ws: "wss://sonic-rpc.publicnode.com"
   },
   xlayer: {
     id: 196,
@@ -137,6 +140,7 @@
     currency: 'XPL',
     hypersyncUrl: 'https://plasma.hypersync.xyz',
     host: 'https://plasma-rpc.publicnode.com',
+    ws: "wss://base-rpc.publicnode.com",
     explorer: 'https://plasmascan.to',
   },
   mode: {
@@ -154,6 +158,7 @@
     currency: 'ETH',
     hypersyncUrl: 'https://arbitrum.hypersync.xyz',
     host: 'https://arbitrum-rpc.publicnode.com',
+    ws: "wss://arbitrum.drpc.org"
   },
   avalanche: {
     id: 43114,
@@ -161,7 +166,7 @@
     currency: 'AVAX',
     hypersyncUrl: 'https://avalanche.hypersync.xyz',
     host: 'https://avalanche-rpc.publicnode.com',
-    wss: "wss://avalanche-c-chain-rpc.publicnode.com"
+    ws: "wss://avalanche-c-chain-rpc.publicnode.com"
   },
   ink: {
     id: 57073,
@@ -169,6 +174,7 @@
     currency: 'ETH',
     hypersyncUrl: 'https://ink.hypersync.xyz',
     host: 'https://ink-rpc.publicnode.com',
+    ws: "wss://ink.drpc.org"
   },
   linea: {
     id: 59144,

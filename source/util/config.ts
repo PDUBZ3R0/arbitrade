@@ -291,6 +291,30 @@ export type RawChainConfig = {
          * (conservative), so too small costs opportunity, not correctness.
          */
         v3Words?: number;
+        /**
+         * Reachability prefilter for concentrated-liquidity pools. Default on.
+         *
+         * A triangle starts and ends at a root token (flashloan.tokens, plus
+         * chain.token), so a pool can only ever be used if it is either
+         *   - a ROOT pool (one side is a root) whose root-side BALANCE is at
+         *     least v3MinRootBalance (in that root's own units), or
+         *   - a pool between two tokens that each have such a root pool.
+         * Everything else is unreachable by the enumerator whatever its state
+         * is, so getV3State — the expensive read — is skipped for it and it
+         * is stored with zero reserves. The root balances come from one cheap
+         * getReserves pass (two balanceOf per root pool, v2 and v3 alike).
+         *
+         * A pool's real balance is an upper bound on what a swap can take out
+         * of it, so the balance test never drops a pool that could pay out
+         * v3MinRootBalance of the root.
+         */
+        v3Prefilter?: boolean;
+        /**
+         * Minimum root-side balance for a root pool to count as reachable, in
+         * the root token's own units (like evaluator.minLiquidityTokens).
+         * Default: evaluator.minLiquidityTokens, else 0 (only empty pools drop).
+         */
+        v3MinRootBalance?: number;
     };
 };
 

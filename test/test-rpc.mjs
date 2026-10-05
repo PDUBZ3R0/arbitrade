@@ -11,6 +11,10 @@
 //      sent, with its hash, when it has to be retried over HTTP.
 //   7. A CLI that never calls destroy() still exits promptly.
 //   8. Without a websocket, makeProvider is a plain JsonRpcProvider.
+//   9. The socket drops while a request is IN FLIGHT (the node never answers):
+//      the request is retried over HTTP at once, and a CLI whose only pending
+//      work is that request does not exit early. This is what killed
+//      `yarn reserves robinhood` mid-run ("unsettled top-level await").
 //
 //   node test/test-rpc.mjs                 (anvil on PATH)
 
@@ -29,12 +33,15 @@ const anvil = spawn('anvil', ['--port', String(PORT), '--silent']);
 await sleep(1500);
 
 // A TCP proxy in front of anvil's websocket that can be cut and restored.
-let sockets = new Set(), proxy = null;
+let sockets = new Set(), proxy = null, blackhole = false;
 function proxyUp() {
     proxy = net.createServer(c => {
         const u = net.connect(PORT, '127.0.0.1');
         sockets.add(c); sockets.add(u);
-        c.pipe(u); u.pipe(c);
+        // blackhole: let the handshake through, then swallow requests.
+        let seen = 0;
+        c.on('data', d => { const first = seen++ === 0; if (!blackhole || first) u.write(d); });
+        u.pipe(c);
         const drop = () => { c.destroy(); u.destroy(); sockets.delete(c); sockets.delete(u); };
         c.on('error', drop); u.on('error', drop); c.on('close', drop); u.on('close', drop);
     });
@@ -157,6 +164,39 @@ try {
         process.env.ARB_NO_WS = '1';
         ok(!(makeProvider({ host: HTTP, ws: WS }) instanceof WsFirstProvider), 'ARB_NO_WS=1 forces HTTP');
         delete process.env.ARB_NO_WS;
+    }
+    console.log('\n9. socket drops with a request in flight');
+    {
+        const q = makeProvider({ host: HTTP, ws: WS, id: 31337 });
+        await q.send('eth_blockNumber', []);              // socket up
+        blackhole = true;
+        setTimeout(() => { for (const s of sockets) s.destroy(); sockets.clear(); }, 400);
+        const t = Date.now();
+        const n = Number(await q.send('eth_blockNumber', []));
+        const ms = Date.now() - t;
+        ok(n >= 0 && ms < 3000 && q.stats.http >= 1, 'answered over HTTP right after the drop, not after the 20s timeout', `${ms}ms ${JSON.stringify(q.stats)}`);
+        q.destroy();
+
+        // Same thing in a child whose ONLY pending work is that request.
+        const script = `import { makeProvider } from ${JSON.stringify(new URL('../source/util/rpc.ts', import.meta.url).href)};
+            const p = makeProvider({ host: '${HTTP}', ws: '${WS}', id: 31337 });
+            await p.send('eth_chainId', []);
+            console.log('n=' + Number(await p.send('eth_blockNumber', [])));`;
+        blackhole = false;
+        const r = await new Promise(res => {
+            let out = '', err = '';
+            const c = spawn(process.execPath, ['--input-type=module', '-e', script]);
+            c.stdout.on('data', d => { out += d; if (/^$/.test(out)) {} });
+            c.stderr.on('data', d => { err += d; });
+            // after the first answer, swallow and then cut the connection
+            const arm = setInterval(() => { if (sockets.size) { blackhole = true; clearInterval(arm);
+                setTimeout(() => { for (const s of sockets) s.destroy(); sockets.clear(); }, 400); } }, 5);
+            const kill = setTimeout(() => c.kill(), 30000);
+            c.on('exit', status => { clearTimeout(kill); clearInterval(arm); res({ status, out, err }); });
+        });
+        blackhole = false;
+        ok(r.status === 0 && /n=\d+/.test(r.out), 'child finished its request instead of exiting early',
+           `status=${r.status} ${r.out.trim()} ${(r.err.match(/unsettled[^\n]*/) ?? [''])[0]}`);
     }
     p.destroy();
 } finally {

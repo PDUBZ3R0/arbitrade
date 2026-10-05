@@ -13,6 +13,9 @@
 //   4. Nothing with a v3 hop can reach execution: executableOnly drops them,
 //      the hot index drops them, and V2-only candidates are unaffected.
 //   5. A pool that empties is written with zero reserves and leaves the graph.
+//   6. Reachability prefilter: a v3 pool between two tokens with no root pool,
+//      and a root pool holding no root, are never read with getV3State; they
+//      get zero reserves. Disabling the prefilter reads them again.
 //
 //   npm i -D @uniswap/v3-core@1.0.1 @uniswap/v2-core@1.0.1 solc@0.8.24
 //   node test/test-v3-pipeline.mjs                 (anvil on PATH)
@@ -81,9 +84,9 @@ try {
 
     // Tokens: R (root, flash-loanable), A, B — all 18 decimals.
     const toks = [];
-    for (let i = 0; i < 3; i++) toks.push(await deploy(A.Tok));
-    const [R, TA, TB] = await Promise.all(toks.map(async t => (await t.getAddress()).toLowerCase()));
-    const tokC = new Map([[R, toks[0]], [TA, toks[1]], [TB, toks[2]]]);
+    for (let i = 0; i < 5; i++) toks.push(await deploy(A.Tok));
+    const [R, TA, TB, TC, TD] = await Promise.all(toks.map(async t => (await t.getAddress()).toLowerCase()));
+    const tokC = new Map([[R, toks[0]], [TA, toks[1]], [TB, toks[2]], [TC, toks[3]], [TD, toks[4]]]);
     const sort = (x, y) => BigInt(x) < BigInt(y) ? [x, y] : [y, x];
 
     // V3 pool at a given price of `quote` per `base` (human units, same decimals).
@@ -122,6 +125,13 @@ try {
     const qRA   = await v2Pair(R, TA, 1.97, 5000n);
     const qBR   = await v2Pair(TB, R, 1 / 6, 60000n);
     const qAB   = await v2Pair(TA, TB, 3.0, 20000n);
+    // Unreachable: C has no pool with the root, so C/D can never be in a cycle
+    // (D does have one, but it holds no root: initialized, never minted).
+    const pCD   = await v3Pool(TC, TD, 3000, 1.5, L);
+    const [d0, d1] = sort(R, TD);
+    await send(f3.createPool(d0, d1, 3000, ov()));
+    const pRD = (await f3.getPool(d0, d1, 3000)).toLowerCase();
+    await send(new ethers.Contract(pRD, A.P3.abi, signer).initialize(getSqrtRatioAtTick(0), ov()));
 
     const base = { deployBlock: 1, stableFees: undefined, feeTarget: 'factory', feeArgSource: 'pair-address',
                    feeFunction: 'pairFee', feeDivisor: 10000, hasStableFlag: false, abi: [] };
@@ -171,7 +181,23 @@ try {
         const v2r = db.db.prepare('SELECT reserves0, reserves1 FROM reserves WHERE pair = ?').get(qRA);
         const [b0, b1] = await Promise.all([...sort(R, TA)].map(t => tokC.get(t).balanceOf(qRA)));
         ok(BigInt(v2r.reserves0) === b0 && BigInt(v2r.reserves1) === b1, 'V2 pair reserves still = token balances');
+        // 6. prefilter
+        const stC = states.get(pCD), stD = states.get(pRD);
+        const rz = (a) => db.db.prepare('SELECT reserves0, reserves1 FROM reserves WHERE pair = ?').get(a);
+        const zero = (a) => { const x = rz(a); return x && x.reserves0 === '0' && x.reserves1 === '0'; };
+        ok(!stC && !stD && zero(pCD) && zero(pRD),
+           'prefilter: unreachable C/D pool and root-less R/D pool skipped, stored with zero reserves');
         db.close();
+    }
+    {
+        // Same DB, prefilter off: the C/D pool is read (it has liquidity).
+        await quiet(() => fetchReserves({ ...cfg, reserves: { ...cfg.reserves, v3Prefilter: false } }, dbFile, {}));
+        const db = new ArbitradeDB(dbFile);
+        const st = db.loadV3States().get(pCD);
+        ok(!!st && st.liquidity > 0n, 'v3Prefilter: false reads every pool again');
+        db.close();
+        // back to the default so the rest of the test sees the filtered graph
+        await quiet(() => fetchReserves(cfg, dbFile, {}));
     }
 
     console.log('\n2. triangles include v3 pools');

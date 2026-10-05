@@ -28,10 +28,10 @@
 import { JsonRpcProvider, Interface } from 'ethers';
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
-import { getReservesByPairs } from '../util/yobatches.ts';
+import { getReservesByPairs, assertYoBatches2 } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 import { buildPriceGraph } from '../util/numeraire-price.ts';
-import { fetchV3States } from './v3-state.ts';
+import { fetchV3States, filterReachableV3 } from './v3-state.ts';
 import { makeProvider } from '../util/rpc.ts';
 
 const RESERVES_BATCH_SIZE = 500;   // pairs per YoBatches call (default; see reserves.batchSize)
@@ -218,6 +218,7 @@ export async function fetchReserves(
         throw new Error(`YoBatches is not deployed for ${cfg.chain.name} (chain.contract is unset in config).`);
     }
     const provider = makeProvider(cfg.chain);
+    await assertYoBatches2(provider, cfg.chain.contract, cfg.chain.id);
     const db = new ArbitradeDB(dbFilePath);
     const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [], factoryStats: [] };
 
@@ -310,15 +311,55 @@ export async function fetchReserves(
     try {
         // Concentrated-liquidity pools first: a different read (getV3State,
         // not balances) and a different store (pool_state + virtual reserves).
-        const v3Pools = db.getPairsForReservesFetch({
+        let v3Pools = db.getPairsForReservesFetch({
             factory: opts.factory,
             maxAgeSeconds: opts.maxAgeSeconds,
             factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
             kinds: ['v3'],
         });
+        const rawC = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
+        const v3Concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawC) || DEFAULT_CONCURRENCY));
+        if (v3Pools.length > 0 && cfg.reserves?.v3Prefilter !== false) {
+            // Root tokens: what the enumerator starts cycles from, plus the
+            // chain's wrapped native so a chain without flash tokens yet
+            // still gets a meaningful filter.
+            const minRoot = cfg.reserves?.v3MinRootBalance ?? cfg.evaluator?.minLiquidityTokens ?? 0;
+            const rootDecimals = new Map<string, number>();
+            for (const t of cfg.flashloan?.tokens ?? []) rootDecimals.set(t.address.toLowerCase(), t.decimals);
+            if (cfg.chain.token && !rootDecimals.has(cfg.chain.token.toLowerCase())) {
+                const row = db.getTokens([cfg.chain.token.toLowerCase()]).get(cfg.chain.token.toLowerCase());
+                rootDecimals.set(cfg.chain.token.toLowerCase(), row?.decimals ?? 18);
+            }
+            if (rootDecimals.size === 0) {
+                console.log(`\n[v3 prefilter] skipped: no flashloan.tokens and no chain.token to root it on — reading every pool`);
+            } else {
+                const roots = new Map<string, bigint>();
+                for (const [addr, dec] of rootDecimals) roots.set(addr, parseUnitsSafe(minRoot, dec));
+                const allPairs = db.getPairsForReservesFetch({
+                    factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
+                    kinds: ['v2', 'v3'],
+                });
+                console.log(`\n[v3 prefilter] ${rootDecimals.size} root token(s), min root-side balance ${minRoot} ` +
+                    `(reserves.v3MinRootBalance${cfg.reserves?.v3MinRootBalance === undefined ? ', defaulted' : ''})`);
+                const pf = await filterReachableV3(provider, cfg.chain.contract!, v3Pools, allPairs, roots, {
+                    batchSize: Math.max(cfg.reserves?.batchSize ?? 500, 500),
+                    concurrency: v3Concurrency,
+                });
+                console.log(`  [v3 prefilter] ${pf.rootPoolsLive}/${pf.rootPools} root pools pass, ${pf.neighbours} reachable tokens → ` +
+                    `reading ${pf.keep.length} of ${v3Pools.length} v3 pools, skipping ${pf.dropped.length} unreachable` +
+                    (pf.failedBatches ? ` (${pf.failedBatches} balance batch(es) failed — those pools were kept)` : ''));
+                // Unreachable pools get zero reserves so a stale price from
+                // an earlier full read can't linger in enumeration.
+                for (let i = 0; i < pf.dropped.length; i += 20_000) {
+                    db.upsertV3States(pf.dropped.slice(i, i + 20_000).map(p => ({
+                        pool: p.pair, blockNumber: 0, state: null, reserves0: 0n, reserves1: 0n,
+                    })));
+                }
+                result.reservesSkipped += pf.dropped.length;
+                v3Pools = pf.keep;
+            }
+        }
         if (v3Pools.length > 0) {
-            const rawC = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
-            const v3Concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawC) || DEFAULT_CONCURRENCY));
             console.log(`\n[v3] ${v3Pools.length} concentrated-liquidity pools — YoBatches2.getV3State, ` +
                 `±${cfg.reserves?.v3Words ?? 2} bitmap words, ${cfg.reserves?.v3BatchSize ?? 100} pools/call`);
             const v3t = Date.now();
@@ -328,7 +369,8 @@ export async function fetchReserves(
                 concurrency: v3Concurrency,
             });
             console.log(`  [v3] done in ${((Date.now() - v3t) / 1000).toFixed(1)}s: ${st.live} live, ${st.empty} with no in-range ` +
-                `liquidity, ${st.unreadable} unreadable, ${st.ticksStored} ticks stored`);
+                `liquidity, ${st.unreadable} unreadable, ${st.ticksStored} ticks stored` +
+                (st.errors.length ? `, ${st.errors.length} batch(es) FAILED (first: ${st.errors[0]})` : ''));
             if (st.unreadable > 0) {
                 console.log(`  [!] ${st.unreadable} pool(s) did not answer slot0/tickSpacing — not v3-compatible ` +
                     `(Algebra?) or chain.contract is not a YoBatches2. Re-check the factory with \`yarn verify\`.`);
@@ -881,4 +923,11 @@ async function fetchPerPairMetadata(
     process.stdout.write('\n');
 
     return totalUpdated;
+}
+
+/** Decimal amount -> raw units without float error for typical inputs. */
+function parseUnitsSafe(amount: number, decimals: number): bigint {
+    if (!(amount > 0)) return 0n;
+    const [i, f = ''] = amount.toFixed(Math.min(decimals, 18)).split('.');
+    return BigInt(i + f.padEnd(decimals, '0').slice(0, decimals));
 }
