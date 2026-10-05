@@ -74,8 +74,13 @@ export type FactoryEntry = {
      *   "tickspacing" PoolCreated(token0, token1, int24 indexed tickSpacing, pool)
      *                 — factories keyed by spacing with the fee set per pool.
      * verify-v3-factory measures this; copy it from its snippet.
+     *
+     * solidly group: "velodrome" for factories that announce pools with
+     *   PoolCreated(token0, token1, bool indexed stable, pool, uint256)
+     *   — Velodrome V2 / Aerodrome V2 — instead of Solidly's PairCreated.
+     *   Omit for classic Solidly.
      */
-    poolEvent?: 'uniswap' | 'tickspacing';
+    poolEvent?: 'uniswap' | 'tickspacing' | 'velodrome';
     /**
      * Swap callback the factory's pools call on the swapper, as found in the
      * pool bytecode by verify-v3-factory (e.g. "uniswapV3SwapCallback",
@@ -110,7 +115,7 @@ export type FactoryEntry = {
      *                                                                  for stable vs volatile pool
      * Ignored when feeTarget="pair" (zero-arg call).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable';
     /**
      * Function name for the per-pair fee lookup. Signature is inferred from feeTarget:
      *   feeTarget="factory": (address pair) view returns (uint256)
@@ -315,6 +320,14 @@ export type RawChainConfig = {
          * Default: evaluator.minLiquidityTokens, else 0 (only empty pools drop).
          */
         v3MinRootBalance?: number;
+        /**
+         * How long the prefilter's root-pool balance reads are reused, in
+         * hours. Default 12; 0 = re-read every run. Those reads are most of
+         * the prefilter's cost on a chain with millions of dead pools (Base:
+         * 4.7M root pools, ~1.5 GB of JSON-RPC traffic), and a pool that held
+         * no root this morning almost certainly holds none tonight.
+         */
+        v3PrefilterTtlHours?: number;
     };
 };
 
@@ -344,15 +357,15 @@ export type NormalizedFactory = {
     stableFees: { stable: number; volatile: number } | undefined;
     /** For v2fee/solidly: "factory" or "pair" — where to call the fee function. */
     feeTarget: 'factory' | 'pair';
-    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable';
     /** For v2fee/solidly: factory function returning per-pair fee. Default per group. */
     feeFunction: string;
     /** For v2fee/solidly: divisor for raw fee values. Default per group. */
     feeDivisor: number;
     /** For v2fee only: does the pair have a stable() view? Default false. */
     hasStableFlag: boolean;
-    /** v3 group only: creation event shape. Defaults to "uniswap". */
-    poolEvent: 'uniswap' | 'tickspacing' | undefined;
+    /** v3 group: creation event shape, default "uniswap". solidly group: "velodrome" or undefined (classic). */
+    poolEvent: 'uniswap' | 'tickspacing' | 'velodrome' | undefined;
     /** v3 group only: measured swap-callback name, if configured. */
     callback: string | undefined;
     abi: string[];
@@ -566,7 +579,12 @@ export function loadChainConfig(chainArg: string): ChainConfig {
             //
             // Explicit entry fields always win; the pattern only fills gaps.
             const patternKey = name.replace(/_[a-fA-F0-9]{8}$/, '');
-            const pattern = !isString ? lookupDexPattern(patternKey) : null;
+            // Only when the pattern is for THIS group: a generic contract name
+            // ("PoolFactory") can belong to an unrelated DEX in another group
+            // — monad's v2 PoolFactory_fadee2fb is a plain V2 factory and must
+            // not inherit Velodrome's fee lookup.
+            const patternHit = !isString ? lookupDexPattern(patternKey) : null;
+            const pattern = patternHit && patternHit.family === group ? patternHit : null;
 
             factories.push({
                 group,
@@ -580,7 +598,11 @@ export function loadChainConfig(chainArg: string): ChainConfig {
                 feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction ?? pattern?.feeFunction ?? defaultFeeFunction),
                 feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor  ?? pattern?.feeDivisor  ?? defaultFeeDivisor),
                 hasStableFlag: isString ? false : (entry.hasStableFlag ?? pattern?.hasStableFlag ?? false),
-                poolEvent: group === 'v3' ? (isString ? 'uniswap' : (entry.poolEvent ?? 'uniswap')) : undefined,
+                poolEvent: group === 'v3'
+                    ? (isString ? 'uniswap' : ((entry.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'))
+                    : group === 'solidly'
+                        ? ((isString ? undefined : entry.poolEvent) ?? pattern?.poolEvent) === 'velodrome' ? 'velodrome' : undefined
+                        : undefined,
                 callback:  isString ? undefined : entry.callback,
                 abi: g.abi,
             });

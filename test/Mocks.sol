@@ -187,3 +187,86 @@ contract MockMorpho {
         require(IERC20M(token).transferFrom(msg.sender, address(this), assets), "repay");
     }
 }
+
+// -----------------------------------------------------------------------------
+// Velodrome V2 / Aerodrome shapes. The parts the bot depends on are copied
+// from velodrome-finance/contracts (Pool.sol, PoolFactory.sol): the
+// PoolCreated event with `stable` INDEXED, getFee(pool, stable) in bps with
+// the 420 zero-fee sentinel, getReserves() returning uint256s, the fee taken
+// off the input and moved OUT of the pool before the K check, and
+// Sync(uint256,uint256).
+// -----------------------------------------------------------------------------
+
+interface IVeloFactoryM { function getFee(address pool, bool stable) external view returns (uint256); }
+interface IPoolCalleeM { function hook(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external; }
+
+contract MockVeloPool {
+    event Sync(uint256 reserve0, uint256 reserve1);
+    address public immutable factory;
+    address public token0;
+    address public token1;
+    bool public immutable stable;
+    uint256 public reserve0;
+    uint256 public reserve1;
+
+    constructor(address _t0, address _t1, bool _stable) {
+        factory = msg.sender; token0 = _t0; token1 = _t1; stable = _stable;
+    }
+    function getReserves() external view returns (uint256, uint256, uint256) { return (reserve0, reserve1, block.timestamp); }
+    function sync() external {
+        reserve0 = IERC20M(token0).balanceOf(address(this));
+        reserve1 = IERC20M(token1).balanceOf(address(this));
+        emit Sync(reserve0, reserve1);
+    }
+    function _k(uint256 x, uint256 y) internal view returns (uint256) {
+        if (stable) {   // x^3*y + y^3*x, all tokens here are 18-decimal
+            uint256 a = (x * y) / 1e18;
+            uint256 b = (x * x) / 1e18 + (y * y) / 1e18;
+            return (a * b) / 1e18;
+        }
+        return x * y;
+    }
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external {
+        require(amount0Out > 0 || amount1Out > 0, "IOA");
+        (uint256 r0, uint256 r1) = (reserve0, reserve1);
+        require(amount0Out < r0 && amount1Out < r1, "IL");
+        if (amount0Out > 0) IERC20M(token0).transfer(to, amount0Out);
+        if (amount1Out > 0) IERC20M(token1).transfer(to, amount1Out);
+        if (data.length > 0) IPoolCalleeM(to).hook(msg.sender, amount0Out, amount1Out, data);
+        uint256 b0 = IERC20M(token0).balanceOf(address(this));
+        uint256 b1 = IERC20M(token1).balanceOf(address(this));
+        uint256 in0 = b0 > r0 - amount0Out ? b0 - (r0 - amount0Out) : 0;
+        uint256 in1 = b1 > r1 - amount1Out ? b1 - (r1 - amount1Out) : 0;
+        require(in0 > 0 || in1 > 0, "IIA");
+        // Fees leave the pool (Velodrome sends them to PoolFees).
+        uint256 fee = IVeloFactoryM(factory).getFee(address(this), stable);
+        if (in0 > 0) IERC20M(token0).transfer(factory, (in0 * fee) / 10_000);
+        if (in1 > 0) IERC20M(token1).transfer(factory, (in1 * fee) / 10_000);
+        b0 = IERC20M(token0).balanceOf(address(this));
+        b1 = IERC20M(token1).balanceOf(address(this));
+        require(_k(b0, b1) >= _k(r0, r1), "K");
+        reserve0 = b0; reserve1 = b1;
+        emit Sync(b0, b1);
+    }
+}
+
+contract MockVeloFactory {
+    event PoolCreated(address indexed token0, address indexed token1, bool indexed stable, address pool, uint256);
+    uint256 public constant ZERO_FEE_INDICATOR = 420;
+    uint256 public stableFee = 5;     // 0.05%
+    uint256 public volatileFee = 30;  // 0.30%
+    mapping(address => uint256) public customFee;
+    address[] public allPools;
+
+    function createPool(address tokenA, address tokenB, bool stable) external returns (address pool) {
+        (address t0, address t1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        pool = address(new MockVeloPool(t0, t1, stable));
+        allPools.push(pool);
+        emit PoolCreated(t0, t1, stable, pool, allPools.length);
+    }
+    function setCustomFee(address pool, uint256 fee) external { customFee[pool] = fee; }
+    function getFee(address pool, bool _stable) public view returns (uint256) {
+        uint256 fee = customFee[pool];
+        return fee == ZERO_FEE_INDICATOR ? 0 : fee != 0 ? fee : _stable ? stableFee : volatileFee;
+    }
+}

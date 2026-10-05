@@ -65,29 +65,70 @@ export async function fetchV3States(
         stats.byFactory.set(f, e);
     }
 
-    const batches: string[][] = [];
-    for (let i = 0; i < pools.length; i += batchSize) batches.push(pools.slice(i, i + batchSize).map(p => p.pair));
+    // Adaptive batch size. A batch's cost on the node is dominated by its
+    // pools' initialized ticks, which vary by orders of magnitude (a 1-bp
+    // stable pool can have hundreds inside the window, a fresh memecoin pool
+    // none). One fixed size is either too small for the empty pools or so big
+    // for the dense ones that a single call runs for minutes. Workers take
+    // `size` pools at a time; a batch slower than TARGET_MS halves it, a fast
+    // one grows it back toward the configured maximum, and a failed batch is
+    // split and re-queued rather than retried whole.
+    const TARGET_MS = 8_000, MIN_SIZE = 5;
+    let size = batchSize;
+    const queue: string[][] = [];
+    let cursor = 0;
+    const take = (): string[] | null => {
+        if (queue.length) return queue.shift()!;
+        if (cursor >= pools.length) return null;
+        const b = pools.slice(cursor, cursor + size).map(p => p.pair);
+        cursor += b.length;
+        return b;
+    };
 
-    let next = 0, done = 0;
+    let doneCalls = 0, poolsDone = 0, bytes = 0, inflight = 0;
     const t0 = Date.now();
     const rpcStats = (provider as any).stats as { ws: number; http: number; fallbacks: number } | undefined;
     const worker = async () => {
         while (true) {
-            const i = next++;
-            if (i >= batches.length) return;
-            const batch = batches[i];
+            const batch = take();
+            if (!batch) {
+                // Another worker may still split a failed batch back into the queue.
+                if (inflight === 0) return;
+                await new Promise(r => setTimeout(r, 50));
+                continue;
+            }
+            inflight++;
             let res: Awaited<ReturnType<typeof getV3States>> | null = null;
-            for (let attempt = 0; ; attempt++) {
-                try { res = await getV3States(provider, yobatches, batch, words); break; }
-                catch (err) {
-                    if (attempt >= RETRY_DELAYS_MS.length) {
-                        stats.errors.push(`v3 batch ${i + 1}/${batches.length}: ${(err as Error).message.slice(0, 160)}`);
-                        break;
+            const bt = Date.now();
+            try {
+                for (let attempt = 0; ; attempt++) {
+                    try { res = await getV3States(provider, yobatches, batch, words); break; }
+                    catch (err) {
+                        // A batch that errors (gas cap, response limit, a
+                        // timeout) is split rather than retried as-is — down
+                        // to single pools, which also isolates one pool that
+                        // breaks every call it is in.
+                        if (batch.length > 1) {
+                            const h = Math.ceil(batch.length / 2);
+                            queue.push(batch.slice(0, h), batch.slice(h));
+                            size = Math.max(MIN_SIZE, Math.min(size, h));
+                            break;
+                        }
+                        if (attempt >= RETRY_DELAYS_MS.length) {
+                            stats.errors.push(`v3 batch of ${batch.length} (${batch[0]}…): ${(err as Error).message.slice(0, 160)}`);
+                            break;
+                        }
+                        await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
                     }
-                    await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
                 }
+            } finally {
+                inflight--;
             }
             if (!res) continue;
+            const ms = Date.now() - bt;
+            if (ms > TARGET_MS) size = Math.max(MIN_SIZE, Math.floor(size / 2));
+            else if (ms < TARGET_MS / 4) size = Math.min(batchSize, Math.ceil(size * 1.5));
+            bytes += res.bytes ?? 0;
             const rows = batch.map((pool, k) => {
                 const st = res!.pools[k];
                 if (!st) { stats.unreadable++; return { pool, blockNumber: res!.block, state: null, reserves0: 0n, reserves1: 0n }; }
@@ -102,16 +143,19 @@ export async function fetchV3States(
                 return { pool, blockNumber: res!.block, state: { ...st, windowLow: st.windowLow!, windowHigh: st.windowHigh! }, reserves0: r0, reserves1: r1 };
             });
             db.upsertV3States(rows);
-            done++;
+            doneCalls++;
+            poolsDone += batch.length;
             const secs = (Date.now() - t0) / 1000;
-            const eta = done > 0 ? (secs / done) * (batches.length - done) : 0;
+            const rate = poolsDone / Math.max(secs, 1e-9);
+            const eta = rate > 0 ? (pools.length - poolsDone) / rate : 0;
             const rpc = rpcStats ? ` | ws ${rpcStats.ws} http ${rpcStats.http}${rpcStats.fallbacks ? ` fallbacks ${rpcStats.fallbacks}` : ''}` : '';
-            process.stdout.write(`\r  [v3] ${done}/${batches.length} batches — ${stats.live} live, ${stats.empty} empty, ` +
-                `${stats.unreadable} unreadable | ${(done / Math.max(secs, 1e-9)).toFixed(2)} batch/s, ETA ${fmtDuration(eta)}${rpc}   `);
+            process.stdout.write(`\r  [v3] ${poolsDone}/${pools.length} pools — ${stats.live} live, ${stats.empty} empty, ` +
+                `${stats.unreadable} unreadable | ${rate.toFixed(1)} pools/s, batch ${size}, ` +
+                `${(bytes / 1e6 / Math.max(secs, 1e-9)).toFixed(2)} MB/s in, ETA ${fmtDuration(eta)}${rpc}   `);
         }
     };
-    await Promise.all(Array.from({ length: Math.min(concurrency, batches.length) }, worker));
-    if (batches.length) process.stdout.write('\n');
+    await Promise.all(Array.from({ length: Math.min(concurrency, Math.ceil(pools.length / batchSize) || 1) }, worker));
+    if (pools.length) process.stdout.write('\n');
     return stats;
 }
 
@@ -149,8 +193,21 @@ export async function filterReachableV3<T extends { pair: string; token0: string
     allPairs: Array<{ pair: string; token0: string; token1: string }>,
     /** root token (lowercase) -> minimum root-side balance in raw units */
     roots: Map<string, bigint>,
-    opts: { batchSize?: number; concurrency?: number } = {},
-): Promise<ReachabilityResult<T>> {
+    opts: {
+        batchSize?: number;
+        concurrency?: number;
+        /**
+         * Balance cache (db.root_checks). `get` returns balances recent
+         * enough to reuse; `put` stores fresh reads. Most root pools on a
+         * busy chain are dead and stay dead, so after the first run only the
+         * expired entries cost an RPC call.
+         */
+        cache?: {
+            get: () => Map<string, { bal0: bigint; bal1: bigint }>;
+            put: (rows: Array<{ pool: string; bal0: bigint; bal1: bigint }>) => void;
+        };
+    } = {},
+): Promise<ReachabilityResult<T> & { cached: number }> {
     const batchSize = Math.max(1, Math.floor(opts.batchSize ?? 500));
     const concurrency = Math.max(1, Math.floor(opts.concurrency ?? 4));
     const isRoot = (t: string) => roots.has(t.toLowerCase());
@@ -160,8 +217,27 @@ export async function filterReachableV3<T extends { pair: string; token0: string
     const neighbours = new Set<string>();
     let failedBatches = 0;
 
+    const judge = (pair: string, t0l: string, t1l: string, b0: bigint, b1: bigint) => {
+        const ok0 = isRoot(t0l) && b0 > 0n && b0 >= roots.get(t0l)! && b1 > 0n;
+        const ok1 = isRoot(t1l) && b1 > 0n && b1 >= roots.get(t1l)! && b0 > 0n;
+        if (ok0 || ok1) markLive(pair, t0l, t1l);
+    };
+
+    // Cached balances first; only the rest go to the chain.
+    const cachedBal = opts.cache?.get() ?? new Map();
+    const toRead: typeof rootPairs = [];
+    let cached = 0;
+    for (const p of rootPairs) {
+        const c = cachedBal.get(p.pair.toLowerCase());
+        if (c) { cached++; judge(p.pair.toLowerCase(), p.token0.toLowerCase(), p.token1.toLowerCase(), c.bal0, c.bal1); }
+        else toRead.push(p);
+    }
+    if (cached > 0) {
+        console.log(`  [v3 prefilter] ${cached.toLocaleString()} root pool(s) from cache, ${toRead.length.toLocaleString()} to read`);
+    }
+
     const batches: Array<typeof rootPairs> = [];
-    for (let i = 0; i < rootPairs.length; i += batchSize) batches.push(rootPairs.slice(i, i + batchSize));
+    for (let i = 0; i < toRead.length; i += batchSize) batches.push(toRead.slice(i, i + batchSize));
     let next = 0, done = 0;
     const t0 = Date.now();
     const worker = async () => {
@@ -184,12 +260,8 @@ export async function filterReachableV3<T extends { pair: string; token0: string
                 failedBatches++;
                 for (const p of batch) markLive(p.pair.toLowerCase(), p.token0.toLowerCase(), p.token1.toLowerCase());
             } else {
-                for (const r of rows) {
-                    const t0l = r.token0.toLowerCase(), t1l = r.token1.toLowerCase();
-                    const ok0 = isRoot(t0l) && r.reserves0 > 0n && r.reserves0 >= roots.get(t0l)! && r.reserves1 > 0n;
-                    const ok1 = isRoot(t1l) && r.reserves1 > 0n && r.reserves1 >= roots.get(t1l)! && r.reserves0 > 0n;
-                    if (ok0 || ok1) markLive(r.pair.toLowerCase(), t0l, t1l);
-                }
+                for (const r of rows) judge(r.pair.toLowerCase(), r.token0.toLowerCase(), r.token1.toLowerCase(), r.reserves0, r.reserves1);
+                try { opts.cache?.put(rows.map(r => ({ pool: r.pair, bal0: r.reserves0, bal1: r.reserves1 }))); } catch { /* cache is best-effort */ }
             }
             done++;
             process.stdout.write(`\r  [v3 prefilter] ${done}/${batches.length} root-pool balance batches — ${live.size} live, ` +
@@ -213,5 +285,5 @@ export async function filterReachableV3<T extends { pair: string; token0: string
             : reachable(a) && reachable(b);
         (ok ? keep : dropped).push(p);
     }
-    return { keep, dropped, rootPools: rootPairs.length, rootPoolsLive: live.size, neighbours: neighbours.size, failedBatches };
+    return { keep, dropped, rootPools: rootPairs.length, rootPoolsLive: live.size, neighbours: neighbours.size, failedBatches, cached };
 }

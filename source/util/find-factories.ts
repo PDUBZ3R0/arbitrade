@@ -114,7 +114,7 @@ function isProxyName(name: string): boolean {
 }
 
 import {
-    PAIR_CREATED_V2_TOPIC, PAIR_CREATED_SOLIDLY_TOPIC,
+    PAIR_CREATED_V2_TOPIC, PAIR_CREATED_SOLIDLY_TOPIC, POOL_CREATED_VELODROME_TOPIC,
     POOL_CREATED_V3_TOPIC, POOL_CREATED_V3_TS_TOPIC, POOL_CREATED_ALGEBRA_TOPIC,
     CL_LAYOUTS, type EventLayout,
 } from './pool-events.ts';
@@ -394,6 +394,10 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     const topics: Array<{ hash: string; label: EventLayout }> = [
         { hash: PAIR_CREATED_V2_TOPIC,      label: 'v2' },
         { hash: PAIR_CREATED_SOLIDLY_TOPIC, label: 'solidly' },
+        // Velodrome V2 / Aerodrome V2: Solidly pools announced with
+        // PoolCreated(..., bool indexed stable, ...). Without this topic the
+        // biggest V2-style DEX on Base (and Optimism) never shows up at all.
+        { hash: POOL_CREATED_VELODROME_TOPIC, label: 'velodrome' },
         { hash: POOL_CREATED_V3_TOPIC,      label: 'v3' },
         { hash: POOL_CREATED_V3_TS_TOPIC,   label: 'v3ts' },
         { hash: POOL_CREATED_ALGEBRA_TOPIC, label: 'algebra' },

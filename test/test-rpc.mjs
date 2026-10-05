@@ -15,6 +15,13 @@
 //      the request is retried over HTTP at once, and a CLI whose only pending
 //      work is that request does not exit early. This is what killed
 //      `yarn reserves robinhood` mid-run ("unsettled top-level await").
+//  10. A request slower than the timeout, on a socket that is alive (the
+//      server keeps answering pings), is NOT failed over to HTTP — the old
+//      per-request timeout did that, and on `yarn reserves base` it tore
+//      down the socket and re-ran every in-flight getV3State over HTTP.
+//  11. A socket that goes completely silent (no replies, no pongs) without
+//      closing IS declared dead after the timeout, and the request is
+//      answered over HTTP.
 //
 //   node test/test-rpc.mjs                 (anvil on PATH)
 
@@ -22,6 +29,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { ethers } from 'ethers';
 import { makeProvider, WsFirstProvider } from '../source/util/rpc.ts';
+import { WebSocketServer } from 'ws';
 
 let fails = 0;
 const ok = (c, l, extra = '') => { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${l} ${extra}`); if (!c) fails++; };
@@ -33,15 +41,16 @@ const anvil = spawn('anvil', ['--port', String(PORT), '--silent']);
 await sleep(1500);
 
 // A TCP proxy in front of anvil's websocket that can be cut and restored.
-let sockets = new Set(), proxy = null, blackhole = false;
+let sockets = new Set(), proxy = null, blackhole = false, freeze = false;
 function proxyUp() {
     proxy = net.createServer(c => {
         const u = net.connect(PORT, '127.0.0.1');
         sockets.add(c); sockets.add(u);
         // blackhole: let the handshake through, then swallow requests.
         let seen = 0;
-        c.on('data', d => { const first = seen++ === 0; if (!blackhole || first) u.write(d); });
-        u.pipe(c);
+        c.on('data', d => { const first = seen++ === 0; if ((!blackhole && !freeze) || first) u.write(d); });
+        let seenU = 0;
+        u.on('data', d => { const first = seenU++ === 0; if (!freeze || first) c.write(d); });
         const drop = () => { c.destroy(); u.destroy(); sockets.delete(c); sockets.delete(u); };
         c.on('error', drop); u.on('error', drop); c.on('close', drop); u.on('close', drop);
     });
@@ -197,6 +206,39 @@ try {
         blackhole = false;
         ok(r.status === 0 && /n=\d+/.test(r.out), 'child finished its request instead of exiting early',
            `status=${r.status} ${r.out.trim()} ${(r.err.match(/unsettled[^\n]*/) ?? [''])[0]}`);
+    }
+    console.log('\n10. slow request on a live socket stays on the socket');
+    {
+        // A JSON-RPC websocket server that takes 1.5s per answer. The `ws`
+        // server answers pings at the protocol level while it "computes".
+        const SLOW = 8557;
+        const wss = new WebSocketServer({ port: SLOW });
+        wss.on('connection', (sock) => sock.on('message', (m) => {
+            const req = JSON.parse(String(m));
+            setTimeout(() => sock.send(JSON.stringify({ jsonrpc: '2.0', id: req.id, result: '0x2a' })), 1500);
+        }));
+        const q = makeProvider({ host: HTTP, ws: `ws://127.0.0.1:${SLOW}`, id: 31337 }, { timeoutMs: 400 });
+        const t = Date.now();
+        const rs = await Promise.all([q.send('eth_blockNumber', []), q.send('eth_blockNumber', []), q.send('eth_blockNumber', [])]);
+        const ms = Date.now() - t;
+        ok(rs.every(r => r === '0x2a') && q.stats.http === 0 && q.stats.fallbacks === 0,
+           '3 concurrent 1.5s requests with a 400ms timeout: all answered by the socket', `${ms}ms ${JSON.stringify(q.stats)}`);
+        q.destroy();
+        await new Promise(r => wss.close(r));
+    }
+
+    console.log('\n11. a silent (frozen, not closed) socket is declared dead');
+    {
+        const q = makeProvider({ host: HTTP, ws: WS, id: 31337 }, { timeoutMs: 600 });
+        await q.send('eth_blockNumber', []);              // socket up
+        freeze = true;                                     // swallow everything, both ways, keep TCP open
+        const t = Date.now();
+        const n = Number(await q.send('eth_blockNumber', []));
+        const ms = Date.now() - t;
+        freeze = false;
+        ok(n >= 0 && q.stats.http === 1 && ms >= 500 && ms < 3000, 'answered over HTTP once the socket was silent for the timeout',
+           `${ms}ms ${JSON.stringify(q.stats)}`);
+        q.destroy();
     }
     p.destroy();
 } finally {

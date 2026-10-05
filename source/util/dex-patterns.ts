@@ -49,6 +49,7 @@ export type DexPattern = {
      *   'pair-stable'                — factory.<fn>(pair.stable)                  PairFactoryUpgradeable
      *   'pair-stable-degen'          — factory.<fn>(pair.stable, pair.degen)      PairFactory (Retro-degen variant)
      *   'pair-and-caller'            — factory.<fn>(pair, callerAddress)          LeetSwapV2Factory
+     *   'pair-address-stable'        — factory.<fn>(pair, pair.stable)            Velodrome V2 / Aerodrome PoolFactory
      *                                  callerAddress defaults to 0x0 unless the config sets `feeCallerAddress`.
      *                                  When 0x0, oracles typically return the baseline fee.
      *
@@ -56,7 +57,14 @@ export type DexPattern = {
      * to fetch each pair's mutable `degen` flag (unlike `stable` which is
      * immutable and cached at scan time).
      */
-    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller';
+    feeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable';
+
+    /**
+     * solidly family only: 'velodrome' when the factory announces pools with
+     * PoolCreated(token0, token1, bool indexed stable, pool, uint256) rather
+     * than Solidly's PairCreated. See pool-events.ts.
+     */
+    poolEvent?: 'velodrome';
 
     /** Function name to call for the fee lookup. */
     feeFunction?: string;
@@ -138,6 +146,29 @@ export const DEX_PATTERNS: Record<string, DexPattern> = {
         feeFunction: 'swapFee',
         feeDivisor:  1_000_000,
         notes:       'Retro / BaseV1Factory — pair.swapFee() / 1e6. Priority pairs can be overridden per-pair.',
+    },
+
+    'PoolFactory': {
+        // Velodrome V2 (Optimism) and Aerodrome V2 (Base), and forks of them.
+        // Pools are announced with PoolCreated(token0, token1, bool indexed
+        // stable, pool, uint256) — hence poolEvent 'velodrome'.
+        //
+        // PoolFactory.getFee(address pool, bool stable) returns the fee the
+        // pool's swap() actually charges, in bps (MAX_FEE 300 = 3%): a
+        // per-pool customFee if governance set one (420 is the "zero fee"
+        // sentinel and comes back as 0), else stableFee / volatileFee.
+        // Pool.swap() calls exactly this function, so it is authoritative.
+        //
+        // Volatile pools are x*y=k with the fee taken off the input; stable
+        // pools are x^3y+y^3x and are excluded downstream like every other
+        // Solidly stable pool.
+        family:       'solidly',
+        poolEvent:    'velodrome',
+        feeTarget:    'factory',
+        feeArgSource: 'pair-address-stable',
+        feeFunction:  'getFee',
+        feeDivisor:   10000,
+        notes:        'Velodrome V2 / Aerodrome — factory.getFee(pool, stable) / 10000; PoolCreated with stable indexed.',
     },
 
     'PairFactoryUpgradeable': {
@@ -298,6 +329,7 @@ export function renderPatternSnippet(
 ): string {
     const lines: string[] = [`address: "${address}"`];
     if (deployBlock) lines.push(`deployBlock: ${deployBlock}`);
+    if (pattern.poolEvent) lines.push(`poolEvent: "${pattern.poolEvent}"`);
     if (pattern.hasStableFlag) lines.push(`hasStableFlag: true`);
     if (pattern.fee !== undefined) {
         lines.push(`fee: ${pattern.fee}   // flat-fee mode, no per-pair multicall`);

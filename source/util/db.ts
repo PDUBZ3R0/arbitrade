@@ -95,6 +95,18 @@ const SCHEMA = `
         updatedAt     INTEGER NOT NULL
     );
 
+    -- Root-pool token balances read by the v3 reachability prefilter
+    -- (reserves/v3-state.ts). Cached so a re-run does not re-read millions
+    -- of mostly-dead root pools: entries younger than the prefilter TTL are
+    -- reused. Raw balances, not a verdict, so changing the threshold needs no
+    -- re-read.
+    CREATE TABLE IF NOT EXISTS root_checks (
+        pool       TEXT PRIMARY KEY,
+        bal0       TEXT NOT NULL,
+        bal1       TEXT NOT NULL,
+        checkedAt  INTEGER NOT NULL
+    ) WITHOUT ROWID;
+
     CREATE TABLE IF NOT EXISTS pool_ticks (
         pool          TEXT NOT NULL,
         tick          INTEGER NOT NULL,
@@ -976,6 +988,22 @@ export class ArbitradeDB {
      * pool that stops responding drops out of enumeration instead of being
      * scored on its last known price forever.
      */
+    /** Cached root-pool balances checked at or after `since` (unix s), by lowercase pool. */
+    getRootChecks(since: number): Map<string, { bal0: bigint; bal1: bigint }> {
+        const out = new Map<string, { bal0: bigint; bal1: bigint }>();
+        for (const r of this.db.prepare('SELECT pool, bal0, bal1 FROM root_checks WHERE checkedAt >= ?').iterate(since) as any) {
+            out.set(r.pool, { bal0: BigInt(r.bal0), bal1: BigInt(r.bal1) });
+        }
+        return out;
+    }
+
+    putRootChecks(rows: Array<{ pool: string; bal0: bigint; bal1: bigint }>): void {
+        const now = Math.floor(Date.now() / 1000);
+        const st = this.db.prepare(`INSERT INTO root_checks (pool, bal0, bal1, checkedAt) VALUES (?, ?, ?, ?)
+            ON CONFLICT(pool) DO UPDATE SET bal0 = excluded.bal0, bal1 = excluded.bal1, checkedAt = excluded.checkedAt`);
+        this.db.transaction(() => { for (const r of rows) st.run(r.pool.toLowerCase(), r.bal0.toString(), r.bal1.toString(), now); })();
+    }
+
     upsertV3States(rows: Array<{
         pool: string;
         blockNumber: number;

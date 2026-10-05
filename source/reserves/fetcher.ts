@@ -93,7 +93,7 @@ const pairStableIface = new Interface([
 function makeFeeIface(
     feeFunctionName: string,
     feeTarget: 'factory' | 'pair',
-    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' = 'pair-address',
+    feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable' = 'pair-address',
 ): Interface {
     let sig: string;
     if (feeTarget === 'pair') {
@@ -104,6 +104,9 @@ function makeFeeIface(
     } else if (feeArgSource === 'pair-stable') {
         // PairFactoryUpgradeable-style: factory.<fn>(bool stable)
         sig = `function ${feeFunctionName}(bool stable) view returns (uint256)`;
+    } else if (feeArgSource === 'pair-address-stable') {
+        // Velodrome V2 / Aerodrome: factory.getFee(address pool, bool stable)
+        sig = `function ${feeFunctionName}(address pair, bool stable) view returns (uint256)`;
     } else if (feeArgSource === 'pair-and-caller') {
         // LeetSwapV2-style: factory.<fn>(address pair, address to)
         sig = `function ${feeFunctionName}(address pair, address to) view returns (uint256)`;
@@ -341,9 +344,14 @@ export async function fetchReserves(
                 });
                 console.log(`\n[v3 prefilter] ${rootDecimals.size} root token(s), min root-side balance ${minRoot} ` +
                     `(reserves.v3MinRootBalance${cfg.reserves?.v3MinRootBalance === undefined ? ', defaulted' : ''})`);
+                const ttlH = cfg.reserves?.v3PrefilterTtlHours ?? 12;
                 const pf = await filterReachableV3(provider, cfg.chain.contract!, v3Pools, allPairs, roots, {
                     batchSize: Math.max(cfg.reserves?.batchSize ?? 500, 500),
                     concurrency: v3Concurrency,
+                    cache: ttlH > 0 ? {
+                        get: () => db.getRootChecks(Math.floor(Date.now() / 1000) - ttlH * 3600),
+                        put: (rows) => db.putRootChecks(rows),
+                    } : undefined,
                 });
                 console.log(`  [v3 prefilter] ${pf.rootPoolsLive}/${pf.rootPools} root pools pass, ${pf.neighbours} reachable tokens → ` +
                     `reading ${pf.keep.length} of ${v3Pools.length} v3 pools, skipping ${pf.dropped.length} unreachable` +
@@ -360,8 +368,10 @@ export async function fetchReserves(
             }
         }
         if (v3Pools.length > 0) {
+            const wsNote = (provider as any).compressed === true ? ', websocket compressed (permessage-deflate)'
+                : (provider as any).compressed === false ? ', websocket NOT compressed (server declined permessage-deflate)' : '';
             console.log(`\n[v3] ${v3Pools.length} concentrated-liquidity pools — YoBatches2.getV3State, ` +
-                `±${cfg.reserves?.v3Words ?? 2} bitmap words, ${cfg.reserves?.v3BatchSize ?? 100} pools/call`);
+                `±${cfg.reserves?.v3Words ?? 2} bitmap words, up to ${cfg.reserves?.v3BatchSize ?? 100} pools/call (adaptive)${wsNote}`);
             const v3t = Date.now();
             const st = await fetchV3States(provider, db, cfg.chain.contract!, v3Pools, {
                 batchSize: cfg.reserves?.v3BatchSize,
@@ -749,12 +759,12 @@ async function fetchPerPairMetadata(
     // If feeArgSource='pair-stable', we need every pair to have a stable
     // value. Warn (not fail) if any are missing — they'll return 0 fee
     // which the caller can decide how to handle.
-    if (feeTarget === 'factory' && feeArgSource === 'pair-stable') {
+    if (feeTarget === 'factory' && (feeArgSource === 'pair-stable' || feeArgSource === 'pair-address-stable')) {
         const missingStable = targets.filter(t => t.stable === null || t.stable === undefined).length;
         if (missingStable > 0) {
             console.log(
                 `  [!] ${missingStable}/${targets.length} pairs have no stable flag; ` +
-                `feeArgSource='pair-stable' calls will use false (volatile) for those.`
+                `feeArgSource='${feeArgSource}' calls will use false (volatile) for those.`
             );
         }
     }
@@ -824,6 +834,11 @@ async function fetchPerPairMetadata(
                 // PairFactoryUpgradeable.getFee(bool stable). Fall back to
                 // false (volatile) when the pair has no stable flag.
                 feeCallData = feeIface.encodeFunctionData(feeFunction, [Boolean(t.stable)]);
+            } else if (feeArgSource === 'pair-address-stable') {
+                // Velodrome V2 / Aerodrome PoolFactory.getFee(pool, stable).
+                // stable comes from the PoolCreated event (indexed), so it
+                // is always known for pairs this factory created.
+                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair, Boolean(t.stable)]);
             } else if (feeArgSource === 'pair-and-caller') {
                 // LeetSwapV2.tradingFees(pair, to). Pass 0x0 as `to` — that
                 // returns the baseline fee (matches what any user without a

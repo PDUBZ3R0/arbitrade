@@ -11,6 +11,12 @@
 //              data = [pair, allPairsLength]
 //   Solidly    PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint256)
 //              data = [stable, pair, allPairsLength]
+//   Velodrome  PoolCreated(address indexed token0, address indexed token1, bool indexed stable, address pool, uint256)
+//              Velodrome V2 / Aerodrome V2 (and their forks). Solidly pools, but
+//              announced with a different event: stable is INDEXED (topic3) and
+//              data = [pool, allPoolsLength]. Same pool interface as Solidly
+//              (swap/getReserves/Sync(uint256,uint256)), so downstream it is
+//              just the solidly group with poolEvent "velodrome".
 //   V3         PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool)
 //              Uniswap V3, PancakeV3, and most forks. topic3 = fee, data = [tickSpacing, pool]
 //   V3 (ts)    PoolCreated(address indexed token0, address indexed token1, int24 indexed tickSpacing, address pool)
@@ -33,16 +39,18 @@ import { ethers } from 'ethers';
 
 export const PAIR_CREATED_V2_TOPIC      = ethers.id('PairCreated(address,address,address,uint256)');
 export const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
+export const POOL_CREATED_VELODROME_TOPIC = ethers.id('PoolCreated(address,address,bool,address,uint256)');
 export const POOL_CREATED_V3_TOPIC      = ethers.id('PoolCreated(address,address,uint24,int24,address)');
 export const POOL_CREATED_V3_TS_TOPIC   = ethers.id('PoolCreated(address,address,int24,address)');
 export const POOL_CREATED_ALGEBRA_TOPIC = ethers.id('Pool(address,address,address)');
 
 /** Which event shape a sweep / scan is decoding. */
-export type EventLayout = 'v2' | 'solidly' | 'v3' | 'v3ts' | 'algebra';
+export type EventLayout = 'v2' | 'solidly' | 'velodrome' | 'v3' | 'v3ts' | 'algebra';
 
 export const TOPIC_BY_LAYOUT: Record<EventLayout, string> = {
     v2:      PAIR_CREATED_V2_TOPIC,
     solidly: PAIR_CREATED_SOLIDLY_TOPIC,
+    velodrome: POOL_CREATED_VELODROME_TOPIC,
     v3:      POOL_CREATED_V3_TOPIC,
     v3ts:    POOL_CREATED_V3_TS_TOPIC,
     algebra: POOL_CREATED_ALGEBRA_TOPIC,
@@ -62,7 +70,7 @@ export type ParsedCreation = {
     pair: string;
     token0: string;
     token1: string;
-    /** Solidly event only; null otherwise. */
+    /** Solidly / Velodrome events only; null otherwise. */
     stable: boolean | null;
     /** Fee in pips (3000 = 0.3%) when the event carries it (V3 shape); else null. */
     feePips: number | null;
@@ -100,6 +108,10 @@ export function parseCreationLog(topics: string[], data: string, layout: EventLa
         case 'solidly':
             if (words < 2) return null;
             return { ...base, pair: addrOf(word(data, 1)), stable: BigInt('0x' + word(data, 0)) === 1n };
+        case 'velodrome':
+            // stable is the third indexed topic; data = [pool, allPoolsLength]
+            if (topics.length < 4 || words < 1) return null;
+            return { ...base, pair: addrOf(word(data, 0)), stable: BigInt(topics[3]) === 1n };
         case 'v3': {
             if (words < 1) return null;
             const pair = addrOf(word(data, words - 1));

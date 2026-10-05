@@ -15,7 +15,10 @@
 //   5. A pool that empties is written with zero reserves and leaves the graph.
 //   6. Reachability prefilter: a v3 pool between two tokens with no root pool,
 //      and a root pool holding no root, are never read with getV3State; they
-//      get zero reserves. Disabling the prefilter reads them again.
+//      get zero reserves. Disabling the prefilter reads them again. A second
+//      run takes the root-pool balances from the cache instead of the chain.
+//   7. Adaptive V3 batches: a batch the node refuses (gas cap, size limit) is
+//      split and re-queued, and every pool still ends up read.
 //
 //   npm i -D @uniswap/v3-core@1.0.1 @uniswap/v2-core@1.0.1 solc@0.8.24
 //   node test/test-v3-pipeline.mjs                 (anvil on PATH)
@@ -32,6 +35,7 @@ import { enumerateTriangles } from '../source/triangles/enumerator.ts';
 import { evaluateTriangles } from '../source/evaluator/evaluator.ts';
 import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
 import { ArbitradeDB } from '../source/util/db.ts';
+import { fetchV3States } from '../source/reserves/v3-state.ts';
 import { v3_swap_exact, getSqrtRatioAtTick } from '../source/util/calculus-v3.js';
 
 const require = createRequire(import.meta.url);
@@ -196,8 +200,38 @@ try {
         const st = db.loadV3States().get(pCD);
         ok(!!st && st.liquidity > 0n, 'v3Prefilter: false reads every pool again');
         db.close();
-        // back to the default so the rest of the test sees the filtered graph
-        await quiet(() => fetchReserves(cfg, dbFile, {}));
+        // back to the default so the rest of the test sees the filtered graph;
+        // the root-pool balances read by the first run are reused, not re-read.
+        const lines = [];
+        const l = console.log, w = process.stdout.write.bind(process.stdout);
+        console.log = (...a) => lines.push(a.join(' ')); process.stdout.write = (x) => { lines.push(String(x)); return true; };
+        try { await fetchReserves(cfg, dbFile, {}); } finally { console.log = l; process.stdout.write = w; }
+        const hit = lines.find(x => /root pool\(s\) from cache, 0 to read/.test(x));
+        ok(!!hit, 'second run: every root-pool balance from the cache, none read', hit?.trim() ?? lines.filter(x => /prefilter/.test(x)).join(' | '));
+        const db2 = new ArbitradeDB(dbFile);
+        const rCD = db2.db.prepare('SELECT reserves0 FROM reserves WHERE pair = ?').get(pCD);
+        ok(rCD?.reserves0 === '0', 'and the cached verdict still drops the unreachable pool (zero reserves)');
+        db2.close();
+    }
+
+    console.log('\n7. a refused V3 batch is split, not lost');
+    {
+        const db = new ArbitradeDB(dbFile);
+        const pools = db.getPairsForReservesFetch({ kinds: ['v3'] }).map(p => ({ pair: p.pair, factory: p.factory }));
+        const yoIface = new ethers.Interface(A.Yo.abi);
+        let refused = 0, served = 0;
+        // A node that refuses any getV3State over 2 pools (e.g. an eth_call gas cap).
+        const capped = { call: async (tx) => {
+            const [ps] = yoIface.decodeFunctionData('getV3State', tx.data);
+            if (ps.length > 2) { refused++; throw new Error('out of gas: eth_call gas cap'); }
+            served++;
+            return provider.call(tx);
+        } };
+        const YO = await yo.getAddress();
+        const st = await quiet(() => fetchV3States(capped, db, YO, pools, { batchSize: 50, words: 2, concurrency: 3 }));
+        ok(refused > 0 && st.errors.length === 0 && st.live + st.empty + st.unreadable === pools.length,
+           'every pool read after the oversized batches were split', `${pools.length} pools, ${refused} refused, ${served} served`);
+        db.close();
     }
 
     console.log('\n2. triangles include v3 pools');

@@ -96,6 +96,8 @@ const i256 = (x: bigint) => BigInt.asIntN(256, x);
 export type V3StateBatch = {
     /** block.number the contract read the state at */
     block: number;
+    /** Response size in bytes (ABI, before hex) — for throughput diagnostics. */
+    bytes?: number;
     /** One entry per requested pool, in order. null = slot0() did not answer
      *  (not a V3-style pool, or an Algebra pool) or tickSpacing unreadable. */
     pools: Array<(V3Pool & { address: string }) | null>;
@@ -157,5 +159,5 @@ export async function getV3States(
         out.push({ address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks, windowLow, windowHigh });
     }
     if (k !== f.length) throw new Error(`getV3State: ${f.length - k} unread words — layout mismatch`);
-    return { block, pools: out };
+    return { block, pools: out, bytes: (raw.length - 2) / 2 };
 }

@@ -163,14 +163,16 @@ export async function scanFactory(
     //   'v2fee'   : Also uses the V2 topic (Shadow-style). Fee is per-pair
     //               (fetched later at reserves time). Some (Shadow) have
     //               pair.stable() too — see hasStableFlag config.
-    //   'solidly' : Canonical Solidly / Aerodrome / Velodrome / Equalizer.
-    //               Different topic. Stable flag IS in the event data.
+    //   'solidly' : Canonical Solidly / Equalizer: PairCreated with the
+    //               stable flag in the event data. With poolEvent
+    //               'velodrome' (Velodrome V2 / Aerodrome V2): PoolCreated
+    //               with stable indexed — see pool-events.ts.
     //   'v3'      : PoolCreated in the shape named by factory.poolEvent. The
     //               pool is stored with kind 'v3', its fee tier (when the
     //               event carries it) and its tick spacing.
     const layout: EventLayout =
-        factory.group === 'solidly' ? 'solidly' :
-        factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[factory.poolEvent ?? 'uniswap'] :
+        factory.group === 'solidly' ? (factory.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
+        factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[(factory.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'] :
         'v2';
     const eventTopic = TOPIC_BY_LAYOUT[layout];
     const isV3 = factory.group === 'v3';

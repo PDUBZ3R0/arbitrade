@@ -134,7 +134,7 @@
     currency: 'ETH',
     hypersyncUrl: 'https://base.hypersync.xyz',
     host: 'https://base-rpc.publicnode.com',
-    //ws: "wss://base-rpc.publicnode.com"
+    ws: "wss://base-rpc.publicnode.com"
   },
   plasma: {
     id: 9745,

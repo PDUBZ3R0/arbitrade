@@ -49,14 +49,21 @@ export type RpcEndpoints = { host: string; ws?: string; id?: number };
 export type ProviderOptions = {
     /** Force HTTP even when a websocket is configured. */
     http?: boolean;
-    /** Per-request socket timeout before falling back to HTTP. Default 20s. */
+    /**
+     * How long the SOCKET may stay silent — no reply, no pong — while a
+     * request is waiting, before it is declared dead and the request retried
+     * over HTTP. Default 20s. A slow request on a live socket is not a dead
+     * socket: see WsFirstProvider.
+     */
     timeoutMs?: number;
+    /** Hard cap for any single request on the socket. Default 10 minutes. */
+    maxRequestMs?: number;
 };
 
 /** The provider every CLI and loop should use for chain.host / chain.ws. */
 export function makeProvider(chain: RpcEndpoints, opts: ProviderOptions = {}): JsonRpcProvider {
     if (!chain.ws || opts.http || process.env.ARB_NO_WS === '1') return new JsonRpcProvider(chain.host);
-    return new WsFirstProvider(chain.host, chain.ws, chain.id, opts.timeoutMs);
+    return new WsFirstProvider(chain.host, chain.ws, chain.id, opts.timeoutMs, opts.maxRequestMs);
 }
 
 type Result = JsonRpcResult | JsonRpcError;
@@ -77,16 +84,23 @@ export class WsFirstProvider extends JsonRpcProvider {
     /** Rejects every request in flight on the current socket when it drops. */
     private failInflight: ((e: Error) => void) | null = null;
     private downSignal: Promise<never> | null = null;
+    /** Last time the current socket delivered anything (a reply or a pong). */
+    private lastRxAt = 0;
+    private pingTimer: ReturnType<typeof setInterval> | null = null;
+    private readonly maxRequestMs: number;
     /** Counters, for logs and tests. */
     readonly stats = { ws: 0, http: 0, fallbacks: 0, reconnects: 0 };
+    /** permessage-deflate negotiated on the current socket (null until connected). */
+    compressed: boolean | null = null;
 
-    constructor(httpUrl: string, wsUrl: string, chainId?: number, timeoutMs = 20_000) {
+    constructor(httpUrl: string, wsUrl: string, chainId?: number, timeoutMs = 20_000, maxRequestMs = 600_000) {
         const net = chainId ? Network.from(chainId) : undefined;
         // Sockets cannot carry JSON-RPC batches, so batching is off for the
         // whole provider (each request is its own message either way).
         super(httpUrl, net, { batchMaxCount: 1, ...(net ? { staticNetwork: net } : {}) });
         this.wsUrl = wsUrl;
         this.timeoutMs = timeoutMs;
+        this.maxRequestMs = maxRequestMs;
         this.netw = net;
     }
 
@@ -106,6 +120,7 @@ export class WsFirstProvider extends JsonRpcProvider {
     private markDown(): void {
         const ws = this.ws;
         this.ws = null;
+        if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
         this.failInflight?.(new Error('websocket down'));
         this.failInflight = null;
         if (ws) { try { ws.destroy(); } catch { /* already gone */ } }
@@ -151,6 +166,20 @@ export class WsFirstProvider extends JsonRpcProvider {
                 await withTimeout(Promise.race([opened, connectFailed]), Math.min(this.timeoutMs, 10_000));
                 await withTimeout(Promise.race([(ws as any)._start(), connectFailed]), Math.min(this.timeoutMs, 10_000));
                 this.socketOf(ws)?.unref?.();
+                // Liveness: any frame from the server counts, and a ping
+                // every quarter-timeout keeps a socket that is busy on one
+                // long request provably alive (the server pongs between
+                // frames even while it computes).
+                this.lastRxAt = Date.now();
+                const touch = () => { this.lastRxAt = Date.now(); };
+                raw?.on?.('message', touch);
+                raw?.on?.('pong', touch);
+                this.compressed = /permessage-deflate/.test(String(raw?.extensions ?? ''));
+                if (this.pingTimer) clearInterval(this.pingTimer);
+                this.pingTimer = setInterval(() => {
+                    if (this.inflight > 0 && raw?.readyState === 1) { try { raw.ping?.(); } catch { /* closing */ } }
+                }, Math.max(250, Math.floor(this.timeoutMs / 4)));
+                this.pingTimer.unref?.();
                 this.ws = ws;
                 this.downSignal = down;
                 this.failInflight = failInflight;
@@ -175,15 +204,46 @@ export class WsFirstProvider extends JsonRpcProvider {
         const down = this.downSignal!;
         this.hold(+1);
         try {
-            const res = await withTimeout(Promise.race([(ws as any)._send(p) as Promise<Result[]>, down]), this.timeoutMs);
-            this.stats.ws++;
-            return res[0];
+            // NOT a plain per-request timeout. A heavy eth_call (getV3State
+            // on 100 pools) can take longer than 20s on a perfectly healthy
+            // socket; timing it out tore the socket down, failed every other
+            // request in flight on it, and re-ran all of them over HTTP —
+            // observed as "fallbacks 69" and a reserves run at 0.02 batch/s,
+            // each batch executed twice. The socket is dead only if it has
+            // gone SILENT (no replies, no pongs) for timeoutMs.
+            const live = this.liveness(Date.now());
+            try {
+                const res = await Promise.race([(ws as any)._send(p) as Promise<Result[]>, down, live.promise]);
+                this.stats.ws++;
+                return res[0];
+            } finally {
+                live.cancel();
+            }
         } catch {
             if (this.ws === ws) this.markDown();
             return TRANSPORT_FAIL;
         } finally {
             this.hold(-1);
         }
+    }
+
+    /**
+     * Rejects once the socket has been silent for timeoutMs, or the request
+     * has run for maxRequestMs. The interval is ref'd on purpose — it is what
+     * keeps Node alive while a request waits (see withTimeout) — so callers
+     * must cancel() it when the request settles.
+     */
+    private liveness(start: number): { promise: Promise<never>; cancel: () => void } {
+        let t: ReturnType<typeof setInterval> | null = null;
+        const promise = new Promise<never>((_, rej) => {
+            t = setInterval(() => {
+                const now = Date.now();
+                if (now - Math.max(start, this.lastRxAt) > this.timeoutMs) rej(new Error(`websocket silent ${this.timeoutMs}ms`));
+                else if (now - start > this.maxRequestMs) rej(new Error(`request exceeded ${this.maxRequestMs}ms`));
+            }, Math.max(50, Math.min(1000, Math.floor(this.timeoutMs / 4))));
+        });
+        promise.catch(() => { /* raced */ });
+        return { promise, cancel: () => { if (t) clearInterval(t); t = null; } };
     }
 
     private async viaHttp(p: JsonRpcPayload): Promise<Result> {
@@ -215,6 +275,7 @@ export class WsFirstProvider extends JsonRpcProvider {
 
     destroy(): void {
         this.closed = true;
+        if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
         if (this.ws) { try { this.ws.destroy(); } catch { /* ignore */ } this.ws = null; }
         super.destroy();
     }

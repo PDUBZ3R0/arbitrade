@@ -20,8 +20,18 @@ import { etherscanGetLogs, getContractCreation, rateLimit } from './etherscan.ts
 import { realpathSync } from 'node:fs';
 import { sharedProvider } from './rpc.ts';
 
-const PAIR_CREATED_TOPIC         = ethers.id('PairCreated(address,address,address,uint256)');
-const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
+import {
+    PAIR_CREATED_V2_TOPIC as PAIR_CREATED_TOPIC, PAIR_CREATED_SOLIDLY_TOPIC, POOL_CREATED_VELODROME_TOPIC,
+    parseCreationLog, type EventLayout,
+} from './pool-events.ts';
+
+/** The V2-family creation events, and the layout each one decodes with. */
+type PairLayout = 'v2' | 'solidly' | 'velodrome';
+const LAYOUT_OF_TOPIC: Record<string, PairLayout> = {
+    [PAIR_CREATED_TOPIC]: 'v2',
+    [PAIR_CREATED_SOLIDLY_TOPIC]: 'solidly',
+    [POOL_CREATED_VELODROME_TOPIC]: 'velodrome',
+};
 
 // Minimal ABIs for probing
 const PAIR_ABI = [
@@ -54,7 +64,9 @@ export type VerifyResult = {
     // paste it in without further edits.
     probedPattern?: string;                // registry key, e.g. 'BaseV1Factory'
     probedFeeTarget?: 'factory' | 'pair';
-    probedFeeArgSource?: 'pair-address' | 'pair-stable';
+    probedFeeArgSource?: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable';
+    /** 'velodrome' when the factory emits Velodrome V2 / Aerodrome PoolCreated. */
+    poolEvent?: 'velodrome';
     probedFeeFunction?: string;
     probedFeeDivisor?: number;
     probedFlatFee?: number;                // for flat-fee patterns (Dystopia-like)
@@ -73,12 +85,13 @@ async function fetchSamplePairs(
     explorerApiKey?: string,
     hypersyncUrl?: string,
     envioApiToken?: string,
-): Promise<{ hits: Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }>; matchedTopic: 'v2' | 'solidly' | null }> {
+): Promise<{ hits: Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }>; matchedTopic: PairLayout | null }> {
     const head = await provider.getBlockNumber();
 
-    const topics: Array<{ hash: string; label: 'v2' | 'solidly' }> = [
-        { hash: PAIR_CREATED_TOPIC,         label: 'v2' },
-        { hash: PAIR_CREATED_SOLIDLY_TOPIC, label: 'solidly' },
+    const topics: Array<{ hash: string; label: PairLayout }> = [
+        { hash: PAIR_CREATED_TOPIC,           label: 'v2' },
+        { hash: PAIR_CREATED_SOLIDLY_TOPIC,   label: 'solidly' },
+        { hash: POOL_CREATED_VELODROME_TOPIC, label: 'velodrome' },
     ];
 
     // Fast path: if HyperSync is configured, use it. It sweeps the entire
@@ -90,7 +103,7 @@ async function fetchSamplePairs(
         for (const topic of topics) {
             try {
                 const hits = await samplePairsFromFactoryHyperSync(
-                    hypersyncUrl, envioApiToken, factory, from, head, topic.hash, topic.label === 'solidly',
+                    hypersyncUrl, envioApiToken, factory, from, head, topic.hash, topic.label as EventLayout,
                 );
                 if (hits.length > 0) return { hits, matchedTopic: topic.label };
             } catch (err) {
@@ -157,7 +170,7 @@ async function tryRpcLogs(
     let chunk = Math.min(5000, toBlock - fromBlock + 1);
     const CHUNK_MIN = 10;
     let cursor = fromBlock;
-    const isSolidly = topic === PAIR_CREATED_SOLIDLY_TOPIC;
+    const layout = LAYOUT_OF_TOPIC[topic] ?? 'v2';
 
     while (cursor <= toBlock) {
         const end = Math.min(cursor + chunk - 1, toBlock);
@@ -168,25 +181,13 @@ async function tryRpcLogs(
                 fromBlock: cursor,
                 toBlock: end,
             });
-            if (logs.length > 0) {
+            const hits = logs.flatMap(log => {
+                const p = parseCreationLog([...log.topics], log.data, layout);
+                return p ? [{ pair: p.pair, token0: p.token0, token1: p.token1, blockNumber: log.blockNumber, stable: p.stable }] : [];
+            });
+            if (hits.length > 0) {
                 return {
-                    hits: logs.map(log => {
-                        let pair: string;
-                        let stable: boolean | null = null;
-                        if (isSolidly) {
-                            stable = BigInt('0x' + log.data.slice(2, 66)) === 1n;
-                            pair = '0x' + log.data.slice(66, 130).slice(-40);
-                        } else {
-                            pair = '0x' + log.data.slice(2, 66).slice(-40);
-                        }
-                        return {
-                            pair,
-                            token0:      '0x' + log.topics[1].slice(-40),
-                            token1:      '0x' + log.topics[2].slice(-40),
-                            blockNumber: log.blockNumber,
-                            stable,
-                        };
-                    }),
+                    hits,
                     rpcUsable: true,
                     errored: false,
                 };
@@ -217,7 +218,7 @@ async function tryEtherscanLogs(
     topic: string = PAIR_CREATED_TOPIC,
 ): Promise<Array<{ pair: string; token0: string; token1: string; blockNumber: number; stable: boolean | null }>> {
     const chunkSize = 10_000;
-    const isSolidly = topic === PAIR_CREATED_SOLIDLY_TOPIC;
+    const layout = LAYOUT_OF_TOPIC[topic] ?? 'v2';
     for (let start = fromBlock; start <= toBlock; start += chunkSize) {
         const end = Math.min(start + chunkSize - 1, toBlock);
         await rateLimit();
@@ -230,25 +231,11 @@ async function tryEtherscanLogs(
                 toBlock: end,
                 apiKey,
             });
-            if (logs.length > 0) {
-                return logs.map(log => {
-                    let pair: string;
-                    let stable: boolean | null = null;
-                    if (isSolidly) {
-                        stable = BigInt('0x' + log.data.slice(2, 66)) === 1n;
-                        pair = '0x' + log.data.slice(66, 130).slice(-40);
-                    } else {
-                        pair = '0x' + log.data.slice(2, 66).slice(-40);
-                    }
-                    return {
-                        pair,
-                        token0:      '0x' + log.topics[1].slice(-40),
-                        token1:      '0x' + log.topics[2].slice(-40),
-                        blockNumber: log.blockNumber,
-                        stable,
-                    };
-                });
-            }
+            const hits = logs.flatMap((log: any) => {
+                const p = parseCreationLog([...log.topics], log.data, layout);
+                return p ? [{ pair: p.pair, token0: p.token0, token1: p.token1, blockNumber: log.blockNumber, stable: p.stable }] : [];
+            });
+            if (hits.length > 0) return hits;
         } catch {
             // try next chunk
         }
@@ -485,7 +472,7 @@ export async function verifyFactory(
     result.isV2 = true;
     result.samplePair = pairs[0].pair;
     notes.push(`✓ Emits PairCreated events (${matchedTopic} signature, found ${pairs.length}). Sample pair: ${pairs[0].pair} (block ${pairs[0].blockNumber})`);
-    if (matchedTopic === 'solidly') {
+    if (matchedTopic === 'solidly' || matchedTopic === 'velodrome') {
         const stableCount = pairs.filter(p => p.stable === true).length;
         const volatileCount = pairs.filter(p => p.stable === false).length;
         notes.push(`  Sample composition: ${volatileCount} volatile, ${stableCount} stable`);
@@ -504,7 +491,16 @@ export async function verifyFactory(
     //   matchedTopic === 'v2' + Solidly signals present → v2fee (Shadow-style; hasStableFlag)
     //   matchedTopic === 'v2' + no Solidly signals → pure V2 (or v2fee w/o stable — user's call)
     const detect = await detectSolidlyFamily(provider, address, pairs[0].pair);
-    if (matchedTopic === 'solidly') {
+    if (matchedTopic === 'velodrome') {
+        result.family = 'solidly';
+        result.poolEvent = 'velodrome';
+        notes.push(`⚑ Solidly group, Velodrome V2 / Aerodrome event (PoolCreated with indexed stable bool):`);
+        for (const s of detect.signals) notes.push(`    - ${s}`);
+        notes.push(
+            `  → Add under factories["solidly"] with poolEvent: "velodrome". Fee is per pool ` +
+            `(typically factory.getFee(pool, stable)); only volatile pools use x*y=k.`
+        );
+    } else if (matchedTopic === 'solidly') {
         result.family = 'solidly';
         notes.push(`⚑ Solidly group detected (native PairCreated event with stable bool):`);
         for (const s of detect.signals) notes.push(`    - ${s}`);
@@ -629,18 +625,19 @@ export async function verifyFactory(
             : '';
 
         if (result.family === 'solidly') {
+            const poolEventLine = result.poolEvent ? `\n          poolEvent: "${result.poolEvent}",` : '';
             if (result.probedPattern) {
                 result.configSnippet =
                     `    // Add under factories["solidly"]:\n` +
                     `        "NAME_ME": {${probeComment}\n` +
-                    `          address: "${address}",${deployLine}\n` +
+                    `          address: "${address}",${deployLine}${poolEventLine}\n` +
                     buildProbeLines() + `\n` +
                     `        }`;
             } else {
                 result.configSnippet =
                     `    // Add under factories["solidly"]:\n` +
                     `        "NAME_ME": {\n` +
-                    `          address: "${address}",${deployLine}\n` +
+                    `          address: "${address}",${deployLine}${poolEventLine}\n` +
                     `          // Interface probe found no matching pattern. Add\n` +
                     `          // feeTarget/feeFunction/feeDivisor manually or\n` +
                     `          // register a new pattern in dex-patterns.ts.\n` +
