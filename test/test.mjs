@@ -78,9 +78,9 @@ async function setup({ fees = [0.003, 0.003, 0.003], edge = 1.0, taxBps = 0 } = 
     const EX = await exec.getAddress();
 
     const hops = [
-        { pair: P1, tokenIn: R, feePpm: ppm(fees[0]), recipient: P2 },
-        { pair: P2, tokenIn: A, feePpm: ppm(fees[1]), recipient: P3 },
-        { pair: P3, tokenIn: B, feePpm: ppm(fees[2]), recipient: EX },
+        { pair: P1, tokenIn: R, feePpm: ppm(fees[0]), recipient: P2, kind: 0 },
+        { pair: P2, tokenIn: A, feePpm: ppm(fees[1]), recipient: P3, kind: 0 },
+        { pair: P3, tokenIn: B, feePpm: ppm(fees[2]), recipient: EX, kind: 0 },
     ];
     return { root, a, b, p1, p2, p3, exec, R, A, B, P1, P2, P3, EX, hops };
 }
@@ -208,8 +208,8 @@ console.log('\n9. a 2-hop cycle works on the same code path');
     const exec = await deploy('FlashArbExecutor', POOL);
     const EX = await exec.getAddress();
     const hops = [
-        { pair: P1, tokenIn: R, feePpm: 3000, recipient: P2 },
-        { pair: P2, tokenIn: A, feePpm: 3000, recipient: EX },
+        { pair: P1, tokenIn: R, feePpm: 3000, recipient: P2, kind: 0 },
+        { pair: P2, tokenIn: A, feePpm: 3000, recipient: EX, kind: 0 },
     ];
     let ok = true, err = '';
     try { await (await exec.executeArb(R, E(1000), 0n, hops)).wait(); } catch (e) { ok = false; err = revertName(e); }

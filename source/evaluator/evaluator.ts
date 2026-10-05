@@ -148,11 +148,10 @@ export type EvaluateOptions = {
     /** Max triangles to print full detail for for when debug=true. Default: 25. */
     debugLimit?: number;
     /**
-     * Drop cycles the executor cannot trade yet — today, any cycle with a v3
-     * hop (FlashArbExecutor has no V3 swap-callback path). Set by every
-     * caller that ATTEMPTS candidates (orchestrator loop, hot); left off by
-     * `yarn evaluate`, which reports v3 cycles so their value can be judged
-     * before the executor work is done. Counted under skipReasons.v3NotExecutable.
+     * Drop any cycle with a v3 hop. Set by callers that attempt candidates
+     * with something that cannot trade them: the orchestrator loop when the
+     * deployed executor predates HOP_V3, and the hot loop, whose Sync-fed
+     * index has no V3 state. Counted under skipReasons.v3NotExecutable.
      */
     executableOnly?: boolean;
 };

@@ -695,7 +695,13 @@ async function emitReport(
                     explorerVerified,
                 });
             } else {
-                console.log(`  ✗ Not usable: ${v.notes[v.notes.length - 1] ?? 'unknown reason'}`);
+                // The LAST note is not necessarily the reason: when the fee
+                // probe ran after a failed YoBatches check, it printed
+                // "Sample fees (1): 0.000500" for Velodrome V2 and hid why.
+                const reason = (v.isV2 && !v.isYoBatchesCompatible
+                    ? v.notes.find(n => /mismatch|doesn't implement|Failed to read/.test(n))
+                    : undefined) ?? v.notes[v.notes.length - 1] ?? 'unknown reason';
+                console.log(`  ✗ Not usable: ${reason}`);
             }
         } catch (err) {
             console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 120)}`);
@@ -748,12 +754,15 @@ async function emitReport(
             if (pattern) {
                 // Emit a snippet from the pattern registry.
                 const groupComment = `    // Add under factories["${pattern.family}"]:`;
+                // poolEvent comes from what the sweep SAW this factory emit,
+                // never from the pattern: a contract name does not prove the
+                // event, and the wrong one makes `yarn scan` find nothing.
                 const body = renderPatternSnippet(
                     candidate.address,
                     // pattern.family override may differ from verify-factory's runtime family;
                     // that's the point of the registry — we trust the template match.
                     (candidate as any).deployBlock,   // not currently tracked on FactoryCandidate; fine to omit
-                    pattern,
+                    { ...pattern, poolEvent: candidate.matchedTopics.has('velodrome') ? 'velodrome' : undefined },
                 );
                 const patternNote = pattern.notes
                     ? `\n          // Pattern: ${pattern.notes}`

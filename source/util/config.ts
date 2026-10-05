@@ -139,6 +139,12 @@ export type FactoryEntry = {
      * The solidly group always has stable from the event so this is ignored there.
      */
     hasStableFlag?: boolean;
+    /**
+     * Name of that bool view when it is not `stable()`. Camelot V2 pairs call it
+     * `stableSwap()`; their stable pairs use the x^3y+y^3x curve and must be
+     * excluded from constant-product pricing just like Solidly stable pools.
+     */
+    stableFunction?: string;
 };
 
 // ---- flash-loan sources ---------------------------------------------------------
@@ -315,6 +321,17 @@ export type RawChainConfig = {
          */
         v3Prefilter?: boolean;
         /**
+         * Apply the same reachability test to V2-style pairs. Default on.
+         * Root pairs below the threshold, and pairs between two tokens with
+         * no qualifying root pair, are not read and get zero reserves. On
+         * Base that is most of Uniswap V2's ~3M pairs — memecoin pairs whose
+         * root side is dust. Factory DEAD/THIN stats then cover only the
+         * pairs that were read.
+         */
+        v2Prefilter?: boolean;
+        /** Alias of v3MinRootBalance; it now governs both prefilters. */
+        minRootBalance?: number;
+        /**
          * Minimum root-side balance for a root pool to count as reachable, in
          * the root token's own units (like evaluator.minLiquidityTokens).
          * Default: evaluator.minLiquidityTokens, else 0 (only empty pools drop).
@@ -364,6 +381,8 @@ export type NormalizedFactory = {
     feeDivisor: number;
     /** For v2fee only: does the pair have a stable() view? Default false. */
     hasStableFlag: boolean;
+    /** The pair's stable-curve bool view, when hasStableFlag. Default "stable". */
+    stableFunction: string;
     /** v3 group: creation event shape, default "uniswap". solidly group: "velodrome" or undefined (classic). */
     poolEvent: 'uniswap' | 'tickspacing' | 'velodrome' | undefined;
     /** v3 group only: measured swap-callback name, if configured. */
@@ -598,10 +617,15 @@ export function loadChainConfig(chainArg: string): ChainConfig {
                 feeFunction:   isString ? defaultFeeFunction : (entry.feeFunction ?? pattern?.feeFunction ?? defaultFeeFunction),
                 feeDivisor:    isString ? defaultFeeDivisor  : (entry.feeDivisor  ?? pattern?.feeDivisor  ?? defaultFeeDivisor),
                 hasStableFlag: isString ? false : (entry.hasStableFlag ?? pattern?.hasStableFlag ?? false),
+                stableFunction: (isString ? undefined : entry.stableFunction) ?? 'stable',
                 poolEvent: group === 'v3'
                     ? (isString ? 'uniswap' : ((entry.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'))
                     : group === 'solidly'
-                        ? ((isString ? undefined : entry.poolEvent) ?? pattern?.poolEvent) === 'velodrome' ? 'velodrome' : undefined
+                        // Explicit only. The pattern knows "PoolFactory" contracts
+                        // usually emit the Velodrome event, but a contract NAME does
+                        // not prove which event a factory emits, and the wrong one
+                        // scans zero pairs. find-factories writes it from the sweep.
+                        ? (isString ? undefined : entry.poolEvent) === 'velodrome' ? 'velodrome' : undefined
                         : undefined,
                 callback:  isString ? undefined : entry.callback,
                 abi: g.abi,

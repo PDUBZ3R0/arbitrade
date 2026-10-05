@@ -49,6 +49,7 @@ const out = JSON.parse(solc.compile(JSON.stringify({
     language: 'Solidity',
     sources: {
         'YoBatches2.sol': { content: fs.readFileSync(here('../contracts/YoBatches2.sol'), 'utf8') },
+        'YoBatches3.sol': { content: fs.readFileSync(here('../contracts/YoBatches3.sol'), 'utf8') },
         'V3Harness.sol': { content: fs.readFileSync(here('./v3-golden/V3Harness.sol'), 'utf8') },
     },
     settings: { optimizer: { enabled: true, runs: 200 }, outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },
@@ -58,7 +59,9 @@ const pick = (f, n) => ({ abi: out.contracts[f][n].abi, bytecode: '0x' + out.con
 const v3art = n => require(`@uniswap/v3-core/artifacts/contracts/${n}.sol/${n}.json`);
 const v2art = n => { const j = require(`@uniswap/v2-core/build/${n}.json`); return { abi: j.abi, bytecode: '0x' + j.evm.bytecode.object }; };
 const A = {
-    Yo: pick('YoBatches2.sol', 'YoBatches2'), Tok: pick('V3Harness.sol', 'Tok'), Harness: pick('V3Harness.sol', 'Harness'),
+    // YoBatches3: the reserves stage below runs through the packed reads
+    // (getV3StatePacked, getReservesByPool) exactly as it would in production.
+    Yo: pick('YoBatches3.sol', 'YoBatches3'), Tok: pick('V3Harness.sol', 'Tok'), Harness: pick('V3Harness.sol', 'Harness'),
     F3: v3art('UniswapV3Factory'), P3: v3art('UniswapV3Pool'), F2: v2art('UniswapV2Factory'), P2: v2art('UniswapV2Pair'),
 };
 
@@ -132,6 +135,7 @@ try {
     // Unreachable: C has no pool with the root, so C/D can never be in a cycle
     // (D does have one, but it holds no root: initialized, never minted).
     const pCD   = await v3Pool(TC, TD, 3000, 1.5, L);
+    const qCD   = await v2Pair(TC, TD, 1.5, 1000n);      // unreachable V2 pair
     const [d0, d1] = sort(R, TD);
     await send(f3.createPool(d0, d1, 3000, ov()));
     const pRD = (await f3.getPool(d0, d1, 3000)).toLowerCase();
@@ -188,17 +192,21 @@ try {
         // 6. prefilter
         const stC = states.get(pCD), stD = states.get(pRD);
         const rz = (a) => db.db.prepare('SELECT reserves0, reserves1 FROM reserves WHERE pair = ?').get(a);
-        const zero = (a) => { const x = rz(a); return x && x.reserves0 === '0' && x.reserves1 === '0'; };
+        // No row and a zero row both keep a pool out of enumeration.
+        const zero = (a) => { const x = rz(a); return !x || (x.reserves0 === '0' && x.reserves1 === '0'); };
         ok(!stC && !stD && zero(pCD) && zero(pRD),
-           'prefilter: unreachable C/D pool and root-less R/D pool skipped, stored with zero reserves');
+           'prefilter: unreachable C/D pool and root-less R/D pool skipped, no reserves');
+        ok(!rz(qCD), 'v2 prefilter: the unreachable C/D V2 pair is not read either');
         db.close();
     }
     {
         // Same DB, prefilter off: the C/D pool is read (it has liquidity).
-        await quiet(() => fetchReserves({ ...cfg, reserves: { ...cfg.reserves, v3Prefilter: false } }, dbFile, {}));
+        await quiet(() => fetchReserves({ ...cfg, reserves: { ...cfg.reserves, v3Prefilter: false, v2Prefilter: false } }, dbFile, {}));
         const db = new ArbitradeDB(dbFile);
         const st = db.loadV3States().get(pCD);
         ok(!!st && st.liquidity > 0n, 'v3Prefilter: false reads every pool again');
+        const r2 = db.db.prepare('SELECT reserves0 FROM reserves WHERE pair = ?').get(qCD);
+        ok(r2 && r2.reserves0 !== '0', 'v2Prefilter: false reads the V2 pair again');
         db.close();
         // back to the default so the rest of the test sees the filtered graph;
         // the root-pool balances read by the first run are reused, not re-read.
@@ -211,6 +219,8 @@ try {
         const db2 = new ArbitradeDB(dbFile);
         const rCD = db2.db.prepare('SELECT reserves0 FROM reserves WHERE pair = ?').get(pCD);
         ok(rCD?.reserves0 === '0', 'and the cached verdict still drops the unreachable pool (zero reserves)');
+        const qr = db2.db.prepare('SELECT reserves0 FROM reserves WHERE pair = ?').get(qCD);
+        ok(qr?.reserves0 === '0', 'and the stale V2 reserves from the unfiltered run are zeroed');
         db2.close();
     }
 
@@ -222,8 +232,9 @@ try {
         let refused = 0, served = 0;
         // A node that refuses any getV3State over 2 pools (e.g. an eth_call gas cap).
         const capped = { call: async (tx) => {
-            const [ps] = yoIface.decodeFunctionData('getV3State', tx.data);
-            if (ps.length > 2) { refused++; throw new Error('out of gas: eth_call gas cap'); }
+            const call = yoIface.parseTransaction({ data: tx.data });
+            const n = call.name === 'getV3StatePacked' ? (call.args[0].length - 2) / 40 : call.args[0].length;
+            if (n > 2) { refused++; throw new Error('out of gas: eth_call gas cap'); }
             served++;
             return provider.call(tx);
         } };

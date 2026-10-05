@@ -347,7 +347,7 @@
         //   yarn verify-factory base 0x420DD381b31aEf6683db6B902084cB0FFECe40Da
         // (it should report the Velodrome event and match pattern "PoolFactory").
         // Only volatile pools are traded; stable pools (x³y+y³x) drop out at enumeration.
-        "PoolFactory_420dd381": {
+        "Aerodrome": {
           address: "0x420dd381b31aef6683db6b902084cb0ffece40da",
           poolEvent: "velodrome",
           feeTarget: "factory",

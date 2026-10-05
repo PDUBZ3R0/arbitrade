@@ -26,6 +26,9 @@ if [ -z "$POOL" ]; then
     exit 1
 fi
 
+# Same as deploy-contract/deploy-flasharb: no interactive "Confirm deploy?" prompt,
+# which would otherwise stall `yarn deploy-all` halfway through.
+export HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=false
 mkdir -p "log/${CHAIN}"
 LOG="log/${CHAIN}/${STAGE}.log"
 TMP_PARAMS=$(mktemp --suffix=.json)
@@ -34,8 +37,9 @@ echo "{ \"TokenProbeModule\": { \"aavePool\": \"$POOL\" } }" > "$TMP_PARAMS"
 
 {
 	echo "Aave pool (from $PARAMS): $POOL"
-	yarn hardhat compile
-	yarn hardhat ignition deploy ignition/modules/TokenProbeModule.ts --network $CHAIN --parameters $TMP_PARAMS
+	yarn hardhat compile || exit 1
+	yarn hardhat ignition deploy ignition/modules/TokenProbeModule.ts --network $CHAIN --parameters $TMP_PARAMS || exit 1
 	echo ""
 	echo "Next: add the TokenProbeModule#TokenProbe address above as  probe: \"0x...\"  in the chain block of conf/${CHAIN}.json5"
 } 2>&1 | tee "$LOG"
+exit ${PIPESTATUS[0]}

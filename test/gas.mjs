@@ -27,7 +27,7 @@ async function cycle(nHops, edge) {
   await (await root.mint(POOL,E(10_000_000))).wait();
   const exec=await deploy('FlashArbExecutor',POOL); const EX=await exec.getAddress();
   const hops = [];
-  for (let i=0;i<nHops;i++) hops.push({ pair:paddr[i], tokenIn:addr[i], feePpm:3000, recipient: i===nHops-1?EX:paddr[i+1] });
+  for (let i=0;i<nHops;i++) hops.push({ pair:paddr[i], tokenIn:addr[i], feePpm:3000, recipient: i===nHops-1?EX:paddr[i+1], kind: 0 });
   const tx = await exec.executeArb(addr[0], E(1000), 0n, hops);
   const rc = await tx.wait();
   return rc.gasUsed;

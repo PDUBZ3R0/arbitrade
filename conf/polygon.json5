@@ -4,7 +4,7 @@
     id: 137,
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
-    contract: '0x2A7e091B283846835f536a889201cbD48365B37E',
+    contract: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
     // Was 0x77b9D93a… — copied from sonic/gnosis, where that IS the executor.
     // On Polygon YoBatches was never deployed, so the deployer's nonce sequence
     // is shifted by one: FlashArbExecutor landed at 0xB7D2055… (see
@@ -553,6 +553,12 @@
           deployBlock: 17383679,
           fee: 0.003,
         },
+        // ---- find-factories 2026-10-05 (log/polygon/find-factories.log)
+        UniswapV2Factory_5c69bee7: {   // 274 pairs — Ethereum's UniV2 factory address, redeployed here by
+          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',   // someone else; not Uniswap's Polygon V2
+          deployBlock: 46393048,                                     // (0x9e5a52f5). Expect mostly dead pairs.
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees polygon
+        },
       },
     },
     v2fee: {
@@ -620,7 +626,11 @@
     solidly: {
       list: {
         Retro: {
-          address: '0xb52B28dC308F7ae25B31646B609198d7Bb505c24',
+          // 2026-10-05: was 0xb52B28dC… — that is the IMPLEMENTATION behind this
+          // proxy (find-factories resolved EIP-1967 storage of 0x30030aa4 to it).
+          // Pools are created, and PairCreated emitted, by the proxy, so scanning
+          // the implementation found nothing and Retro had 0 pairs in the DB.
+          address: '0x30030aa4bc9bf07005cf61803ac8d0eb53e576ec',
           deployBlock: 40603026,
           feeTarget: 'pair',
           feeFunction: 'swapFee',
@@ -648,7 +658,9 @@
           feeDivisor: 10000,
         },
         PairFactoryUpgradeable_0b7795bc: {
-          address: '0xE4f8EB143eae44a3BC581E3990cF155006511f43',
+          // 2026-10-05: was 0xE4f8EB14… — the implementation behind the proxy this
+          // key is named for. Same problem as Retro above: 0 pairs scanned.
+          address: '0x0b7795bcc47594e53c376e56c148f5ff40e97fdd',
           deployBlock: 49203850,
           feeTarget: 'factory',
           feeArgSource: 'pair-stable',
@@ -691,8 +703,78 @@
           address: '0xB2072E1E10D5B8CE7b90b00Fe88ac716b7a568b4',
           deployBlock: 45753907,
         },
+        // ---- find-factories 2026-10-05, NOT enabled: the finder's Retro-degen guess
+        // (getFee(bool stable, bool degen)) is the pattern probe-fees disproved on
+        // avalanche; a wrong fee config aborts `yarn reserves`. Probe it first.
+        // PairFactory_d541bc20: {   // 33 pairs, proxy -> PairFactory impl 0xc79c8199…
+        //   address: '0xd541bc203cc2b85810d9b8e6a534eed1615528e2',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,   // finder's guess
+        // },
       },
     },
+    // Concentrated liquidity, imported 2026-10-05 from find-factories (all verified:
+    // callback read from pool bytecode, YoBatches2 reads them). Fees per pool, read
+    // at reserves time; scored by evaluate, not traded until the executor's V3 path.
+    // The v3 prefilter (reserves.v3MinRootBalance) keeps Uniswap V3's ~39k pools cheap.
+    v3: {
+      list: {
+        UniswapV3_1f98431c: {   // 38,697 pools; fees 3000/500; DexScreener uniswap
+          address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        SushiSwapV3_91793389: {   // 3,815 pools; fees 500/3000; DexScreener sushiswap WPOL/USDC
+          address: '0x917933899c6a5f8e37f31e19f92cdbff7e8ff0e2',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_91e1b990: {   // 180 pools; fees 3000/500
+          address: '0x91e1b99072f238352f59e58de875691e20dc19c1',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_38837123: {   // 53 pools; fees 3000/500/10000
+          address: '0x388371233439cf57bb8c9f2e4835954841cfcb15',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_bedf73e5: {   // 24 pools; fees 3000/500
+          address: '0xbedf73e58560024881229a0b622db448ccfa8046',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_62c54b13: {   // 22 pools; fees 500/3000/10000; sample pool liquidity $0.95
+          address: '0x62c54b138b2c8f7bf37c8cac500eda08c06dfe23',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_a600fdc8: {   // 22 pools; fees 100/500/3000
+          address: '0xa600fdc8c0521b8f598c0e1537ce462f0d302356',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        PancakeV3Factory_989b93b7: {   // 22 pools; fees 500/100
+          address: '0x989b93b79846c963c60c051cc57a80b526b75379',
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        Lif3V3Factory_3bbcca7b: {   // 19 pools; fees 3000/500
+          address: '0x3bbcca7b3ee96718adf6178bf17d90684ee14745',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
+
+    // ---- find-factories 2026-10-05: verified and REJECTED (not configured, no blacklist needed)
+    //   Algebra, not modelled yet: 0x411b0facc3489691f28ad58c47006af5e3ab3a28 (8,061 pools — QuickSwap V3,
+    //     as far as I know the biggest CL venue on Polygon after Uniswap), 0x134c1dbe… (180)
+    //   Not slot0-shaped: 0x5f1dddbf… (424), 0xc7a59029… (340, the KyberSwap Elastic factory address)
+    //   V3 with an unrecognised swap callback: 0xec3c5db0… (26), 0xe7ae959b… (25), 0x2d5dbe49… (24), 0xc05a5aa5… (21)
+    //   V2-event, no standard swap(): 0x9a1e1681… (36), 0xf2747127… (29), 0xcf3da3e3… (18), 0xe41bd99d… (18), 0xed156d08… (18)
+    //   V2-shaped, fee constant not found: 0x684d8c18… (31), 0x595ac8cd… (20)
+    //   Already decided earlier, left as they were: 8 in polygon-blacklist.json5 (dead / restricted),
+    //     3 commented out above (BaseV1Factory_ba06043a, PairFactory_eaf188cd, Factory_b5d0cb07).
   },
   flashloan: {
   "provider": "aave-v3",

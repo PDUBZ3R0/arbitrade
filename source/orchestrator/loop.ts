@@ -138,24 +138,28 @@ export async function runOrchestratorPass(
     };
 
     try {
-        const evalResult = await evaluateTriangles(cfg, dbFile, {
-            limit: candidatesPerPass,
-            minProfitTokens,
-            maxRoiPct,
-            // Cycles with a v3 hop are scored by `yarn evaluate` but cannot be
-            // traded until FlashArbExecutor has a V3 swap-callback path.
-            executableOnly: true,
-            minLiquidityTokens,
-            minInputTokens,
-        });
-
-        const executor = new CandidateExecutor(cfg, provider, evalResult.rootPricing, {
+        // Pricing arrives with the evaluation below; the executor is built
+        // first only to ask whether the deployed contract can trade V3 hops.
+        const executor = new CandidateExecutor(cfg, provider, {}, {
             ownerAddress: opts.ownerAddress,
             live: opts.live,
             signer: opts.signer,
             gasMarginMultiple: opts.gasMarginMultiple,
             minProfitTokens,
         });
+
+        const evalResult = await evaluateTriangles(cfg, dbFile, {
+            limit: candidatesPerPass,
+            minProfitTokens,
+            maxRoiPct,
+            // Cycles with a v3 hop compete for the attempt slots only when the
+            // executor has the V3 swap path (HOP_V3); an older deployment gets
+            // V2-only cycles, as before.
+            executableOnly: !(await executor.supportsV3()),
+            minLiquidityTokens,
+            minInputTokens,
+        });
+        executor.setRootPricing(evalResult.rootPricing);
 
         // See ./select.ts: without this, a pass can spend every attempt on
         // permutations of one broken cycle.

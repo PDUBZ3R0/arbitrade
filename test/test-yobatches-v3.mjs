@@ -16,6 +16,11 @@
 //   4. getReserves still answers in the flat two-words-per-pair layout.
 //   5. Gas per pool at several window sizes, so batch size can be chosen
 //      against the node's eth_call gas cap.
+//   6. YoBatches3's packed reads return exactly what the ABI reads return —
+//      every pool and window size, junk entries, zero / small / > 2^128
+//      balances — in a fraction of the bytes. Sections 1-4 above already run
+//      through the packed path, because the client picks it automatically
+//      for a YoBatches3 (ARB_NO_PACKED=1 forces the ABI one).
 //
 //   npm i -D @uniswap/v3-core@1.0.1 solc@0.8.24     (one-time)
 //   node test/test-yobatches-v3.mjs                 (anvil on PATH)
@@ -39,6 +44,7 @@ const input = {
     language: 'Solidity',
     sources: {
         'YoBatches2.sol': { content: fs.readFileSync(here('../contracts/YoBatches2.sol'), 'utf8') },
+        'YoBatches3.sol': { content: fs.readFileSync(here('../contracts/YoBatches3.sol'), 'utf8') },
         'V3Harness.sol': { content: fs.readFileSync(here('./v3-golden/V3Harness.sol'), 'utf8') },
     },
     settings: { optimizer: { enabled: true, runs: 200 }, outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },
@@ -46,7 +52,7 @@ const input = {
 const compiled = JSON.parse(solc.compile(JSON.stringify(input)));
 for (const e of compiled.errors ?? []) if (e.severity === 'error') { console.error(e.formattedMessage); process.exit(1); }
 const pick = (f, n) => ({ abi: compiled.contracts[f][n].abi, bytecode: '0x' + compiled.contracts[f][n].evm.bytecode.object });
-const A = { Yo: pick('YoBatches2.sol', 'YoBatches2'), Tok: pick('V3Harness.sol', 'Tok'), Harness: pick('V3Harness.sol', 'Harness') };
+const A = { Yo: pick('YoBatches3.sol', 'YoBatches3'), Tok: pick('V3Harness.sol', 'Tok'), Harness: pick('V3Harness.sol', 'Harness') };
 const art = n => require(`@uniswap/v3-core/artifacts/contracts/${n}.sol/${n}.json`);
 const F = art('UniswapV3Factory'), P = art('UniswapV3Pool');
 
@@ -186,6 +192,70 @@ try {
         const r = await getReservesByPairs(provider, YO, [[holder, pools[0].t0, pools[0].t1], [addrs[0], ethers.ZeroAddress, pools[0].t1]]);
         ok(r[0].reserves0 === 123456789n && r[0].reserves1 === 0n, 'balance read back as reserve0');
         ok(r[1].reserves0 === 0n, 'codeless token reads as 0 instead of reverting');
+    }
+
+    console.log('\n6. packed reads = ABI reads, in fewer bytes');
+    {
+        const { supportsPacked } = await import('../source/util/yobatches.ts');
+        ok(await supportsPacked(provider, YO), 'client detects the packed functions on YoBatches3');
+        const junk = [await signer.getAddress(), pools[0].t0, ethers.ZeroAddress];
+        const list = [...addrs.slice(0, 4), junk[0], ...addrs.slice(4, 8), junk[1], ...addrs.slice(8), junk[2]];
+        const norm = (x) => JSON.stringify(x, (k, v) => typeof v === 'bigint' ? v.toString() : v);
+        const vi = new ethers.Interface(A.Yo.abi);
+        const blockTag = await provider.getBlockNumber();
+        let same = true, abiBytes = 0, packedBytes = 0;
+        for (const words of [0, 1, 2, 3]) {
+            const packed = await getV3States(provider, YO, list, words, blockTag);
+            process.env.ARB_NO_PACKED = '1';
+            const plain = await getV3States(provider, YO, list, words, blockTag);
+            delete process.env.ARB_NO_PACKED;
+            if (norm(packed.pools) !== norm(plain.pools) || packed.block !== plain.block) same = false;
+            abiBytes += plain.bytes; packedBytes += packed.bytes;
+        }
+        ok(same, 'getV3StatePacked decodes identically to getV3State (words 0-3, 12 pools + 3 junk)');
+        const pIn = vi.encodeFunctionData('getV3StatePacked', ['0x' + list.map(a => a.slice(2)).join(''), 2]).length;
+        const aIn = vi.encodeFunctionData('getV3State', [list, 2]).length;
+        console.log(`  v3: calldata ${aIn / 2 - 1} -> ${pIn / 2 - 1} bytes, returndata ${abiBytes} -> ${packedBytes} bytes ` +
+            `(${(abiBytes / packedBytes).toFixed(1)}x smaller)`);
+        ok(packedBytes * 2 < abiBytes, 'packed v3 response is under half the size');
+
+        // Reserves: zero, small, and a balance above 2^128 (huge-supply tokens exist).
+        const ta = new ethers.Contract(pools[0].t0, A.Tok.abi, signer);
+        const tb = new ethers.Contract(pools[0].t1, A.Tok.abi, signer);
+        const holders = Array.from({ length: 6 }, () => ethers.Wallet.createRandom().address);
+        await send(ta.mint(holders[0], 1n, ov()));
+        await send(ta.mint(holders[1], (1n << 200n) + 12345n, ov()));
+        await send(tb.mint(holders[1], 255n, ov()));
+        await send(tb.mint(holders[2], 256n, ov()));
+        const triples = [
+            ...holders.map(h => [h, pools[0].t0, pools[0].t1]),
+            [addrs[0], ethers.ZeroAddress, pools[0].t1],          // codeless token
+            [addrs[1], await signer.getAddress(), pools[0].t0],   // EOA as token
+            ...addrs.map((a, i) => [a, pools[i].t0, pools[i].t1]),
+        ];
+        const pr = await getReservesByPairs(provider, YO, triples);
+        process.env.ARB_NO_PACKED = '1';
+        const ar = await getReservesByPairs(provider, YO, triples);
+        delete process.env.ARB_NO_PACKED;
+        ok(norm(pr) === norm(ar), 'getReservesPacked = getReserves (0, 1, 255, 256, 2^200+12345, junk tokens, real pools)');
+        ok(pr[1].reserves0 === (1n << 200n) + 12345n, 'a balance above 2^128 survives the variable-length encoding');
+        // getReservesByPool: the contract reads token0()/token1() itself.
+        const canon = addrs.map((a, i) => [a, pools[i].t0, pools[i].t1]);
+        const bp = await getReservesByPairs(provider, YO, canon, { canonical: true });
+        process.env.ARB_NO_PACKED = '1';
+        const ap = await getReservesByPairs(provider, YO, canon);
+        delete process.env.ARB_NO_PACKED;
+        ok(norm(bp) === norm(ap) && bp.some(r => r.reserves0 > 0n), 'getReservesByPool = getReserves on real pools (tokens read by the contract)');
+        const junkPool = await getReservesByPairs(provider, YO, [[await signer.getAddress(), pools[0].t0, pools[0].t1], [pools[0].t0, pools[0].t0, pools[0].t1]], { canonical: true });
+        ok(junkPool.every(r => r.reserves0 === 0n && r.reserves1 === 0n), 'an EOA or a non-pool contract reads as 0 / 0');
+        const byPoolReq = (vi.encodeFunctionData('getReservesByPool', ['0x' + canon.map(c => c[0].slice(2)).join('')]).length - 2) / 2;
+        const abiCanon = (vi.encodeFunctionData('getReserves', [canon]).length - 2) / 2;
+        console.log(`  by-pool: calldata ${abiCanon} -> ${byPoolReq} bytes for ${canon.length} pairs (${(abiCanon / byPoolReq).toFixed(1)}x smaller)`);
+        const pq = 0;
+        const reqBytes = 2 + 20 * new Set(triples.flatMap(t => [t[1].toLowerCase(), t[2].toLowerCase()])).size + 24 * triples.length;
+        const abiReq = (vi.encodeFunctionData('getReserves', [triples]).length - 2) / 2;
+        console.log(`  reserves: calldata ${abiReq} -> ~${reqBytes + 4 + 64} bytes for ${triples.length} pairs`);
+        void pq;
     }
 
     console.log('\n5. gas per pool (for choosing a batch size)');

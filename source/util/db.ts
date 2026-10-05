@@ -988,6 +988,21 @@ export class ArbitradeDB {
      * pool that stops responding drops out of enumeration instead of being
      * scored on its last known price forever.
      */
+    /**
+     * Zero the reserves of pairs the reachability prefilter dropped, so a
+     * stale price from an earlier full read cannot linger in enumeration.
+     * Only rows that are not already zero are touched, which keeps a run
+     * that drops millions of pairs from rewriting millions of rows.
+     */
+    zeroReserves(pairs: string[]): number {
+        const now = Math.floor(Date.now() / 1000);
+        const st = this.db.prepare(`UPDATE reserves SET reserves0 = '0', reserves1 = '0', updatedAt = ?
+            WHERE pair = ? AND (reserves0 != '0' OR reserves1 != '0')`);
+        let n = 0;
+        this.db.transaction(() => { for (const p of pairs) n += st.run(now, p.toLowerCase()).changes; })();
+        return n;
+    }
+
     /** Cached root-pool balances checked at or after `since` (unix s), by lowercase pool. */
     getRootChecks(since: number): Map<string, { bal0: bigint; bal1: bigint }> {
         const out = new Map<string, { bal0: bigint; bal1: bigint }>();

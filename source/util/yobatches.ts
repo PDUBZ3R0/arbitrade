@@ -28,7 +28,50 @@ import type { V3Pool } from './calculus-v3.js';
 const iface = new Interface([
     'function getReserves(address[3][] args) view returns (uint256[])',
     'function getV3State(address[] pools, uint256 words) view returns (uint256[])',
+    'function getReservesPacked(bytes req) view returns (bytes)',
+    'function getV3StatePacked(bytes pools, uint256 words) view returns (bytes)',
+    'function getReservesByPool(bytes pools) view returns (bytes)',
 ]);
+
+// -----------------------------------------------------------------------------
+// Packed transport (YoBatches3). Same reads, a quarter of the calldata and
+// about a third of the returndata — see contracts/YoBatches3.sol for the
+// layouts. Used automatically when the deployed contract has the packed
+// functions; ARB_NO_PACKED=1 forces the ABI forms.
+// -----------------------------------------------------------------------------
+
+const packedSupport = new Map<string, Promise<boolean>>();
+/** Whether `address` exposes the packed reads (checked once per address per process). */
+export function supportsPacked(provider: JsonRpcProvider, address: string): Promise<boolean> {
+    if (process.env.ARB_NO_PACKED === '1') return Promise.resolve(false);
+    const key = address.toLowerCase();
+    let p = packedSupport.get(key);
+    if (!p) {
+        p = provider.getCode(address).then(code => {
+            const c = code.toLowerCase();
+            return ['getReservesPacked', 'getV3StatePacked', 'getReservesByPool'].every(fn => c.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
+        }).catch(() => false);
+        packedSupport.set(key, p);
+    }
+    return p;
+}
+
+/** Cursor over packed bytes. */
+class Rd {
+    private i = 0;
+    private readonly b: Uint8Array;
+    constructor(b: Uint8Array) { this.b = b; }
+    get done() { return this.i >= this.b.length; }
+    u(n: number): bigint {
+        if (this.i + n > this.b.length) throw new Error('packed response truncated');
+        let v = 0n;
+        for (let k = 0; k < n; k++) v = (v << 8n) | BigInt(this.b[this.i++]);
+        return v;
+    }
+    s(n: number): bigint { return BigInt.asIntN(n * 8, this.u(n)); }
+    v(): bigint { const l = Number(this.u(1)); if (l > 32) throw new Error('packed VAR length > 32'); return l ? this.u(l) : 0n; }
+}
+const hexToBytes = (h: string) => Uint8Array.from(Buffer.from(h.startsWith('0x') ? h.slice(2) : h, 'hex'));
 
 export type ReservesRow = {
     pair: string;
@@ -57,7 +100,7 @@ export type ReservesRow = {
 export async function assertYoBatches2(provider: JsonRpcProvider, address: string, chainId?: number): Promise<void> {
     const code = (await provider.getCode(address)).toLowerCase();
     const where = `chain.contract ${address}`;
-    const fix = `Deploy it with \`yarn deploy-contract <chain>\` (or look up Yo2Module#YoBatches2 in ` +
+    const fix = `Deploy it with \`yarn deploy-contract <chain>\` (or look up Yo3Module#YoBatches3 / Yo2Module#YoBatches2 in ` +
         `ignition/deployments/chain-${chainId ?? '<id>'}/deployed_addresses.json) and set chain.contract to that address.`;
     if (code === '0x') throw new Error(`${where} has no code on this chain. ${fix}`);
     const missing = ['getReserves', 'getV3State'].filter(fn => !code.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
@@ -71,8 +114,48 @@ export async function getReservesByPairs(
     provider: JsonRpcProvider,
     yobatchesAddress: string,
     triples: Array<[string, string, string]>,
+    opts: {
+        /**
+         * Every triple is [pair, pair.token0(), pair.token1()] — true for
+         * anything taken from the pairs table. Lets YoBatches3 look the
+         * tokens up itself (getReservesByPool, 20 bytes of calldata per
+         * pair). Leave unset for arbitrary (holder, tokenA, tokenB) reads.
+         */
+        canonical?: boolean;
+    } = {},
 ): Promise<ReservesRow[]> {
     if (triples.length === 0) return [];
+
+    if (opts.canonical && await supportsPacked(provider, yobatchesAddress)) {
+        const req = '0x' + triples.map(t => t[0].toLowerCase().slice(2)).join('');
+        const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData('getReservesByPool', [req]) });
+        const r = new Rd(hexToBytes(iface.decodeFunctionResult('getReservesByPool', raw)[0] as string));
+        const rows = triples.map(([pair, token0, token1]) => ({ pair, token0, reserves0: r.v(), token1, reserves1: r.v() }));
+        if (!r.done) throw new Error('getReservesByPool: trailing bytes — layout mismatch');
+        return rows;
+    }
+
+    if (await supportsPacked(provider, yobatchesAddress)) {
+        // Token table: a batch mostly repeats a few root tokens.
+        const tokIdx = new Map<string, number>();
+        const tokens: string[] = [];
+        const idx = (t: string) => {
+            const k = t.toLowerCase();
+            let i = tokIdx.get(k);
+            if (i === undefined) { i = tokens.length; tokIdx.set(k, i); tokens.push(k); }
+            return i;
+        };
+        const entries = triples.map(([pair, a, b]) => [pair.toLowerCase(), idx(a), idx(b)] as const);
+        if (tokens.length > 0xffff) throw new Error('getReservesPacked: more than 65535 distinct tokens in one batch');
+        const hex = (n: number, bytes: number) => n.toString(16).padStart(bytes * 2, '0');
+        const req = '0x' + hex(tokens.length, 2) + tokens.map(t => t.slice(2)).join('') +
+            entries.map(([pair, ia, ib]) => pair.slice(2) + hex(ia, 2) + hex(ib, 2)).join('');
+        const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData('getReservesPacked', [req]) });
+        const r = new Rd(hexToBytes(iface.decodeFunctionResult('getReservesPacked', raw)[0] as string));
+        const rows = triples.map(([pair, token0, token1]) => ({ pair, token0, reserves0: r.v(), token1, reserves1: r.v() }));
+        if (!r.done) throw new Error('getReservesPacked: trailing bytes — layout mismatch');
+        return rows;
+    }
 
     const data = iface.encodeFunctionData('getReserves', [triples]);
     const raw = await provider.call({ to: yobatchesAddress, data });
@@ -124,6 +207,34 @@ export async function getV3States(
     blockTag?: number | string,
 ): Promise<V3StateBatch> {
     if (pools.length === 0) return { block: 0, pools: [] };
+
+    if (await supportsPacked(provider, yobatchesAddress)) {
+        const req = '0x' + pools.map(p => p.toLowerCase().slice(2)).join('');
+        const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData('getV3StatePacked', [req, words]), blockTag });
+        const bytes = hexToBytes(iface.decodeFunctionResult('getV3StatePacked', raw)[0] as string);
+        const r = new Rd(bytes);
+        const block = Number(r.u(8));
+        const out: V3StateBatch['pools'] = [];
+        for (const address of pools) {
+            if (r.u(1) === 0n) { out.push(null); continue; }
+            const sqrtPriceX96 = r.v();
+            const tick = Number(r.s(3));
+            const liquidity = r.v();
+            const fee = Number(r.u(3));
+            const tickSpacing = Number(r.s(3));
+            const n = Number(r.u(2));
+            const ticks: V3Pool['ticks'] = [];
+            for (let j = 0; j < n; j++) ticks.push({ index: Number(r.s(3)), liquidityNet: r.s(16) });
+            const w0 = Math.floor(tick / tickSpacing) >> 8;
+            out.push({
+                address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks,
+                windowLow: (w0 - words) * 256 * tickSpacing,
+                windowHigh: ((w0 + words) * 256 + 255) * tickSpacing,
+            });
+        }
+        if (!r.done) throw new Error('getV3StatePacked: trailing bytes — layout mismatch');
+        return { block, pools: out, bytes: (raw.length - 2) / 2 };
+    }
 
     const data = iface.encodeFunctionData('getV3State', [pools, words]);
     const raw = await provider.call({ to: yobatchesAddress, data, blockTag });

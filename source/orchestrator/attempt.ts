@@ -31,16 +31,32 @@ import { fetchUsdPrice } from '../util/usd-price.ts';
 
 export const EXECUTOR_ABI = [
     // Hops carry no output amounts: the contract sizes each swap from live
-    // reserves and the amount that actually arrived. minProfit is the on-chain
-    // floor enforced against the real closing balance.
-    'function executeArb(address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient)[] hops) external',
+    // state and the amount that actually arrived. minProfit is the on-chain
+    // floor enforced against the real closing balance. `kind` is 0 for a
+    // V2-style pair, 1 for a Uniswap/PancakeV3 pool.
+    'function executeArb(address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) external',
     // Same, from any supported lender: source = FLASH_SOURCES[provider]
     // (0 Aave V3, 1 Balancer V2, 2 Uniswap V3 pool flash, 3 Morpho Blue).
     // This is what the orchestrator calls; see flashTermsFor in config.ts.
-    'function executeArbFrom(uint8 source, address lender, address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient)[] hops) external',
+    'function executeArbFrom(uint8 source, address lender, address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) external',
     'function SOURCE_MORPHO() view returns (uint8)',
+    'function HOP_V3() view returns (uint8)',
     // Carries the REALISED profit. The off-chain prediction is an upper bound,
     // so the ledger records this rather than what we expected.
+    'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
+];
+
+/** Swap callbacks FlashArbExecutor implements for HOP_V3 hops. */
+export const EXECUTOR_V3_CALLBACKS = new Set(['uniswapV3SwapCallback', 'pancakeV3SwapCallback']);
+
+/**
+ * The executor before V3 hops: same functions, 4-field Hop (no `kind`), so a
+ * different selector. Still driven for V2-only cycles, so an existing
+ * deployment keeps trading until it is redeployed.
+ */
+export const EXECUTOR_ABI_V2_ONLY = [
+    'function executeArbFrom(uint8 source, address lender, address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient)[] hops) external',
+    'function SOURCE_MORPHO() view returns (uint8)',
     'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
 ];
 
@@ -127,7 +143,7 @@ export type ExecutorOptions = {
  * the caller's business, not this class's.
  */
 export class CandidateExecutor {
-    private readonly executor: Contract;
+    private executor: Contract;
     private readonly gasMarginMultiple: number;
     private readonly minProfitTokens: number;
     private readonly gasPriceMaxAgeMs: number;
@@ -202,9 +218,14 @@ export class CandidateExecutor {
      * The deployed executor must have executeArbFrom (multi-provider). An
      * older deployment would revert every call with EMPTY revert data, which
      * reads like a liquidity problem; say what it actually is, once, instead.
-     * Checked by calling a view only the new contract has; cached.
+     * Checked by calling views only the newer contracts have; cached.
+     *
+     * Also settles which ABI to speak: an executor with HOP_V3 takes the
+     * 5-field Hop and can trade V3 hops; one without it takes the 4-field Hop
+     * and is still used for V2-only cycles.
      */
     private executorVersionError: string | null | undefined;
+    private executorHasV3 = false;
     private async checkExecutorVersion(): Promise<string | null> {
         if (this.executorVersionError !== undefined) return this.executorVersionError;
         try {
@@ -215,8 +236,28 @@ export class CandidateExecutor {
                 `executor at ${this.cfg.chain.executor} predates multi-provider flash loans (no executeArbFrom) — ` +
                 `redeploy: yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then update chain.executor`;
             console.warn(`  [!] ${this.executorVersionError}`);
+            return this.executorVersionError;
         }
-        return this.executorVersionError;
+        try {
+            await this.executor.HOP_V3();
+            this.executorHasV3 = true;
+        } catch {
+            this.executorHasV3 = false;
+            this.executor = new Contract(this.cfg.chain.executor!, EXECUTOR_ABI_V2_ONLY, this.provider);
+            console.warn(
+                `  [!] executor at ${this.cfg.chain.executor} predates V3 hops — trading V2-only cycles with it. ` +
+                `For V3: yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then yarn contract-update ${this.cfg.chain.label}`);
+        }
+        return null;
+    }
+
+    /**
+     * Whether the deployed executor can trade V3 hops. Callers ask the
+     * evaluator for V2-only cycles when it cannot, so V3 cycles do not take
+     * the attempt slots only to be refused here.
+     */
+    async supportsV3(): Promise<boolean> {
+        return (await this.checkExecutorVersion()) === null && this.executorHasV3;
     }
 
     /** Replace the pricing table, e.g. after the hot loop re-runs the evaluator. */
@@ -314,15 +355,6 @@ export class CandidateExecutor {
             candidate, built: null, simulated: false, broadcast: false, confirmed: false,
         };
 
-        // Last line of defence: every caller already asks the evaluator for
-        // executableOnly candidates, but a v3 hop reaching buildHops would be
-        // walked as a V2 pair (getReserves on a pool that has none) and sent
-        // to an executor that would call pair.swap() on it.
-        if (candidate.hops.some(h => h.kind === 'v3')) {
-            attempt.simulationError = 'cycle has a v3 hop — FlashArbExecutor has no V3 swap path yet';
-            return attempt;
-        }
-
         // Where this root is borrowed from. No lender, no trade.
         const terms = flashTermsFor(this.cfg, candidate.rootToken);
         if (!terms) {
@@ -341,6 +373,23 @@ export class CandidateExecutor {
             attempt.simulationError = versionError;
             return attempt;
         }
+        if (!this.executorHasV3 && candidate.hops.some(h => h.kind === 'v3')) {
+            attempt.simulationError =
+                `cycle has a v3 hop and the executor at ${this.cfg.chain.executor} predates V3 hops — ` +
+                `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy`;
+            return attempt;
+        }
+        // The executor answers two swap callbacks. A pool that calls anything
+        // else would revert the swap; say so here instead of paying for an
+        // estimateGas to find out.
+        for (const h of candidate.hops) {
+            if (h.kind !== 'v3') continue;
+            const cb = this.cfg.factories.find(f => f.address.toLowerCase() === h.factory.toLowerCase())?.callback;
+            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb)) {
+                attempt.simulationError = `v3 hop ${h.pair} calls ${cb}, which the executor does not implement`;
+                return attempt;
+            }
+        }
 
         await this.ensureGasPrice();
 
@@ -350,11 +399,14 @@ export class CandidateExecutor {
             db,
             candidate,
             this.minProfitWeiFor(candidate.rootToken),
+            this.cfg.chain.contract,
         );
         attempt.built = built;
         if (!built) return attempt;   // edge decayed since evaluation
 
-        const hopsArg = built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient]);
+        const hopsArg = this.executorHasV3
+            ? built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])
+            : built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient]);
 
         // 1. Measure gas for THIS candidate. estimateGas also reverts if the
         // path is not executable, so it doubles as a first validation.

@@ -28,7 +28,7 @@
 import { JsonRpcProvider, Interface } from 'ethers';
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import { ArbitradeDB } from '../util/db.ts';
-import { getReservesByPairs, assertYoBatches2 } from '../util/yobatches.ts';
+import { getReservesByPairs, assertYoBatches2, supportsPacked } from '../util/yobatches.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
 import { buildPriceGraph } from '../util/numeraire-price.ts';
 import { fetchV3States, filterReachableV3 } from './v3-state.ts';
@@ -62,7 +62,7 @@ async function fetchReservesWithRetry(
     let lastErr: Error | undefined;
     for (let attempt = 0; attempt <= RESERVES_RETRY_DELAYS_MS.length; attempt++) {
         try {
-            return await getReservesByPairs(provider, contractAddr, triples);
+            return await getReservesByPairs(provider, contractAddr, triples, { canonical: true });
         } catch (err) {
             lastErr = err as Error;
             // No more attempts — propagate to caller
@@ -222,6 +222,11 @@ export async function fetchReserves(
     }
     const provider = makeProvider(cfg.chain);
     await assertYoBatches2(provider, cfg.chain.contract, cfg.chain.id);
+    if (!(await supportsPacked(provider, cfg.chain.contract))) {
+        console.log(`[i] chain.contract is a YoBatches2: reads use the ABI layouts. \`yarn deploy-contract ${cfg.chain.label}\` ` +
+            `deploys YoBatches3 (same functions plus packed ones — ~4x less calldata, ~3-4x less returndata); ` +
+            `point chain.contract at it and the packed reads are used automatically.`);
+    }
     const db = new ArbitradeDB(dbFilePath);
     const result: FetchResult = { reservesUpdated: 0, reservesSkipped: 0, metadataUpdated: 0, orphanFactories: 0, errors: [], factoryStats: [] };
 
@@ -322,11 +327,21 @@ export async function fetchReserves(
         });
         const rawC = opts.concurrency ?? (cfg.chain as any).threads ?? DEFAULT_CONCURRENCY;
         const v3Concurrency = Math.max(1, Math.min(MAX_CONCURRENCY, Number(rawC) || DEFAULT_CONCURRENCY));
-        if (v3Pools.length > 0 && cfg.reserves?.v3Prefilter !== false) {
+        // V2-style pairs are queried here, before the prefilter, so one
+        // reachability pass can decide both groups.
+        let pairs = db.getPairsForReservesFetch({
+            factory: opts.factory,
+            maxAgeSeconds: opts.maxAgeSeconds,
+            factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
+        });
+        const v3Filter = cfg.reserves?.v3Prefilter !== false;
+        const v2Filter = cfg.reserves?.v2Prefilter !== false;
+        if ((v3Filter && v3Pools.length > 0) || (v2Filter && pairs.length > 0)) {
             // Root tokens: what the enumerator starts cycles from, plus the
             // chain's wrapped native so a chain without flash tokens yet
             // still gets a meaningful filter.
-            const minRoot = cfg.reserves?.v3MinRootBalance ?? cfg.evaluator?.minLiquidityTokens ?? 0;
+            const minRootCfg = cfg.reserves?.minRootBalance ?? cfg.reserves?.v3MinRootBalance;
+            const minRoot = minRootCfg ?? cfg.evaluator?.minLiquidityTokens ?? 0;
             const rootDecimals = new Map<string, number>();
             for (const t of cfg.flashloan?.tokens ?? []) rootDecimals.set(t.address.toLowerCase(), t.decimals);
             if (cfg.chain.token && !rootDecimals.has(cfg.chain.token.toLowerCase())) {
@@ -334,7 +349,7 @@ export async function fetchReserves(
                 rootDecimals.set(cfg.chain.token.toLowerCase(), row?.decimals ?? 18);
             }
             if (rootDecimals.size === 0) {
-                console.log(`\n[v3 prefilter] skipped: no flashloan.tokens and no chain.token to root it on — reading every pool`);
+                console.log(`\n[prefilter] skipped: no flashloan.tokens and no chain.token to root it on — reading every pool`);
             } else {
                 const roots = new Map<string, bigint>();
                 for (const [addr, dec] of rootDecimals) roots.set(addr, parseUnitsSafe(minRoot, dec));
@@ -342,10 +357,15 @@ export async function fetchReserves(
                     factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
                     kinds: ['v2', 'v3'],
                 });
-                console.log(`\n[v3 prefilter] ${rootDecimals.size} root token(s), min root-side balance ${minRoot} ` +
-                    `(reserves.v3MinRootBalance${cfg.reserves?.v3MinRootBalance === undefined ? ', defaulted' : ''})`);
+                const groups = [v3Filter && v3Pools.length ? 'v3' : null, v2Filter && pairs.length ? 'v2' : null].filter(Boolean).join(' + ');
+                console.log(`\n[prefilter] ${groups}: ${rootDecimals.size} root token(s), min root-side balance ${minRoot} ` +
+                    `(reserves.minRootBalance${minRootCfg === undefined ? ', defaulted to evaluator.minLiquidityTokens' : ''})`);
                 const ttlH = cfg.reserves?.v3PrefilterTtlHours ?? 12;
-                const pf = await filterReachableV3(provider, cfg.chain.contract!, v3Pools, allPairs, roots, {
+                const candidates = [
+                    ...(v3Filter ? v3Pools.map(p => ({ ...p, kind: 'v3' as const })) : []),
+                    ...(v2Filter ? pairs.map(p => ({ ...p, kind: 'v2' as const })) : []),
+                ];
+                const pf = await filterReachableV3(provider, cfg.chain.contract!, candidates, allPairs, roots, {
                     batchSize: Math.max(cfg.reserves?.batchSize ?? 500, 500),
                     concurrency: v3Concurrency,
                     cache: ttlH > 0 ? {
@@ -353,18 +373,19 @@ export async function fetchReserves(
                         put: (rows) => db.putRootChecks(rows),
                     } : undefined,
                 });
-                console.log(`  [v3 prefilter] ${pf.rootPoolsLive}/${pf.rootPools} root pools pass, ${pf.neighbours} reachable tokens → ` +
-                    `reading ${pf.keep.length} of ${v3Pools.length} v3 pools, skipping ${pf.dropped.length} unreachable` +
+                const keepSet = new Set(pf.keep.map(p => p.pair.toLowerCase()));
+                const v3Before = v3Pools.length, v2Before = pairs.length;
+                if (v3Filter) v3Pools = v3Pools.filter(p => keepSet.has(p.pair.toLowerCase()));
+                if (v2Filter) pairs = pairs.filter(p => keepSet.has(p.pair.toLowerCase()));
+                console.log(`  [prefilter] ${pf.rootPoolsLive}/${pf.rootPools} root pools pass, ${pf.neighbours} reachable tokens → ` +
+                    (v3Filter ? `v3 ${v3Pools.length}/${v3Before}` : '') + (v3Filter && v2Filter ? ', ' : '') +
+                    (v2Filter ? `v2 ${pairs.length}/${v2Before}` : '') + ` to read, ${pf.dropped.length} unreachable skipped` +
                     (pf.failedBatches ? ` (${pf.failedBatches} balance batch(es) failed — those pools were kept)` : ''));
                 // Unreachable pools get zero reserves so a stale price from
                 // an earlier full read can't linger in enumeration.
-                for (let i = 0; i < pf.dropped.length; i += 20_000) {
-                    db.upsertV3States(pf.dropped.slice(i, i + 20_000).map(p => ({
-                        pool: p.pair, blockNumber: 0, state: null, reserves0: 0n, reserves1: 0n,
-                    })));
-                }
+                const zeroed = db.zeroReserves(pf.dropped.map(p => p.pair));
+                if (zeroed > 0) console.log(`  [prefilter] zeroed stale reserves on ${zeroed} newly unreachable pair(s)`);
                 result.reservesSkipped += pf.dropped.length;
-                v3Pools = pf.keep;
             }
         }
         if (v3Pools.length > 0) {
@@ -399,11 +420,6 @@ export async function fetchReserves(
         }
 
         // Group all requested pairs by factory address
-        const pairs = db.getPairsForReservesFetch({
-            factory: opts.factory,
-            maxAgeSeconds: opts.maxAgeSeconds,
-            factoryAllowlist: opts.strict ? currentFactoryAddrs : undefined,
-        });
         if (pairs.length === 0) {
             console.log(v3Pools.length > 0 ? 'No V2-style pairs need refresh.' : 'No pairs need refresh.');
             return result;
@@ -805,6 +821,9 @@ async function fetchPerPairMetadata(
         console.log(`  Prefetched degen flag for ${fetched}/${targets.length} pair(s)`);
     }
 
+    // The stable-curve flag's getter: stable() by default, stableSwap() on Camelot.
+    const stableFn = factory.stableFunction ?? 'stable';
+    const stableIface = stableFn === 'stable' ? pairStableIface : new Interface([`function ${stableFn}() view returns (bool)`]);
     const callsPerPair = wantStable ? 2 : 1;
     const pairsPerBatch = Math.max(1, Math.floor(METADATA_BATCH_SIZE * 2 / callsPerPair));
 
@@ -856,7 +875,7 @@ async function fetchPerPairMetadata(
                 calls.push({
                     target: t.pair,
                     allowFailure: true,
-                    callData: pairStableIface.encodeFunctionData('stable'),
+                    callData: stableIface.encodeFunctionData(stableFn),
                 });
             }
         }
@@ -897,7 +916,7 @@ async function fetchPerPairMetadata(
             let stable: boolean | null = null;
             if (wantStable && stableResult?.success && stableResult.returnData && stableResult.returnData !== '0x') {
                 try {
-                    stable = Boolean(pairStableIface.decodeFunctionResult('stable', stableResult.returnData)[0]);
+                    stable = Boolean(stableIface.decodeFunctionResult(stableFn, stableResult.returnData)[0]);
                 } catch { /* leave null */ }
             }
 

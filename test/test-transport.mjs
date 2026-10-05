@@ -142,11 +142,15 @@ const proxy = await startRestrictedProxy(8546);
        'the downgrade was reported, not silent', errors[0] ?? 'none');
     ok(watcher.ready() === true, 'ready() once a chunked range drained');
     await bump();
-    for (let i = 0; i < 40 && batches.length === 0; i++) await sleep(150);
+    // Wait for THIS bump's Sync, not just any batch: the priming drain
+    // re-reads the overlap blocks and can deliver section 2's bump first,
+    // which made this check flaky on a fast machine.
+    const [r0] = await watched.getReserves();
+    const seen = () => batches.flatMap(b => b.u).filter(x => x.pair === WP).pop();
+    for (let i = 0; i < 60 && seen()?.reserve0 !== Number(r0); i++) await sleep(150);
     ok(batches.length > 0, 'delivered through chunked filters', `${batches.length} batch(es)`);
     ok(batches.every(b => b.u.every(x => x.pair === WP)), 'still filters out the ignored pair');
-    const [r0] = await watched.getReserves();
-    const lastSeen = batches.flatMap(b => b.u).filter(x => x.pair === WP).pop();
+    const lastSeen = seen();
     ok(lastSeen && lastSeen.reserve0 === Number(r0), 'chunked reserves match getReserves()',
        `${lastSeen?.reserve0.toExponential(4)} vs ${Number(r0).toExponential(4)}`);
     await watcher.stop();

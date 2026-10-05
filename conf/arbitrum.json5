@@ -6,23 +6,418 @@
     name: 'Arbitrum One',
     currency: 'ETH',
     token: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',   // WETH — the numeraire for thresholds
-    // contract: '0x…',  // YoBatches2 — yarn deploy-contract arbitrum
-    // executor: '0x…',  // FlashArbExecutor — yarn deploy-flasharb arbitrum
+    contract: '0x9301c3F24DDB4E953df31D51df23F102680155c6',  // YoBatches3 — yarn deploy-contract arbitrum
+    executor: '0x2A7e091B283846835f536a889201cbD48365B37E',  // FlashArbExecutor — yarn deploy-flasharb arbitrum
+    probe: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
   },
   reserves: {
-    dust: 0,
+    dust: 0.0001,
   },
   evaluator: {
-    // Denominated in chain.token. Tune after the first yarn evaluate.
+    // Denominated in chain.token (WETH), like base.json5 and optimism.json5. Also the
+    // reachability prefilter's root-balance floor (reserves.minRootBalance overrides).
     minProfitTokens: 0.001,
-    minInputTokens: 0.01,
-    minLiquidityTokens: 0,
+    minInputTokens: 0.001,
+    minLiquidityTokens: 0.001,
   },
-  // yarn find-factories arbitrum, then paste the verified snippets here.
+  // Imported 2026-10-05 from log/arbitrum/find-factories.log (84 verified: 43 V2, 30 Solidly,
+  // 11 V3). Keys carry the brand where I recognised the address, else the explorer name.
   factories: {
+    v2: {
+      list: {
+        SushiSwapV2_c35dadb6: {   // 32,894 pairs — explorer: "UniswapV2Factory"
+          address: '0xc35dadb65012ec5796536bd9864ed8773abc74c4',
+          deployBlock: 70,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2_f1d7cc64: {   // 8,851 pairs — explorer: "UniswapV2Factory"
+          address: '0xf1d7cc64fb4452f05c498126312ebe29f30fbcf9',
+          deployBlock: 150442611,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        PancakeV2_02a84c1b: {   // 844 pairs — explorer: "PancakeFactory"
+          address: '0x02a84c1b3bbd7401a5f7fa98a384ebc70bb5749e',
+          deployBlock: 101022992,
+          fee: 0.0025,  // PancakeSwap V2's 0.25% as far as I know — confirm with yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_5c69bee7: {   // 363 pairs — explorer: "UniswapV2Factory"
+          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+          deployBlock: 122052467,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        OreoSwapFactory_20fafd2b: {   // 261 pairs — explorer: "OreoSwapFactory"
+          address: '0x20fafd2b0ba599416d75eb54f48cda9812964f46',
+          deployBlock: 46646983,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        TraderJoeV1_ae4ec990: {   // 259 pairs — explorer: "JoeFactory"
+          address: '0xae4ec9901c3076d0ddbe76a520f9e90a6227acb7',
+          deployBlock: 47838075,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Zyberswap_ac2ee06a: {   // 237 pairs — explorer: "ZyberFactory"
+          address: '0xac2ee06a14c52570ef3b9812ed240bce359772e7',
+          deployBlock: 54768263,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_71539d09: {   // 112 pairs — explorer: "UniswapV2Factory"
+          address: '0x71539d09d3890195dda87a6198b98b75211b72f3',
+          deployBlock: 35972125,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        ApeFactory_cf083be4: {   // 94 pairs — explorer: "ApeFactory"
+          address: '0xcf083be4164828f00cae704ec15a36d711491284',
+          deployBlock: 66421657,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        ArbDexFactory_1c6e968f: {   // 94 pairs — explorer: "ArbDexFactory"
+          address: '0x1c6e968f2e6c9dec61db874e28589fd5ce3e1f2c',
+          deployBlock: 67685822,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        AlienFactory_ac9d019b: {   // 78 pairs — explorer: "AlienFactory"
+          address: '0xac9d019b7c8b7a4bbac64b2dbf6791ed672ba98b',
+          deployBlock: 61419853,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        SwapFactory_d394e9cc: {   // 75 pairs — explorer: "SwapFactory"
+          address: '0xd394e9cc20f43d2651293756f8d320668e850f1b',
+          deployBlock: 3692134,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        DeltaSwapFactory_cb85e122: {   // 52 pairs — explorer: "DeltaSwapFactory"
+          address: '0xcb85e1222f715a81b8edaeb73b28182fa37cffa8',
+          deployBlock: 173455645,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Factory_988a696d: {   // 50 pairs — source not verified on explorer
+          address: '0x988a696deaf103d44b06535aea254af163ccb8d1',
+          deployBlock: 101252267,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_77fa9389: {   // 46 pairs — explorer: "UniswapV2Factory"
+          address: '0x77fa938998e196701c324149f771efd6e980df0a',
+          deployBlock: 232580414,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        LfgSwapFactory_e5552e03: {   // 45 pairs — explorer: "LfgSwapFactory"
+          address: '0xe5552e0318531f9ec585c83bdc8956c08bf74b71',
+          deployBlock: 73424886,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Factory_5c5e5bbd: {   // 44 pairs — source not verified on explorer
+          address: '0x5c5e5bbdc0c166fdf164e2fddaf0229f9d7c5bef',
+          deployBlock: 91956236,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        SwaprumV2Factory_d757c986: {   // 38 pairs — explorer: "SwaprumV2Factory"
+          address: '0xd757c986a28f82761fe874bc40073718dc1e980c',
+          deployBlock: 84632146,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        ElkFactory_a59b2044: {   // 37 pairs — explorer: "ElkFactory"
+          address: '0xa59b2044eafd15ee4def138d410d764c9023e1f0',
+          deployBlock: 2412294,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        MeerkatFactory_fe369930: {   // 32 pairs — explorer: "MeerkatFactory"
+          address: '0xfe3699303d3eb460638e8ada2bf1cff092c33f22',
+          deployBlock: 72404739,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        SharkyFactory_36800286: {   // 30 pairs — explorer: "SharkyFactory"
+          address: '0x36800286f652ddc9bdcffedc4e71fdd207c1d07c',
+          deployBlock: 61857915,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Factory_fc19fc6b: {   // 28 pairs — source not verified on explorer
+          address: '0xfc19fc6b18d925dd95f3ed37cf733935cd46d21a',
+          deployBlock: 263998394,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        PlaygroundFactory_c90e80e5: {   // 27 pairs — explorer: "PlaygroundFactory"
+          address: '0xc90e80e535fece464a578f78ba065a464bd368f7',
+          deployBlock: 32973753,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        PlaygroundFactory_bacd8134: {   // 25 pairs — explorer: "PlaygroundFactory"
+          address: '0xbacd8134992c16a9270e0d09486922961978c40f',
+          deployBlock: 33667462,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Factory_b8b683e2: {   // 24 pairs — source not verified on explorer
+          address: '0xb8b683e21389d6bb49f5a6a628c046e91398a838',
+          deployBlock: 202587665,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        ArbiswapFactory_88f1e030: {   // 23 pairs — explorer: "ArbiswapFactory"
+          address: '0x88f1e030eb4c6c4320da3992070baf6c648ce37f',
+          deployBlock: 61876712,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        EtherVistaFactory_680bc186: {   // 22 pairs — explorer: "EtherVistaFactory"
+          address: '0x680bc1867062803f35f025d3a49a54fcd75651e8',
+          deployBlock: 252892392,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        DuckstailFactory_8c75117e: {   // 21 pairs — explorer: "DuckstailFactory"
+          address: '0x8c75117ea9a1341530640e27c0b4c484e54ad2e3',
+          deployBlock: 146067387,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        NebulaSwapFactory_78fc0a3e: {   // 20 pairs — explorer: "NebulaSwapFactory"
+          address: '0x78fc0a3ec00158b80f3b52fa86c65163856b9bdb',
+          deployBlock: 88690467,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        Factory_3a9aaa78: {   // 19 pairs — source not verified on explorer
+          address: '0x3a9aaa7870f5a035606ba9a84d8b821b445468f7',
+          deployBlock: 110325751,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        WaterfallFactory_63fd0a6a: {   // 18 pairs — explorer: "WaterfallFactory"
+          address: '0x63fd0a6acbffb128e7bc7753bfa3b8639a233d50',
+          deployBlock: 51022706,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        XchangeFactory_7de80046: {   // 18 pairs — explorer: "XchangeFactory"
+          address: '0x7de800467afce442019884f51a4a1b9143a34fac',
+          deployBlock: 58867297,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_b7e9667c: {   // 18 pairs — explorer: "UniswapV2Factory"
+          address: '0xb7e9667c11de2dc4646541e7d9a054b85ceb44fb',
+          deployBlock: 99365226,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_6554ad1a: {   // 16 pairs — explorer: "UniswapV2Factory"
+          address: '0x6554ad1afaa3f4ce16dc31030403590f467417a6',
+          deployBlock: 1514330,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        UniswapV2Factory_7c7f1c8e: {   // 16 pairs — explorer: "UniswapV2Factory"
+          address: '0x7c7f1c8e2b38d4c06218565bc4c9d8231b0628c0',
+          deployBlock: 65741502,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        WokenFactory_0dee376e: {   // 16 pairs — explorer: "WokenFactory"
+          address: '0x0dee376e1dcb4dae68837de8ee5abe27e629acd0',
+          deployBlock: 150093253,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        ThePepeDEXFactory_12062979: {   // 15 pairs — explorer: "ThePepeDEXFactory"
+          address: '0x12062979abaff2aa23839bdfe6ba8d5a821ab28d',
+          deployBlock: 84137066,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+        SwapV2Factory_1246fa62: {   // 15 pairs — explorer: "SwapV2Factory"
+          address: '0x1246fa62467a9ac0892a2d2a9f9aafc2f5609442',
+          deployBlock: 285379026,
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees arbitrum
+        },
+      },
+    },
+    v2fee: {
+      list: {
+        // Camelot V2 (the finder offered it as plain v2 at 0.3%). Camelot pairs carry their own
+        // fees, DIRECTIONAL: token0FeePercent() applies when token0 goes in, token1FeePercent()
+        // when token1 does, both over FEE_DENOMINATOR 100000 (default 300 = 0.3%). The bot has
+        // one fee per pair, so this reads token0's; a pair whose token1 fee is higher will
+        // overstate edges in that direction, the simulation reverts, and the hot loop mutes it.
+        // Stable pairs are flagged by stableSwap(), not stable().
+        Camelot_6eccab42: {   // 4,454 pairs — explorer: "CamelotFactory"
+          address: '0x6eccab422d763ac031210895c81787e87b43a652',
+          deployBlock: 35061163,
+          feeTarget: 'pair',
+          feeFunction: 'token0FeePercent',
+          feeDivisor: 100000,
+          hasStableFlag: true,
+          stableFunction: 'stableSwap',
+        },
+        UniswapV2FactoryCustomFee_c15161f4: {   // 212 pairs — explorer: "UniswapV2FactoryCustomFee"; pattern: Widely-forked template — pair exposes uint16 `fee` in 0.1% units.
+          address: '0xc15161f4555ea1a7a8cc77470a3910464509f9a8',
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        Swapr_359f20ad: {   // 114 pairs — explorer: "DXswapFactory"; pattern: DXswap (Swapr) — pair.swapFee() returns basis points.
+          address: '0x359f20ad0f42d75a5077e65f30274cabe6f4f01a',
+          feeTarget: 'pair',
+          feeFunction: 'swapFee',
+          feeDivisor: 10000,
+        },
+        UniswapV2FactoryCustomFee_d43b99b7: {   // 40 pairs — explorer: "UniswapV2FactoryCustomFee"; pattern: Widely-forked template — pair exposes uint16 `fee` in 0.1% units.
+          address: '0xd43b99b7e1380a966a7ed65c2d0454db0bc6e95c',
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+        UniswapV2FactoryCustomFee_d1f525ec: {   // 24 pairs — explorer: "UniswapV2FactoryCustomFee"; pattern: Widely-forked template — pair exposes uint16 `fee` in 0.1% units.
+          address: '0xd1f525ec6f56d9120ee3027dc8df3be132777503',
+          feeTarget: 'pair',
+          feeFunction: 'fee',
+          feeDivisor: 1000,
+        },
+      },
+    },
+    solidly: {
+      list: {
+        // Enabled: the finder PROBED these fee functions on live pairs and got sane values.
+        LizardFactory_734d8463: {   // 205 pairs — explorer: "LizardFactory"; probed BaseV1Factory [low] — wide fee variance across pairs (0.000166 to 0.010000, 60.2x)
+          address: '0x734d84631f00dc0d3fcd18b04b6cf42bfd407074',
+          deployBlock: 56682138,
+          feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        },
+        SoluneaFactory_6ef06557: {   // 33 pairs — explorer: "SoluneaFactory"; probed BaseV1Factory [high] — all 3 sample(s) in typical fee band (0.0005 to 0.0025)
+          address: '0x6ef065573cd3fff4c375d4d36e6ca93cd6e3d499',
+          deployBlock: 89487229,
+          feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        },
+        BurgerFactory_989cf6bf: {   // 31 pairs — explorer: "BurgerFactory"; probed PairFactoryUpgradeable [high] — all 3 sample(s) in typical fee band (0.0020 to 0.0020)
+          address: '0x989cf6bfa8997e8a01fa07f3009392d1c734c719',
+          deployBlock: 77481557,
+          feeTarget: 'factory', feeArgSource: 'pair-stable', feeFunction: 'getFee', feeDivisor: 10000,
+        },
+        Factory_fd742b57: {   // 27 pairs — TransparentUpgradeableProxy → impl "Factory"; probed BaseV1Factory [low] — wide fee variance across pairs (0.000150 to 0.001500, 10.0x)
+          address: '0xfd742b576c123b6447c98ffaa54941e3fc41ebe7',
+          deployBlock: 49820926,
+          feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        },
+        TransparentUpgradeableProxy_4b2fc379: {   // 18 pairs — explorer: "TransparentUpgradeableProxy"; probed BaseV1Factory [low] — wide fee variance across pairs (0.000150 to 0.001500, 10.0x)
+          address: '0x4b2fc379e9b65be47dc22547c677722851ab7fc6',
+          deployBlock: 49665863,
+          feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        },
+        TransparentUpgradeableProxy_c66fe866: {   // 18 pairs — explorer: "TransparentUpgradeableProxy"; probed BaseV1Factory [low] — wide fee variance across pairs (0.000150 to 0.001500, 10.0x)
+          address: '0xc66fe866567cb38e344039d908a9c7b26a1ae84f',
+          deployBlock: 49671489,
+          feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        },
+
+        // ---- NOT enabled. Each fee config below is the finder's guess from the contract
+        // NAME, not a probe, and a wrong one aborts `yarn reserves`. Run
+        // `yarn verify-factory arbitrum <address>` (its interface probe tries every known
+        // fee pattern on live pairs) and uncomment with what it reports.
+        // PairFactory_aaa20d08: {   // 311 pairs — RamsesTransparentUpgradeableProxy → impl "PairFactory" — Ramses V2 (legacy) behind its proxy, as far as I know; finder guessed getFee(pair-stable-degen)/10000
+        //   address: '0xaaa20d08e59f6561f242b08513d36266c5a29415',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // PairFactoryUpgradeable_ce924086: {   // 285 pairs — TransparentUpgradeableProxy → impl "PairFactoryUpgradeable" — as far as I know Chronos; finder guessed getFee(pair-stable)/10000
+        //   address: '0xce9240869391928253ed9cc9bcb8cb98cb5b0722',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // PairFactory_a36b55db: {   // 39 pairs — explorer: "PairFactory"; finder guessed getFee(pair-stable-degen)/10000
+        //   address: '0xa36b55dbe8e83eb69c686368cf93abc8a238cc5f',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // PairFactory_bd7a8c05: {   // 30 pairs — explorer: "PairFactory"; finder guessed getFee(pair-stable-degen)/10000
+        //   address: '0xbd7a8c05d0eb214e3c5cc63d4b77c2ea38bde440',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // PairFactory_daf8b79b: {   // 17 pairs — explorer: "PairFactory"; finder guessed getFee(pair-stable-degen)/10000
+        //   address: '0xdaf8b79b3c46db8be754fc5e98b620ee243eb279',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // No fee pattern found by the probe (needs a manual look at the pair source):
+        //   0xf7a23b9a9dcb8d0aff67012565c5844c20c11afc  86 pairs — explorer: "StrFactory"
+        //   0xd158bd9e8b6efd3ca76830b66715aa2b7bad2218  58 pairs — explorer: "SwapFactory"
+        //   0xdbc994f3843cf1fe9252f076f971de5ec9b6aa1d  26 pairs — SolidlyProxy → impl "BaseV2PairFactoryInterface"
+        //   0x87ae3ee3010b4a672eb1bee55cfb0c9458135763  18 pairs — explorer: "TransparentUpgradeableProxy"
+        // 15 "PoolFactory" contracts emitting Velodrome V2's PoolCreated, 23-26 pools each —
+        // same name and near-identical size, which reads more like one deployer's clones than
+        // 15 separate DEXes. Fee config is the name-based Velodrome guess
+        // (getFee(pool, stable)/10000, poolEvent 'velodrome'); verify-factory one before enabling:
+        //   0x07588abc3ef2fad9780ad3c0413f76755f78162c  0x36d65b82ec23f804d396ae3b364d84fbd672d5f6  0x931ea70160a62be904265b3123a223543a12fc1b
+        //   0x89f6872e5cca638777177e07d340b0dc2a52b603  0xd6773fd3f82e06ea71b82249dcb640f0b0e5db59  0xa0f6bee0479d0f008ca29513038f9acccfefb72f
+        //   0x90682c6120a3c3f52258e441143569b95a14c95c  0xc6df17017aec41a120b863d0262efdf896033f63  0xd0567b23fcaf08faa23e517901f2f744774d042c
+        //   0xfa8ad262605a89b2072e00009f9bb88276ec439a  0x9697552931f5f2c7287db7ee3a6aeb5c8de21870  0xa2c963acc6ee31a9269f269011b01d3e625e5f71
+        //   0x6df18f08df448ca2336da5fe1db9c6fef7d5dfd5  0xc7ee0b06c2d9c97589bea593c6e9f6965451fe93  0xe90f5daee6bb3f696b94349772b5920a2120b8c0
+      },
+    },
+    // Concentrated liquidity (all verified: callback from pool bytecode). Fees per pool,
+    // read at reserves time; scored by evaluate, not traded until the executor's V3 path.
+    v3: {
+      list: {
+        UniswapV3_1f98431c: {   // 27,012 pools; fees 3000/500 pips, spacings 60/10
+          address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
+          deployBlock: 165,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        SushiV3_1af415a1: {   // 1,371 pools; fees 3000/500 pips, spacings 60/10
+          address: '0x1af415a1eba07a4986a52b6f2e7de7003d82231e',
+          deployBlock: 75998697,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        PancakeV3_0bfbcf9f: {   // 962 pools; fees 500/10000/2500 pips, spacings 10/200/50
+          address: '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+          deployBlock: 101028949,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        UniswapV3Factory_5b1c257b: {   // 55 pools; fees 3000/500/10000 pips, spacings 60/10/200
+          address: '0x5b1c257b88537d1ce2af55a1760336288ccd28b6',
+          deployBlock: 130373860,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_855f2c70: {   // 50 pools; fees 450/80 pips, spacings 10/1
+          address: '0x855f2c70cf5cb1d56c15ed309a4dfefb88ed909e',
+          deployBlock: 86863305,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        RamsesV3Factory_d0019e86: {   // 48 pools; fees 500/50/1000 pips, spacings 10/5/1
+          address: '0xd0019e86edb35e1fedaab03aed5c3c60f115d28b',
+          deployBlock: 420275313,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_8219904a: {   // 29 pools; fees 3000/100/30000 pips, spacings 60/1/600
+          address: '0x8219904a8683d06e38605276bacbf2d29aa764dd',
+          deployBlock: 91137559,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        PancakeV3Factory_947bc57c: {   // 20 pools; fees 2500/100 pips, spacings 50/1
+          address: '0x947bc57cefdd22420c9a6d61387fe4d4cf8a090d',
+          deployBlock: 78247327,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        PancakeV3Factory_aedc38bd: {   // 19 pools; fees 500/2500/10000 pips, spacings 10/50/200
+          address: '0xaedc38bd52b0380b2af4980948925734fd54fbf4',
+          deployBlock: 180404938,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        PancakeV3Factory_4d4a3dd8: {   // 18 pools; fees 10000/2500/500/100 pips, spacings 200/50/10/1
+          address: '0x4d4a3dd8cb48f5278a15ec4dd8516868e089f704',
+          deployBlock: 414287560,
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        RubiconV3Factory_045b7012: {   // 15 pools; fees 3000/500 pips, spacings 60/10
+          address: '0x045b7012cbd158c1b48874310f985adb48aa62ba',
+          deployBlock: 447703806,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
+
+    // ---- verified and REJECTED (not configured, no blacklist needed)
+    //   Algebra (globalState/dynamic fee, not modelled yet): 0x1a3c9b1d… (1,536 — Camelot V3, as far as I know),
+    //     0xd490f2f6… (195), 0xbefc4b40… (79), 0x9c2abd63… (50), 0x6b692b58… (50)
+    //   CL, no known swap-callback selector: 0xaa2cd747… (409 — Ramses V2 CL, as far as I know), 0x27c960de… (117),
+    //     0xd8516593… (23), 0x582e08a1… (17)
+    //   Not slot0-shaped: 0x5f1dddbf… (216), 0xc7a59029… (189, KyberSwap Elastic), 0x70fe4a44… (69)
+    //   V2-event, no standard swap(): 0x77db9678… (80), 0x41a00e3f… (39), 0xa06b6d99… (27)
+    //   V2-shaped, fee constant not found: 0xbc467d80… (20)
   },
   // Also here: Balancer V2 vault (flash fee 0.000%).
   //   { symbol: …, address: …, decimals: …, provider: 'balancer-v2' }

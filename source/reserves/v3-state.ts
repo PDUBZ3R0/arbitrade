@@ -233,7 +233,7 @@ export async function filterReachableV3<T extends { pair: string; token0: string
         else toRead.push(p);
     }
     if (cached > 0) {
-        console.log(`  [v3 prefilter] ${cached.toLocaleString()} root pool(s) from cache, ${toRead.length.toLocaleString()} to read`);
+        console.log(`  [prefilter] ${cached.toLocaleString()} root pool(s) from cache, ${toRead.length.toLocaleString()} to read`);
     }
 
     const batches: Array<typeof rootPairs> = [];
@@ -248,7 +248,7 @@ export async function filterReachableV3<T extends { pair: string; token0: string
             let rows: Awaited<ReturnType<typeof getReservesByPairs>> | null = null;
             for (let attempt = 0; ; attempt++) {
                 try {
-                    rows = await getReservesByPairs(provider, yobatches, batch.map(p => [p.pair, p.token0, p.token1] as [string, string, string]));
+                    rows = await getReservesByPairs(provider, yobatches, batch.map(p => [p.pair, p.token0, p.token1] as [string, string, string]), { canonical: true });
                     break;
                 } catch {
                     if (attempt >= RETRY_DELAYS_MS.length) break;
@@ -264,7 +264,7 @@ export async function filterReachableV3<T extends { pair: string; token0: string
                 try { opts.cache?.put(rows.map(r => ({ pool: r.pair, bal0: r.reserves0, bal1: r.reserves1 }))); } catch { /* cache is best-effort */ }
             }
             done++;
-            process.stdout.write(`\r  [v3 prefilter] ${done}/${batches.length} root-pool balance batches — ${live.size} live, ` +
+            process.stdout.write(`\r  [prefilter] ${done}/${batches.length} root-pool balance batches — ${live.size} live, ` +
                 `${neighbours.size} reachable tokens (${((Date.now() - t0) / 1000).toFixed(0)}s)   `);
         }
     };

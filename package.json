@@ -9,9 +9,11 @@
   },
   "scripts": {
     "preinstall": "npm install -g json5",
-    "deploy-contract": "sh scripts/deploy.sh",
-    "deploy-flasharb": "sh scripts/deploy-flasharb.sh",
+    "deploy-all": "bash scripts/deploy-all.sh",
+    "deploy-contract": "bash scripts/deploy-contract.sh",
+    "deploy-flasharb": "bash scripts/deploy-flasharb.sh",
     "deploy-probe": "bash scripts/deploy-probe.sh",
+    "contract-update": "sh scripts/log.sh source/util contract-update",
     "discover": "sh scripts/log.sh source/util discover-deploy-block",
     "verify": "sh scripts/log.sh source/util verify-factory",
     "add-chain": "sh scripts/log.sh source add-chain",

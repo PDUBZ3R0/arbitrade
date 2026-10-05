@@ -1,0 +1,49 @@
+{
+    factories: [
+        {
+            address: "0x77c839b1381c1792a1d5d5ed06f506b2ff0f4b51",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0x22505cb4d5d10b2c848a9d75c57ea72a66066d8c",
+            reason:  "dead (0/2 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0x59985d79e1e69f659f4ab97db07a35ce73d9174b",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0x5ca135cb8527d76e932f34b5145575f9d8cbe08e",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0x795f29526eb570d01bdd36a443aa442ae8c4d052",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0xa007a9716dba05289df85a90d0fd9d39bee808de",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0xa19d67ec07bb11ae9ef562b4b9a25f8c2f14d4fc",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0xaedc38bd52b0380b2af4980948925734fd54fbf4",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+        {
+            address: "0xf03aafec07a48fe9c87ef0d4283d0c7861bd620c",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-05",
+        },
+    ]
+}

@@ -1,79 +1,384 @@
-{ 
+{
+  // Rebuilt 2026-10-05: the flashloan token "addresses" here were Etherscan URLs
+  // (https://optimistic.etherscan.io/address/0x…), which nothing can call. The
+  // block below is the one `yarn add-chain 10 optimism` printed (log/10/add-chain.log).
   chain: {
-    id: 10,    name: "Optimism",          currency: "ETH", 
+    id: 10,
+    name: 'Optimism',
+    currency: 'ETH',
+    token: '0x4200000000000000000000000000000000000006',   // WETH
+    contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',  // YoBatches3 — yarn deploy-contract optimism
+    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',  // FlashArbExecutor — yarn deploy-flasharb optimism
+    probe: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
+    threads: 10,
+    interval: 3000,
+    pagesize: 1000000,
   },
-  flashloan: { 
-		provider: "aave-v3",
-		tokens:[
-  {
-    "symbol": "DAI",
-    "address": "https://optimistic.etherscan.io/address/0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
-    "decimals": 18
+  reserves: {
+    dust: 0.0001,
   },
-  {
-    "symbol": "LINK",
-    "address": "https://optimistic.etherscan.io/address/0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6",
-    "decimals": 18
+  evaluator: {
+    // Denominated in chain.token (WETH), like base.json5.
+    minProfitTokens: 0.0001,
+    minInputTokens: 0.001,
+    minLiquidityTokens: 0.001,
   },
-  {
-    "symbol": "USDC",
-    "address": "https://optimistic.etherscan.io/address/0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
-    "decimals": 6
+  // Imported 2026-10-05 from log/optimism/find-factories.log (--verify-limit 100).
+  factories: {
+    v2: {
+      list: {
+        UniswapV2_0c3c1c53: {   // 5,390 pairs — explorer: "UniswapV2Factory"
+          address: '0x0c3c1c532f1e39edf36be9fe0be1410313e074bf',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_fbc12984: {   // 114 pairs — explorer: "UniswapV2Factory"
+          address: '0xfbc12984689e5f15626bad03ad60160fe98b303c',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_8bcedd62: {   // 108 pairs — explorer: "UniswapV2Factory"
+          address: '0x8bcedd62dd46f1a76f8a1633d4f5b76e0cda521e',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        ElkFactory_edfad3a0: {   // 56 pairs — explorer: "ElkFactory"
+          address: '0xedfad3a0f42a8920b011bb0332ade632e552d846',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_5c69bee7: {   // 45 pairs — explorer: "UniswapV2Factory"
+          address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_f3c7978d: {   // 35 pairs — explorer: "UniswapV2Factory"
+          address: '0xf3c7978ddd70b4158b53e897f980093183ca5c52',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        AquilaFactory_3b2c6fe3: {   // 13 pairs — explorer: "AquilaFactory"
+          address: '0x3b2c6fe3039b42f00e98b76531c05932abfb258e',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        BarFactory_795f2952: {   // 12 pairs — explorer: "BarFactory"
+          address: '0x795f29526eb570d01bdd36a443aa442ae8c4d052',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_7962223d: {   // 11 pairs — explorer: "UniswapV2Factory"
+          address: '0x7962223d940e1b099abae8f54cabfb8a3a0887ab',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        ZombieFactory_5ee7b02a: {   // 10 pairs — explorer: "ZombieFactory"
+          address: '0x5ee7b02ad05bc8d1d4c7e112ce360231225c1a15',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_4e34b4c5: {   // 8 pairs — explorer: "UniswapV2Factory"
+          address: '0x4e34b4c5345bce7fd435839df59f3bf26dfc7d6e',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_42873f44: {   // 8 pairs
+          address: '0x42873f4492f61585ffda0c4d29252dd41a29c5bd',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        SicleFactory_2f0c7c98: {   // 6 pairs — explorer: "SicleFactory"
+          address: '0x2f0c7c98462651bb2102f6cd05acdad333e031b0',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        DefySwapFactory_dbe4cc36: {   // 6 pairs — explorer: "DefySwapFactory"
+          address: '0xdbe4cc36d0c19858d8cc7c5030593e9922ac680d',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_5ef01535: {   // 4 pairs — explorer: "UniswapV2Factory"
+          address: '0x5ef0153590d4a762f129dcf3c59186d91365e4e1',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        MoxieSwapFactory_9d405cd7: {   // 4 pairs — explorer: "MoxieSwapFactory"
+          address: '0x9d405cd7496fb1d64bd629c618c508d4a29ca6b2',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_a19d67ec: {   // 4 pairs — explorer: "UniswapV2Factory"
+          address: '0xa19d67ec07bb11ae9ef562b4b9a25f8c2f14d4fc',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_05aa7fa5: {   // 4 pairs — explorer: "UniswapV2Factory"
+          address: '0x05aa7fa5a82346d34832b3e93b408fa7e6b0a145',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        JugglerV2Factory_0bef94f1: {   // 3 pairs — explorer: "JugglerV2Factory"
+          address: '0x0bef94f16ce5b7c83b0bdbd9924cf80239ba9837',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_e9d11daa: {   // 3 pairs
+          address: '0xe9d11daad2e4f0a5e9fa630201d5b3ede86cd0c0',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_7baf274e: {   // 3 pairs
+          address: '0x7baf274ec936d07d011cc1f0e388548ebfae354d',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_6e74ae23: {   // 3 pairs
+          address: '0x6e74ae23fb677ef13eb15ed130f8ef8bae3be568',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_5fa89de9: {   // 3 pairs — explorer: "UniswapV2Factory"
+          address: '0x5fa89de9018e1021264c174748b782c03e78c35f',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_b19bb09a: {   // 3 pairs — explorer: "UniswapV2Factory"
+          address: '0xb19bb09a8d48549751d08e3d95f9e8dd5d90ef92',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_1264e9c8: {   // 3 pairs — explorer: "UniswapV2Factory"
+          address: '0x1264e9c8a49e50b4e7e42c2c54eec28698ec5350',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        DackieFactory_aedc38bd: {   // 3 pairs — explorer: "DackieFactory"
+          address: '0xaedc38bd52b0380b2af4980948925734fd54fbf4',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        EjoeFactory_b1697b36: {   // 3 pairs — explorer: "EjoeFactory"
+          address: '0xb1697b36346d1800ac29d0fb886883e856803555',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        SquadswapFactory_ba34aa64: {   // 3 pairs — explorer: "SquadswapFactory"
+          address: '0xba34aa640b8be02a439221bcbea1f48c1035eef9',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        AquilaFactory_11bb952d: {   // 3 pairs — explorer: "AquilaFactory"
+          address: '0x11bb952dc97dd062271e6aa9e0defe2719559944',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        OmniFactory_7d9d5126: {   // 3 pairs — explorer: "OmniFactory"
+          address: '0x7d9d51267f7e9e6b46a48e0a75c0086f46777087',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_5ca135cb: {   // 2 pairs — explorer: "FraxswapFactory"
+          address: '0x5ca135cb8527d76e932f34b5145575f9d8cbe08e',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_f4211101: {   // 2 pairs — explorer: "FraxswapFactory"
+          address: '0xf42111014f27f8d84f93966f7eaf96edc297afab',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_81909447: {   // 2 pairs — explorer: "UniswapV2Factory"
+          address: '0x8190944748c24dd64aac627c85e6805c0ab2f88f',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_be15b919: {   // 2 pairs — explorer: "FraxswapFactory"
+          address: '0xbe15b91944ad8407facbcc127795acddd1e2b609',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        SicleFactory_ee673452: {   // 2 pairs — explorer: "SicleFactory"
+          address: '0xee673452bd981966d4799c865a96e0b92a8d0e45',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_f7aa1046: {   // 2 pairs
+          address: '0xf7aa104652cee98c132d2a9b01705abc670ae8f9',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_16ed6496: {   // 2 pairs — explorer: "UniswapV2Factory"
+          address: '0x16ed649675e6ed9f1480091123409b4b8d228dc1',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        XchangeFactory_7de80046: {   // 2 pairs — explorer: "XchangeFactory"
+          address: '0x7de800467afce442019884f51a4a1b9143a34fac',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        PancakeFactory_22505cb4: {   // 2 pairs — explorer: "PancakeFactory"
+          address: '0x22505cb4d5d10b2c848a9d75c57ea72a66066d8c',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        SmileFactory_f9775adc: {   // 1 pairs — explorer: "SmileFactory"
+          address: '0xf9775adc1b4a26662ee66517bbae23160d07dbfd',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_71158312: {   // 1 pairs — explorer: "UniswapV2Factory"
+          address: '0x711583124b362c68949254e64011f4c3eb254a4a',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_a007a971: {   // 1 pairs — explorer: "FraxswapFactory"
+          address: '0xa007a9716dba05289df85a90d0fd9d39bee808de',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_59985d79: {   // 1 pairs — explorer: "FraxswapFactory"
+          address: '0x59985d79e1e69f659f4ab97db07a35ce73d9174b',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        FraxswapFactory_f03aafec: {   // 1 pairs — explorer: "FraxswapFactory"
+          address: '0xf03aafec07a48fe9c87ef0d4283d0c7861bd620c',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_e39a8c35: {   // 1 pairs
+          address: '0xe39a8c3531929a6c82e21aafd6473bdde411c246',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        BarbarianFactory_6adea0ef: {   // 1 pairs — explorer: "BarbarianFactory"
+          address: '0x6adea0efc8df952ac683680d860a1f4db69a9425',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        PancakeFactory_c2a33a40: {   // 1 pairs — explorer: "PancakeFactory"
+          address: '0xc2a33a404e1fd76eddbf841a9327cd0e1bb4353e',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        Factory_d343e15a: {   // 1 pairs
+          address: '0xd343e15a2a8cfa7b58e812f7120c4838df566374',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_8909dc15: {   // 1 pairs — explorer: "UniswapV2Factory"
+          address: '0x8909dc15e40173ff4699343b6eb8132c65e18ec6',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        UniswapV2Factory_30b2901a: {   // 1 pairs — explorer: "UniswapV2Factory"
+          address: '0x30b2901af5d4db361d4f49645d54ca8e0f5de849',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        NomiswapFactory_f8f66ceb: {   // 1 pairs — explorer: "NomiswapFactory"
+          address: '0xf8f66ceb5e6591ff38f4a2794d83e3e7a971a7c9',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        ERC1967Proxy_3feb699c: {   // 1 pairs — explorer: "ERC1967Proxy"
+          address: '0x3feb699c9812b22a4f759f8a73980cbec9e98f27',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+        EjoeFactory_c439c680: {   // 1 pairs — explorer: "EjoeFactory"
+          address: '0xc439c680af70aef985647b2721b68f1790c9b0dc',
+          fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees optimism
+        },
+      },
+    },
+    solidly: {
+      list: {
+        // Velodrome V2 — the largest V2-style DEX on Optimism. The finder rejected it only
+        // because its YoBatches check failed on the ONE sample pool it read (getReserves vs
+        // balanceOf more than 0.5% apart — a single unsynced pool does that); its fee probe
+        // matched the PoolFactory pattern. If `yarn reserves optimism` shows its pools
+        // pricing wildly, run `yarn verify-factory optimism 0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a`.
+        VelodromeV2_f1046053: {   // 1,394 pools; PoolCreated with indexed stable (swept as "velodrome")
+          address: '0xf1046053aa5682b4f9a81b5481394da16be5ff5a',
+          poolEvent: 'velodrome',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-address-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        WhaleswapFactory_abc26f83: {   // 9 pairs; pattern: fees hardcoded by pair.stable, no on-chain query
+          address: '0xabc26f8364cc0dd728ac5c23fa40886fda3dd121',
+          stableFees: { stable: 0.0004, volatile: 0.0025 },
+        },
+        // ---- NOT enabled. Each fee config below is the finder's guess from the contract
+        // NAME, not a probe, and a wrong one aborts `yarn reserves`. Run
+        // `yarn verify-factory optimism <address>` (its interface probe tries every known
+        // fee pattern on live pairs) and uncomment with what it reports.
+        // PairFactory_25cbddb9: {   // 677 pairs — as far as I know this is Velodrome V1's PairFactory,
+        //   address: '0x25cbddb98b35ab1ff77413456b31ec81a6b6b746',   // which would be getFee(bool stable)/10000
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable', feeFunction: 'getFee', feeDivisor: 10000,   // ('pair-stable'), not the degen guess
+        // },
+        // PairFactory_12508dd9: {   // 19 pairs; finder guessed Retro-degen getFee(bool,bool)
+        //   address: '0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824',
+        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,
+        // },
+        // BaseV1Factory_ba06043a: {   // 16 pairs; finder guessed pair.swapFee()/1e6 (also commented out on polygon)
+        //   address: '0xba06043a777652baf540ccc785edafd94ee05b37',
+        //   feeTarget: 'pair', feeFunction: 'swapFee', feeDivisor: 1000000,
+        // },
+        // PoolFactory_84444783 / PoolFactory_c781fee9 (2 pairs each): named like Velodrome V2, but
+        // which creation event they emit was not recorded, and poolEvent must match it. Skipped.
+      },
+    },
+    // Concentrated liquidity (all verified: callback from pool bytecode). Fees per pool,
+    // read at reserves time; scored by evaluate, not traded until the executor's V3 path.
+    v3: {
+      list: {
+        UniswapV3_1f98431c: {   // 28,868 pools; fees 3000/10000 pips, spacings 60/200
+          address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_9c652211: {   // 447 pools; fees 500/100 pips, spacings 10/1
+          address: '0x9c6522117e2ed1fe5bdb72bb0ed5e3f2bde7dbe0',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_cc0bddb7: {   // likely Velodrome Slipstream (CLFactory + tick-spacing event); 136 pools; fees 500/365/3000 pips, spacings 100/200
+          address: '0xcc0bddb707055e04e497ab22a59c2af4391cd12f',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_c49c1777: {   // 30 pools; fees 500/3000 pips, spacings 10/60
+          address: '0xc49c177736107fd8351ed6564136b9adbe5b1ec3',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_e13dd1fb: {   // 29 pools; fees 500/3000 pips, spacings 50/200
+          address: '0xe13dd1fba721aa81a1826d9523ac9bc7d260c879',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        UniswapV3Factory_e52a36bb: {   // 22 pools; fees 10000/350 pips, spacings 200/10
+          address: '0xe52a36bb76e8f40e1117db5ff14bd1f7b058b720',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        DonaswapV3Factory_c2bc7a73: {   // 21 pools; fees 500/2500 pips, spacings 10/50
+          address: '0xc2bc7a73613b9bd5f373fe10b55c59a69f4d617b',
+          poolEvent: 'uniswap',
+          callback: 'pancakeV3SwapCallback',
+        },
+        RubiconV3Factory_53f64267: {   // 9 pools; fees 3000/500/100 pips, spacings 60/10/1
+          address: '0x53f64267ede764c53abebcc768ad7a96c6006d8a',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_61f42c56: {   // 7 pools; fees 500 pips, spacings 100
+          address: '0x61f42c56555391903da28d35aff8ee1362f1cdde',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_8526d88a: {   // 6 pools; fees 500/100/3000 pips, spacings 100/1/200
+          address: '0x8526d88a3668ce7c159e1e13820d01c9cddcac42',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        CLFactory_77c839b1: {   // 6 pools; fees 500/100/3000 pips, spacings 100/1/200
+          address: '0x77c839b1381c1792a1d5d5ed06f506b2ff0f4b51',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_b50e5b37: {   // 2 pools; fees 10000/3000 pips, spacings 200/60
+          address: '0xb50e5b3738cd99cc4572275096d02d460a733f31',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
+
+    // ---- verified and REJECTED (not configured, no blacklist needed)
+    //   Not slot0-shaped: 0x5f1dddbf… (115), 0xc7a59029… (105, KyberSwap Elastic), 0x70fe4a44… (25), 0x06b29918… (9)
+    //   Algebra: 0x0c8f7b0c… (7)      V3, unrecognised callback: 0xd6ab0566… (6)
+    //   V2-shaped, fee constant not found: 0x96eb4926… (58), 0x45e27c6f… (14), 0x6f45ccce… (12), 0x67a1412d… (5),
+    //     0xbe90fd3c… (2), 0xb7503304… (2)
+    //   V2-event, no standard swap(): 0xfb6a5de1… (4), 0x143527dc… (2), 0xadcd1288… (2), 0xbd3efbbb… (1)
+    //   Solidly, no fee pattern: 0xd02d36a5… (7), 0x52534b06… (3)
+    //   Verification hit the RPC rate limit (-32005), re-run to classify: 0x53f2dc58… (96), 0x548118c7… (51 pools), and 8 with ≤7
   },
-  {
-    "symbol": "WBTC",
-    "address": "https://optimistic.etherscan.io/address/0x68f180fcCe6836688e9084f035309E29Bf0A2095",
-    "decimals": 8
+  // Also on this chain: Balancer V2 vault (flash fee 0.000%).
+  //   { symbol: …, address: …, decimals: …, provider: 'balancer-v2' }
+  // Aave V3 (Optimism V3 Market.json). Order matters: triangle roots are assigned by
+  // position — run yarn aave-reserves optimism --order-only.
+  flashloan: {
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
+    tokens: [
+      { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1', decimals: 18 },
+      { symbol: 'LINK', address: '0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6', decimals: 18 },
+      { symbol: 'USDC.e', address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607', decimals: 6 },
+      { symbol: 'WBTC', address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095', decimals: 8 },
+      { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
+      { symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6 },
+      { symbol: 'AAVE', address: '0x76FB31fb4af56892A25e32cFC43De717950c9278', decimals: 18 },
+      { symbol: 'sUSD', address: '0x8c6f28f2F1A3C87F0f938b96d27520d9751ec8d9', decimals: 18 },
+      { symbol: 'OP', address: '0x4200000000000000000000000000000000000042', decimals: 18 },
+      { symbol: 'wstETH', address: '0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb', decimals: 18 },
+      { symbol: 'LUSD', address: '0xc40F949F8a4e094D1b49a23ea9241D289B7b2819', decimals: 18 },
+      { symbol: 'MAI', address: '0xdFA46478F9e5EA86d57387849598dbFB2e964b02', decimals: 18 },
+      { symbol: 'rETH', address: '0x9Bcef72be871e61ED4fBbc7630889beE758eb81D', decimals: 18 },
+      { symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', decimals: 6 },
+    ],
   },
-  {
-    "symbol": "WETH",
-    "address": "https://optimistic.etherscan.io/address/0x4200000000000000000000000000000000000006",
-    "decimals": 18
-  },
-  {
-    "symbol": "USDT",
-    "address": "https://optimistic.etherscan.io/address/0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
-    "decimals": 6
-  },
-  {
-    "symbol": "AAVE",
-    "address": "https://optimistic.etherscan.io/address/0x76FB31fb4af56892A25e32cFC43De717950c9278",
-    "decimals": 18
-  },
-  {
-    "symbol": "sUSD",
-    "address": "https://optimistic.etherscan.io/address/0x8c6f28f2F1A3C87F0f938b96d27520d9751ec8d9",
-    "decimals": 18
-  },
-  {
-    "symbol": "OP",
-    "address": "https://optimistic.etherscan.io/address/0x4200000000000000000000000000000000000042",
-    "decimals": 18
-  },
-  {
-    "symbol": "wstETH",
-    "address": "https://optimistic.etherscan.io/address/0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb",
-    "decimals": 18
-  },
-  {
-    "symbol": "LUSD",
-    "address": "https://optimistic.etherscan.io/address/0xc40F949F8a4e094D1b49a23ea9241D289B7b2819",
-    "decimals": 18
-  },
-  {
-    "symbol": "MAI",
-    "address": "https://optimistic.etherscan.io/address/0xdFA46478F9e5EA86d57387849598dbFB2e964b02",
-    "decimals": 18
-  },
-  {
-    "symbol": "rETH",
-    "address": "https://optimistic.etherscan.io/address/0x9Bcef72be871e61ED4fBbc7630889beE758eb81D",
-    "decimals": 18
-  },
-  {
-    "symbol": "USDCn",
-    "address": "https://optimistic.etherscan.io/address/0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
-    "decimals": 6
-  }
-]
-	} }
+}

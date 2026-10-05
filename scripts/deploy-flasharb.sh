@@ -87,7 +87,7 @@ if [ "$REDEPLOY" = "1" ] && [ -z "$CHAIN_ID" ]; then
     echo "  yarn $STAGE $CHAIN" >&2
     exit 1
 fi
-
+export HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=false
 LOG="log/${CHAIN}/${STAGE}.log"
 if [ ! -d "log/${CHAIN}" ]; then
     mkdir -p "log/${CHAIN}"
@@ -96,13 +96,14 @@ fi
 {
 	if [ "$REDEPLOY" = "1" ]; then
 		echo "--redeploy: wiping ${FUTURE_ID} from ${DEPLOYMENT_ID} so new bytecode actually deploys"
-		yarn hardhat ignition wipe "$DEPLOYMENT_ID" "$FUTURE_ID"
+		yarn hardhat ignition wipe "$DEPLOYMENT_ID" "$FUTURE_ID" || exit 1
 	fi
 
-	yarn hardhat compile
-	yarn hardhat ignition deploy ignition/modules/FlashArbModule.ts --network $CHAIN --parameters $PARAMS
+	yarn hardhat compile || exit 1
+	yarn hardhat ignition deploy ignition/modules/FlashArbModule.ts --network $CHAIN --parameters $PARAMS || exit 1
 
 } 2>&1 | tee "$LOG"
+STATUS=${PIPESTATUS[0]}
 
 # Catch the silent-no-op case even when the operator forgot --redeploy. Checked
 # against the log we just wrote, so it also covers a deploy run by hand.
@@ -123,3 +124,5 @@ if [ "$REDEPLOY" != "1" ] && grep -q "Nothing new to deploy" "$LOG"; then
     echo "" >&2
     echo "      Then update  executor:  in ${CONF} to the new address." >&2
 fi
+
+exit $STATUS

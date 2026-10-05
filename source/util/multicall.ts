@@ -44,6 +44,8 @@ export type Multicall3Result = {
 export async function multicall3(
     provider: JsonRpcProvider,
     calls: Multicall3Call[],
+    /** Read at this block instead of latest — to line up with another read. */
+    blockTag?: number | string,
 ): Promise<Multicall3Result[]> {
     if (calls.length === 0) return [];
 
@@ -51,7 +53,7 @@ export async function multicall3(
         calls.map(c => [c.target, c.allowFailure, c.callData]),
     ]);
 
-    const raw = await provider.call({ to: MULTICALL3_ADDRESS, data });
+    const raw = await provider.call({ to: MULTICALL3_ADDRESS, data, blockTag });
     const decoded = iface.decodeFunctionResult('aggregate3', raw)[0] as Result;
 
     return (decoded as unknown as Array<[boolean, string]>).map(([success, returnData]) => ({

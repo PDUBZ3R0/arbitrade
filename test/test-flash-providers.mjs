@@ -94,7 +94,7 @@ async function cycle(edge = 1.05) {
     return { root, R, A, B, P1, P2, P3 };
 }
 const hopsFor = (c, EX) => [
-    [c.P1, c.R, 3000, c.P2], [c.P2, c.A, 3000, c.P3], [c.P3, c.B, 3000, EX],
+    [c.P1, c.R, 3000, c.P2, 0], [c.P2, c.A, 3000, c.P3, 0], [c.P3, c.B, 3000, EX, 0],
 ];
 function arbEvent(rc) {
     for (const l of rc.logs) { try { const p = EXI.parseLog(l); if (p?.name === 'ArbExecuted') return p.args; } catch {} }

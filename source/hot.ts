@@ -167,7 +167,7 @@ process.stdout.write('Pricing roots (one full evaluator pass)... ');
 const t0 = Date.now();
 const baseline = await evaluateTriangles(cfg, dbFile, {
     limit: 5, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
-    executableOnly: true,   // no v3 execution path yet
+    executableOnly: true,   // the index is Sync-fed and V2-only; V3 cycles go through yarn orchestrator
 });
 console.log(`${Date.now() - t0}ms — ${Object.keys(baseline.rootPricing).length} root(s), ` +
     `${baseline.candidatesFound.toLocaleString()} candidate(s) in the snapshot`);
@@ -267,7 +267,7 @@ const hot = createHotLoop({
             if (pi === undefined) continue;
             triples.push([p, ix.tokenAddr[ix.pairToken0[pi]], ix.tokenAddr[ix.pairToken1[pi]]]);
         }
-        const rows = await getReservesByPairs(provider, cfg.chain.contract!, triples);
+        const rows = await getReservesByPairs(provider, cfg.chain.contract!, triples, { canonical: true });
         return rows.map(r => ({ pair: r.pair, reserve0: Number(r.reserves0), reserve1: Number(r.reserves1) }));
     } : undefined,
 });

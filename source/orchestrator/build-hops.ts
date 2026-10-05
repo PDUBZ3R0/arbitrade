@@ -35,6 +35,14 @@
 //
 // Still re-derived here: reserves, via one atomic Multicall3 batch (single
 // block, so every pair's reserve is mutually consistent).
+//
+// V3 HOPS. A concentrated-liquidity hop is predicted with calculus-v3.js's
+// exact tier (a port of the pool's own swap loop) on state re-read through
+// YoBatches at the same block as the V2 reserves. The routing differs from
+// V2: a V3 pool is paid from the executor in its swap callback, so the hop
+// BEFORE a V3 hop sends its output to the executor, not to the next pool.
+// A V3 hop whose swap would need tick data outside the fetched window cannot
+// be confirmed, and the candidate is dropped rather than guessed at.
 // Still NOT re-derived: fees. Already resolved per-pair by the reserves
 // fetcher's metadata step (pairs.fee in the DB, including the mutable `degen`
 // flag for Retro-degen factories) and carried through the evaluator's
@@ -44,7 +52,16 @@
 import { Interface, type JsonRpcProvider } from 'ethers';
 import type { ArbitradeDB } from '../util/db.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
+import { getV3States } from '../util/yobatches.ts';
+import { v3_amount_out_exact } from '../util/calculus-v3.js';
 import type { Candidate } from '../evaluator/evaluator.ts';
+
+/** FlashArbExecutor's hop kinds. */
+export const HOP_V2 = 0;
+export const HOP_V3 = 1;
+
+/** Tick window (bitmap words either side) re-read for each V3 hop. */
+const V3_WORDS = 3;
 
 /**
  * Matches FlashArbExecutor.Hop exactly. Note what is absent: output amounts.
@@ -58,8 +75,11 @@ export type Hop = {
     tokenIn: string;
     /** This pair's fee in parts per million (0.3% = 3000). */
     feePpm: number;
-    /** Next hop's pair, or the executor contract address on the final hop. */
+    /** Next hop's pair when that hop is V2; the executor when the next hop
+     *  is V3 or this is the final hop. */
     recipient: string;
+    /** HOP_V2 or HOP_V3. */
+    kind: number;
 };
 
 export type BuiltArb = {
@@ -154,23 +174,42 @@ export async function buildHops(
     db: ArbitradeDB,
     candidate: Candidate,
     minProfitWei: bigint,
+    /** YoBatches2/3 address (chain.contract) — required when the cycle has a V3 hop. */
+    yobatchesAddress?: string,
 ): Promise<BuiltArb | null> {
     const hops = candidate.hops;
     if (hops.length === 0) throw new Error('candidate has no hops');
+    const isV3 = (h: Candidate['hops'][number]) => h.kind === 'v3';
 
-    // 1. Atomic multicall for fresh reserves across the whole path.
-    const calls: Multicall3Call[] = hops.map(h => ({
+    // 1. Fresh state for the whole path, at ONE block: V3 pools through
+    // YoBatches (which reports the block it read at), then the V2 pairs'
+    // reserves through Multicall3 pinned to that same block.
+    const v3Hops = hops.filter(isV3);
+    const v3ByPool = new Map<string, any>();
+    let blockTag: number | undefined;
+    if (v3Hops.length > 0) {
+        if (!yobatchesAddress) throw new Error('cycle has a V3 hop but no YoBatches address (chain.contract) was given');
+        const st = await getV3States(provider, yobatchesAddress, v3Hops.map(h => h.pair), V3_WORDS);
+        for (let i = 0; i < v3Hops.length; i++) {
+            if (!st.pools[i]) return null;   // pool stopped answering slot0 — treat as dead
+            v3ByPool.set(v3Hops[i].pair.toLowerCase(), st.pools[i]);
+        }
+        blockTag = st.block;
+    }
+
+    const v2Hops = hops.filter(h => !isV3(h));
+    const calls: Multicall3Call[] = v2Hops.map(h => ({
         target: h.pair,
         allowFailure: false,
         callData: PAIR_IFACE.encodeFunctionData('getReserves', []),
     }));
-    const results = await multicall3(provider, calls);
+    const results = await multicall3(provider, calls, blockTag);
 
     const reservesByPair = new Map<string, { reserve0: bigint; reserve1: bigint }>();
-    for (let i = 0; i < hops.length; i++) {
+    for (let i = 0; i < v2Hops.length; i++) {
         if (!results[i].success) return null; // pair reverted getReserves() — treat as dead
         const decoded = PAIR_IFACE.decodeFunctionResult('getReserves', results[i].returnData);
-        reservesByPair.set(hops[i].pair.toLowerCase(), {
+        reservesByPair.set(v2Hops[i].pair.toLowerCase(), {
             reserve0: decoded[0] as bigint,
             reserve1: decoded[1] as bigint,
         });
@@ -192,11 +231,26 @@ export async function buildHops(
     for (let i = 0; i < hops.length; i++) {
         const leg = hops[i];
         const pairLower = leg.pair.toLowerCase();
-        const reserves = reservesByPair.get(pairLower);
         const order = tokenOrder.get(pairLower);
-        if (!reserves || !order) return null; // pair missing from DB — don't guess
-
+        if (!order) return null; // pair missing from DB — don't guess
         const inIsToken0 = leg.tokenIn.toLowerCase() === order.token0.toLowerCase();
+        const isLastHop = i === hops.length - 1;
+        // Where this hop's output goes: straight into a V2 pair, but to the
+        // executor when the next hop is V3 (paid from there in its callback).
+        const recipient = isLastHop || isV3(hops[i + 1]) ? executorAddress : hops[i + 1].pair;
+
+        if (isV3(leg)) {
+            if (i === 0) rootAmountIn = amountIn;
+            if (amountIn <= 0n) return null;
+            const amountOut = v3_amount_out_exact(v3ByPool.get(pairLower), inIsToken0, amountIn);
+            if (amountOut <= 0n) return null; // past the fetched tick window, or no liquidity
+            builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm: feeToPpm(leg.fee), recipient, kind: HOP_V3 });
+            amountIn = amountOut;
+            continue;
+        }
+
+        const reserves = reservesByPair.get(pairLower);
+        if (!reserves) return null;
         const reserveIn  = inIsToken0 ? reserves.reserve0 : reserves.reserve1;
         const reserveOut = inIsToken0 ? reserves.reserve1 : reserves.reserve0;
 
@@ -219,14 +273,7 @@ export async function buildHops(
         const amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, feePpm);
         if (amountOut <= 0n) return null; // drained pool or dust — don't build a doomed tx
 
-        const isLastHop = i === hops.length - 1;
-
-        builtHops.push({
-            pair: leg.pair,
-            tokenIn: leg.tokenIn,
-            feePpm,
-            recipient: isLastHop ? executorAddress : hops[i + 1].pair,
-        });
+        builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm, recipient, kind: HOP_V2 });
 
         amountIn = amountOut; // chain into next hop's input
     }

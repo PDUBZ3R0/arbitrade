@@ -41,10 +41,13 @@ const art = JSON.parse(fs.readFileSync(new URL('./artifacts.json', import.meta.u
     const solc = require('solc');
     const out = JSON.parse(solc.compile(JSON.stringify({
         language: 'Solidity',
-        sources: { 'YoBatches2.sol': { content: fs.readFileSync(new URL('../contracts/YoBatches2.sol', import.meta.url), 'utf8') } },
+        sources: {
+            'YoBatches2.sol': { content: fs.readFileSync(new URL('../contracts/YoBatches2.sol', import.meta.url), 'utf8') },
+            'YoBatches3.sol': { content: fs.readFileSync(new URL('../contracts/YoBatches3.sol', import.meta.url), 'utf8') },
+        },
         settings: { optimizer: { enabled: true, runs: 200 }, outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },
     })));
-    const c = out.contracts['YoBatches2.sol'].YoBatches2;
+    const c = out.contracts['YoBatches3.sol'].YoBatches3;
     art.YoBatches2 = { abi: c.abi, bytecode: '0x' + c.evm.bytecode.object };
 }
 
@@ -174,7 +177,7 @@ try {
         const exec = await deploy(art.FlashArbExecutor, ethers.ZeroAddress);
         const EX = await exec.getAddress();
         const BORROW = E(10);
-        const hops = [[created.RA.pair, R, 3000, BACK], [BACK, A, 3000, EX]];
+        const hops = [[created.RA.pair, R, 3000, BACK, 0], [BACK, A, 3000, EX, 0]];
         const before = await tok.get(R).balanceOf(EX);
         let rc, err;
         try { rc = await send(exec.executeArbFrom(0, await aave.getAddress(), R, BORROW, 0n, hops, ov())); }
