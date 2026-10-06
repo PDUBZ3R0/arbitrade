@@ -98,5 +98,25 @@
             reason:  "verify-fees 2026-10-04 UNKNOWN (Factory_83954706, 10 pairs): fee=null curve=unknown, conf=low - no swap() present in decompiled code (ERC20 functions only). Curve unidentified, so constant-product sizing is not justified. The empirical check never ran (0 sampled pairs: no reserves fetched yet for this factory) - re-run verify-fees after `yarn reserves avalanche`; if the empirical fee resolves, delete this entry.",
             addedAt: "2026-10-04",
         },
+        {
+            address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+            reason:  "dead (0/64 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xada3def2cac007496e85b52e854b0aada6691353",
+            reason:  "dead (0/22 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xb8cfa0e3016ed655f72fe9a9a5850c90c372fe99",
+            reason:  "dead (0/15 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
+        {
+            address: "0xcdf5ebcfb2b9608ee81ff043100abbc45c9e4599",
+            reason:  "dead (0/10 pairs with real liquidity)",
+            addedAt: "2026-10-04",
+        },
     ]
 }

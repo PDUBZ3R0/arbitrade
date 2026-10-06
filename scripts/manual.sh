@@ -4,6 +4,5 @@ yarn scan $1 && \
 	yarn reserves $1 --blacklist-dead && \
 	yarn cleanup $1 --yes && \
 	yarn tokens $1 && \
-	yarn triangles $1 && \
-	yarn evaluate $1 --debug --verbose && \
-	yarn orchestrator $1
+	yarn probe $1 && \
+	yarn triangles $1

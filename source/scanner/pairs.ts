@@ -141,6 +141,121 @@ async function discoverAndCacheDeployBlock(
     return startBlock;
 }
 
+/** Creation-event layout and topic for a factory's group / poolEvent. */
+function layoutOf(factory: NormalizedFactory): EventLayout {
+    return factory.group === 'solidly' ? (factory.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
+           factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[(factory.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'] :
+           'v2';
+}
+
+/** A parsed creation event as a pairs-table row. */
+function pairRow(factory: NormalizedFactory, p: { pair: string; token0: string; token1: string; stable: boolean | null;
+                 feePips?: number | null; tickSpacing?: number | null; blockNumber: number }): import('../util/db.ts').PairRow {
+    const isV3 = factory.group === 'v3';
+    return {
+        address:     p.pair,
+        factory:     factory.address,
+        token0:      p.token0,
+        token1:      p.token1,
+        blockNumber: p.blockNumber,
+        fee:         isV3 && p.feePips != null ? p.feePips / 1e6 : null,
+        stable:      p.stable,
+        kind:        isV3 ? 'v3' : 'v2',
+        tickSpacing: isV3 ? (p.tickSpacing ?? null) : null,
+    };
+}
+
+/**
+ * Catch up many factories at once over the chain's RPC.
+ *
+ * WHY. After the first scan, a re-run only has to cover the blocks since the
+ * last one — on Sonic, a few thousand. Doing that factory by factory through
+ * HyperSync costs one HyperSync request per factory (33 on Sonic) for what is
+ * usually zero new pairs, and the free tier allows ~15 requests per window:
+ * the scan spent most of its time waiting out rate limits. Here every
+ * factory in the set shares ONE eth_getLogs per chunk — address list plus
+ * every creation topic — on the configured RPC, which makeProvider makes
+ * websocket-first. Logs are routed back to their factory by address.
+ *
+ * Each factory keeps its own resume point: a log below it (already scanned)
+ * is ignored, and a factory's progress is only advanced over blocks it was
+ * actually asked to cover. Returns new pairs per factory name; throws on an
+ * error it cannot adapt to, leaving progress at the last completed chunk so
+ * the per-factory path can take over from there.
+ */
+export async function scanIncremental(
+    provider: JsonRpcProvider,
+    db: ArbitradeDB,
+    factories: Array<{ factory: NormalizedFactory; fromBlock: number }>,
+    head: number,
+    tuning: ScanTuning,
+    log: (s: string) => void = console.log,
+): Promise<Record<string, number>> {
+    const found: Record<string, number> = {};
+    if (factories.length === 0) return found;
+    const byAddr = new Map<string, { factory: NormalizedFactory; fromBlock: number; layout: EventLayout; topic: string }>();
+    for (const f of factories) {
+        const layout = layoutOf(f.factory);
+        byAddr.set(f.factory.address.toLowerCase(), { ...f, layout, topic: TOPIC_BY_LAYOUT[layout] });
+        found[f.factory.name] = 0;
+    }
+    const topics = [...new Set([...byAddr.values()].map(f => f.topic))];
+    const addresses = [...byAddr.keys()];
+    // Providers cap the address list of one filter; 200 is well inside the
+    // usual limits and one call still covers every factory on most chains.
+    const ADDR_CHUNK = 200;
+
+    let cursor = Math.min(...factories.map(f => f.fromBlock));
+    let chunk = tuning.chunkStart;
+    let calls = 0;
+    while (cursor <= head) {
+        const end = Math.min(cursor + chunk - 1, head);
+        let logs: Array<{ address: string; topics: readonly string[]; data: string; blockNumber: number }> = [];
+        try {
+            for (let i = 0; i < addresses.length; i += ADDR_CHUNK) {
+                // Only factories that still need [cursor, end].
+                const want = addresses.slice(i, i + ADDR_CHUNK).filter(a => byAddr.get(a)!.fromBlock <= end);
+                if (want.length === 0) continue;
+                const part = await provider.getLogs({ address: want, topics: [topics], fromBlock: cursor, toBlock: end });
+                calls++;
+                logs = logs.concat(part as any);
+            }
+        } catch (err) {
+            const raw = err as any;
+            const msg = `${raw?.message ?? String(err)} ${raw?.error?.message ?? raw?.info?.error?.message ?? ''}`;
+            const suggested = extractSuggestedRange(msg);
+            if (suggested && chunk > suggested) { chunk = suggested; continue; }
+            if (CHUNK_TOO_LARGE_RE.test(msg) && chunk > tuning.chunkMin) { chunk = Math.max(tuning.chunkMin, Math.floor(chunk / 2)); continue; }
+            if (TRANSIENT_ERROR_RE.test(msg)) { log(`  [!] transient error, backing off 5s: ${trim(msg, 80)}`); await sleep(5000); continue; }
+            throw new Error(`incremental getLogs ${cursor}-${end}: ${trim(msg, 200)}`);
+        }
+
+        const rowsByFactory = new Map<string, import('../util/db.ts').PairRow[]>();
+        for (const lg of logs) {
+            const f = byAddr.get(String(lg.address).toLowerCase());
+            if (!f || lg.blockNumber < f.fromBlock) continue;      // not ours, or already scanned
+            if (String(lg.topics[0]).toLowerCase() !== f.topic.toLowerCase()) continue;   // another factory's event shape
+            const parsed = parseCreationLog(lg.topics as string[], lg.data, f.layout);
+            if (!parsed) continue;
+            const rows = rowsByFactory.get(f.factory.address) ?? [];
+            rows.push(pairRow(f.factory, { ...parsed, blockNumber: lg.blockNumber }));
+            rowsByFactory.set(f.factory.address, rows);
+        }
+        for (const f of byAddr.values()) {
+            if (f.fromBlock > end) continue;
+            const rows = rowsByFactory.get(f.factory.address);
+            if (rows?.length) found[f.factory.name] += db.insertPairs(rows);
+            db.setScanProgress(f.factory.address, end);
+        }
+
+        cursor = end + 1;
+        if (chunk < tuning.chunkMax && logs.length < 1000) chunk = Math.min(tuning.chunkMax, Math.floor(chunk * 1.25));
+        if (tuning.chunkDelayMs > 0) await sleep(tuning.chunkDelayMs);
+    }
+    log(`  ${factories.length} factories caught up to block ${head} in ${calls} eth_getLogs call(s)`);
+    return found;
+}
+
 /**
  * Scan a single factory. Returns the number of NEW pairs discovered.
  */
@@ -170,28 +285,13 @@ export async function scanFactory(
     //   'v3'      : PoolCreated in the shape named by factory.poolEvent. The
     //               pool is stored with kind 'v3', its fee tier (when the
     //               event carries it) and its tick spacing.
-    const layout: EventLayout =
-        factory.group === 'solidly' ? (factory.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
-        factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[(factory.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'] :
-        'v2';
+    const layout = layoutOf(factory);
     const eventTopic = TOPIC_BY_LAYOUT[layout];
-    const isV3 = factory.group === 'v3';
 
-    // One row shape for all three transports.
-    const toRow = (p: { pair: string; token0: string; token1: string; stable: boolean | null;
-                        feePips?: number | null; tickSpacing?: number | null; blockNumber: number }) => ({
-        address:     p.pair,
-        factory:     factory.address,
-        token0:      p.token0,
-        token1:      p.token1,
-        blockNumber: p.blockNumber,
-        // v2fee/solidly: populated later by the reserves fetcher. v3: the
-        // fee tier from the event, as a fraction, when the shape carries it.
-        fee:         isV3 && p.feePips != null ? p.feePips / 1e6 : null,
-        stable:      p.stable,
-        kind:        isV3 ? 'v3' as const : 'v2' as const,
-        tickSpacing: isV3 ? (p.tickSpacing ?? null) : null,
-    } satisfies import('../util/db.ts').PairRow);
+    // One row shape for all three transports (and scanIncremental). v2fee/
+    // solidly fees are populated later by the reserves fetcher; a v3 pool
+    // gets its fee tier from the event when the shape carries it.
+    const toRow = (p: Parameters<typeof pairRow>[1]) => pairRow(factory, p);
 
     const head = opts.toBlock ?? await provider.getBlockNumber();
     const resumeBlock = db.getScanProgress(factory.address);
@@ -514,6 +614,39 @@ export async function scanChain(
     const results: Record<string, number> = {};
     const failures: { factory: string; error: string }[] = [];
 
+    // Incremental catch-up: factories already scanned to within
+    // incrementalMaxBlocks of the head share eth_getLogs calls on the RPC
+    // instead of one HyperSync request each. See scanIncremental. Skipped
+    // when a transport is forced or a starting block is given.
+    const maxGap = cfg.scan.incrementalMaxBlocks ?? cfg.scan.chunkStart * 40;
+    const handled = new Set<string>();
+    if (maxGap > 0 && !opts.forceTransport && opts.fromBlock === undefined) {
+        const head = opts.toBlock ?? await provider.getBlockNumber();
+        const near: Array<{ factory: NormalizedFactory; fromBlock: number }> = [];
+        for (const f of cfg.factories) {
+            if (f.group === 'algebra') continue;
+            const resume = db.getScanProgress(f.address);
+            if (resume !== null && head - resume <= maxGap) near.push({ factory: f, fromBlock: resume + 1 });
+        }
+        if (near.length > 0) {
+            const behind = Math.max(0, head - Math.min(...near.map(n => n.fromBlock)) + 1);
+            console.log(`\n[${cfg.chain.currency}] Incremental: ${near.length} factor${near.length === 1 ? 'y' : 'ies'} ` +
+                `within ${maxGap.toLocaleString()} blocks of the head (up to ${behind.toLocaleString()} behind) — one RPC getLogs per chunk for all of them`);
+            try {
+                const got = await scanIncremental(provider, db, near, head, cfg.scan);
+                for (const n of near) {
+                    handled.add(n.factory.address);
+                    results[n.factory.name] = got[n.factory.name] ?? 0;
+                    if (results[n.factory.name] > 0) console.log(`  ${n.factory.name}: ${results[n.factory.name]} new ${n.factory.group === 'v3' ? 'pools' : 'pairs'}`);
+                }
+            } catch (err) {
+                // Progress is saved per chunk; the per-factory loop below
+                // resumes each factory from wherever this got to.
+                console.log(`  [!] incremental catch-up failed, scanning factory by factory instead: ${(err as Error).message.slice(0, 160)}`);
+            }
+        }
+    }
+
     // Announce active tuning so the user sees what's in effect
     const t = cfg.scan;
     console.log(`Scan tuning: chunk ${t.chunkStart} [min ${t.chunkMin} / max ${t.chunkMax}], delay ${t.chunkDelayMs}ms`);
@@ -526,6 +659,7 @@ export async function scanChain(
 
     try {
         for (const factory of cfg.factories) {
+            if (handled.has(factory.address)) continue;
             if (factory.group === 'algebra') {
                 console.log(`\n[skip] ${factory.name}: algebra pools are not modelled yet — not scanned`);
                 continue;

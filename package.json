@@ -30,9 +30,11 @@
     "aave-reserves": "sh scripts/log.sh source aave-reserves",
     "cleanup": "sh scripts/log.sh source db-clean",
     "manual": "sh scripts/manual.sh",
+    "liq-watch": "sh scripts/log.sh source liq-watch",
     "pretty-print": "bash scripts/pretty.sh print",
     "pretty-commit": "bash scripts/pretty.sh commit",
-    "decompile": "bash scripts/decompile.sh"
+    "all-test": "bash scripts/all.sh test",
+    "all-live": "bash scripts/all.sh live"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",

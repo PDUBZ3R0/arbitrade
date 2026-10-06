@@ -416,6 +416,16 @@ export type ScanTuning = {
     chunkMax: number;
     /** Delay between successful chunks, to be nice to rate-limited RPCs (ms) */
     chunkDelayMs: number;
+    /**
+     * A factory whose saved progress is at most this many blocks behind the
+     * head is caught up INCREMENTALLY: all such factories share one
+     * eth_getLogs per chunk over the chain's own RPC (websocket first), with
+     * no HyperSync request at all. Further behind (or never scanned), it gets
+     * the per-factory HyperSync scan. Default 40 x chunkStart — at most ~40
+     * getLogs calls for the whole catch-up. `${CHAIN}_SCAN_INCREMENTAL_BLOCKS`
+     * / `SCAN_INCREMENTAL_BLOCKS`; 0 turns incremental mode off.
+     */
+    incrementalMaxBlocks: number;
 };
 
 function resolveScanTuning(chainLabel: string, raw: RawChainConfig): ScanTuning {
@@ -425,12 +435,17 @@ function resolveScanTuning(chainLabel: string, raw: RawChainConfig): ScanTuning 
         const n = Number(v);
         return Number.isFinite(n) && n > 0 ? n : dflt;
     };
+    const chunkStart = num(process.env[`${upper}_SCAN_CHUNK_START`] ?? process.env.SCAN_CHUNK_START,
+                           raw.chain.pagesize && raw.chain.pagesize < 100000 ? raw.chain.pagesize : 5000);
+    const incr = process.env[`${upper}_SCAN_INCREMENTAL_BLOCKS`] ?? process.env.SCAN_INCREMENTAL_BLOCKS;
     return {
-        chunkStart:   num(process.env[`${upper}_SCAN_CHUNK_START`] ?? process.env.SCAN_CHUNK_START,
-                          raw.chain.pagesize && raw.chain.pagesize < 100000 ? raw.chain.pagesize : 5000),
+        chunkStart,
         chunkMin:     num(process.env[`${upper}_SCAN_CHUNK_MIN`]   ?? process.env.SCAN_CHUNK_MIN,   10),
         chunkMax:     num(process.env[`${upper}_SCAN_CHUNK_MAX`]   ?? process.env.SCAN_CHUNK_MAX,   50000),
         chunkDelayMs: num(process.env[`${upper}_SCAN_DELAY_MS`]    ?? process.env.SCAN_DELAY_MS,    0),
+        // `num` rejects 0, and 0 is meaningful here (off), so parse directly.
+        incrementalMaxBlocks: incr !== undefined && incr !== '' && Number.isFinite(Number(incr)) && Number(incr) >= 0
+            ? Number(incr) : chunkStart * 40,
     };
 }
 

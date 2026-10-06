@@ -176,15 +176,16 @@
     name: 'Ink',
     currency: 'ETH',
     hypersyncUrl: 'https://ink.hypersync.xyz',
-    host: 'https://ink-rpc.publicnode.com',
-    ws: "wss://ink.drpc.org"
+    host: 'https://rpc-qnd.inkonchain.com',
+    ws: "wss://rpc-qnd.inkonchain.com"
   },
   linea: {
     id: 59144,
     name: 'Linea',
     currency: 'ETH',
     hypersyncUrl: 'https://linea.hypersync.xyz',
-    host: 'https://linea-rpc.publicnode.com',
+    host: 'https://rpc.linea.build',
+    ws: 'wss://rpc.linea.build',
   },
   berachain: {
     id: 80094,
@@ -200,7 +201,8 @@
     name: 'Scroll',
     currency: 'ETH',
     hypersyncUrl: 'https://scroll.hypersync.xyz',
-    host: 'https://scroll-rpc.publicnode.com',
+    host: 'https://rpc.scroll.io',
+    ws: 'wss://scroll.drpc.org'
   },
   katana: {
     id: 747474,
