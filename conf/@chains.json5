@@ -133,8 +133,8 @@
     name: 'Base',
     currency: 'ETH',
     hypersyncUrl: 'https://base.hypersync.xyz',
-    host: 'https://base.drpc.org',
-    ws: "wss://base.drpc.org"
+    host: 'https://rpc.baseazul.dev',
+    ws: "wss://base.gateway.tenderly.co"
   },
   plasma: {
     id: 9745,
