@@ -132,6 +132,25 @@ try {
         const [, lines3] = await capture(() => scanChain(cfg([V2, V3], { incrementalMaxBlocks: 0 }), dbFile));
         ok(!lines3.some(l => /Incremental:/.test(l)), 'incrementalMaxBlocks = 0 turns it off');
     }
+
+    console.log('\n5. an RPC that times out at any range (drpc free tier)');
+    {
+        const { scanIncremental } = await import('../source/scanner/pairs.ts');
+        // What drpc's free tier answers to a busy multi-address eth_getLogs, wrapped the way ethers wraps it.
+        const drpc = 'could not coalesce error (error={ "code": 30, "message": "Request timeout on the free tier, please upgrade your tier to the paid one" })';
+        let calls = 0;
+        const stub = { getLogs: async () => { calls++; throw new Error(drpc); } };
+        const lines = [];
+        const t0 = Date.now();
+        let err = null;
+        try {
+            await scanIncremental(stub, null, [{ factory: { ...V2, address: F2 }, fromBlock: 1 }], 100_000,
+                { chunkStart: 5000, chunkMin: 10, chunkMax: 50000, chunkDelayMs: 0, incrementalMaxBlocks: 200000 }, s => lines.push(s));
+        } catch (e) { err = e; }
+        ok(/failures in a row/.test(err?.message ?? ''), 'gives up (so the per-factory path takes over) instead of retrying forever', err?.message?.slice(0, 90));
+        ok(calls === 7 && Date.now() - t0 < 15_000, 'after a bounded number of tries', `${calls} getLogs, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+        ok(lines.some(l => /chunk 5000 -> 1250 blocks: Request timeout on the free tier/.test(l)), 'chunk shrinks are logged, with the RPC\'s own message', lines[0]);
+    }
 } catch (e) {
     console.error(e); fails++;
 } finally {

@@ -183,6 +183,12 @@ function pairRow(factory: NormalizedFactory, p: { pair: string; token0: string; 
  * error it cannot adapt to, leaving progress at the last completed chunk so
  * the per-factory path can take over from there.
  */
+/** The RPC's own error message, not ethers' "could not coalesce error (error={ … })" wrapper around it. */
+function errText(msg: string): string {
+    const m = msg.match(/"message":\s*"([^"]+)"/);
+    return m ? m[1] : msg;
+}
+
 export async function scanIncremental(
     provider: JsonRpcProvider,
     db: ArbitradeDB,
@@ -208,6 +214,13 @@ export async function scanIncremental(
     let cursor = Math.min(...factories.map(f => f.fromBlock));
     let chunk = tuning.chunkStart;
     let calls = 0;
+    // Consecutive failures without progress. The per-factory path is the
+    // fallback, so this gives up rather than retrying one chunk forever: drpc's
+    // free tier, for one, answers a busy multi-address getLogs with "Request
+    // timeout on the free tier" at ANY range — shrinking to 10 blocks does not
+    // help, and the old loop then backed off 5s and retried for good.
+    const MAX_FAILS = 6;
+    let fails = 0;
     while (cursor <= head) {
         const end = Math.min(cursor + chunk - 1, head);
         let logs: Array<{ address: string; topics: readonly string[]; data: string; blockNumber: number }> = [];
@@ -223,10 +236,16 @@ export async function scanIncremental(
         } catch (err) {
             const raw = err as any;
             const msg = `${raw?.message ?? String(err)} ${raw?.error?.message ?? raw?.info?.error?.message ?? ''}`;
+            if (++fails > MAX_FAILS) throw new Error(`incremental getLogs ${cursor}-${end}: ${MAX_FAILS} failures in a row, last: ${trim(errText(msg), 160)}`);
             const suggested = extractSuggestedRange(msg);
             if (suggested && chunk > suggested) { chunk = suggested; continue; }
-            if (CHUNK_TOO_LARGE_RE.test(msg) && chunk > tuning.chunkMin) { chunk = Math.max(tuning.chunkMin, Math.floor(chunk / 2)); continue; }
-            if (TRANSIENT_ERROR_RE.test(msg)) { log(`  [!] transient error, backing off 5s: ${trim(msg, 80)}`); await sleep(5000); continue; }
+            if (CHUNK_TOO_LARGE_RE.test(msg) && chunk > tuning.chunkMin) {
+                const next = Math.max(tuning.chunkMin, Math.floor(chunk / 4));
+                log(`  [!] chunk ${chunk} -> ${next} blocks: ${trim(errText(msg), 100)}`);
+                chunk = next;
+                continue;
+            }
+            if (TRANSIENT_ERROR_RE.test(msg)) { log(`  [!] transient error (${fails}/${MAX_FAILS}), backing off 5s: ${trim(errText(msg), 100)}`); await sleep(5000); continue; }
             throw new Error(`incremental getLogs ${cursor}-${end}: ${trim(msg, 200)}`);
         }
 
@@ -249,6 +268,7 @@ export async function scanIncremental(
         }
 
         cursor = end + 1;
+        fails = 0;
         if (chunk < tuning.chunkMax && logs.length < 1000) chunk = Math.min(tuning.chunkMax, Math.floor(chunk * 1.25));
         if (tuning.chunkDelayMs > 0) await sleep(tuning.chunkDelayMs);
     }

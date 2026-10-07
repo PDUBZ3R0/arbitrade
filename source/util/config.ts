@@ -49,6 +49,7 @@ export type ChainMeta = {
     contract?: string;         // deployed YoBatches address
     executor?: string;         // deployed FlashArbExecutor address (piece 6) — set after `yarn deploy-flasharb <chain>`
     probe?: string;            // deployed TokenProbe address — set after `yarn deploy-probe <chain>` (used by `yarn probe`)
+    liquidator?: string;       // deployed LiquidationExecutor — `yarn deploy-liquidator <chain>` then `yarn contract-update <chain>`
     threads?: number;
     interval?: number;
     pagesize?: number;

@@ -10,6 +10,7 @@
 //   contract  ← Yo3Module#YoBatches3, else Yo2Module#YoBatches2, else YoModule#YoBatches
 //   executor  ← FlashArbModule#FlashArbExecutor
 //   probe     ← TokenProbeModule#TokenProbe
+//   liquidator ← LiquidationModule#LiquidationExecutor
 //
 // The newest YoBatches wins because each one keeps every function of the one
 // before it. A field whose future was never deployed on this chain is left
@@ -33,13 +34,14 @@ import { resolveChain } from './config.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
-type Field = 'contract' | 'executor' | 'probe';
+type Field = 'contract' | 'executor' | 'probe' | 'liquidator';
 
 /** Futures per field, most preferred first. */
 export const FIELD_FUTURES: Record<Field, string[]> = {
     contract: ['Yo3Module#YoBatches3', 'Yo2Module#YoBatches2', 'YoModule#YoBatches'],
     executor: ['FlashArbModule#FlashArbExecutor'],
     probe:    ['TokenProbeModule#TokenProbe'],
+    liquidator: ['LiquidationModule#LiquidationExecutor'],
 };
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -159,7 +161,7 @@ export function applyUpdates(text: string, updates: Array<{ field: Field; future
                 // adds several keeps them together, in order), else after the last
                 // live property — making sure the line we follow ends in a comma.
                 let at = -1;
-                lines.forEach((l, j) => { if (/^[ \t]*(['"]?)(token|contract|executor|probe)\1[ \t]*:/.test(l)) at = j; });
+                lines.forEach((l, j) => { if (/^[ \t]*(['"]?)(token|contract|executor|probe|liquidator)\1[ \t]*:/.test(l)) at = j; });
                 if (at < 0) {
                     for (let j = lines.length - 1; j >= 0; j--) if (/^[ \t]*[\w'"]+[ \t]*:/.test(lines[j])) { at = j; break; }
                 }
@@ -210,7 +212,7 @@ async function main() {
     const addrPath = path.join(PROJECT_ROOT, 'ignition', 'deployments', deploymentId, 'deployed_addresses.json');
     if (!fs.existsSync(addrPath)) {
         console.error(`No Ignition record for ${meta.name} at ${path.relative(PROJECT_ROOT, addrPath)}.`);
-        console.error(`Deploy first: yarn deploy-contract ${meta.label} / yarn deploy-flasharb ${meta.label} / yarn deploy-probe ${meta.label}`);
+        console.error(`Deploy first: yarn deploy-contract ${meta.label} / yarn deploy-flasharb ${meta.label} / yarn deploy-probe ${meta.label} / yarn deploy-liquidator ${meta.label}`);
         process.exit(1);
     }
     const deployed = JSON.parse(fs.readFileSync(addrPath, 'utf8')) as Record<string, string>;

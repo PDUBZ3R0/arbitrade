@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadArbitradeSecrets",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter"],
+      "Resource": "arn:aws:ssm:*:*:parameter/arbitrade/*"
+    },
+    {
+      "Sid": "DecryptSecureStringsViaSSMOnly",
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt"],
+      "Resource": "*",
+      "Condition": { "StringLike": { "kms:ViaService": "ssm.*.amazonaws.com" } }
+    },
+    {
+      "Sid": "ReadSeedDatabases",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::REPLACE_WITH_BUCKET", "arn:aws:s3:::REPLACE_WITH_BUCKET/*"]
+    },
+    {
+      "Sid": "ContainerLogsToCloudWatch",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
+      "Resource": ["arn:aws:logs:*:*:log-group:arbitrade/*", "arn:aws:logs:*:*:log-group:arbitrade/*:*"]
+    }
+  ]
+}

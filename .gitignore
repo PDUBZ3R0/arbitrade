@@ -32,6 +32,10 @@ db/*.sqlite-wal
 log/
 *.log
 
+# Third-party protocol source + bytecode for the liquidation tests (BUSL / GPL):
+# fetched and compiled locally by test/vendor.mjs, never committed
+test/vendor/
+
 # Local tarball archive (from apply-tar workflow, if you use it)
 build/
 

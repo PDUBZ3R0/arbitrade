@@ -135,13 +135,14 @@ export class LiqDB {
         return (this.db.prepare('SELECT COUNT(*) n FROM liq_accounts WHERE pool = ?').get(this.pool) as { n: number }).n;
     }
 
-    saveHealth(rows: Array<{ user: string; hf: bigint; collateralBase: bigint; debtBase: bigint; config: bigint; eMode?: number; tier: Tier }>, block: number): void {
+    saveHealth(rows: Array<{ user: string; hf: bigint; collateralBase: bigint | null; debtBase: bigint | null; config: bigint; eMode?: number; tier: Tier }>, block: number): void {
         const upd = this.db.prepare(`
             UPDATE liq_accounts SET checkedBlock = ?, hf = ?, collateralBase = ?, debtBase = ?, config = ?, emode = ?, tier = ?
             WHERE pool = ? AND user = ?`);
         this.db.transaction(() => {
             for (const r of rows) {
-                upd.run(block, r.hf.toString(), r.collateralBase.toString(), r.debtBase.toString(),
+                // null = the venue could not price it in USD (never stored as 0: that would read as dust).
+                upd.run(block, r.hf.toString(), r.collateralBase?.toString() ?? null, r.debtBase?.toString() ?? null,
                     '0x' + r.config.toString(16), r.eMode ?? 0, r.tier, this.pool, r.user);
             }
         })();

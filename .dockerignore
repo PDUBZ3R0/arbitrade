@@ -1,0 +1,23 @@
+# Build context for Containerfile (podman/buildah and docker both read this).
+# The Containerfile copies only what it needs; this keeps secrets and bulk out
+# of the context regardless.
+
+# Secrets — passed at run time with --env-file, never baked into an image
+.env
+.env.*
+!.env.example
+
+.git
+node_modules
+log
+build
+cache
+artifacts
+typechain-types
+__re_cyc_le__
+test
+docs
+
+# SQLite shared-memory files are rebuilt on open; the WAL is kept (it can hold
+# committed data — checkpoint before building, see Containerfile)
+db/*.sqlite-shm

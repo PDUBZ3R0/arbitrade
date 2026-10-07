@@ -9,6 +9,7 @@
     contract: '0x9301c3F24DDB4E953df31D51df23F102680155c6',  // YoBatches3 — yarn deploy-contract arbitrum
     executor: '0x2A7e091B283846835f536a889201cbD48365B37E',  // FlashArbExecutor — yarn deploy-flasharb arbitrum
     probe: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
+    liquidator: '0x461834B561E3d193AF97EB02172be56420FF7053',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,

@@ -28,6 +28,8 @@
 
 import { Interface, AbiCoder, getAddress, type JsonRpcProvider } from 'ethers';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
+import { readBatched, type BatchOptions } from './batch.ts';
+import type { Venue, VenueAccount, VenueEvent, ReadResult, ReadOptions } from './venue.ts';
 
 // --- ABIs --------------------------------------------------------------------
 
@@ -44,6 +46,7 @@ export const POOL_IFACE = new Interface([
 
 const PROVIDER_IFACE = new Interface([
     'function getPriceOracle() view returns (address)',
+    'function getPoolDataProvider() view returns (address)',
 ]);
 
 const ORACLE_IFACE = new Interface([
@@ -100,7 +103,7 @@ const ACCOUNT_TOPIC_SLOT: Record<string, number> = {
     [TOPIC.UserEModeSet]: 1,
 };
 
-export type RawLog = { topics: readonly string[]; data: string; blockNumber: number };
+export type RawLog = { address?: string; topics: readonly string[]; data: string; blockNumber: number };
 
 export type PoolEvent = {
     /** Account whose position changed, lowercase. */
@@ -137,11 +140,15 @@ export type AaveReserve = {
     decimals: number;
     /** Liquidation bonus as Aave stores it: 10500 = collateral seized at a 5% premium. */
     bonusBps: number;
+    /** Share of the BONUS Aave keeps as a protocol fee, bps (1000 = 10% of the bonus). */
+    protocolFeeBps: number;
 };
 
 export type AaveMarket = {
     pool: string;        // lowercase
     oracle: string;      // lowercase
+    /** AaveProtocolDataProvider (per-reserve user balances), lowercase. Null if unresolved. */
+    dataProvider: string | null;
     /** Base-currency unit of every *Base value and price (1e8 = USD with 8 decimals on Aave V3). */
     baseUnit: bigint;
     reserves: AaveReserve[];
@@ -182,11 +189,14 @@ export async function loadAaveMarket(provider: JsonRpcProvider, pool: string): P
     const addressesProvider = POOL_IFACE.decodeFunctionResult('ADDRESSES_PROVIDER', ap.returnData)[0] as string;
     const assets = (POOL_IFACE.decodeFunctionResult('getReservesList', list.returnData)[0] as string[]).map(a => a.toLowerCase());
 
-    const [or] = await multicall3(provider, [
+    const [or, dp] = await multicall3(provider, [
         { target: addressesProvider, allowFailure: true, callData: PROVIDER_IFACE.encodeFunctionData('getPriceOracle', []) },
+        { target: addressesProvider, allowFailure: true, callData: PROVIDER_IFACE.encodeFunctionData('getPoolDataProvider', []) },
     ]);
     if (!or?.success || or.returnData === '0x') throw new Error(`getPriceOracle() failed on addresses provider ${addressesProvider}`);
     const oracle = (PROVIDER_IFACE.decodeFunctionResult('getPriceOracle', or.returnData)[0] as string).toLowerCase();
+    const dataProvider = dp?.success && dp.returnData !== '0x'
+        ? (PROVIDER_IFACE.decodeFunctionResult('getPoolDataProvider', dp.returnData)[0] as string).toLowerCase() : null;
 
     const calls: Multicall3Call[] = [
         { target: oracle, allowFailure: true, callData: ORACLE_IFACE.encodeFunctionData('BASE_CURRENCY_UNIT', []) },
@@ -210,13 +220,15 @@ export async function loadAaveMarket(provider: JsonRpcProvider, pool: string): P
         const id = Number(word(rd.returnData, 7));
         // ReserveConfigurationMap (word 0) bits 32-47: liquidation bonus.
         const bonusBps = Number((word(rd.returnData, 0) >> 32n) & 0xffffn);
+        // Bits 152-167: liquidation protocol fee, a share of the bonus (ReserveConfiguration.sol).
+        const protocolFeeBps = Number((word(rd.returnData, 0) >> 152n) & 0xffffn);
         const decimals = de?.success && de.returnData !== '0x'
             ? Number(ERC20_IFACE.decodeFunctionResult('decimals', de.returnData)[0]) : 18;
-        reserves.push({ asset, id, symbol: sy?.success ? decodeSymbol(sy.returnData) : '?', decimals, bonusBps });
+        reserves.push({ asset, id, symbol: sy?.success ? decodeSymbol(sy.returnData) : '?', decimals, bonusBps, protocolFeeBps });
     });
 
     return {
-        pool: pool.toLowerCase(), oracle, baseUnit, reserves,
+        pool: pool.toLowerCase(), oracle, dataProvider, baseUnit, reserves,
         byAsset: new Map(reserves.map(r => [r.asset, r])),
         byId: new Map(reserves.map(r => [r.id, r])),
         eModeBonus: new Map(),
@@ -283,136 +295,131 @@ export function positionAssets(market: AaveMarket, config: bigint): { collateral
 }
 
 /**
- * getUserAccountData + getUserConfiguration for `users`, `batchSize` accounts
- * per eth_call, `concurrency` calls in flight. Every account in one batch is
- * read at the same block; pass `blockTag` to pin all batches to one block so
- * a tick's prices and health factors agree.
- *
- * Accounts whose calls fail are omitted from the result (and counted), never
- * returned with made-up zeros — a zero HF would look liquidatable.
- *
- * WHEN A WHOLE BATCH FAILS. getUserAccountData loops every reserve and asks
- * the oracle for each price, so it is expensive (~100k+ gas on a 14-reserve
- * market) and public endpoints cap eth_call gas well below what 100 of them
- * need. Running out of gas inside aggregate3 reverts with NO data ("missing
- * revert data"), which is what the first Optimism run hit. So a failed batch
- * is split in half and retried, down to single accounts, and the batch size
- * that worked is carried forward (`batchSize` in the result) so the next
- * batches — and, via HealthMonitor, the next ticks — start at the size the
- * endpoint accepts instead of rediscovering it. Rate limits and timeouts are
- * retried at the same size first; they say nothing about the batch.
- *
- * STATE ERRORS ARE NOT SIZE ERRORS. "historical state … is not available" /
- * "Unknown state. First available state is …" / "missing trie node" mean the
- * node no longer (or does not yet) hold state for the pinned `blockTag`. On
- * Arbitrum's public RPC — 4 blocks/s, a few seconds of state kept — a sweep
- * pinned to a block from before a 13s subgraph seed hit exactly this, and
- * bisection shrank the batch to 1 account per call for nothing. Such an error
- * drops the pin: the batch, and every later one in this call, is read at
- * `latest` (`unpinned` in the result). Each batch is still one atomic read.
+ * getUserAccountData + getUserConfiguration + getUserEMode for `users`, through
+ * the shared batch reader (gas-cap bisection, pruned-state unpinning, retries —
+ * see liquidation/batch.ts).
  */
-const TRANSIENT_RE = /(rate limit|too many requests|429|timeout|timed out|ETIMEDOUT|ECONNRESET|EAI_AGAIN|502|503|504|gateway)/i;
-export const STATE_RE = /(historical state|state .{0,80}not available|unknown state|first available state|missing trie node|header not found|unknown block|block not found|pruned)/i;
+export { STATE_RE } from './batch.ts';
 
 export async function readAccounts(
     provider: JsonRpcProvider,
     pool: string,
     users: string[],
-    opts: { batchSize?: number; concurrency?: number; blockTag?: number; log?: (s: string) => void } = {},
+    opts: BatchOptions = {},
 ): Promise<{ accounts: AccountData[]; failed: number; calls: number; batchSize: number; errors: string[]; unpinned: boolean }> {
-    let size = Math.max(1, opts.batchSize ?? 100);
-    let blockTag: number | undefined = opts.blockTag;
-    let unpinned = false;
-    const concurrency = opts.concurrency ?? 4;
-    const log = opts.log ?? (() => {});
-    const accounts: AccountData[] = [];
-    const errors: string[] = [];
-    let failed = 0, calls = 0, cursor = 0, ok = 0;
+    const r = await readBatched<string, AccountData>(provider, users,
+        u => [
+            { target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserAccountData', [u]) },
+            { target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserConfiguration', [u]) },
+            { target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserEMode', [u]) },
+        ],
+        (user, [a, c, m]) => {
+            if (!a?.success || a.returnData === '0x' || !c?.success || c.returnData === '0x') return null;
+            const d = POOL_IFACE.decodeFunctionResult('getUserAccountData', a.returnData);
+            return {
+                user: user.toLowerCase(),
+                collateralBase: d[0] as bigint,
+                debtBase: d[1] as bigint,
+                liqThresholdBps: Number(d[3]),
+                hf: d[5] as bigint,
+                config: POOL_IFACE.decodeFunctionResult('getUserConfiguration', c.returnData)[0] as bigint,
+                // getUserEMode failing (a fork without eMode) is not an account failure.
+                eMode: m?.success && m.returnData !== '0x' ? Number(POOL_IFACE.decodeFunctionResult('getUserEMode', m.returnData)[0]) : 0,
+            };
+        },
+        opts, 'account');
+    return { accounts: r.out, failed: r.failed, calls: r.calls, batchSize: r.batchSize, errors: r.errors, unpinned: r.unpinned };
+}
 
-    const decode = (batch: string[], res: Awaited<ReturnType<typeof multicall3>>) => {
-        batch.forEach((user, i) => {
-            const a = res[3 * i], c = res[3 * i + 1], m = res[3 * i + 2];
-            if (!a?.success || a.returnData === '0x' || !c?.success || c.returnData === '0x') { failed++; return; }
-            try {
-                const d = POOL_IFACE.decodeFunctionResult('getUserAccountData', a.returnData);
-                accounts.push({
-                    user: user.toLowerCase(),
-                    collateralBase: d[0] as bigint,
-                    debtBase: d[1] as bigint,
-                    liqThresholdBps: Number(d[3]),
-                    hf: d[5] as bigint,
-                    config: POOL_IFACE.decodeFunctionResult('getUserConfiguration', c.returnData)[0] as bigint,
-                    // getUserEMode failing (a fork without eMode) is not an account failure.
-                    eMode: m?.success && m.returnData !== '0x' ? Number(POOL_IFACE.decodeFunctionResult('getUserEMode', m.returnData)[0]) : 0,
-                });
-            } catch { failed++; }
-        });
-    };
+// --- the Venue -----------------------------------------------------------------
 
-    const read = async (batch: string[]): Promise<void> => {
-        const callList: Multicall3Call[] = [];
-        for (const u of batch) {
-            callList.push({ target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserAccountData', [u]) });
-            callList.push({ target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserConfiguration', [u]) });
-            callList.push({ target: pool, allowFailure: true, callData: POOL_IFACE.encodeFunctionData('getUserEMode', [u]) });
-        }
-        let lastMsg = '';
-        for (let attempt = 0; attempt < 4; attempt++) {
-            try {
-                calls++;
-                decode(batch, await multicall3(provider, callList, blockTag));
-                ok++;
-                return;
-            } catch (err) {
-                const e = err as any;
-                lastMsg = `${e?.shortMessage ?? e?.message ?? String(err)} ${e?.info?.error?.message ?? e?.error?.message ?? ''}`.trim();
-                if (STATE_RE.test(lastMsg)) {
-                    if (blockTag == null) break;   // already unpinned: a real failure
-                    if (!unpinned) log(`  [i] node has no state for block ${blockTag} (${lastMsg.slice(0, 60)}); reading at latest`);
-                    blockTag = undefined; unpinned = true;
-                    continue;
+const CLOSE_FACTOR_HF = 95n * 10n ** 16n;
+
+/** Aave V3 as a liquidation Venue (see venue.ts). Account = borrower address. */
+export class AaveVenue implements Venue {
+    readonly kind = 'aave-v3' as const;
+    readonly label: string;
+    readonly key: string;
+    readonly baseUnit: bigint;
+    readonly eventAddresses: string[];
+    readonly eventTopics = WATCH_TOPICS;
+    readonly market: AaveMarket;
+    private readonly provider: JsonRpcProvider;
+
+    constructor(provider: JsonRpcProvider, market: AaveMarket, label = 'Aave V3') {
+        this.provider = provider;
+        this.market = market;
+        this.label = label;
+        this.key = market.pool;
+        this.baseUnit = market.baseUnit;
+        this.eventAddresses = [market.pool];
+    }
+
+    static async load(provider: JsonRpcProvider, pool: string, label?: string): Promise<AaveVenue> {
+        return new AaveVenue(provider, await loadAaveMarket(provider, pool), label);
+    }
+
+    async init(): Promise<void> { /* the market is loaded by load() */ }
+
+    decodeEvent(log: RawLog): VenueEvent | null { return decodePoolEvent(log); }
+
+    readPrices(blockTag?: number): Promise<Map<string, bigint>> { return readPrices(this.provider, this.market, blockTag); }
+
+    priceMask(asset: string): bigint {
+        const r = this.market.byAsset.get(asset.toLowerCase());
+        return r ? exposureBits(r.id) : 0n;
+    }
+
+    async readAccounts(accounts: string[], opts: ReadOptions = {}): Promise<ReadResult> {
+        const r = await readAccounts(this.provider, this.market.pool, accounts, opts);
+        // Bonuses of eMode categories seen for the first time (one call, rarely).
+        try { await loadEModeBonuses(this.provider, this.market, r.accounts.map(a => a.eMode)); }
+        catch { /* estimates fall back to reserve bonuses */ }
+        return r;
+    }
+
+    /**
+     * Estimated most that ONE liquidation call on `a` could pay, in base
+     * units, before gas / swap / flash-loan costs. Null if never read.
+     *
+     *   bonus      the account's eMode category bonus when it is in eMode
+     *              (ETH-correlated loops: ~1%), else the highest reserve bonus
+     *              among its collateral assets
+     *   close      Aave v3.3+: a liquidator may repay 100% of the debt when
+     *   factor     HF < 0.95 or the position is under $2,000 (collateral or
+     *              debt), otherwise 50%. Evaluated at liquidation time, when
+     *              HF has just crossed 1, so a big near-tier position gets 50%.
+     *
+     *   payout = min(collateral, debt x closeFactor x bonus) x (bonus - 1) / bonus
+     *
+     * Aave applies the close-factor test per reserve, not to totals, and the
+     * liquidator picks one collateral/debt pair per call, so this stays an
+     * upper bound for a single call — the right side to err on for a filter.
+     */
+    maxProfitBase(a: Pick<VenueAccount, 'debtBase' | 'collateralBase' | 'config' | 'eMode'> & { hf: bigint | null }): bigint | null {
+        if (a.debtBase == null || a.collateralBase == null) return null;
+        let bonus = 0n;
+        const em = a.eMode ? this.market.eModeBonus.get(a.eMode) : undefined;
+        if (em && em > 10000) bonus = BigInt(em);
+        else {
+            for (const r of this.market.reserves) {
+                if ((a.config >> BigInt(r.id * 2 + 1)) & 1n) {
+                    const b = BigInt(r.bonusBps || 10500);
+                    if (b > bonus) bonus = b;
                 }
-                if (!TRANSIENT_RE.test(lastMsg)) break;
-                await new Promise(r => setTimeout(r, 1000 * 2 ** attempt));
             }
         }
-        if (batch.length === 1) {
-            // Single accounts failing before ANY call has worked means the
-            // endpoint is broken, not the batch: stop instead of issuing one
-            // doomed call per account across the whole watchlist.
-            if (ok === 0 && failed >= 3) throw new Error(`account reads failing on every call: ${lastMsg.slice(0, 200)}`);
-            failed++;
-            if (errors.length < 5) errors.push(`${batch[0]}: ${lastMsg.slice(0, 120)}`);
-            return;
-        }
-        // A state error at `latest` is not a batch-size problem either.
-        if (STATE_RE.test(lastMsg)) {
-            failed += batch.length;
-            if (errors.length < 5) errors.push(`${batch.length} accounts: ${lastMsg.slice(0, 120)}`);
-            return;
-        }
-        const half = Math.ceil(batch.length / 2);
-        if (half < size) {
-            size = half;
-            log(`  [i] batch of ${batch.length} rejected (${lastMsg.slice(0, 60)}); reading ${size} accounts per call from here`);
-        }
-        // Re-read in chunks of the CURRENT size, which may shrink further while
-        // we go — once 5 is known to work, the rest of this batch should not
-        // be retried at 18 and 9 again.
-        for (let i = 0; i < batch.length;) {
-            const chunk = batch.slice(i, i + Math.min(size, half));
-            i += chunk.length;
-            await read(chunk);
-        }
-    };
+        if (bonus <= 10000n) bonus = 10500n;   // no collateral flagged / unset: assume 5%
+        const small = 2000n * this.market.baseUnit;
+        const fullClose = (a.hf != null && a.hf < CLOSE_FACTOR_HF) || a.debtBase < small || a.collateralBase < small;
+        const repayable = fullClose ? a.debtBase : a.debtBase / 2n;
+        const byDebt = repayable * bonus / 10000n;
+        const seizable = a.collateralBase < byDebt ? a.collateralBase : byDebt;
+        return seizable * (bonus - 10000n) / bonus;
+    }
 
-    const worker = async () => {
-        while (cursor < users.length) {
-            const batch = users.slice(cursor, cursor + size);
-            cursor += batch.length;
-            await read(batch);
-        }
-    };
-    await Promise.all(Array.from({ length: Math.min(concurrency, Math.ceil(users.length / size)) }, worker));
-    return { accounts, failed, calls, batchSize: size, errors, unpinned };
+    describe(a: Pick<VenueAccount, 'config'>): string {
+        const p = positionAssets(this.market, a.config);
+        return `${p.collateral.map(r => r.symbol).join('+') || '—'} → ${p.debt.map(r => r.symbol).join('+') || '—'}`;
+    }
 }

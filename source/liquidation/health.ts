@@ -46,21 +46,25 @@
 // 6,569 accounts under HF 1.05 were crumbs, and reading them every block made
 // each tick take ~12s against 2s blocks.
 //
-// Prices are read through the Aave oracle — the exact numbers Aave's own
-// liquidation check uses — in ONE getAssetsPrices call per tick, so a price
-// trigger costs nothing per asset and works for every source type (Chainlink,
-// exchange-rate adapters, fixed prices) without subscribing to feed events.
+// Prices are read through the venue's own oracle(s) — the exact numbers its
+// liquidation check uses (Aave: ONE getAssetsPrices call; Morpho: each market's
+// oracle; Comet: its price feeds) — so a price trigger works for every source
+// type (Chainlink, exchange-rate adapters, fixed prices) without subscribing
+// to feed events.
+//
+// VENUES. The monitor is protocol-agnostic: it talks to a Venue (venue.ts).
+// Passing an AaveMarket (the original signature) wraps it in an AaveVenue.
 //
 // Every read in a tick is pinned to the same block, so prices and health
 // factors describe one consistent state.
 // -----------------------------------------------------------------------------
 
 import type { JsonRpcProvider } from 'ethers';
-import {
-    readAccounts, readPrices, exposureBits, loadEModeBonuses,
-    type AaveMarket, type AccountData,
-} from './aave-v3.ts';
+import { AaveVenue, type AaveMarket } from './aave-v3.ts';
+import type { Venue, VenueAccount } from './venue.ts';
 import type { LiqDB, Tier } from './watchlist-db.ts';
+
+type AccountData = VenueAccount;
 
 export const WAD = 10n ** 18n;
 export const MAX_UINT = (1n << 256n) - 1n;
@@ -114,6 +118,7 @@ export class HealthMonitor {
     private lastPrices: Map<string, bigint> | null = null;
     private sweepBasePrices: Map<string, bigint> | null = null;
     private lastTickAt = 0;
+    private inited = false;
     private sweepQueue: string[] = [];
     private sweepCursor = 0;
     private ticks = 0;
@@ -126,7 +131,7 @@ export class HealthMonitor {
     // Plain fields, not constructor parameter properties: --experimental-strip-types
     // rejects parameter properties (ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX).
     private readonly provider: JsonRpcProvider;
-    readonly market: AaveMarket;
+    readonly venue: Venue;
     private readonly db: LiqDB;
     private readonly now: () => number;
     /** Progress / diagnostics sink. Silent by default; the CLI sets console.log. */
@@ -134,14 +139,14 @@ export class HealthMonitor {
 
     constructor(
         provider: JsonRpcProvider,
-        market: AaveMarket,
+        venue: Venue | AaveMarket,
         db: LiqDB,
         opts: HealthOptions = {},
         /** Injectable clock, for tests. */
         now: () => number = Date.now,
     ) {
         this.provider = provider;
-        this.market = market;
+        this.venue = 'reserves' in venue ? new AaveVenue(provider, venue) : venue;
         this.db = db;
         this.now = now;
         this.opts = {
@@ -152,7 +157,7 @@ export class HealthMonitor {
         this.nearHF = wad(this.opts.nearHF);
         this.watchHF = wad(this.opts.watchHF);
         this.priceRecheckMaxHF = wad(this.opts.priceRecheckMaxHF);
-        this.dustBase = BigInt(Math.round(this.opts.minProfitUsd * 1e6)) * market.baseUnit / 1_000_000n;
+        this.dustBase = BigInt(Math.round(this.opts.minProfitUsd * 1e6)) * this.venue.baseUnit / 1_000_000n;
         this.load();
     }
 
@@ -167,6 +172,9 @@ export class HealthMonitor {
             });
         }
     }
+
+    /** The Aave market, when this monitor watches Aave (back-compat for callers that read it). */
+    get market(): AaveMarket { return (this.venue as AaveVenue).market; }
 
     tierOf(a: Pick<AccountData, 'hf' | 'debtBase'>): Tier {
         if (a.debtBase === 0n || a.hf === MAX_UINT) return 'idle';
@@ -184,15 +192,12 @@ export class HealthMonitor {
     async refresh(users: Iterable<string>, block: number, pin = true): Promise<{ transitions: Transition[]; read: number; calls: number; failed: number }> {
         const list = [...new Set(users)];
         if (list.length === 0) return { transitions: [], read: 0, calls: 0, failed: 0 };
-        const { accounts, failed, calls, batchSize, errors } = await readAccounts(this.provider, this.market.pool, list, {
+        const { accounts, failed, calls, batchSize, errors } = await this.venue.readAccounts(list, {
             batchSize: this.opts.batchSize, concurrency: this.opts.concurrency, blockTag: pin ? block : undefined, log: this.log,
         });
         // Keep the size the endpoint accepted, so later ticks don't rediscover the cap.
         this.opts.batchSize = batchSize;
         for (const e of errors) this.log(`  [!] account read failed: ${e}`);
-        // Bonuses of eMode categories seen for the first time (one call, rarely).
-        try { await loadEModeBonuses(this.provider, this.market, accounts.map(a => a.eMode)); }
-        catch { /* estimates fall back to reserve bonuses */ }
         const transitions: Transition[] = [];
         const rows = [];
         for (const a of accounts) {
@@ -209,44 +214,9 @@ export class HealthMonitor {
         return { transitions, read: accounts.length, calls, failed };
     }
 
-    /**
-     * Estimated most that ONE liquidation call on `a` could pay, in base
-     * units, before gas / swap / flash-loan costs. Null if never read.
-     *
-     *   bonus      the account's eMode category bonus when it is in eMode
-     *              (ETH-correlated loops: ~1%), else the highest reserve bonus
-     *              among its collateral assets
-     *   close      Aave v3.3+: a liquidator may repay 100% of the debt when
-     *   factor     HF < 0.95 or the position is under $2,000 (collateral or
-     *              debt), otherwise 50%. Evaluated at liquidation time, when
-     *              HF has just crossed 1, so a big near-tier position gets 50%.
-     *
-     *   payout = min(collateral, debt x closeFactor x bonus) x (bonus - 1) / bonus
-     *
-     * Aave applies the close-factor test per reserve, not to totals, and the
-     * liquidator picks one collateral/debt pair per call, so this stays an
-     * upper bound for a single call — the right side to err on for a filter.
-     */
-    maxProfitBase(a: Pick<AccountState, 'debtBase' | 'collateralBase' | 'config' | 'eMode' | 'hf'>): bigint | null {
-        if (a.debtBase == null || a.collateralBase == null) return null;
-        let bonus = 0n;
-        const em = a.eMode ? this.market.eModeBonus.get(a.eMode) : undefined;
-        if (em && em > 10000) bonus = BigInt(em);
-        else {
-            for (const r of this.market.reserves) {
-                if ((a.config >> BigInt(r.id * 2 + 1)) & 1n) {
-                    const b = BigInt(r.bonusBps || 10500);
-                    if (b > bonus) bonus = b;
-                }
-            }
-        }
-        if (bonus <= 10000n) bonus = 10500n;   // no collateral flagged / unset: assume 5%
-        const small = 2000n * this.market.baseUnit;
-        const fullClose = (a.hf != null && a.hf < CLOSE_FACTOR_HF) || a.debtBase < small || a.collateralBase < small;
-        const repayable = fullClose ? a.debtBase : a.debtBase / 2n;
-        const byDebt = repayable * bonus / 10000n;
-        const seizable = a.collateralBase < byDebt ? a.collateralBase : byDebt;
-        return seizable * (bonus - 10000n) / bonus;
+    /** Estimated most that ONE liquidation call on `a` could pay (base units); the venue decides how. */
+    maxProfitBase(a: Pick<AccountState, 'debtBase' | 'collateralBase' | 'config' | 'eMode' | 'hf'> & { user?: string }): bigint | null {
+        return this.venue.maxProfitBase(a);
     }
 
     /** Known to be unable to pay `minProfitUsd`. Never-read accounts are not dust. */
@@ -268,12 +238,16 @@ export class HealthMonitor {
      */
     async sweep(block: number, dirty: Iterable<string> = []): Promise<TickReport> {
         this.load();
-        const prices = await readPrices(this.provider, this.market);
+        if (!this.inited) { await this.venue.init(); this.inited = true; }
         const set = new Set(this.sweepable());
         const swept = set.size;
         for (const u of dirty) set.add(u);   // event-touched idle accounts are not in the sweep set
         // Unpinned: on 0.25s blocks a 70s sweep outlives the RPC's state window.
         const r = await this.refresh(set, block, false);
+        // Prices AFTER the accounts: venues that discover markets while reading
+        // accounts (Morpho) only then know which prices exist. Read first, the
+        // reference would be empty and the first tick would re-read everyone.
+        const prices = await this.venue.readPrices();
         this.lastPrices = prices;
         this.sweepBasePrices = new Map(prices);
         this.lastTickAt = this.now();
@@ -296,29 +270,32 @@ export class HealthMonitor {
         this.load();   // accounts a backfill/tail inserted since the last tick
 
         let prices: Map<string, bigint>;
-        try { prices = await readPrices(this.provider, this.market, block); }
+        try { prices = await this.venue.readPrices(block); }
         catch {
             // The pinned read failed: the block is pruned, or (Optimism, intermittently)
             // the backend that took the call has not seen it yet and answers with an
             // empty revert. One price read is cheap: retry at latest rather than lose
             // the tick. A failure there is real and propagates.
-            prices = await readPrices(this.provider, this.market);
+            prices = await this.venue.readPrices();
         }
         const moved: string[] = [];
         let movedMask = 0n, bigMask = 0n;
-        for (const r of this.market.reserves) {
-            const p = prices.get(r.asset)!, last = this.lastPrices.get(r.asset), base = this.sweepBasePrices?.get(r.asset);
-            if (last !== p) { moved.push(r.asset); movedMask |= exposureBits(r.id); }
+        for (const [key, p] of prices) {
+            const last = this.lastPrices.get(key), base = this.sweepBasePrices?.get(key);
+            const mask = this.venue.priceMask(key);
+            if (last !== p) { moved.push(key); movedMask |= mask; }
             if (base != null && base > 0n) {
                 // |p/base - 1| > bigMoveFrac, in integers: |p - base| * 1e6 > base * frac * 1e6
                 const diff = p > base ? p - base : base - p;
                 if (diff * 1_000_000n > base * BigInt(Math.round(this.opts.bigMoveFrac * 1e6))) {
-                    bigMask |= exposureBits(r.id);
+                    bigMask |= mask;
                     // Every exposed account is re-read below at price p, so p is
                     // the new reference. Without this, one 10% move would re-read
                     // every exposed account on every tick until the next sweep.
-                    this.sweepBasePrices!.set(r.asset, p);
+                    this.sweepBasePrices!.set(key, p);
                 }
+            } else if (base == null && this.sweepBasePrices) {
+                this.sweepBasePrices.set(key, p);   // a key first seen after the sweep (new market)
             }
         }
         this.lastPrices = prices;
