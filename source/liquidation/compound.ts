@@ -56,6 +56,10 @@ export const COMETS: Record<number, Record<string, string>> = {
         usdt: '0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07',
         weth: '0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486',
     },
+    137: {
+        'usdc.e': '0xF25212E676D1F7F89Cd72fFEe66158f541246445',
+        usdt: '0xaeB318360f27748Acb200CE616E389A6C9409a07',
+    },
     10: {
         usdc: '0x2e44e174f7D53F0212823acC11C01A11d58c5bCB',
         usdt: '0x995E394b8B2437aC8Ce61Ee0bC610D617962B214',

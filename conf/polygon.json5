@@ -12,8 +12,9 @@
     // log/polygon/deploy-flasharb.log). 0x77b9D93a… had NO CODE on Polygon,
     // and eth_call to a codeless address succeeds returning 0x — which the
     // orchestrator read as "simulated clean". It is now the TokenProbe.
-    executor: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
+    executor: '0x461834B561E3d193AF97EB02172be56420FF7053',
     probe: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
+    liquidator: '0x0426d7687911f81DcD7769655b995650a765a7D5',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,

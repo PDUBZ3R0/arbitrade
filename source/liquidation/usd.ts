@@ -10,9 +10,11 @@
 // cbBTC, …).
 //
 // An asset the oracle cannot price stays UNKNOWN (null) — never $0, because $0
-// would make its positions look like dust and hide them. As a last resort a
-// recognised USD stablecoin symbol is priced at $1, which is right to within
-// the precision any of these uses need.
+// would make its positions look like dust and hide them. Next a recognised USD
+// stablecoin symbol is priced at $1, which is right to within the precision
+// any of these uses need; then the optional fallback (DexUsd: the deepest pool
+// against a stablecoin in the scanner's DB) — which is what chains with no
+// Aave at all (Robinhood) run on.
 // -----------------------------------------------------------------------------
 
 import { Interface, type JsonRpcProvider } from 'ethers';
@@ -34,11 +36,14 @@ export class UsdOracle {
     private readonly provider: JsonRpcProvider;
     private readonly oracle: string | null;
     private readonly ttlMs: number;
+    /** Second opinion for what the oracle cannot price (DexUsd: the pool DB). USD per whole token. */
+    private readonly fallback: ((token: string) => number | null) | null;
 
-    constructor(provider: JsonRpcProvider, aaveOracle: string | null, ttlMs = 60_000) {
+    constructor(provider: JsonRpcProvider, aaveOracle: string | null, ttlMs = 60_000, fallback: ((token: string) => number | null) | null = null) {
         this.provider = provider;
         this.oracle = aaveOracle;
         this.ttlMs = ttlMs;
+        this.fallback = fallback;
     }
 
     /** Symbol + decimals, cached forever. */
@@ -82,6 +87,10 @@ export class UsdOracle {
                 try { const p = ORACLE_IFACE.decodeFunctionResult('getAssetPrice', r.returnData)[0] as bigint; if (p > 0n) price = p; } catch { /* unpriced */ }
             }
             if (price == null && STABLE.test(this.symbol(t))) price = this.unit;
+            if (price == null && this.fallback) {
+                const usd = this.fallback(t);
+                if (usd != null && Number.isFinite(usd) && usd > 0) price = BigInt(Math.round(usd * 1e8));
+            }
             this.prices.set(t, { price, at: now });
         });
     }

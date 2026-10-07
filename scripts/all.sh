@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CHAIN=$1
-CMD=$2
+CHAIN=$2
+CMD=$1
 
 yarn manual $CHAIN
 if [[ "$CMD" == "test" ]]; then

@@ -29,6 +29,32 @@ interface ICometL {
     function getCollateralReserves(address asset) external view returns (uint256);
 }
 
+/// Compound V2 and forks (Benqi, Moonwell, Sonne, …). cTokens are ERC20.
+interface ICErc20L {
+    function liquidateBorrow(address borrower, uint256 repayAmount, address cTokenCollateral) external returns (uint256);
+    function redeem(uint256 redeemTokens) external returns (uint256);
+}
+
+/// Euler V2: the Ethereum Vault Connector and an EVK vault.
+interface IEVCL {
+    struct BatchItem { address targetContract; address onBehalfOfAccount; uint256 value; bytes data; }
+    function enableController(address account, address vault) external payable;
+    function enableCollateral(address account, address vault) external payable;
+    function batch(BatchItem[] calldata items) external payable;
+}
+interface IEVaultL {
+    function liquidate(address violator, address collateral, uint256 repayAssets, uint256 minYieldBalance) external;
+    function repay(uint256 amount, address receiver) external returns (uint256);
+    function redeem(uint256 amount, address receiver, address owner) external returns (uint256);
+    function disableController() external;
+}
+
+/// Fluid vault (tick-based, permissionless liquidate).
+interface IFluidVaultL {
+    function liquidate(uint256 debtAmt, uint256 colPerUnitDebt, address to, bool absorb)
+        external payable returns (uint256 actualDebtAmt, uint256 actualColAmt);
+}
+
 /// @title LiquidationExecutor
 /// @notice Liquidates unhealthy positions on Aave V3, Morpho Blue and Compound
 /// III and keeps the liquidation incentive. Every entry point is one
@@ -78,6 +104,8 @@ contract LiquidationExecutor is HopEngine {
 
     uint8 private constant JOB_AAVE  = 0;
     uint8 private constant JOB_COMET = 1;
+    uint8 private constant JOB_CV2   = 2;
+    uint8 private constant JOB_FLUID = 3;
 
     /// @param pool        Aave V3 Pool holding the position
     /// @param user        Borrower being liquidated
@@ -128,6 +156,8 @@ contract LiquidationExecutor is HopEngine {
     address private _lender;
     /// Morpho singleton whose liquidate() is in progress (callback guard).
     address private _morpho;
+    /// EVC whose batch is in progress (onEulerLiquidate guard).
+    address private _evc;
     uint256 private _profit;
 
     modifier onlyOwner() {
@@ -204,6 +234,95 @@ contract LiquidationExecutor is HopEngine {
         _checkRoute(j.asset, base, hops);
         _flash(source, lender, base, baseAmount, abi.encode(JOB_COMET, abi.encode(j, hops)));
         profit = _takeProfit();
+    }
+
+    /// @param cTokenBorrowed   cToken of the borrowed asset (its liquidateBorrow is called)
+    /// @param cTokenCollateral cToken seized
+    /// @param collateral       the seized cToken's ERC20 underlying (redeem target, route start)
+    /// @param repayUnderlying  the borrowed ERC20 underlying (flash asset, route end)
+    /// @param borrower         position owner
+    /// @param repayAmount      underlying to repay (<= closeFactor x borrow)
+    /// @param minProfit        floor, in repayUnderlying units
+    struct Cv2Job {
+        address cTokenBorrowed;
+        address cTokenCollateral;
+        address collateral;
+        address repayUnderlying;
+        address borrower;
+        uint256 repayAmount;
+        uint256 minProfit;
+    }
+
+    /// @notice Liquidate a Compound V2 (or fork) position. Owner-only. Flash-borrows
+    /// the repay underlying, seizes the collateral cToken, redeems it to its
+    /// underlying, swaps that back to the repay asset. Returns profit in repay units.
+    function liquidateCompoundV2(uint8 source, address lender, Cv2Job calldata j, Hop[] calldata hops)
+        external onlyOwner returns (uint256 profit)
+    {
+        _checkRoute(j.collateral, j.repayUnderlying, hops);
+        _flash(source, lender, j.repayUnderlying, j.repayAmount, abi.encode(JOB_CV2, abi.encode(j, hops)));
+        profit = _takeProfit();
+    }
+
+    /// @param evc              the Ethereum Vault Connector
+    /// @param liability        the controller (borrowed) vault; liquidate() is called on it
+    /// @param collateralVault  the seized EVK vault (its shares come to us)
+    /// @param collateral       that vault's ERC20 underlying (redeem target, route start)
+    /// @param repayUnderlying  the liability vault's ERC20 underlying (route end, profit asset)
+    /// @param violator         the unhealthy account
+    /// @param repayAssets      debt to assume and clear (<= checkLiquidation maxRepay)
+    /// @param minProfit        floor, in repayUnderlying units
+    struct EulerJob {
+        address evc;
+        address liability;
+        address collateralVault;
+        address collateral;
+        address repayUnderlying;
+        address violator;
+        uint256 repayAssets;
+        uint256 minProfit;
+    }
+
+    /// @notice Liquidate a Euler V2 position. Owner-only. No flash loan: inside one
+    /// EVC batch (checks deferred) we assume the violator's debt, take the seized
+    /// vault shares, redeem them, swap to the repay asset and clear the debt.
+    function liquidateEuler(EulerJob calldata j, Hop[] calldata hops) external onlyOwner returns (uint256 profit) {
+        _checkRoute(j.collateral, j.repayUnderlying, hops);
+        uint256 baseline = IERC20H(j.repayUnderlying).balanceOf(address(this));
+        IEVCL(j.evc).enableCollateral(address(this), j.collateralVault);
+        IEVCL(j.evc).enableController(address(this), j.liability);
+        _evc = j.evc;
+        IEVCL.BatchItem[] memory items = new IEVCL.BatchItem[](2);
+        items[0] = IEVCL.BatchItem(j.liability, address(this), 0,
+            abi.encodeWithSelector(IEVaultL.liquidate.selector, j.violator, j.collateralVault, j.repayAssets, uint256(0)));
+        items[1] = IEVCL.BatchItem(address(this), address(this), 0,
+            abi.encodeWithSelector(this.onEulerLiquidate.selector, j, hops));
+        IEVCL(j.evc).batch(items);
+        _evc = address(0);
+        uint256 bal = IERC20H(j.repayUnderlying).balanceOf(address(this));
+        if (bal < baseline + j.minProfit) revert InsufficientRepay(bal > baseline ? bal - baseline : 0, j.minProfit);
+        profit = bal - baseline;
+        emit LiquidationExecuted(j.violator, j.collateral, j.repayUnderlying, j.repayAssets, 0, 0, profit);
+    }
+
+    /// @notice EVC batch callback (second item of liquidateEuler). Do not call directly.
+    /// Runs with checks deferred: redeem the seized shares, swap, repay the debt.
+    function onEulerLiquidate(EulerJob calldata j, Hop[] calldata hops) external {
+        address evc = _evc;
+        if (evc == address(0) || msg.sender != evc) revert NotPool();
+        uint256 shares = IERC20H(j.collateralVault).balanceOf(address(this));
+        if (shares == 0) revert NothingSeized();
+        uint256 collBefore = j.collateral == j.repayUnderlying ? 0 : IERC20H(j.collateral).balanceOf(address(this));
+        IEVaultL(j.collateralVault).redeem(shares, address(this), address(this));
+        if (j.collateral != j.repayUnderlying) {
+            uint256 seized = IERC20H(j.collateral).balanceOf(address(this)) - collBefore;
+            if (seized == 0) revert NothingSeized();
+            _runHops(hops, seized);
+        }
+        IERC20H(j.repayUnderlying).approve(j.liability, j.repayAssets);
+        IEVaultL(j.liability).repay(type(uint256).max, address(this));
+        IERC20H(j.repayUnderlying).approve(j.liability, 0);
+        IEVaultL(j.liability).disableController();
     }
 
     function _checkRoute(address collateral, address debt, Hop[] calldata hops) internal view {
@@ -304,13 +423,78 @@ contract LiquidationExecutor is HopEngine {
             if (l.collateral != l.debt) _runHops(hops, seized);
             uint256 profit = _settle(asset, amount + fee, baseline, l.minProfit);
             emit LiquidationExecuted(l.user, l.collateral, l.debt, repaid, seized, fee, profit);
-        } else {
+        } else if (job == JOB_COMET) {
             (CometJob memory j, Hop[] memory hops) = abi.decode(payload, (CometJob, Hop[]));
             (uint256 spent, uint256 bought) = _buyComet(j, asset, amount);
             _runHops(hops, bought);
             uint256 profit = _settle(asset, amount + fee, baseline, j.minProfit);
             emit LiquidationExecuted(j.borrower, j.asset, asset, spent, bought, fee, profit);
+        } else if (job == JOB_CV2) {
+            (Cv2Job memory j, Hop[] memory hops) = abi.decode(payload, (Cv2Job, Hop[]));
+            if (asset != j.repayUnderlying) revert AssetMismatch();
+            uint256 seized = _liquidateCv2(j);
+            _runHops(hops, seized);
+            uint256 profit = _settle(asset, amount + fee, baseline, j.minProfit);
+            emit LiquidationExecuted(j.borrower, j.collateral, asset, j.repayAmount, seized, fee, profit);
+        } else {
+            (FluidJob memory j, Hop[] memory hops) = abi.decode(payload, (FluidJob, Hop[]));
+            if (asset != j.repayUnderlying) revert AssetMismatch();
+            uint256 seized = _liquidateFluid(j, asset);
+            if (j.collateral != asset) _runHops(hops, seized);
+            uint256 profit = _settle(asset, amount + fee, baseline, j.minProfit);
+            emit LiquidationExecuted(j.vault, j.collateral, asset, j.debtAmt, seized, fee, profit);
         }
+    }
+
+    /// Repay `debtAmt` into the Fluid vault, receive collateral. Returns the collateral seized.
+    function _liquidateFluid(FluidJob memory j, address asset) internal returns (uint256 seized) {
+        uint256 before = j.collateral == asset ? 0 : IERC20H(j.collateral).balanceOf(address(this));
+        IERC20H(asset).approve(j.vault, j.debtAmt);
+        IFluidVaultL(j.vault).liquidate(j.debtAmt, j.colPerUnitDebt, address(this), j.absorb);
+        IERC20H(asset).approve(j.vault, 0);
+        if (j.collateral == asset) return 0;
+        seized = IERC20H(j.collateral).balanceOf(address(this)) - before;
+        if (seized == 0) revert NothingSeized();
+    }
+
+    /// @param vault           the Fluid vault
+    /// @param collateral      collateral token received (route start)
+    /// @param repayUnderlying debt token repaid (flash asset, route end)
+    /// @param debtAmt         debt to repay
+    /// @param colPerUnitDebt  min collateral per unit debt (1e18) — slippage guard
+    /// @param absorb          Fluid "with absorb" mode, as the resolver advises
+    /// @param minProfit       floor, in repayUnderlying units
+    struct FluidJob {
+        address vault;
+        address collateral;
+        address repayUnderlying;
+        uint256 debtAmt;
+        uint256 colPerUnitDebt;
+        bool absorb;
+        uint256 minProfit;
+    }
+
+    /// @notice Liquidate on a Fluid vault with flash-borrowed debt. Owner-only.
+    function liquidateFluid(uint8 source, address lender, FluidJob calldata j, Hop[] calldata hops)
+        external onlyOwner returns (uint256 profit)
+    {
+        _checkRoute(j.collateral, j.repayUnderlying, hops);
+        _flash(source, lender, j.repayUnderlying, j.debtAmt, abi.encode(JOB_FLUID, abi.encode(j, hops)));
+        profit = _takeProfit();
+    }
+
+    /// liquidateBorrow, then redeem every seized cToken to its underlying. Returns
+    /// the collateral underlying received (the swap input).
+    function _liquidateCv2(Cv2Job memory j) internal returns (uint256 seizedUnderlying) {
+        IERC20H(j.repayUnderlying).approve(j.cTokenBorrowed, j.repayAmount);
+        if (ICErc20L(j.cTokenBorrowed).liquidateBorrow(j.borrower, j.repayAmount, j.cTokenCollateral) != 0) revert NothingSeized();
+        IERC20H(j.repayUnderlying).approve(j.cTokenBorrowed, 0);
+        uint256 cBal = IERC20H(j.cTokenCollateral).balanceOf(address(this));
+        if (cBal == 0) revert NothingSeized();
+        uint256 before = IERC20H(j.collateral).balanceOf(address(this));
+        if (ICErc20L(j.cTokenCollateral).redeem(cBal) != 0) revert NothingSeized();
+        seizedUnderlying = IERC20H(j.collateral).balanceOf(address(this)) - before;
+        if (seizedUnderlying == 0) revert NothingSeized();
     }
 
     /// liquidationCall with `amount` on offer. Returns what Aave actually took

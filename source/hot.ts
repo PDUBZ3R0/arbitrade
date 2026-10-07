@@ -81,6 +81,12 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           pricing (default 900). 0 disables.');
     console.error('  --poll-ms N              HTTP block poll interval when --ws is absent (default 1000).');
     console.error('  --no-v3                  Leave V3 pools out even when the executor can trade them.');
+    console.error('  --v3-chunk N             V3 pools per getV3States eth_call (default 50). Lower it for');
+    console.error('                           a rate-limited RPC that rejects or drops larger reads.');
+    console.error('  --v3-refresh-sec N       Re-read V3 pools whose last state read failed, every N sec');
+    console.error('                           (default 30; 0 disables). Heals edges that decayed because a');
+    console.error('                           transient RPC error (missing revert data, timeouts) dropped');
+    console.error('                           a pool\'s state between Sync events.');
     console.error('');
     console.error('Requires an executor deployed first: yarn deploy-flasharb <chain>,');
     console.error('then set "executor": "0x..." under the chain block in conf/<chain>.json5.');
@@ -123,6 +129,8 @@ const repriceSec = num('--reprice-sec', 900, v => v >= 0, 'zero or more');
 const pollMs = num('--poll-ms', 1000, v => v >= 50, 'at least 50');
 const ownerArg = getStr('--owner');
 const noV3 = hasFlag('--no-v3');
+const v3ChunkSize = num('--v3-chunk', 50, v => v >= 1, 'at least 1');
+const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 
 const cfg = loadChainConfig(chainArg);
 const wsUrl = wsFlag ?? cfg.chain.ws;
@@ -259,13 +267,62 @@ executor.setRootPricing(pricing);
 
 // V3 state reads: tick window as wide as `yarn reserves` fetches, chunked so a
 // block that touches many pools is still a handful of eth_calls.
+//
+// Free-tier RPCs (observed on Base: 216 failures in one run) answer a perfectly
+// valid getV3States eth_call with "missing revert data" / a null-data
+// CALL_EXCEPTION — the node refused the call, it did not revert. ethers does
+// NOT retry a CALL_EXCEPTION, so without help one dropped read leaves a pool's
+// state stale and every cycle through it decays on the next re-score ("edge
+// decayed on fresh reserves"). So readV3:
+//   - retries a transient failure a few times with a short backoff,
+//   - subdivides a chunk that still fails (a smaller read often gets through),
+//   - and, at a single pool, records it as unread (state: null — which the
+//     index tolerates) rather than throwing and wiping the whole batch.
+// Pools left unread land in `staleV3`, which the heal timer below drains.
 const V3_WORDS = cfg.reserves?.v3Words ?? 2;
-async function readV3(pools: string[]) {
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+/** A node that refused the call (rate limit, null-data CALL_EXCEPTION, timeout) — not a real revert. Worth a retry. */
+const isTransient = (e: unknown): boolean =>
+    /missing revert data|could not coalesce|CALL_EXCEPTION|SERVER_ERROR|TIMEOUT|timeout|rate limit|too many request|ECONNRESET|ETIMEDOUT|socket hang up|-3200[0-9]|\b429\b|\b503\b/i
+        .test((e as Error)?.message ?? String(e));
+
+/** Pools whose most recent state read failed — drained by the heal timer. */
+const staleV3 = new Set<string>();
+
+/** One getV3States call for a chunk, retried on transient RPC failures. Throws if it never gets through. */
+async function readChunk(chunk: string[]): Promise<Array<any>> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await sleep(100 * attempt);   // 0, 100, 200ms — bounded so a per-block refresh never stalls long
+        try {
+            const st = await getV3States(provider, cfg.chain.contract!, chunk, V3_WORDS);
+            return st.pools;
+        } catch (e) {
+            lastErr = e;
+            if (!isTransient(e)) throw e;   // a real error (bad address, decode) won't fix itself by retrying
+        }
+    }
+    throw lastErr;
+}
+
+async function readV3(pools: string[], chunkSize = v3ChunkSize): Promise<Array<{ pair: string; state: any }>> {
     const out: Array<{ pair: string; state: any }> = [];
-    for (let i = 0; i < pools.length; i += 50) {
-        const chunk = pools.slice(i, i + 50);
-        const st = await getV3States(provider, cfg.chain.contract!, chunk, V3_WORDS);
-        chunk.forEach((p, k) => out.push({ pair: p, state: st.pools[k] }));
+    for (let i = 0; i < pools.length; i += chunkSize) {
+        const chunk = pools.slice(i, i + chunkSize);
+        try {
+            const states = await readChunk(chunk);
+            chunk.forEach((p, k) => { out.push({ pair: p, state: states[k] }); staleV3.delete(p); });
+        } catch (e) {
+            if (chunk.length > 1) {
+                // A smaller read often gets through where the big one was refused.
+                out.push(...await readV3(chunk, Math.max(1, Math.floor(chunk.length / 2))));
+            } else {
+                // One pool, still failing: leave its state unread rather than throwing away
+                // the whole block's refresh. applyV3State(null) is a no-op; the heal timer retries.
+                out.push({ pair: chunk[0], state: null });
+                staleV3.add(chunk[0]);
+            }
+        }
     }
     return out;
 }
@@ -406,6 +463,39 @@ if (repriceSec > 0) {
             }
         })();
     }, repriceSec * 1000).unref();
+}
+
+// --- V3 state heal -----------------------------------------------------------
+//
+// readV3 records a pool it could not read in `staleV3` instead of throwing, so
+// a transient RPC failure no longer wipes a whole block's refresh. But a pool
+// only gets re-read when a Sync touches it again, which for a quiet pool can be
+// a long wait — and until then every cycle through it decays. This timer drains
+// staleV3 on a slow cadence, re-reading ONLY the pools that failed (never the
+// full index — 13k pools on Base would just feed the rate limit that caused the
+// misses). A pool that reads clean is dropped from the set by readV3 itself.
+let healing = false;
+if (v3 && ix.v3Count > 0 && v3RefreshSec > 0) {
+    setInterval(() => {
+        if (healing || staleV3.size === 0) return;
+        healing = true;
+        void (async () => {
+            const pools = [...staleV3];
+            try {
+                let applied = 0;
+                for (const f of await readV3(pools)) {
+                    if (f.state == null) continue;   // still unreadable — stays in staleV3 for the next pass
+                    ix.applyV3State(f.pair, f.state);
+                    applied++;
+                }
+                if (applied > 0) console.log(`  [v3-heal] re-read ${pools.length} stale pool(s), ${applied} recovered, ${staleV3.size} still failing`);
+            } catch (err) {
+                console.error(`  [!] v3 heal pass failed: ${(err as Error).message}`);
+            } finally {
+                healing = false;
+            }
+        })();
+    }, v3RefreshSec * 1000).unref();
 }
 
 // --- heartbeat ---------------------------------------------------------------

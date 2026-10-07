@@ -26,6 +26,10 @@ import { ledgerPath, type ChainConfig } from '../util/config.ts';
 import { LIQUIDATOR_ABI, type RouteFinder, type Route, type LiquidationAttempt, type SimResult, type PairPlan } from './plan.ts';
 import { MORPHO_IFACE, toAssetsUp, WAD, type MorphoVenue } from './morpho.ts';
 import { COMET_IFACE, type CompoundVenue, type CometInfo, type CometAsset } from './compound.ts';
+import { CTOKEN_IFACE, COMPTROLLER_IFACE, type CompoundV2Venue } from './compound-v2.ts';
+import { EVAULT_IFACE, type EulerVenue } from './euler.ts';
+import { type FluidScanner, type FluidOpportunity } from './fluid.ts';
+import { getAddress as checksum } from 'ethers';
 import type { LenderBook } from './lenders.ts';
 import type { UsdOracle } from './usd.ts';
 import { splitAccount } from './venue.ts';
@@ -34,6 +38,9 @@ export const VENUE_LIQUIDATOR_ABI = [
     ...LIQUIDATOR_ABI,
     'function liquidateMorpho((address morpho, address borrower, uint256 seizedAssets, uint256 repaidShares, uint256 minProfit) j, (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) mp, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) returns (uint256 profit)',
     'function liquidateComet(uint8 source, address lender, (address comet, address borrower, address asset, uint256 minProfit) j, uint256 baseAmount, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) returns (uint256 profit)',
+    'function liquidateCompoundV2(uint8 source, address lender, (address cTokenBorrowed, address cTokenCollateral, address collateral, address repayUnderlying, address borrower, uint256 repayAmount, uint256 minProfit) j, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) returns (uint256 profit)',
+    'function liquidateEuler((address evc, address liability, address collateralVault, address collateral, address repayUnderlying, address violator, uint256 repayAssets, uint256 minProfit) j, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) returns (uint256 profit)',
+    'function liquidateFluid(uint8 source, address lender, (address vault, address collateral, address repayUnderlying, uint256 debtAmt, uint256 colPerUnitDebt, bool absorb, uint256 minProfit) j, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) returns (uint256 profit)',
     'error EmptyHops()',
     'error SwapOverpaid(uint256 owed, uint256 maxIn)',
 ];
@@ -66,7 +73,7 @@ const WRAPPED_NATIVE: Record<number, string> = {
 };
 
 type Token = { asset: string; symbol: string; decimals: number };
-type Candidate = { route: Route; send: (minProfit: bigint) => readonly unknown[]; method: 'liquidateMorpho' | 'liquidateComet'; amount: bigint };
+type Candidate = { route: Route; send: (minProfit: bigint) => readonly unknown[]; method: 'liquidateMorpho' | 'liquidateComet' | 'liquidateCompoundV2' | 'liquidateEuler' | 'liquidateFluid'; amount: bigint };
 
 export type VenuePlannerOptions = {
     executor: string;
@@ -304,6 +311,127 @@ export class VenueLiquidator {
         }
         if (!out.pairs.length) { out.reason = 'no lender for the base asset'; return out; }
         return this.run(out, out.pairs[0], base, cands);
+    }
+
+    // --- Compound V2 forks -------------------------------------------------------
+
+    async attemptCompoundV2(venue: CompoundV2Venue, key: string): Promise<LiquidationAttempt> {
+        const out: LiquidationAttempt = { user: key, pairs: [], tried: [], best: null, simulated: false, broadcast: false, confirmed: false };
+        const { user, market: comptroller } = splitAccount(key);
+        await venue.init();
+        const comp = venue.comptrollers.get(comptroller);
+        if (!comp) { out.reason = 'unknown comptroller'; return out; }
+        await venue.readPrices();
+        // Which markets the account is in, then a snapshot of each.
+        const [ai] = await multicall3(this.provider, [{ target: comptroller, allowFailure: true, callData: COMPTROLLER_IFACE.encodeFunctionData('getAssetsIn', [user]) }]);
+        if (!ai?.success) { out.reason = 'could not read assetsIn'; return out; }
+        const cTokens = (COMPTROLLER_IFACE.decodeFunctionResult('getAssetsIn', ai.returnData)[0] as string[]).map(a => a.toLowerCase()).filter(a => comp.markets.has(a));
+        const snaps = await multicall3(this.provider, cTokens.map(c => ({ target: c, allowFailure: true, callData: CTOKEN_IFACE.encodeFunctionData('getAccountSnapshot', [user]) })));
+        type M = { cToken: string; underlying: string; symbol: string; dec: number; price: bigint; coll: bigint; collUsd: bigint; borrowBal: bigint; borrowUsd: bigint; cf: bigint };
+        const ms: M[] = [];
+        cTokens.forEach((cToken, i) => {
+            if (!snaps[i]?.success) return;
+            const mk = comp.markets.get(cToken)!;
+            if (!mk.underlying) return;                                   // native leg: can't route the redeem
+            const d = CTOKEN_IFACE.decodeFunctionResult('getAccountSnapshot', snaps[i].returnData);
+            const price = venue.prices.get(`${comptroller}:${cToken}`) ?? 0n;
+            const underlying = (d[1] as bigint) * (d[3] as bigint) / WAD;
+            ms.push({ cToken, underlying: mk.underlying, symbol: mk.symbol, dec: mk.underlyingDecimals, price,
+                coll: underlying, collUsd: underlying * price / WAD, borrowBal: d[2] as bigint, borrowUsd: (d[2] as bigint) * price / WAD, cf: mk.collateralFactor });
+        });
+        const borrow = ms.filter(m => m.borrowBal > 0n).sort((a, b) => (b.borrowUsd > a.borrowUsd ? 1 : -1))[0];
+        const colls = ms.filter(m => m.coll > 0n && m.cf > 0n).sort((a, b) => (b.collUsd > a.collUsd ? 1 : -1)).slice(0, 2);
+        if (!borrow || !colls.length) { out.reason = borrow ? 'no ERC20 collateral to seize' : 'no ERC20 debt to repay'; return out; }
+
+        const debtTok: Token = { asset: borrow.underlying, symbol: borrow.symbol.replace(/^[a-z]+/, ''), decimals: borrow.dec };
+        const cands: Candidate[] = [];
+        for (const c of colls) {
+            const collTok: Token = { asset: c.underlying, symbol: c.symbol.replace(/^[a-z]+/, ''), decimals: c.dec };
+            out.pairs.push(this.plan(collTok, debtTok, Number(comp.closeFactor / 10n ** 16n) as 50 | 100));
+            // repay capped by close factor AND by what the collateral can cover at the incentive, 0.1% shy.
+            const repayCF = borrow.borrowBal * comp.closeFactor / WAD;
+            const repayByColl = borrow.price === 0n ? 0n : (c.collUsd * WAD / comp.incentive) * WAD / borrow.price;
+            const repay = (repayCF < repayByColl ? repayCF : repayByColl) * 999n / 1000n;
+            if (repay === 0n) continue;
+            const lender = await this.lenders.pick(borrow.underlying, repay);
+            if (!lender) continue;
+            for (const route of this.exits(c.underlying, borrow.underlying)) {
+                cands.push({
+                    route, method: 'liquidateCompoundV2', amount: repay,
+                    send: (minProfit: bigint) => [lender.source, lender.lender,
+                        [checksum(borrow.cToken), checksum(c.cToken), checksum(c.underlying), checksum(borrow.underlying), checksum(user), repay, minProfit],
+                        route.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])] as const,
+                });
+            }
+        }
+        if (!cands.length) { out.reason = 'no lender or no exit route'; return out; }
+        return this.run(out, out.pairs[0], debtTok, cands);
+    }
+
+    // --- Euler V2 ----------------------------------------------------------------
+
+    async attemptEuler(venue: EulerVenue, key: string): Promise<LiquidationAttempt> {
+        const out: LiquidationAttempt = { user: key, pairs: [], tried: [], best: null, simulated: false, broadcast: false, confirmed: false };
+        const { user: account, market: liability } = splitAccount(key);
+        await venue.init();
+        const vt = venue.vaults.get(liability);
+        if (!vt) { out.reason = 'unknown Euler vault'; return out; }
+        const repayTok: Token = { asset: vt.asset, symbol: vt.symbol, decimals: vt.assetDecimals };
+        const collateralVaults = (await venue.collateralsOf(account)).filter(c => venue.vaults.has(c));
+        if (!collateralVaults.length) { out.reason = 'no collateral vaults enabled'; return out; }
+        // checkLiquidation per collateral: (maxRepay in liability assets, maxYield in collateral shares).
+        const res = await multicall3(this.provider, collateralVaults.map(c => ({
+            target: liability, allowFailure: true, callData: EVAULT_IFACE.encodeFunctionData('checkLiquidation', [getAddress(this.opts.executor), getAddress(account), getAddress(c)]),
+        })));
+        const opts = collateralVaults.map((c, i) => {
+            if (!res[i]?.success || res[i].returnData === '0x') return null;
+            const d = EVAULT_IFACE.decodeFunctionResult('checkLiquidation', res[i].returnData);
+            return { cv: c, maxRepay: d[0] as bigint, maxYield: d[1] as bigint };
+        }).filter((x): x is { cv: string; maxRepay: bigint; maxYield: bigint } => !!x && x.maxRepay > 0n && x.maxYield > 0n)
+          .sort((a, b) => (b.maxRepay > a.maxRepay ? 1 : -1)).slice(0, 2);
+        if (!opts.length) { out.reason = 'checkLiquidation offered nothing (already healthy, or no yield)'; return out; }
+
+        const cands: Candidate[] = [];
+        for (const o of opts) {
+            const cvt = venue.vaults.get(o.cv)!;
+            const collTok: Token = { asset: cvt.asset, symbol: cvt.symbol, decimals: cvt.assetDecimals };
+            out.pairs.push(this.plan(collTok, repayTok));
+            const repay = o.maxRepay;
+            for (const route of this.exits(cvt.asset, vt.asset)) {
+                cands.push({
+                    route, method: 'liquidateEuler', amount: repay,
+                    send: (minProfit: bigint) => [[getAddress(venue.evc), getAddress(liability), getAddress(o.cv), getAddress(cvt.asset), getAddress(vt.asset), getAddress(account), repay, minProfit],
+                        route.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])] as const,
+                });
+            }
+        }
+        if (!cands.length) { out.reason = 'no exit route between collateral and debt'; return out; }
+        return this.run(out, out.pairs[0], repayTok, cands);
+    }
+
+    // --- Fluid -------------------------------------------------------------------
+
+    /** Liquidate one Fluid vault opportunity (from FluidScanner). No borrower — a vault-level tick liquidation. */
+    async attemptFluid(scanner: FluidScanner, o: FluidOpportunity): Promise<LiquidationAttempt> {
+        const key = `${o.vault}:${o.collateral}`;
+        const out: LiquidationAttempt = { user: key, pairs: [], tried: [], best: null, simulated: false, broadcast: false, confirmed: false };
+        const debtTok: Token = { asset: o.debt, symbol: this.usd.symbol(o.debt), decimals: this.usd.decimals(o.debt) };
+        const collTok: Token = { asset: o.collateral, symbol: this.usd.symbol(o.collateral), decimals: this.usd.decimals(o.collateral) };
+        out.pairs.push(this.plan(collTok, debtTok));
+        const lender = await this.lenders.pick(o.debt, o.inAmt);
+        if (!lender) { out.reason = 'no lender for the debt asset'; return out; }
+        const colPerUnitDebt = scanner.colPerUnitDebt(o);
+        const cands: Candidate[] = [];
+        for (const route of this.exits(o.collateral, o.debt)) {
+            cands.push({
+                route, method: 'liquidateFluid', amount: o.inAmt,
+                send: (minProfit: bigint) => [lender.source, lender.lender,
+                    [getAddress(o.vault), getAddress(o.collateral), getAddress(o.debt), o.inAmt, colPerUnitDebt, o.withAbsorb, minProfit],
+                    route.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])] as const,
+            });
+        }
+        if (!cands.length) { out.reason = 'no exit route between collateral and debt'; return out; }
+        return this.run(out, out.pairs[0], debtTok, cands);
     }
 
     /** Assets with collateral in reserves while buys are open, per Comet — standing opportunities with no borrower. */

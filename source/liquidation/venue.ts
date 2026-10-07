@@ -22,7 +22,7 @@
 //   eMode           venue-specific small integer (Aave eMode category), else 0
 // -----------------------------------------------------------------------------
 
-export type VenueKind = 'aave-v3' | 'morpho-blue' | 'compound-v3';
+export type VenueKind = 'aave-v3' | 'morpho-blue' | 'compound-v3' | 'compound-v2' | 'euler-v2';
 
 export type VenueAccount = {
     user: string;

@@ -44,38 +44,26 @@ x-arb: &arb
 services:
   base:
     <<: *arb
-    image: arbitrade:base
-    build: { context: ., dockerfile: Containerfile, args: { CHAIN: base } }
+    image: arbitrade:ink
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
     environment:
-      MODE: ${BASE_MODE:-${MODE:-test}}
+      MODE: ${INK_MODE:-${MODE:-test}}
     volumes:
-      - base-db:/app/db
-      - base-log:/app/log
+      - ink-db:/app/db
+      - ink-log:/app/log
 
-  optimism:
+  sonic:
     <<: *arb
-    image: arbitrade:optimism
-    build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
+    image: arbitrade:sonic
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: sonic } }
     environment:
-      MODE: ${OPTIMISM_MODE:-${MODE:-test}}
+      MODE: ${SONIC_MODE:-${MODE:-test}}
     volumes:
-      - optimism-db:/app/db
-      - optimism-log:/app/log
-
-  arbitrum:
-    <<: *arb
-    image: arbitrade:arbitrum
-    build: { context: ., dockerfile: Containerfile, args: { CHAIN: arbitrum } }
-    environment:
-      MODE: ${ARBITRUM_MODE:-${MODE:-test}}
-    volumes:
-      - arbitrum-db:/app/db
-      - arbitrum-log:/app/log
+      - sonic-db:/app/db
+      - sonic-log:/app/log
 
 volumes:
-  base-db:
-  base-log:
-  optimism-db:
-  optimism-log:
-  arbitrum-db:
-  arbitrum-log:
+  sonic-db:
+  sonic-log:
+  ink-db:
+  ink-log:

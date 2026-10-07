@@ -16,12 +16,14 @@ if [ -z "$CHAIN" ]; then
     exit 1
 fi
 
-for step in deploy-contract deploy-flasharb deploy-probe; do
-    if ! bash "scripts/${step}.sh" "$CHAIN"; then
-        echo "" >&2
-        echo "[deploy-all] ${step} failed — stopping; conf/${CHAIN}.json5 not updated." >&2
-        echo "             Fix the cause (log/${CHAIN}/${step}.log) and re-run; finished steps are skipped." >&2
-        exit 1
+for step in deploy-contract deploy-flasharb deploy-probe deploy-liquidator; do
+    if ! bash "scripts/${step}.sh" "$CHAIN" --redeploy; then
+        if ! bash "scripts/${step}.sh" "$CHAIN"; then
+            echo "" >&2
+            echo "[deploy-all] ${step} failed — stopping; conf/${CHAIN}.json5 not updated." >&2
+            echo "             Fix the cause (log/${CHAIN}/${step}.log) and re-run; finished steps are skipped." >&2
+            exit 1
+        fi
     fi
 done
 

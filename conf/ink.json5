@@ -6,10 +6,22 @@
 	    hypersyncUrl: 'https://ink.hypersync.xyz',
 	    host: 'https://ink-rpc.publicnode.com',
 	    token: "0x4200000000000000000000000000000000000006",
-	    contract: "0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649",
-	    executor: "0x9301c3F24DDB4E953df31D51df23F102680155c6",
-        probe: "0x2A7e091B283846835f536a889201cbD48365B37E"
+	    contract: "0x461834B561E3d193AF97EB02172be56420FF7053",
+	    executor: "0xbc04E12771de574f98401e3cC54b667e147ecA6C",
+        probe: "0x2A7e091B283846835f536a889201cbD48365B37E",
+	    liquidator: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
 	},
+
+  // Tydro is an Aave v3 white-label on Ink (docs/Contract Addresses _ Tydro Documentation.pdf,
+  // ~$133M TVL). The Aave venue liquidates it as-is — its Pool is the same address as
+  // flashloan.pool below. USD prices come from TydroOracle automatically via the Pool's
+  // PoolAddressesProvider.getPriceOracle, so no liquidation.usdOracle is needed.
+  //   yarn liq-watch ink --venue aave --follow --liquidate
+  // If the built-in `ink` Aave subgraph refuses as indexing a different pool, seed from the
+  // deploy block with `--seed hypersync` (ENVIO_API_TOKEN) or `--seed rpc`.
+  liquidation: {
+    pool: "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",   // Tydro Pool
+  },
 
 
   // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole

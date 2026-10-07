@@ -79,7 +79,11 @@ import { discoverDeployBlock } from './util/discover-block.ts';
 import { loadAaveMarket, AaveVenue, type AaveMarket } from './liquidation/aave-v3.ts';
 import { MorphoVenue, MORPHO_BLUE } from './liquidation/morpho.ts';
 import { CompoundVenue, COMETS } from './liquidation/compound.ts';
+import { CompoundV2Venue, COMPTROLLERS } from './liquidation/compound-v2.ts';
+import { EulerVenue, EULER } from './liquidation/euler.ts';
+import { FluidScanner, FLUID_LIQ_RESOLVER } from './liquidation/fluid.ts';
 import { UsdOracle } from './liquidation/usd.ts';
+import { DexUsd } from './liquidation/dex-usd.ts';
 import { LenderBook } from './liquidation/lenders.ts';
 import { LiqDB, liqDbPath, type Tier } from './liquidation/watchlist-db.ts';
 import { backfillHyperSync, tailRpc } from './liquidation/events.ts';
@@ -98,6 +102,9 @@ type LiquidationConf = {
     fromBlock?: number;
     morpho?: string;
     comets?: Record<string, string>;
+    comptrollers?: Record<string, string>;
+    euler?: { evc: string; factory: string; deployBlock?: number };
+    fluid?: string;
     usdOracle?: string;
     minProfitUsd?: number;
     nearHF?: number;
@@ -138,26 +145,32 @@ const liq: LiquidationConf = (cfg.raw as RawChainConfig & { liquidation?: Liquid
 const pool = opt('--pool') ?? liq.pool ?? cfg.flashloan?.pool;
 const morphoAddr = liq.morpho ?? MORPHO_BLUE[chainId]?.address;
 const comets = liq.comets ?? COMETS[chainId];
+const comptrollers = liq.comptrollers ?? COMPTROLLERS[chainId];
+const euler = liq.euler ?? EULER[chainId];
+const fluidResolver = liq.fluid ?? FLUID_LIQ_RESOLVER[chainId];
 
-type VenueName = 'aave' | 'morpho' | 'compound';
-const ALL: VenueName[] = ['aave', 'morpho', 'compound'];
-const has: Record<VenueName, boolean> = { aave: !!pool, morpho: !!morphoAddr, compound: !!comets && Object.keys(comets).length > 0 };
+type VenueName = 'aave' | 'morpho' | 'compound' | 'compound-v2' | 'euler';
+const ALL: VenueName[] = ['aave', 'morpho', 'compound', 'compound-v2', 'euler'];
+const has: Record<VenueName, boolean> = { aave: !!pool, morpho: !!morphoAddr, compound: !!comets && Object.keys(comets).length > 0, 'compound-v2': !!comptrollers && Object.keys(comptrollers).length > 0, euler: !!euler };
 const venueArg = opt('--venue');
 const wanted: VenueName[] = (() => {
     const list = venueArg ?? (liq.venues ? liq.venues.join(',') : 'all');
     if (list === 'all') return ALL.filter(v => has[v]);
     const vs = list.split(',').map(s => s.trim().toLowerCase());
     for (const v of vs) {
-        if (!ALL.includes(v as VenueName)) { console.error(`--venue: unknown venue '${v}' (aave, morpho, compound, all)`); process.exit(1); }
+        if (!ALL.includes(v as VenueName)) { console.error(`--venue: unknown venue '${v}' (aave, morpho, compound, compound-v2, euler, all)`); process.exit(1); }
         if (!has[v as VenueName]) {
-            console.error(v === 'aave' ? `No Aave V3 Pool for ${cfg.chain.name}. Set liquidation.pool or flashloan.pool in conf/${cfg.chain.label}.json5, or pass --pool.`
-                : `No ${v === 'morpho' ? 'Morpho Blue deployment' : 'Comets'} known for ${cfg.chain.name}. Set liquidation.${v === 'morpho' ? 'morpho' : 'comets'} in conf/${cfg.chain.label}.json5.`);
+            const what = v === 'aave' ? 'an Aave V3 Pool' : v === 'morpho' ? 'a Morpho Blue deployment' : v === 'compound' ? 'Comets' : v === 'euler' ? 'a Euler V2 EVC/factory' : 'Compound V2 comptrollers';
+            const field = v === 'aave' ? 'pool (or flashloan.pool)' : v === 'morpho' ? 'morpho' : v === 'compound' ? 'comets' : v === 'euler' ? 'euler' : 'comptrollers';
+            console.error(`No ${what} known for ${cfg.chain.name}. Set liquidation.${field} in conf/${cfg.chain.label}.json5${v === 'aave' ? ', or pass --pool' : ''}.`);
             process.exit(1);
         }
     }
     return vs as VenueName[];
 })();
-if (!wanted.length) { console.error(`No lending venue known for ${cfg.chain.name}.`); process.exit(1); }
+// Fluid is polled per-vault (no borrower watchlist); on unless --venue excludes it.
+const wantFluid = !!fluidResolver && (venueArg == null ? (liq.venues ? liq.venues.includes('fluid') : true) : venueArg.split(',').map(x => x.trim()).includes('fluid'));
+if (!wanted.length && !wantFluid) { console.error(`No lending venue known for ${cfg.chain.name}.`); process.exit(1); }
 
 const follow = flag('--follow');
 const top = num('--top') ?? 20;
@@ -190,8 +203,11 @@ if (pool) {
     }
 }
 const usdOracleAddr = liq.usdOracle ?? market?.oracle ?? null;
-const usd = new UsdOracle(provider, usdOracleAddr);
-if (!usdOracleAddr) console.log('  [!] no USD oracle (no Aave Pool, no liquidation.usdOracle): only stablecoins have USD values; gas cannot be priced for liquidations');
+// Second source for USD: the scanner's pool DB (deepest pool against a stablecoin).
+const dexUsd = new DexUsd(dbPath(chainArg), /^0x[0-9a-fA-F]{40}$/.test(cfg.chain.token ?? '') ? cfg.chain.token! : null);
+const usd = new UsdOracle(provider, usdOracleAddr, 60_000, dexUsd.available ? (t: string) => dexUsd.priceUsd(t) : null);
+if (!usdOracleAddr && !dexUsd.available) console.log(`  [!] no USD source (no Aave oracle, no liquidation.usdOracle, no ${dbPath(chainArg)}): only stablecoins have USD values; gas cannot be priced for liquidations`);
+else if (!usdOracleAddr) console.log(`  USD prices from the pool DB (${dbPath(chainArg)}) — no Aave oracle on this chain`);
 
 type Track = {
     name: VenueName;
@@ -209,12 +225,14 @@ const healthOpts = {
     batchSize: liq.batchSize, concurrency: liq.concurrency, minProfitUsd,
 };
 const tracks: Track[] = [];
-let morphoVenue: MorphoVenue | null = null, cometVenue: CompoundVenue | null = null;
+let morphoVenue: MorphoVenue | null = null, cometVenue: CompoundVenue | null = null, cv2Venue: CompoundV2Venue | null = null, eulerVenue: EulerVenue | null = null;
 for (const name of wanted) {
     let venue: Venue, deployBlock: number | undefined, deployHint: string | undefined;
     if (name === 'aave') { venue = new AaveVenue(provider, market!); deployBlock = liq.fromBlock; deployHint = market!.pool; }
     else if (name === 'morpho') { venue = morphoVenue = new MorphoVenue(provider, morphoAddr!, usd, liq.morpho ? undefined : MORPHO_BLUE[chainId]?.deployBlock); deployBlock = venue.deployBlock; deployHint = morphoAddr; }
-    else { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label); deployHint = Object.values(comets!)[0]; }
+    else if (name === 'compound') { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label); deployHint = Object.values(comets!)[0]; }
+    else if (name === 'compound-v2') { venue = cv2Venue = new CompoundV2Venue(provider, comptrollers!, usd, cfg.chain.label); deployHint = Object.values(comptrollers!)[0]; }
+    else { venue = eulerVenue = new EulerVenue(provider, euler!.evc, euler!.factory, usd, euler!.deployBlock); deployBlock = venue.deployBlock; deployHint = euler!.factory; }
     await venue.init();
     const db = new LiqDB(dbFile, venue.key);
     tracks.push({ name, venue, db, deployBlock, deployHint, monitor: new HealthMonitor(provider, venue, db, healthOpts) });
@@ -222,6 +240,7 @@ for (const name of wanted) {
 
 // --- liquidation (optional) ------------------------------------------------------
 let aaveLiq: Liquidator | null = null;
+let fluidScanner: FluidScanner | null = null;
 let venueLiq: VenueLiquidator | null = null;
 let routeFinder: RouteFinder | null = null;
 let signer: NonceManager | undefined;
@@ -249,25 +268,37 @@ if (liquidate) {
     if (!routeFinder.available) console.log(`  [!] no ${dbPath(chainArg)} — only same-asset positions can be exited (run yarn scan ${cfg.chain.label})`);
     const plannerOpts = { executor, owner, signer, live, gasMarginMultiple: num('--gas-margin') ?? 3, minProfitUsd };
     if (market && wanted.includes('aave')) aaveLiq = new Liquidator(cfg, provider, market, routeFinder, plannerOpts);
-    if (morphoVenue || cometVenue) {
-        // An executor deployed before Morpho/Comet support has no such entry points.
+    if (morphoVenue || cometVenue || cv2Venue || eulerVenue || (wantFluid && liquidate)) {
+        // The deployed executor must carry the entry points for the venues in play.
         const code = (await provider.getCode(executor)).toLowerCase();
         const sel = (f: string) => new Interface(VENUE_LIQUIDATOR_ABI).getFunction(f)!.selector.slice(2);
-        if (!code.includes(sel('liquidateMorpho')) || !code.includes(sel('liquidateComet'))) {
-            console.log(`  [!] the LiquidationExecutor at ${executor} predates Morpho / Compound support — watching only.`);
+        const need: string[] = [];
+        if (morphoVenue) need.push('liquidateMorpho');
+        if (cometVenue) need.push('liquidateComet');
+        if (cv2Venue) need.push('liquidateCompoundV2');
+        if (eulerVenue) need.push('liquidateEuler');
+        if (wantFluid) need.push('liquidateFluid');
+        const missing = need.filter(f => !code.includes(sel(f)));
+        if (missing.length) {
+            console.log(`  [!] the LiquidationExecutor at ${executor} is missing ${missing.join(', ')} — those venues watch only.`);
             console.log(`      Redeploy: yarn deploy-liquidator ${cfg.chain.label} --redeploy && yarn contract-update ${cfg.chain.label}`);
-        } else {
-            const lenders = new LenderBook(provider, cfg, market?.pool ?? null, { morpho: morphoAddr });
-            venueLiq = new VenueLiquidator(cfg, provider, routeFinder, lenders, usd, plannerOpts);
         }
+        // One planner serves every venue (Fluid included). A per-venue selector that
+        // is still missing just means that venue's attempts revert — the dispatch
+        // handles each call, and the warning above tells the operator to redeploy.
+        const lenders = new LenderBook(provider, cfg, market?.pool ?? null, { morpho: morphoAddr });
+        venueLiq = new VenueLiquidator(cfg, provider, routeFinder, lenders, usd, plannerOpts);
+        if (wantFluid && routeFinder && !missing.includes('liquidateFluid')) fluidScanner = new FluidScanner(provider, fluidResolver!, usd);
     }
 }
 
-console.log(`Liquidation watch on ${cfg.chain.name}: ${tracks.map(t => t.venue.label).join(', ')}`);
+console.log(`Liquidation watch on ${cfg.chain.name}: ${[...tracks.map(t => t.venue.label), ...(wantFluid ? ['Fluid (poll)'] : [])].join(', ')}`);
 for (const t of tracks) {
     if (t.name === 'aave') console.log(`  aave     pool ${market!.pool}, oracle ${market!.oracle}, reserves ${market!.reserves.map(r => r.symbol).join(', ')}`);
     if (t.name === 'morpho') console.log(`  morpho   ${morphoVenue!.morpho} (markets load as borrowers are seen)`);
     if (t.name === 'compound') console.log(`  compound ${[...cometVenue!.comets.values()].map(c => `c${c.name.toUpperCase()}v3 ${c.assets.map(a => a.symbol).join('/')}→${c.baseSymbol}`).join(' · ')}`);
+    if (t.name === 'compound-v2') console.log(`  compound-v2 ${[...cv2Venue!.comptrollers.values()].map(c => `${c.name} (${c.markets.size} markets)`).join(' · ')}`);
+    if (t.name === 'euler') console.log(`  euler    EVC ${eulerVenue!.evc} (${eulerVenue!.vaults.size} vaults)`);
 }
 console.log(`  db       ${dbFile}`);
 if (liquidate) console.log(`  mode     ${live ? 'LIVE — liquidations that simulate clean are BROADCAST' : 'liquidate DRY RUN — simulate only, nothing sent'} (executor ${cfg.chain.liquidator})`);
@@ -307,7 +338,7 @@ const tailOpts = { chunk: cfg.scan.chunkStart, chunkMin: cfg.scan.chunkMin, chun
 
 const t0 = Date.now();
 for (const t of tracks) {
-    const seed: Seed | null = (seedArg === 'subgraph' && t.name !== 'aave' ? null : seedArg as Seed | undefined)
+    let seed: Seed | null = (seedArg === 'subgraph' && t.name !== 'aave' ? null : seedArg as Seed | undefined)
         ?? (t.db.lastBlock() != null ? null : t.name === 'aave' && subgraphUrl ? 'subgraph' : hypersyncOk ? 'hypersync' : 'rpc');
     if (seed === 'subgraph') {
         if (!subgraphUrl) {
@@ -317,11 +348,19 @@ for (const t of tracks) {
             process.exit(1);
         }
         console.log(`\n[${t.venue.label}] seeding from the Aave subgraph (${redactUrl(subgraphUrl)})…`);
-        const r = await seedFromSubgraph(subgraphUrl, t.db, { log: s => process.stdout.write(s) });
-        const lag = head - r.block;
-        console.log(`  ${r.users.toLocaleString()} borrowers in ${r.pages} quer${r.pages === 1 ? 'y' : 'ies'}, snapshot at block ${r.block}` +
-            (lag > 0 ? ` (${lag.toLocaleString()} behind head — tailed below)` : ''));
-    } else if (seed) {
+        try {
+            const r = await seedFromSubgraph(subgraphUrl, t.db, { log: s => process.stdout.write(s) });
+            const lag = head - r.block;
+            console.log(`  ${r.users.toLocaleString()} borrowers in ${r.pages} quer${r.pages === 1 ? 'y' : 'ies'}, snapshot at block ${r.block}` +
+                (lag > 0 ? ` (${lag.toLocaleString()} behind head — tailed below)` : ''));
+        } catch (e) {
+            // A deprecated / unallocated subgraph ("subgraph not found: no allocations", as on
+            // Ink's Tydro) must not kill the process — fall back to the next available source.
+            seed = hypersyncOk ? 'hypersync' : 'rpc';
+            console.log(`  [!] subgraph seed failed (${(e as Error).message.slice(0, 120)}); falling back to ${seed}`);
+        }
+    }
+    if (seed === 'hypersync' || seed === 'rpc') {
         // rpc / hypersync replay from a start block. On a re-seed of an existing
         // DB, --from (or the config/deploy block) says where to replay from.
         let from = num('--from') ?? t.deployBlock;
@@ -403,6 +442,17 @@ head = await provider.getBlockNumber();   // follow from now, not from before th
 type TryState = { nextAt: number; fails: number; key: string; printedAt: number };
 const tries = new Map<string, TryState>();
 const RETRY_MS = 30_000, MAX_BACKOFF_MS = 3_600_000, REPRINT_MS = 600_000, RESERVES_MS = 60_000;
+// Some failures are structural, not transient: the collateral has no exit route
+// in the pool DB, the debt/collateral token reverts every transfer (USR,
+// wbCOIN), a token reverts with a custom error (a transfer hook / blocklist),
+// or gas can't be priced. None of these fix themselves on the next block, yet
+// the plain 30s→1h climb spends ~30 min hammering them first. Observed on Base:
+// one USR→USDC account logged 100+ identical reverts climbing the backoff.
+// Floor a structural failure straight to STRUCTURAL_BACKOFF_MS on the FIRST
+// failure (it still climbs to the 1h cap after that). Not permanent-ignore: a
+// `yarn reserves`/`yarn scan` can add the missing route, so we recheck slowly.
+const STRUCTURAL_BACKOFF_MS = 1_800_000;   // 30m
+const STRUCTURAL_RE = /no exit route|no route between|transferFrom reverted|unknown custom error|cannot price gas/i;
 const fmtAmt = (v: bigint | undefined, dec: number) => v == null ? '?' : Number(formatUnits(v, dec)).toLocaleString(undefined, { maximumFractionDigits: 4 });
 const describe = (r: LiquidationAttempt): string => {
     const b = r.best, d = b?.plan.debt;
@@ -427,33 +477,44 @@ const fmtWait = (ms: number) => ms >= 3_600_000 ? `${(ms / 3_600_000).toFixed(0)
 /** One attempt with backoff + dedupe bookkeeping under `id`. */
 const attemptOnce = async (id: string, label: string, run: () => Promise<LiquidationAttempt>, now: number) => {
     const prev = tries.get(id);
-    let key: string, line: string, failed = false;
+    let key: string, line: string, failed = false, structural = false;
     try {
         const r = await run();
         key = outcomeKey(r);
         line = describe(r);
         failed = !r.simulated && !r.belowFloor && !r.confirmed;
+        structural = failed && STRUCTURAL_RE.test(r.reason ?? line);
         if (r.confirmed) { tries.delete(id); console.log(`  [${head}] ${label} ${line}`); return; }
     } catch (e) {
         signer?.reset();   // a send that threw may have consumed a nonce locally: re-read it from the chain
         key = `error ${(e as Error).message.slice(0, 80)}`;
         line = `attempt error: ${(e as Error).message.slice(0, 160)}`;
         failed = true;
+        structural = STRUCTURAL_RE.test((e as Error).message);
     }
     const same = prev?.key === key;
     const fails = failed ? (same ? prev!.fails + 1 : 1) : 0;
-    const wait = failed ? Math.min(MAX_BACKOFF_MS, RETRY_MS * 2 ** Math.max(0, fails - 1)) : RETRY_MS;
-    // Print on a new outcome, once more when backoff starts (2nd identical failure), and every 10 min.
-    const print = !same || (failed && fails === 2) || now - (prev?.printedAt ?? 0) >= REPRINT_MS;
+    // Structural failures are floored to STRUCTURAL_BACKOFF_MS even on the first
+    // failure, skipping the 30s→16m climb; the normal curve then takes over.
+    const wait = failed
+        ? Math.min(MAX_BACKOFF_MS, Math.max(structural ? STRUCTURAL_BACKOFF_MS : 0, RETRY_MS * 2 ** Math.max(0, fails - 1)))
+        : RETRY_MS;
+    // Print on a new outcome, when a repeat/structural failure sets a long backoff, and every 10 min.
+    const print = !same || (failed && (fails === 2 || structural)) || now - (prev?.printedAt ?? 0) >= REPRINT_MS;
     tries.set(id, { nextAt: now + wait, fails, key, printedAt: print ? now : prev!.printedAt });
-    if (print) console.log(`  [${head}] ${label} ${line}${failed && fails > 1 ? ` (failed ${fails}x the same way; next try in ${fmtWait(wait)})` : ''}`);
+    const note = failed && (fails > 1 || structural)
+        ? ` (${structural ? 'structural — ' : ''}failed ${fails}x the same way; next try in ${fmtWait(wait)})`
+        : '';
+    if (print) console.log(`  [${head}] ${label} ${line}${note}`);
 };
 
 const canLiquidate = (t: Track): boolean => t.name === 'aave' ? !!aaveLiq : !!venueLiq;
 const attemptFor = (t: Track, a: AccountState): Promise<LiquidationAttempt> =>
     t.name === 'aave' ? aaveLiq!.attempt(a.user, a.hf!, a.eMode)
         : t.name === 'morpho' ? venueLiq!.attemptMorpho(morphoVenue!, a.user)
-        : venueLiq!.attemptComet(cometVenue!, a.user);
+        : t.name === 'compound' ? venueLiq!.attemptComet(cometVenue!, a.user)
+        : t.name === 'compound-v2' ? venueLiq!.attemptCompoundV2(cv2Venue!, a.user)
+        : venueLiq!.attemptEuler(eulerVenue!, a.user);
 
 /** Try liquidatable, worth-it accounts that are due (or `force`d), best payout first, at most `max`. */
 const tryLiquidations = async (t: Track, force: Set<string> = new Set(), max = 3) => {
@@ -475,12 +536,36 @@ const tryReserves = async () => {
     await usd.refresh(list.map(x => x.asset.asset));
     const now = Date.now();
     for (const x of list) {
+        // Nothing to buy: Comet holds no absorbed reserve of this asset right now.
+        // Without this, an unpriced asset (v == null) falls through the dust check
+        // below and a 0-reserve buy is simulated and then backed off every cycle —
+        // the Base run logged ~a dozen such "reserves 0 <asset>" attempts per tick.
+        if (x.reserve === 0n) continue;
         const v = usd.value(x.asset.asset, x.reserve);
         if (v != null && toUsd(v * cometVenue.discount(x.comet, x.asset) / WAD) < minProfitUsd) continue;   // the discount on it is dust
         const id = `reserves:${x.comet.comet}:${x.asset.asset}`;
         if (now < (tries.get(id)?.nextAt ?? 0)) continue;
         await attemptOnce(id, `c${x.comet.name.toUpperCase()}v3 reserves ${fmtAmt(x.reserve, usd.decimals(x.asset.asset))} ${x.asset.symbol}`,
             () => venueLiq!.attemptComet(cometVenue!, `reserves:${x.comet.comet}`, x.asset.asset), now);
+    }
+};
+
+/** Fluid: poll the liquidation resolver for vault opportunities and take the worth-it ones. No borrower watchlist. */
+let fluidAt = 0;
+const tryFluid = async () => {
+    if (!venueLiq || !fluidScanner || Date.now() - fluidAt < RESERVES_MS) return;
+    fluidAt = Date.now();
+    let opps: Awaited<ReturnType<FluidScanner['opportunities']>>;
+    try { opps = await fluidScanner.opportunities(); }
+    catch (e) { console.log(`  [!] fluid resolver read: ${(e as Error).message.slice(0, 120)}`); return; }
+    const now = Date.now();
+    for (const o of opps) {
+        const payout = await fluidScanner.payoutUsd(o).catch(() => null);
+        if (payout != null && payout < minProfitUsd) continue;    // gross edge already below the floor
+        const id = `fluid:${o.vault}:${o.collateral}`;
+        if (now < (tries.get(id)?.nextAt ?? 0)) continue;
+        await attemptOnce(id, `fluid ${fmtAmt(o.inAmt, usd.decimals(o.debt))} ${usd.symbol(o.debt)}→${usd.symbol(o.collateral)}`,
+            () => venueLiq!.attemptFluid(fluidScanner!, o), now);
     }
 };
 
@@ -492,9 +577,11 @@ if (liquidate) {
         await tryLiquidations(t, new Set(), 10);
     }
     await tryReserves();
+    if (fluidScanner) console.log(`\n[Fluid] polling the liquidation resolver ${fluidScanner.resolver} for vault opportunities`);
+    await tryFluid();
 }
 
-const closeAll = () => { routeFinder?.close(); for (const t of tracks) t.db.close(); };
+const closeAll = () => { routeFinder?.close(); dexUsd.close(); for (const t of tracks) t.db.close(); };
 if (!follow) {
     closeAll();
     process.exit(0);
@@ -541,6 +628,7 @@ while (!stopping) {
         }
     }
     await tryReserves();
+    await tryFluid();
     ticksSince++;
     slowestMs = Math.max(slowestMs, Date.now() - tickStart);
     if (Date.now() - lastBeat >= 60_000) {
