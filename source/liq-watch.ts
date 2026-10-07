@@ -452,7 +452,14 @@ const RETRY_MS = 30_000, MAX_BACKOFF_MS = 3_600_000, REPRINT_MS = 600_000, RESER
 // failure (it still climbs to the 1h cap after that). Not permanent-ignore: a
 // `yarn reserves`/`yarn scan` can add the missing route, so we recheck slowly.
 const STRUCTURAL_BACKOFF_MS = 1_800_000;   // 30m
-const STRUCTURAL_RE = /no exit route|no route between|transferFrom reverted|unknown custom error|cannot price gas/i;
+// A simulation that reverts with a NAMED contract error (Aave's `sUSD retired`,
+// Comet's `NothingSeized()`, a token's transfer/custom error) gives the same
+// result every block until on-chain state changes — and a state change fires an
+// event that force-retries the account immediately anyway (bypassing this
+// backoff). So any deterministic revert is structural. A transient RPC failure
+// ("missing revert data", "could not coalesce") is NOT wrapped in Error(...) and
+// is deliberately left out so it keeps the fast 30s climb.
+const STRUCTURAL_RE = /no exit route|no route between|transferFrom reverted|unknown custom error|cannot price gas|NothingSeized|every simulation reverted \(Error\(/i;
 const fmtAmt = (v: bigint | undefined, dec: number) => v == null ? '?' : Number(formatUnits(v, dec)).toLocaleString(undefined, { maximumFractionDigits: 4 });
 const describe = (r: LiquidationAttempt): string => {
     const b = r.best, d = b?.plan.debt;
