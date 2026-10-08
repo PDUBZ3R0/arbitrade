@@ -1,0 +1,24 @@
+{
+    factories: [
+        {
+            address: "0x3fa23184d88975bd78c0c8d26de173b17547c27e",
+            reason:  "NON-CP — bonding-curve mint/redeem, not x*y=k (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xfb2fc6e01b6d5af48fbc3ecba2ca1b69e811f74c",
+            reason:  "NON-CP — bonding-curve mint/redeem, not x*y=k (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0x49c18d091d7e6d18f8f3c05a245dbf86facb2937",
+            reason:  "NO-SWAP — no callable swap() (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xfc42221594c07f2efcedfb11f4763fca03248b5a",
+            reason:  "NO-SWAP — no callable swap() (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+    ]
+}

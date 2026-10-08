@@ -1,0 +1,14 @@
+{
+    factories: [
+        {
+            address: "0xc90e80e535fece464a578f78ba065a464bd368f7",
+            reason:  "NON-CP — swap() has no K-invariant check, Playground fee-on-output (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xbacd8134992c16a9270e0d09486922961978c40f",
+            reason:  "NON-CP — swap() has no K-invariant check, caller-supplied fees (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+    ]
+}

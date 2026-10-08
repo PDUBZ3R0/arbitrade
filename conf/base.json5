@@ -59,7 +59,7 @@
         // 8235 pairs in the sweep window (verified on explorer as "PancakeFactory")
         "PancakeFactory_fda619b6": {
           address: "0xfda619b6d20975be80a10332cd39b9a4b0faa8bb",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
         // 6056 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
@@ -71,7 +71,7 @@
         // 1290 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
         "UniswapV2Factory_3e84d913": {
           address: "0x3e84d913803b02a4a7f027165e8ca42c14c0fde7",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0016  // verify-fees 2026-10-08: 0.0016
         },
 
         // 1017 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
@@ -89,7 +89,7 @@
         // 567 pairs in the sweep window (verified on explorer as "SynthFactory")
         "SynthFactory_4bd16d59": {
           address: "0x4bd16d59a5e1e0db903f724aa9d721a31d7d720d",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
         // 517 pairs in the sweep window (verified on explorer as "ChaingeFactory")
@@ -119,7 +119,7 @@
         // 230 pairs in the sweep window (verified on explorer as "XchangeFactory")
         "XchangeFactory_8b76c056": {
           address: "0x8b76c05676d205563ffc1cbd11c0a6e3d83929c5",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.002  // verify-fees 2026-10-08: 0.002
         },
 
         // 223 pairs in the sweep window (verified on explorer as "TokenLaunchpad")
@@ -137,7 +137,7 @@
         // 136 pairs in the sweep window (verified on explorer as "DackieFactory")
         "DackieFactory_591f122d": {
           address: "0x591f122d1df761e616c13d265006fcbf4c6d6551",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
         // 111 pairs in the sweep window (verified on explorer as "ElkFactory")
@@ -221,7 +221,7 @@
         // 45 pairs in the sweep window (verified on explorer as "OmniFactory")
         "OmniFactory_7d9d5126": {
           address: "0x7d9d51267f7e9e6b46a48e0a75c0086f46777087",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
         // 44 pairs in the sweep window (verified on explorer as "UniswapV2Factory")
@@ -317,7 +317,7 @@
         // 16 pairs in the sweep window (verified on explorer as "ThroneV2Factory")
         "ThroneV2Factory_e4806bdd": {
           address: "0xe4806bdd8e010828324928d25587721f6b58bea2",
-          fee: 0.003  // ← UNVERIFIED
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
         // 16 pairs in the sweep window (verified on explorer as "UniswapV2FactoryDiamond")
@@ -335,7 +335,7 @@
         },
         "Factory_079463f8": {   // 43 pairs
           address: "0x079463f811e6eb2e226908e79144cddb59a7fb71",
-          fee: 0.003  // ← UNVERIFIED, fee constant not found by decompile
+          fee: 0.01005  // verify-fees 2026-10-08: 0.01005
         },
         "Factory_fb2fc6e0": {   // 27 pairs
           address: "0xfb2fc6e01b6d5af48fbc3ecba2ca1b69e811f74c",

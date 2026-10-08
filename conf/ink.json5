@@ -110,14 +110,14 @@
     // Add under factories["v2"]:
         "Factory_1d1562ee": {
           address: "0x1d1562ee59aafc1a3915d9ea374c1dc35959f60e",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
 // 2 pairs in the sweep window
     // Add under factories["v2"]:
         "Factory_23cc45b1": {
           address: "0x23cc45b19f6f64f409af2a758ba84b0218f64d47",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
 // 2 pairs in the sweep window

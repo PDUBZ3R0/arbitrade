@@ -45,5 +45,35 @@
             reason:  "dead (0/1 pairs with real liquidity)",
             addedAt: "2026-10-05",
         },
+        {
+            address: "0xf7aa104652cee98c132d2a9b01705abc670ae8f9",
+            reason:  "unknown curve — swap() K-check unrecoverable, cannot price (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xf9775adc1b4a26662ee66517bbae23160d07dbfd",
+            reason:  "unknown curve — unverifiable swap()/K-check (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xe39a8c3531929a6c82e21aafd6473bdde411c246",
+            reason:  "unknown curve — unverifiable swap()/K-check (verify-fees)",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xbe15b91944ad8407facbcc127795acddd1e2b609",
+            reason:  "per-pair-storage fee (Fraxswap) — not flat-0.003 v2; needs v2fee group, excluded for now",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0xf8f66ceb5e6591ff38f4a2794d83e3e7a971a7c9",
+            reason:  "per-pair-storage fee (Nomiswap) — not flat-0.003 v2; needs v2fee group, excluded for now",
+            addedAt: "2026-10-08",
+        },
+        {
+            address: "0x3feb699c9812b22a4f759f8a73980cbec9e98f27",
+            reason:  "empirical fee 0% (ERC1967Proxy) — non-standard, K-check would revert every swap",
+            addedAt: "2026-10-08",
+        },
     ]
 }

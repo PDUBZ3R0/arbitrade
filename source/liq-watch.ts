@@ -360,7 +360,9 @@ if (seedArg === 'hypersync' && !hypersyncOk) {
 const tailOpts = { chunk: cfg.scan.chunkStart, chunkMin: cfg.scan.chunkMin, chunkMax: cfg.scan.chunkMax, log: console.log };
 
 const t0 = Date.now();
+const seedFailed = new Set<Track>();
 for (const t of tracks) {
+  try {
     let seed: Seed | null = (seedArg === 'subgraph' && t.name !== 'aave' ? null : seedArg as Seed | undefined)
         ?? (t.db.lastBlock() != null ? null : t.name === 'aave' && subgraphUrl ? 'subgraph' : hypersyncOk ? 'hypersync' : 'rpc');
     if (seed === 'subgraph') {
@@ -409,6 +411,17 @@ for (const t of tracks) {
         const r = await tailRpc(provider, t.db, after + 1, head, { ...tailOpts, source: t.venue });
         console.log(`  ${r.logs.toLocaleString()} events in ${r.calls} getLogs call(s)`);
     }
+  } catch (e) {
+    // One venue's seed/tail failing (e.g. an RPC that refuses this venue's
+    // getLogs filter — Sonic blocks Euler's 174-address query) must not kill
+    // the watcher. Drop the venue and keep watching the rest.
+    console.error(`  [!] ${t.venue.label} seed/tail failed, skipping this venue: ${(e as Error).message.slice(0, 160)}`);
+    seedFailed.add(t);
+  }
+}
+if (seedFailed.size) {
+    for (let i = tracks.length - 1; i >= 0; i--) if (seedFailed.has(tracks[i])) { tracks[i].db.close(); tracks.splice(i, 1); }
+    if (tracks.length === 0) { console.error('No venues survived seeding — every venue failed to load events. Check the RPC and conf.'); process.exit(1); }
 }
 console.log(`Watchlist: ${tracks.map(t => `${t.venue.label} ${t.db.count().toLocaleString()}`).join(', ')} accounts through block ${head} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
