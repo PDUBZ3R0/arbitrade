@@ -6,6 +6,9 @@
     id: 10,
     name: 'Optimism',
     currency: 'ETH',
+
+    sequencer: 'https://mainnet-sequencer.optimism.io',
+
     token: '0x4200000000000000000000000000000000000006',   // WETH
     contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',  // YoBatches3 — yarn deploy-contract optimism
     executor: '0x0426d7687911f81DcD7769655b995650a765a7D5',  // FlashArbExecutor — yarn deploy-flasharb optimism

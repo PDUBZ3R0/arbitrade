@@ -33,7 +33,7 @@
 //     is correctly ignored here.
 // -----------------------------------------------------------------------------
 
-import { swap_output, optimal_cycle_size, UINT112_SAFE } from './calculus.js';
+import { swap_output, optimal_cycle_size, UINT112_SAFE, stable_amount_out, stable_marginal } from './calculus.js';
 
 // =============================================================================
 // Constants
@@ -558,6 +558,7 @@ function advance(c, x) {
 /** Float output of one hop (V2 or V3) for gross input x. Wall-limited. */
 export function hop_output(x, h) {
     if (!(x > 0)) return 0;
+    if (h.stable) return stable_amount_out(x, h.rIn, h.rOut, h.fee, h.decIn ?? 18, h.decOut ?? 18);
     if (!h.v3) return swap_output(x, h.rIn, h.rOut, h.fee);
     return advance(cursor(h), x).out;
 }
@@ -569,6 +570,12 @@ export function hop_output(x, h) {
 export function mixed_cycle_product(hops) {
     let p = 1;
     for (const h of hops) {
+        if (h.stable) {
+            const m = stable_marginal(h.rIn, h.rOut, h.fee, h.decIn ?? 18, h.decOut ?? 18);
+            if (!(m > 0)) return 0;
+            p *= m;
+            continue;
+        }
         const sg = segment(cursor(h));
         if (!(sg.rIn > 0)) return 0;
         p *= (1 - sg.fee) * sg.rOut / sg.rIn;
@@ -607,6 +614,24 @@ export function mixed_cycle_profit(x, hops) {
  * @param {Array} hops  V2 hops {rIn, rOut, fee} and/or v3_float_hop() results
  */
 export function optimal_mixed_cycle(hops, maxIter = 256) {
+    // A stable pool is not piecewise-constant-product, so the segment-folding
+    // optimizer below (which treats each hop's current segment as one CP pool)
+    // does not apply. A cycle with any stable hop is sized by ternary search on
+    // mixed_cycle_profit, which is still concave/unimodal (a composition of
+    // concave increasing swaps minus x). Bound the search by half the shallowest
+    // non-V3 input reserve; a pure report clamps afterward regardless.
+    if (hops.some(h => h.stable)) {
+        let bound = Infinity;
+        for (const h of hops) if (!h.v3 && h.rIn > 0) bound = Math.min(bound, h.rIn / 2);
+        if (!Number.isFinite(bound) || !(bound > 0)) return { x: 0, wall: false, iterations: 0 };
+        let lo = 0, hi = bound;
+        for (let i = 0; i < 200; i++) {
+            const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+            if (mixed_cycle_profit(m1, hops) < mixed_cycle_profit(m2, hops)) lo = m1; else hi = m2;
+        }
+        const x = (lo + hi) / 2;
+        return { x: mixed_cycle_profit(x, hops) > 0 ? x : 0, wall: hi >= bound * 0.999, iterations: 200 };
+    }
     const cs = hops.map(cursor);
     let total = 0;
     for (let it = 0; it < maxIter; it++) {
@@ -648,7 +673,9 @@ export function optimal_mixed_cycle(hops, maxIter = 256) {
 export function mixed_cycle_overflows(x, hops, cap = UINT112_SAFE) {
     let amt = x;
     for (const h of hops) {
-        if (!h.v3 && !(h.rIn + amt <= cap)) return true;
+        // Stable (Velodrome/Aerodrome) pools keep uint256 reserves, not uint112,
+        // so the V2 ceiling doesn't apply — skip them like V3.
+        if (!h.v3 && !h.stable && !(h.rIn + amt <= cap)) return true;
         amt = hop_output(amt, h);
         if (!(amt > 0)) return true;
     }

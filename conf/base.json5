@@ -4,6 +4,8 @@
     name: 'Base',
     currency: 'ETH',
 
+    sequencer: 'https://mainnet-sequencer.base.org',
+
     token: '0x4200000000000000000000000000000000000006',
     contract: "0x2A7e091B283846835f536a889201cbD48365B37E",
     executor: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',

@@ -70,6 +70,18 @@ services:
       - arbitrum-db:/app/db
       - arbitrum-log:/app/log
 
+  ink:
+    <<: *arb
+    image: arbitrade:ink
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
+    environment:
+      MODE: ${INK_MODE:-${MODE:-test}}
+    logging:
+      <<: *cloudwatch
+      options: { <<: *cw, awslogs-group: arbitrade/ink }
+    volumes:
+      - ink-db:/app/db
+      - ink-log:/app/log
 volumes:
   base-db:
   base-log:

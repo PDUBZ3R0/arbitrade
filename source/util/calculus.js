@@ -316,6 +316,87 @@ export function cycle_overflows(x, hops, cap = UINT112_SAFE) {
     return false;
 }
 
+// -----------------------------------------------------------------------------
+// Solidly stable-pool math (Velodrome V2 / Aerodrome / Pharaoh shape).
+//
+// A stable pool is NOT constant product. Its invariant is
+//   k = x³y + xy³  =  x·y·(x² + y²)
+// evaluated on reserves NORMALISED to a common unit (each side divided by its
+// token's decimals), which is what makes a 6-dp USDC side and an 18-dp DAI side
+// comparable. getAmountOut on-chain (Velodrome `_getAmountOut`): take the fee
+// off the input, normalise, then Newton-solve the new output reserve that keeps
+// k constant, and de-normalise. We reproduce that here in float64 — exact enough
+// to SCORE a candidate; the Solidity contract redoes it in integer math before
+// anything is sent (same contract as the CP path — see calculus.js header).
+//
+// Everything below composes in RAW token amounts (same as swap_output), so a
+// stable hop drops straight into a mixed cycle next to constant-product hops:
+// the normalise/de-normalise happens inside each call.
+// -----------------------------------------------------------------------------
+
+/** Stable invariant on NORMALISED reserves X, Y (token-count units): x·y·(x²+y²). */
+export function stable_k(X, Y) {
+    return X * Y * (X * X + Y * Y);
+}
+
+/**
+ * Output of one swap on a Solidly STABLE pool, in raw token units.
+ * Mirrors Velodrome `getAmountOut`: fee off the input first, then the k-solve.
+ *
+ * @param {number} amountIn    raw input amount
+ * @param {number} reserveIn   raw reserve of the input token
+ * @param {number} reserveOut  raw reserve of the output token
+ * @param {number} [fee=0.0005]  swap fee as a decimal (stable pools are ~0.01–0.05%)
+ * @param {number} [decIn=18]  decimals of the input token
+ * @param {number} [decOut=18] decimals of the output token
+ * @returns {number} raw amount out (>= 0)
+ */
+export function stable_amount_out(amountIn, reserveIn, reserveOut, fee = 0.0005, decIn = 18, decOut = 18) {
+    if (!(amountIn > 0) || !(reserveIn > 0) || !(reserveOut > 0)) return 0;
+    const sIn = 10 ** decIn, sOut = 10 ** decOut;
+    const X = reserveIn / sIn;
+    const Y = reserveOut / sOut;
+    const dx = (amountIn * (1 - fee)) / sIn;      // fee is taken off the input, same as on-chain
+    const k = stable_k(X, Y);
+    const Xp = X + dx;
+    // Solve Xp·y·(Xp² + y²) = k for y (the new output-side reserve), Newton from Y.
+    //   g(y)  = Xp·y·(Xp² + y²) − k
+    //   g'(y) = Xp·(Xp² + 3y²)
+    let y = Y;
+    for (let i = 0; i < 64; i++) {
+        const g = Xp * y * (Xp * Xp + y * y) - k;
+        const gp = Xp * (Xp * Xp + 3 * y * y);
+        if (!(gp > 0)) break;
+        const step = g / gp;
+        y -= step;
+        if (Math.abs(step) <= Math.abs(y) * 1e-15) break;
+    }
+    const outTokens = Y - y;
+    return outTokens > 0 ? outTokens * sOut : 0;
+}
+
+/**
+ * Marginal output rate of a stable hop at infinitesimal size (the spot rate,
+ * net of fee), in raw out-token per raw in-token — the stable analogue of
+ * (1−fee)·rOut/rIn, for the mixed-cycle gate. The spot slope of x·y·(x²+y²)=k
+ * is (3X²Y + Y³)/(X³ + 3XY²) in normalised units; scale back to raw by
+ * decOut/decIn.
+ * @param {number} reserveIn   raw reserve of the input token
+ * @param {number} reserveOut  raw reserve of the output token
+ * @param {number} fee         swap fee as a decimal
+ * @param {number} [decIn=18]
+ * @param {number} [decOut=18]
+ * @returns {number} raw out per raw in at zero size
+ */
+export function stable_marginal(reserveIn, reserveOut, fee, decIn = 18, decOut = 18) {
+    const sIn = 10 ** decIn, sOut = 10 ** decOut;
+    const X = reserveIn / sIn, Y = reserveOut / sOut;
+    const num = 3 * X * X * Y + Y * Y * Y;
+    const den = X * X * X + 3 * X * Y * Y;
+    if (!(den > 0)) return 0;
+    return (1 - fee) * (sOut / sIn) * (num / den);
+}
+
 // ----- Convenience wrappers matching the original public API ----------------
 
 /**

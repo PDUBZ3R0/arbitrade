@@ -233,10 +233,33 @@ for (const name of wanted) {
     else if (name === 'compound') { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label); deployHint = Object.values(comets!)[0]; }
     else if (name === 'compound-v2') { venue = cv2Venue = new CompoundV2Venue(provider, comptrollers!, usd, cfg.chain.label); deployHint = Object.values(comptrollers!)[0]; }
     else { venue = eulerVenue = new EulerVenue(provider, euler!.evc, euler!.factory, usd, euler!.deployBlock); deployBlock = venue.deployBlock; deployHint = euler!.factory; }
-    await venue.init();
+    // init() reads venue config in one big Multicall3. On a flaky public RPC
+    // (Polygon's especially) that read can come back "missing revert data" — the
+    // node refusing the call, not a real revert — and an uncaught one here used
+    // to crash the whole watcher at startup before it could watch anything.
+    // Retry a transient failure a few times (init is one-shot, so a longer
+    // backoff that outlasts a rate-limit window is fine), then, if the venue
+    // still can't initialize, skip JUST that venue rather than taking the others
+    // down with it.
+    let initOk = false;
+    for (let attempt = 0; attempt < 3 && !initOk; attempt++) {
+        try { await venue.init(); initOk = true; }
+        catch (e) {
+            const msg = (e as Error).message;
+            const transient = /missing revert data|could not coalesce|CALL_EXCEPTION|SERVER_ERROR|timeout|rate limit|too many request|ECONNRESET|ETIMEDOUT|socket hang up|-3200[0-9]|\b429\b|\b503\b/i.test(msg);
+            if (transient && attempt < 2) { await new Promise(r => setTimeout(r, 500 * (attempt + 1))); continue; }
+            console.log(`  [!] ${venue.label} init failed (${msg.slice(0, 100)}) — skipping this venue`);
+            if (name === 'morpho') morphoVenue = null;
+            else if (name === 'compound') cometVenue = null;
+            else if (name === 'compound-v2') cv2Venue = null;
+            else if (name === 'euler') eulerVenue = null;
+        }
+    }
+    if (!initOk) continue;
     const db = new LiqDB(dbFile, venue.key);
     tracks.push({ name, venue, db, deployBlock, deployHint, monitor: new HealthMonitor(provider, venue, db, healthOpts) });
 }
+if (tracks.length === 0) { console.error('No venues initialized — every venue failed to load. Check the RPC and conf.'); process.exit(1); }
 
 // --- liquidation (optional) ------------------------------------------------------
 let aaveLiq: Liquidator | null = null;

@@ -1,6 +1,6 @@
 {
   "Yo3Module#YoBatches3": "0x9301c3F24DDB4E953df31D51df23F102680155c6",
-  "FlashArbModule#FlashArbExecutor": "0x2A7e091B283846835f536a889201cbD48365B37E",
+  "FlashArbModule#FlashArbExecutor": "0x0426d7687911f81DcD7769655b995650a765a7D5",
   "TokenProbeModule#TokenProbe": "0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649",
-  "LiquidationModule#LiquidationExecutor": "0x461834B561E3d193AF97EB02172be56420FF7053"
+  "LiquidationModule#LiquidationExecutor": "0xbc04E12771de574f98401e3cC54b667e147ecA6C"
 }

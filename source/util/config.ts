@@ -43,6 +43,17 @@ export type ChainMeta = {
      * Filled in by `yarn add-chain` when chainlist lists a working one.
      */
     ws?: string;
+    /**
+     * Direct transaction-submission endpoint, used ONLY for broadcasting (not
+     * reads). On single-sequencer rollups (Base/OP/Arbitrum/Ink) posting the
+     * signed tx straight to the chain's sequencer shaves the extra provider hop
+     * and wins more latency races; it can also be any eth_sendRawTransaction-
+     * compatible private endpoint. When unset, trades broadcast through the
+     * normal provider (host). Overridable with `<LABEL>_SEQUENCER` in .env.
+     * Note: a sequencer endpoint typically accepts ONLY eth_sendRawTransaction,
+     * so it is never used for reads, gas estimation or receipts.
+     */
+    sequencer?: string;
     /** Block explorer base URL, for humans (set by `yarn add-chain`). */
     explorer?: string;
     hypersyncUrl?: string;     // Envio HyperSync URL (e.g. "https://sonic.hypersync.xyz")
@@ -388,6 +399,15 @@ export type NormalizedFactory = {
     poolEvent: 'uniswap' | 'tickspacing' | 'velodrome' | undefined;
     /** v3 group only: measured swap-callback name, if configured. */
     callback: string | undefined;
+    /**
+     * algebra group only: which Algebra variant the pools are, since the state
+     * reader (globalState decode, tick enumeration) differs. 'v1' = Algebra V1
+     * (QuickSwap V3 — fee in globalState, tickTable bitmap, fixed spacing 60);
+     * 'integral' = Algebra Integral (Camelot V3 — lastFee in globalState, tick
+     * linked-list, per-pool spacing). Default 'integral'; set "algebraVariant":
+     * "v1" in conf for QuickSwap-era factories.
+     */
+    algebraVariant: 'v1' | 'integral' | undefined;
     abi: string[];
 };
 
@@ -477,6 +497,7 @@ export function loadChainRegistry(): Record<string, ChainMeta> {
             // `wss` accepted as an alias: it is the natural thing to type for a
             // wss:// URL, and a silently ignored key means silent HTTP polling.
             ws:            entry.ws ?? (entry as any).wss,
+            sequencer:     entry.sequencer,
             explorer:      entry.explorer,
             contract:      entry.contract,
             threads:       entry.threads,
@@ -546,6 +567,10 @@ export function loadChainConfig(chainArg: string): ChainConfig {
     const wsKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_WS`;
     if (process.env[wsKey]) {
         raw.chain.ws = process.env[wsKey]!;
+    }
+    const seqKey = `${meta.label.toUpperCase().replace(/-/g, '_')}_SEQUENCER`;
+    if (process.env[seqKey]) {
+        raw.chain.sequencer = process.env[seqKey]!;
     }
 
     // Flatten the factory groups
@@ -644,6 +669,9 @@ export function loadChainConfig(chainArg: string): ChainConfig {
                         ? (isString ? undefined : entry.poolEvent) === 'velodrome' ? 'velodrome' : undefined
                         : undefined,
                 callback:  isString ? undefined : entry.callback,
+                algebraVariant: group === 'algebra'
+                    ? (isString ? 'integral' : (((entry as any).algebraVariant as 'v1' | 'integral' | undefined) ?? (pattern as any)?.algebraVariant ?? 'integral'))
+                    : undefined,
                 abi: g.abi,
             });
         }

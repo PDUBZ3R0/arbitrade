@@ -145,6 +145,7 @@ async function discoverAndCacheDeployBlock(
 function layoutOf(factory: NormalizedFactory): EventLayout {
     return factory.group === 'solidly' ? (factory.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
            factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[(factory.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'] :
+           factory.group === 'algebra' ? 'algebra' :
            'v2';
 }
 
@@ -152,16 +153,21 @@ function layoutOf(factory: NormalizedFactory): EventLayout {
 function pairRow(factory: NormalizedFactory, p: { pair: string; token0: string; token1: string; stable: boolean | null;
                  feePips?: number | null; tickSpacing?: number | null; blockNumber: number }): import('../util/db.ts').PairRow {
     const isV3 = factory.group === 'v3';
+    const isAlgebra = factory.group === 'algebra';
+    const isCL = isV3 || isAlgebra;   // both are concentrated-liquidity (kind 'v3')
     return {
         address:     p.pair,
         factory:     factory.address,
         token0:      p.token0,
         token1:      p.token1,
         blockNumber: p.blockNumber,
+        // Algebra fees are dynamic (per-pool, read from globalState at reserves
+        // time), so the event carries none — leave null like a per-pair solidly fee.
         fee:         isV3 && p.feePips != null ? p.feePips / 1e6 : null,
         stable:      p.stable,
-        kind:        isV3 ? 'v3' : 'v2',
-        tickSpacing: isV3 ? (p.tickSpacing ?? null) : null,
+        kind:        isCL ? 'v3' : 'v2',
+        tickSpacing: isCL ? (p.tickSpacing ?? null) : null,
+        clVariant:   isAlgebra ? `algebra-${factory.algebraVariant ?? 'integral'}` : (isV3 ? 'univ3' : null),
     };
 }
 
@@ -285,13 +291,6 @@ export async function scanFactory(
     factory: NormalizedFactory,
     opts: ScanOptions = {},
 ): Promise<number> {
-    if (factory.group === 'algebra') {
-        // Algebra pools are discovered by find-factories but not modelled
-        // downstream (globalState/tickTable, dynamic fee), so scanning them
-        // would only fill the DB with pools nothing can price.
-        return 0;
-    }
-
     // Event topic and parsing rules depend on the group:
     //   'v2'      : PairCreated(address,address,address,uint256)
     //               No stable info in event.
@@ -644,7 +643,6 @@ export async function scanChain(
         const head = opts.toBlock ?? await provider.getBlockNumber();
         const near: Array<{ factory: NormalizedFactory; fromBlock: number }> = [];
         for (const f of cfg.factories) {
-            if (f.group === 'algebra') continue;
             const resume = db.getScanProgress(f.address);
             if (resume !== null && head - resume <= maxGap) near.push({ factory: f, fromBlock: resume + 1 });
         }
@@ -680,10 +678,6 @@ export async function scanChain(
     try {
         for (const factory of cfg.factories) {
             if (handled.has(factory.address)) continue;
-            if (factory.group === 'algebra') {
-                console.log(`\n[skip] ${factory.name}: algebra pools are not modelled yet — not scanned`);
-                continue;
-            }
 
             // Prefer DB-cached deploy block over config, since discovery caches to DB
             const cachedBlock = db.getFactoryDeployBlock(factory.address);

@@ -103,7 +103,7 @@ if [ "${RUN_HOT:-1}" = 1 ]; then
     pids+=($!)
 fi
 if [ "${RUN_LIQ:-1}" = 1 ]; then
-    supervise liq yarn --silent liq-watch "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
+    supervise liq yarn --silent liquidator "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
     pids+=($!)
 fi
 if [ ${#pids[@]} -eq 0 ]; then say "RUN_HOT=0 and RUN_LIQ=0: nothing to run"; exit 0; fi

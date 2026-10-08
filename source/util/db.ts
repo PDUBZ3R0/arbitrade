@@ -63,6 +63,12 @@ const SCHEMA = `
         --        on kind = 'v2'.
         kind        TEXT NOT NULL DEFAULT 'v2',
         tickSpacing INTEGER,  -- v3 only
+        -- Concentrated-liquidity variant, for kind='v3' pools. NULL/'univ3' =
+        -- Uniswap-V3-shaped (slot0/ticks, read by YoBatches.getV3State).
+        -- 'algebra-v1' / 'algebra-integral' = Algebra, read via globalState and
+        -- the version's tick storage (YoBatches.getAlgebraState). Decides which
+        -- state reader the reserves pass uses.
+        cl_variant  TEXT,
         PRIMARY KEY (factory, address)
     );
 
@@ -209,6 +215,9 @@ function migratePairsColumns(db: import('better-sqlite3').Database): void {
     if (!names.has('tickSpacing')) {
         db.exec('ALTER TABLE pairs ADD COLUMN tickSpacing INTEGER');
     }
+    if (!names.has('cl_variant')) {
+        db.exec('ALTER TABLE pairs ADD COLUMN cl_variant TEXT');
+    }
 }
 
 /**
@@ -342,6 +351,8 @@ export type PairRow = {
     stable?: boolean | null;
     /** 'v2' (default) or 'v3'. */
     kind?: 'v2' | 'v3';
+    /** CL variant for kind='v3': 'univ3' (default/NULL) | 'algebra-v1' | 'algebra-integral'. */
+    clVariant?: string | null;
     /** v3 only. */
     tickSpacing?: number | null;
 };
@@ -413,8 +424,8 @@ export class ArbitradeDB {
      */
     insertPairs(rows: PairRow[]): number {
         const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO pairs (address, factory, token0, token1, blockNumber, fee, stable, kind, tickSpacing)
-            VALUES (@address, @factory, @token0, @token1, @blockNumber, @fee, @stable, @kind, @tickSpacing)
+            INSERT OR IGNORE INTO pairs (address, factory, token0, token1, blockNumber, fee, stable, kind, tickSpacing, cl_variant)
+            VALUES (@address, @factory, @token0, @token1, @blockNumber, @fee, @stable, @kind, @tickSpacing, @cl_variant)
         `);
         const tx = this.db.transaction((rs: PairRow[]) => {
             let n = 0;
@@ -429,6 +440,7 @@ export class ArbitradeDB {
                     stable: r.stable == null ? null : (r.stable ? 1 : 0),
                     kind: r.kind ?? 'v2',
                     tickSpacing: r.tickSpacing ?? null,
+                    cl_variant: r.clVariant ?? null,
                 });
                 if (res.changes > 0) n++;
             }
@@ -964,7 +976,7 @@ export class ArbitradeDB {
             AND p.token0 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))
             AND p.token1 NOT IN (SELECT address FROM tokens WHERE probeStatus IN (${badTokens}))`;
         return this.db.prepare(`
-            SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable, p.kind
+            SELECT p.address AS pair, p.factory, p.token0, p.token1, p.fee, p.stable, p.kind, p.cl_variant
             FROM pairs p
             INNER JOIN reserves r ON r.pair = p.address
             WHERE r.reserves0 != '0' AND r.reserves1 != '0'

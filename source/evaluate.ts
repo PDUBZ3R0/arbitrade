@@ -100,6 +100,7 @@ const limitStr   = getStr('--limit');
 const limit      = limitStr ? parseInt(limitStr, 10) : 20;
 const verbose    = hasFlag('--verbose');
 const debug      = hasFlag('--debug');
+const includeStable = hasFlag('--include-stable');
 const debugLimitStr = getStr('--debug-limit');
 const debugLimit = debugLimitStr ? parseInt(debugLimitStr, 10) : 25;
 
@@ -115,11 +116,14 @@ console.log(`Min profit tokens:  ${minProfitTokens}${minProfitTokensStr ? '' : (
 console.log(`Min input tokens:   ${minInputTokens}${minInputTokensStr ? '' : (chainDefaults.minInputTokens != null ? '  (from conf/' + cfg.chain.label + '.json5)' : '  (global default)')}`);
 console.log('');
 
+if (includeStable) console.log('Including Solidly STABLE pools (scored on the stable curve — REPORT only; the deployed executor cannot trade them yet)');
+console.log('');
+
 const result = await evaluateTriangles(cfg, dbFile, {
     onlyRoot, onlyHops, minProfitWei, limit,
     minLiquidityTokens, minPairReservesWei, maxRoiPct,
     minProfitTokens, minInputTokens,
-    debug, debugLimit,
+    debug, debugLimit, includeStable,
 });
 
 // Show exactly how each root token's threshold was resolved — a root priced

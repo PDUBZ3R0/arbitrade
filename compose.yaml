@@ -1,32 +1,3 @@
-# -----------------------------------------------------------------------------
-# One container per chain, each built from Containerfile with its own DB and
-# conf baked in (see Containerfile for what that means), each with its own
-# volumes, so a chain can be rebuilt / restarted / reset without touching the
-# others. Works with `docker compose` and `podman compose`.
-#
-#   docker compose build                 # all chains (or: build base)
-#   docker compose up -d                 # dry run: MODE=test
-#   MODE=live docker compose up -d base  # one chain live (needs PRIVATE_KEY)
-#   docker compose logs -f base          # [manual] / [hot] / [liq] lines
-#   docker compose down                  # stop; volumes (the live DBs) are kept
-#
-# MODE: test simulates only, live broadcasts. Set per chain with BASE_MODE,
-# OPTIMISM_MODE, ARBITRUM_MODE, else MODE, else test. Compose also reads these
-# from .env in this directory, so `MODE=live` there flips every chain.
-#
-# Secrets (PRIVATE_KEY, *_RPC, GRAPH_API_KEY, ENVIO_API_TOKEN …) come from
-# .env at run time via env_file — never baked into an image.
-#
-# Resetting a chain to the DB in its image (e.g. after a rebuild with a fresh
-# host DB):  docker compose down base && docker volume rm arbitrade_base-db
-#
-# Adding a chain: copy a service block, change CHAIN / names / volumes. Mind
-# memory: the hot loop holds the chain's triangle index in RAM (Polygon's is
-# large — set mem_limit from `docker stats` once it has run).
-#
-# On AWS, add compose.aws.yaml to send logs to CloudWatch:
-#   docker compose -f compose.yaml -f compose.aws.yaml up -d
-# -----------------------------------------------------------------------------
 
 name: arbitrade
 
@@ -42,28 +13,28 @@ x-arb: &arb
       max-file: "5"
 
 services:
-  base:
-    <<: *arb
-    image: arbitrade:ink
-    build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
-    environment:
-      MODE: ${INK_MODE:-${MODE:-test}}
-    volumes:
-      - ink-db:/app/db
-      - ink-log:/app/log
-
   sonic:
     <<: *arb
     image: arbitrade:sonic
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: sonic } }
     environment:
-      MODE: ${SONIC_MODE:-${MODE:-test}}
+      MODE: "live"
     volumes:
       - sonic-db:/app/db
       - sonic-log:/app/log
 
+  gnosis:
+    <<: *arb
+    image: arbitrade:gnosis
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: gnosis } }
+    environment:
+      MODE: "live"
+    volumes:
+      - gnosis-db:/app/db
+      - gnosis-log:/app/log
+
 volumes:
   sonic-db:
   sonic-log:
-  ink-db:
-  ink-log:
+  gnosis-db:
+  gnosis-log:

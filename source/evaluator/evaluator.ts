@@ -154,6 +154,14 @@ export type EvaluateOptions = {
      * Counted under skipReasons.v3NotExecutable.
      */
     executableOnly?: boolean;
+    /**
+     * Include Solidly STABLE pools (x³y+y³x curve) in enumeration and score them
+     * with the stable math. Default false — the deployed executor can't trade
+     * the stable curve yet, so this is for `yarn evaluate --include-stable` to
+     * REPORT the stable candidate volume before committing to the contract work.
+     * Under executableOnly, stable cycles are still dropped (stableNotExecutable).
+     */
+    includeStable?: boolean;
 };
 
 export type Candidate = {
@@ -212,6 +220,8 @@ export type SkipReasons = {
     v3NotExecutable: number;
     /** A v3 pool in the cycle has reserves but no stored pool_state (re-run `yarn reserves`). */
     v3MissingState: number;
+    /** Cycle has a Solidly stable hop and executableOnly was set — the deployed executor can't trade the stable curve yet. */
+    stableNotExecutable: number;
 };
 
 export type EvaluateResult = {
@@ -293,6 +303,11 @@ type PairData = {
     minReserve0: number;
     minReserve1: number;
     kind: 'v2' | 'v3';
+    /** Solidly stable pool (x³y+y³x). Stored as kind 'v2' but priced on the stable curve. */
+    stable?: boolean;
+    /** token0/token1 decimals — needed to normalise reserves for the stable curve. */
+    dec0: number;
+    dec1: number;
     /** v3 only: the stored pool state, in calculus-v3's V3Pool shape. */
     v3?: any;
     /** v3 only: float hops built on first use, per direction. */
@@ -306,7 +321,11 @@ type PairData = {
  * concentrated-liquidity pool (built once per direction and reused — it only
  * depends on the pool's stored state).
  */
-function orientHop(p: PairData, tokenIn: string): any {
+export function orientHop(p: PairData, tokenIn: string): any {
+    if (p.stable) {
+        const [decIn, decOut] = p.token0 === tokenIn ? [p.dec0, p.dec1] : [p.dec1, p.dec0];
+        return { ...orient(p, tokenIn), fee: p.fee, stable: true, decIn, decOut };
+    }
     if (p.kind !== 'v3') return { ...orient(p, tokenIn), fee: p.fee };
     if (p.token0 === tokenIn) return p.hopZf ??= v3_float_hop(p.v3, true);
     if (p.token1 === tokenIn) return p.hopOz ??= v3_float_hop(p.v3, false);
@@ -471,6 +490,7 @@ export async function evaluateTriangles(
         uint112Overflow: 0,
         v3NotExecutable: 0,
         v3MissingState: 0,
+        stableNotExecutable: 0,
     };
 
     const result: EvaluateResult = {
@@ -487,7 +507,7 @@ export async function evaluateTriangles(
 
     try {
         // 1. Bulk load pairs+reserves+fee into an in-memory index.
-        const pairRows = db.getPairsForEnumeration({ includeStable: false }) as any[];
+        const pairRows = db.getPairsForEnumeration({ includeStable: opts.includeStable ?? false }) as any[];
 
         // 1a. Decimals lookup for the liquidity filter — same pattern as the
         // reserves fetcher's --dust option (config wins over DB, DB wins over
@@ -542,6 +562,9 @@ export async function evaluateTriangles(
                 minReserve0,
                 minReserve1,
                 kind: r.kind === 'v3' ? 'v3' : 'v2',
+                stable: r.stable === 1 || r.stable === true,
+                dec0: decimalsOf(r.token0),
+                dec1: decimalsOf(r.token1),
             });
         }
         // 1b. v3 pool state (pool_state + pool_ticks). Loaded only when the
@@ -764,11 +787,14 @@ export async function evaluateTriangles(
 
                     // Orient for the direction we're walking: input = root
                     const hasV3 = first.kind === 'v3' || second.kind === 'v3';
+                    const hasStable = !!first.stable || !!second.stable;
+                    const hasMixed = hasV3 || hasStable;
                     if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
+                    if (hasStable && opts.executableOnly) { skipReasons.stableNotExecutable++; continue; }
                     if ((first.kind === 'v3' && !first.v3) || (second.kind === 'v3' && !second.v3)) {
                         skipReasons.v3MissingState++; continue;
                     }
-                    const oriented = hasV3
+                    const oriented = hasMixed
                         ? [orientHop(first, root), orientHop(second, tokB)]
                         : [
                             { ...orient(first, root),  fee: first.fee  },
@@ -776,7 +802,7 @@ export async function evaluateTriangles(
                         ];
 
                     let x: number, grossProfit: number;
-                    if (hasV3) {
+                    if (hasMixed) {
                         const sc = scoreMixed(oriented);
                         if ('skip' in sc) { skipReasons[sc.skip]++; continue; }
                         ({ x, grossProfit } = sc);
@@ -872,12 +898,15 @@ export async function evaluateTriangles(
                           ];
 
                     const hasV3 = hops.some(h => h.pair.kind === 'v3');
+                    const hasStable = hops.some(h => h.pair.stable);
+                    const hasMixed = hasV3 || hasStable;
                     if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
+                    if (hasStable && opts.executableOnly) { skipReasons.stableNotExecutable++; continue; }
                     if (hops.some(h => h.pair.kind === 'v3' && !h.pair.v3)) { skipReasons.v3MissingState++; continue; }
 
                     // Orient once — reused by the gate, the fold, and the
                     // profit evaluation below.
-                    const oriented = hasV3
+                    const oriented = hasMixed
                         ? hops.map(h => orientHop(h.pair, h.tokenIn))
                         : [
                             { ...orient(hops[0].pair, hops[0].tokenIn), fee: hops[0].pair.fee },
@@ -886,7 +915,7 @@ export async function evaluateTriangles(
                         ];
 
                     let xStar: number, grossProfit: number;
-                    if (hasV3) {
+                    if (hasMixed) {
                         const sc = scoreMixed(oriented);
                         if ('skip' in sc) { skipReasons[sc.skip]++; continue; }
                         ({ x: xStar, grossProfit } = sc);

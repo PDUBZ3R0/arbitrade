@@ -20,7 +20,7 @@
 // The order of operations here is load-bearing and is documented inline.
 // -----------------------------------------------------------------------------
 
-import { Contract, type JsonRpcProvider, type Signer } from 'ethers';
+import { Contract, JsonRpcProvider, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
 import { ledgerPath, flashTermsFor } from '../util/config.ts';
@@ -164,6 +164,14 @@ export class CandidateExecutor {
     private readonly provider: JsonRpcProvider;
     private rootPricing: RootPricing;
     private readonly opts: ExecutorOptions;
+    /**
+     * Where signed transactions are POSTED (not read from). When chain.sequencer
+     * is set, this is a bare provider pointed at it so broadcasts skip the extra
+     * hop through the read provider and land faster on single-sequencer rollups.
+     * Reads, gas estimation and receipts always stay on `this.provider` — a
+     * sequencer endpoint typically speaks only eth_sendRawTransaction.
+     */
+    private readonly sendProvider: JsonRpcProvider | null;
 
     constructor(
         cfg: ChainConfig,
@@ -188,6 +196,13 @@ export class CandidateExecutor {
         }
 
         this.executor = new Contract(cfg.chain.executor, EXECUTOR_ABI, provider);
+
+        // Submit-only provider for direct-to-sequencer broadcast. staticNetwork
+        // avoids a chainId round-trip to an endpoint that may not answer reads.
+        this.sendProvider = opts.live && cfg.chain.sequencer
+            ? new JsonRpcProvider(cfg.chain.sequencer, cfg.chain.id, { staticNetwork: true })
+            : null;
+        if (this.sendProvider) console.log(`  Broadcasting via sequencer ${cfg.chain.sequencer} (reads stay on ${cfg.chain.host.replace(/\/v2\/[^/]+/, '/v2/***')})`);
 
         // `?? 3` alone is not enough: a CLI typo yields NaN, which is not
         // undefined, so it would sail through and blow up in the BigInt
@@ -470,7 +485,54 @@ export class CandidateExecutor {
         // 4. Broadcast. effectiveMinProfit, NOT built.minProfitWei — the whole
         // point of the gas floor is that it binds the broadcast, not just the
         // simulation.
-        const signed = this.executor.connect(this.opts.signer!) as Contract;
+        const signer = this.opts.signer!;
+
+        if (this.sendProvider) {
+            // Direct-to-sequencer submission. Sign locally — nonce, fees and
+            // chainId come from the READ provider via the signer — and set an
+            // explicit gasLimit (the step-1 estimate + 30% headroom) so nothing
+            // is re-estimated against the submit-only endpoint. Then POST the raw
+            // tx straight to the sequencer, and confirm on the read provider: a
+            // sequencer endpoint speaks only eth_sendRawTransaction, and once
+            // mined the tx is visible to any RPC.
+            const req = await (this.executor.connect(signer) as Contract).executeArbFrom.populateTransaction(
+                terms.source, terms.lender, candidate.rootToken, built.rootAmountIn, effectiveMinProfit, hopsArg,
+            );
+            req.gasLimit = (gasUnits * 13n) / 10n;
+            const prepared = await signer.populateTransaction(req);
+            const raw = await signer.signTransaction(prepared);
+            let txHash: string;
+            try {
+                txHash = await this.sendProvider.send('eth_sendRawTransaction', [raw]);
+            } catch (err) {
+                // The sequencer did not accept it (e.g. "context deadline
+                // exceeded" at the 12s queue timeout). Nothing entered ordering,
+                // so drop any locally-advanced nonce and move on.
+                (signer as { reset?: () => void }).reset?.();
+                attempt.simulationError = `sequencer did not accept the tx: ${(err as Error).message?.slice(0, 160)}`;
+                return attempt;
+            }
+            attempt.broadcast = true;
+            attempt.txHash = txHash;
+
+            // A direct send can silently not land (dropped from ordering), so
+            // bound the wait and treat a timeout as not-landed rather than hang.
+            const receipt = await this.provider.waitForTransaction(txHash, 1, 60_000);
+            if (!receipt) {
+                (signer as { reset?: () => void }).reset?.();
+                attempt.simulationError = `broadcast but not mined within 60s, txHash=${txHash}`;
+                return attempt;
+            }
+            if (receipt.status !== 1) {
+                attempt.simulationError = `transaction broadcast but reverted on-chain (status=0), txHash=${txHash}`;
+                return attempt;
+            }
+            attempt.confirmed = true;
+            attempt.realisedProfit = await this.recordTrade(candidate, built, txHash, receipt);
+            return attempt;
+        }
+
+        const signed = this.executor.connect(signer) as Contract;
         const tx = await signed.executeArbFrom(
             terms.source,
             terms.lender,
