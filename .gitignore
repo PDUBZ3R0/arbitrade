@@ -1,5 +1,6 @@
 # Secrets
 .env
+.env.aws
 .env.local
 .env.*.local
 
