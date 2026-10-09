@@ -94,8 +94,7 @@ for c in $CHAINS; do
 done
 
 # --- build + run --------------------------------------------------------------------
-files=(-f compose.yaml)
-[ "$CLOUDWATCH" = 1 ] && files+=(-f compose.aws.yaml)
+[ "$CLOUDWATCH" = 1 ] && files=(-f compose.aws.yaml)
 say "building: $CHAINS"
 # shellcheck disable=SC2086
 docker compose "${files[@]}" build $CHAINS
