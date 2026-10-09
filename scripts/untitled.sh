@@ -13,8 +13,9 @@
 # Environment (defaults in the Containerfile):
 #   CHAIN           baked in at build time
 #   MODE            test (simulate only) | live (broadcast; needs PRIVATE_KEY)
+#   MANUAL_ON_BOOT  1 | 0
 #   HOT_ARGS        extra args for yarn hot      (default: as scripts/all.sh)
-#   LIQ_ARGS        extra args for yarn liquidator (default: --follow)
+#   LIQ_ARGS        extra args for yarn liq-watch (default: --follow)
 #   LIQUIDATE       auto | 1 | 0 — run liquidations (dry run in test mode).
 #                   auto = only if conf/<chain>.json5 has chain.liquidator.
 #   RUN_HOT, RUN_LIQ  1 | 0 — turn either loop off
@@ -55,7 +56,18 @@ if [ -z "${PRIVATE_KEY:-}" ]; then
 fi
 say "chain ${CHAIN}, mode ${MODE}"
 
-# --- 2. loops ---------------------------------------------------------------------
+# --- 2. pipeline -----------------------------------------------------------------
+if [ "${MANUAL_ON_BOOT:-1}" = 1 ]; then
+    say "running scripts/manual.sh ${CHAIN}"
+    start=$SECONDS
+    if yarn --silent manual "$CHAIN" 2>&1 | sed -u 's/^/[manual] /'; then
+        say "pipeline done in $(( SECONDS - start ))s"
+    else
+        say "pipeline FAILED after $(( SECONDS - start ))s — starting the loops on the existing DB"
+    fi
+fi
+
+# --- 3. loops ---------------------------------------------------------------------
 # supervise <name> <cmd...>: run forever, restart with backoff.
 supervise() {
     local name=$1; shift
@@ -97,11 +109,11 @@ fi
 
 pids=()
 if [ "${RUN_HOT:-1}" = 1 ]; then
-    supervise arbitrage yarn --silent all "${live_flag[@]}" "$CHAIN" "${hot_args[@]}"  &
+    supervise hot yarn --silent hot "$CHAIN" "${hot_args[@]}" "${live_flag[@]}" &
     pids+=($!)
 fi
 if [ "${RUN_LIQ:-1}" = 1 ]; then
-    supervise liquidate yarn --silent liquidator "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
+    supervise liq yarn --silent liq-watch "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
     pids+=($!)
 fi
 if [ ${#pids[@]} -eq 0 ]; then say "RUN_HOT=0 and RUN_LIQ=0: nothing to run"; exit 0; fi

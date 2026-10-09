@@ -1,25 +1,33 @@
 # -----------------------------------------------------------------------------
-# arbitrade, one chain per image: the chain's pool DB + liquidation watchlist and
-# its conf are baked in; at boot the pipeline (scripts/manual.sh) refreshes the
-# DB, then the hot loop and the liquidation watcher run side by side, each
-# restarted if it exits. See scripts/container-entry.sh for the runtime knobs.
+# arbitrade, one chain per image: the chain's conf is baked in; the seed DB is
+# NOT — it is mounted read-only from the host and copied into the volume on first
+# boot. At boot the pipeline (scripts/manual.sh) refreshes the DB, then the hot
+# loop and the liquidation watcher run side by side, each restarted if it exits.
+# See scripts/container-entry.sh for the runtime knobs.
 #
 # Build (podman or docker, from the repo root):
 #   podman build -f Containerfile --build-arg CHAIN=base -t arbitrade:base .
 #
-# Run (secrets come from .env at RUN time — nothing secret is in the image):
+# Run (secrets come from .env at RUN time — nothing secret is in the image; the
+# seed DB is mounted read-only from the host's ./db):
 #   podman run -d --name arb-base --restart unless-stopped \
-#       --env-file .env -v arb-base-db:/app/db -v arb-base-log:/app/log \
+#       --env-file .env -v "$(pwd)/db:/opt/seed/db:ro" \
+#       -v arb-base-db:/app/db -v arb-base-log:/app/log \
 #       arbitrade:base                      # dry run: simulate, send nothing
 #   ... -e MODE=live arbitrade:base         # broadcast (PRIVATE_KEY in .env)
 #
-# The DB in the image is only the STARTING point: on first boot it is copied
-# into the /app/db volume, and from then on the volume is the live copy (the
-# pipeline and both loops write to it). Rebuilding the image does not touch an
-# existing volume; delete the volume to start again from the image's DB.
+# The host's seed DB (mounted at /opt/seed/db) is only the STARTING point: on
+# first boot it is copied into the /app/db volume, and from then on the volume is
+# the live copy (the pipeline and both loops write to it). Rebuilding the image
+# does NOT touch an existing volume, so a rebuild never stomps live data; delete
+# the volume to re-seed from the host. If no seed is mounted, the volume starts
+# empty and manual.sh builds the DB from scratch on first boot.
 #
-# Before building, fold any WAL into the main file so the copy is consistent
-# (or stop the chain's processes first):
+# Keeping the DB (hundreds of MB on a big chain) out of the image is what stops
+# image layers — and the containerd/overlay store — from ballooning on rebuilds.
+#
+# Before (re)seeding, fold any WAL into the main file so the host copy is
+# consistent (or stop the chain's processes first):
 #   sqlite3 db/base.sqlite 'PRAGMA wal_checkpoint(TRUNCATE)'
 # -----------------------------------------------------------------------------
 
@@ -61,12 +69,12 @@ COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
 # The registry, the chain's config and its blacklist (<chain>-blacklist.json5) if any.
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
-# Seed DB: <chain>.sqlite (pools, triangles) and <chain>-liq.sqlite (watchlist).
-COPY --chown=node:node db/${CHAIN}*.sqlite* /opt/seed/db/
-
-RUN test -f "/opt/seed/db/${CHAIN}.sqlite" || { echo "db/${CHAIN}.sqlite is missing — run yarn manual ${CHAIN} on the host first" >&2; exit 1; }
-# Not chown -R: that would copy every file into a new layer (the seed DB can be GBs).
-RUN mkdir -p /app/db /app/log && chown node:node /app /app/db /app/log /opt/seed /opt/seed/db
+# The seed DB is NOT copied in — it is mounted read-only from the host at
+# /opt/seed/db at run time (see compose.yaml / the run example above), and the
+# entry script copies it into the /app/db volume only on first boot. This keeps
+# the big SQLite out of the image layers. /opt/seed/db is created here as the
+# mount point; it is empty in the image.
+RUN mkdir -p /app/db /app/log /opt/seed/db && chown node:node /app /app/db /app/log /opt/seed /opt/seed/db
 
 USER node
 VOLUME ["/app/db", "/app/log"]
