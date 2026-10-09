@@ -97,7 +97,7 @@ fi
 
 pids=()
 if [ "${RUN_HOT:-1}" = 1 ]; then
-    supervise arbitrage yarn all "${live_flag[@]}" "$CHAIN" --silent "${hot_args[@]}"  &
+    supervise arbitrage yarn all "$CHAIN" --silent "${hot_args[@]}" "${live_flag[@]}" &
     pids+=($!)
 fi
 if [ "${RUN_LIQ:-1}" = 1 ]; then
