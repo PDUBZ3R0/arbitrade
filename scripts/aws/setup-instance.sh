@@ -94,14 +94,13 @@ for c in $CHAINS; do
 done
 
 # --- build + run --------------------------------------------------------------------
-[ "$CLOUDWATCH" = 1 ] && files=(-f compose.aws.yaml)
-say "building: $CHAINS"
+[ "$CLOUDWATCH" = 1 ] && say "building: $CHAINS"
 # shellcheck disable=SC2086
-docker compose "${files[@]}" build $CHAINS
+docker compose -f compose.aws.yaml build $CHAINS
 say "starting: $CHAINS"
 # shellcheck disable=SC2086
-docker compose "${files[@]}" up -d $CHAINS
-docker compose "${files[@]}" ps
+docker compose -f compose.aws.yaml up -d $CHAINS
+docker compose -f compose.aws.yaml ps
 
 cat <<EOF
 
