@@ -97,11 +97,11 @@ fi
 
 pids=()
 if [ "${RUN_HOT:-1}" = 1 ]; then
-    supervise arbitrage yarn --silent all "${live_flag[@]}" "$CHAIN" "${hot_args[@]}"  &
+    supervise arbitrage yarn all "${live_flag[@]}" "$CHAIN" --silent "${hot_args[@]}"  &
     pids+=($!)
 fi
 if [ "${RUN_LIQ:-1}" = 1 ]; then
-    supervise liquidate yarn --silent liquidator "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
+    supervise liquidate yarn liquidator "$CHAIN" --silent "${liq_args[@]}" "${liq_mode[@]}" &
     pids+=($!)
 fi
 if [ ${#pids[@]} -eq 0 ]; then say "RUN_HOT=0 and RUN_LIQ=0: nothing to run"; exit 0; fi
