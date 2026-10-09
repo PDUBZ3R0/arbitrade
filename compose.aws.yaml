@@ -36,7 +36,7 @@ services:
     image: arbitrade:base
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: base } }
     environment:
-      MODE: "live"
+      MODE: "test"
     logging:
       <<: *cloudwatch
       options: { <<: *cw, awslogs-group: arbitrade/base }
