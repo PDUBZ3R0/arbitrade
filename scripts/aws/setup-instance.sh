@@ -48,7 +48,21 @@ if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; t
     DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose-v2 docker-buildx git sqlite3 jq
     systemctl enable --now docker
 fi
-command -v aws >/dev/null || { say "installing the AWS CLI"; snap install aws-cli --classic; }
+# AWS CLI: the OFFICIAL v2 installer, NOT the snap build. snap's aws-cli renders
+# a multi-line SecureString read via `--query … --output text` as an EMPTY
+# string (observed on 2.35.21), which silently breaks the .env fetch below — the
+# value is fetched and decrypted fine, it just prints nothing. The installer
+# build handles it correctly.
+if [ ! -x /usr/local/bin/aws ]; then
+    say "installing the AWS CLI (official v2)"
+    snap list aws-cli >/dev/null 2>&1 && snap remove aws-cli || true
+    apt-get install -yq unzip >/dev/null
+    tmp=$(mktemp -d)
+    curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmp/awscliv2.zip"
+    ( cd "$tmp" && unzip -q awscliv2.zip && ./aws/install --update )
+    rm -rf "$tmp"
+    hash -r
+fi
 
 # Swap: a safety net against the OOM killer while the hot loop builds its index
 # (or while an image builds). Not a substitute for enough RAM.
@@ -94,8 +108,7 @@ for c in $CHAINS; do
 done
 
 # --- build + run --------------------------------------------------------------------
-files=(-f compose.yaml)
-[ "$CLOUDWATCH" = 1 ] && files+=(-f compose.aws.yaml)
+[ "$CLOUDWATCH" = 1 ] && files=(-f compose.aws.yaml)
 say "building: $CHAINS"
 # shellcheck disable=SC2086
 docker compose "${files[@]}" build $CHAINS

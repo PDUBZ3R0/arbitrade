@@ -158,6 +158,13 @@ abstract contract HopEngine {
         _v3SwapPay(amount0Delta, amount1Delta);
     }
 
+    /// @notice Algebra (V1 / Integral) spelling of the swap callback. Algebra's
+    /// swap() shares Uniswap's selector but calls back here, not into
+    /// uniswapV3SwapCallback. Same pay-what-is-owed semantics.
+    function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        _v3SwapPay(amount0Delta, amount1Delta);
+    }
+
     function _v3SwapPay(int256 amount0Delta, int256 amount1Delta) internal {
         address pool = _swapPool;
         if (pool == address(0) || msg.sender != pool) revert NotSwapPool();

@@ -174,3 +174,10 @@ so there's nothing to front-run and a relay buys ~nothing. The levers here are:
   "in the race." It won't flip contested arb to reliably profitable on its own,
   but it should meaningfully help the simpler first-to-land **liquidation**
   races on all four.
+- **AWS CLI build:** use the official v2 installer, never the snap `aws-cli`.
+  The snap build renders a multi-line SecureString read via `--query … --output
+  text` as an empty string (seen on 2.35.21), which silently breaks the SSM
+  `.env` fetch — the setup script reports "the parameter has no PRIVATE_KEY
+  line" even though the value is present and decrypts fine. `setup-instance.sh`
+  now installs the official build and removes any snap one; on your own laptop,
+  install the same way.
