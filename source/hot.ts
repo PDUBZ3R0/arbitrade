@@ -446,8 +446,18 @@ console.log('Ctrl+C to stop.\n');
 // full evaluator is expensive (that is the whole reason this loop exists), so
 // it happens on a slow timer and only to refresh pricing — never to pick
 // candidates.
+// A reprice pass re-runs the full evaluator (a second, transient copy of the
+// chain's pair/reserve/v3 state alongside the resident index). On a big chain
+// (Base: 162k triangles) one pass can take longer than repriceSec — without a
+// guard the timer stacks passes, and the overlapping allocations are what tip
+// the hot process into an OOM. The `repricing` flag makes a slow pass skip the
+// next tick instead of running concurrently, exactly like the v3-heal timer's
+// `healing` guard.
+let repricing = false;
 if (repriceSec > 0) {
     setInterval(() => {
+        if (repricing) return;
+        repricing = true;
         void (async () => {
             try {
                 const r = await evaluateTriangles(cfg, dbFile, {
@@ -460,6 +470,8 @@ if (repriceSec > 0) {
                 lastRepriceAt = Date.now();
             } catch (err) {
                 console.error(`  [!] reprice failed, keeping previous pricing: ${(err as Error).message}`);
+            } finally {
+                repricing = false;
             }
         })();
     }, repriceSec * 1000).unref();
@@ -501,6 +513,11 @@ if (v3 && ix.v3Count > 0 && v3RefreshSec > 0) {
 // --- heartbeat ---------------------------------------------------------------
 let lastHeartbeatBlock = watcher.headBlock();
 let quietHeartbeats = 0;
+// Minutes of no new block before we force a clean supervised restart. With the
+// keepAlive handle below, a dead feed no longer silently exits — so a sustained
+// stall is turned into a deliberate, logged exit(1) that the supervisor restarts
+// with a fresh connection.
+const DEAD_FEED_RESTART_MIN = 3;
 
 setInterval(() => {
     const s = hot.stats();
@@ -527,14 +544,30 @@ setInterval(() => {
         console.error(`  [!] no new block in ${quietHeartbeats} minute(s) — feed likely dead ` +
             `(${feedErrors} feed error(s), ${st.reconnects} reconnect(s)` +
             (lastFeedError ? `, last: ${lastFeedError}` : '') + `)`);
+        if (quietHeartbeats >= DEAD_FEED_RESTART_MIN) {
+            console.error(`  [!] feed dead for ${quietHeartbeats}m — exiting(1) for a clean restart with a fresh connection`);
+            try { db.close(); provider.destroy(); } catch { /* best effort */ }
+            process.exit(1);
+        }
     } else {
         quietHeartbeats = 0;
         lastHeartbeatBlock = head;
     }
 }, 60_000).unref();
 
+// Keep the event loop alive for the process's lifetime. Every timer above is
+// unref()'d, so the ONLY handle holding the process up is the watcher's WS
+// socket — and when that drops (even momentarily, between reconnects) the loop
+// empties and Node exits 0 mid-run. That is the "unsettled top-level await at
+// hot.ts" + supervisor restart seen in the logs: not a crash, a silent drop-out
+// and a coverage gap. This no-op handle holds us up so the watcher's own
+// reconnect can recover a transient drop; a genuinely dead feed is caught by the
+// heartbeat above (deliberate exit(1)). shutdown() clears it.
+const keepAlive = setInterval(() => {}, 1 << 30);
+
 const shutdown = async (sig: string) => {
     console.log(`\n${sig} — stopping.`);
+    clearInterval(keepAlive);
     await watcher.stop();
     const s = watcher.stats();
     console.log(`Transport ${watcher.transport()}: drained ${s.blocksDrained} block(s), ` +
