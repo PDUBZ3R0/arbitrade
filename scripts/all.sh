@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CHAIN=$1
+shift 
 
 if [ -z "$CHAIN" ]; then
     echo "Usage: yarn all <chain> [hot-args]" >&2
