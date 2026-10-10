@@ -50,7 +50,7 @@
 // -----------------------------------------------------------------------------
 
 import { Wallet, JsonRpcProvider } from 'ethers';
-import { loadChainConfig, dbPath, flashTermsFor, type NormalizedFactory } from './util/config.ts';
+import { loadChainConfig, dbPath, flashTermsFor, flashSwapEnabled, type NormalizedFactory } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from './evaluator/evaluator.ts';
 import { CandidateExecutor } from './orchestrator/attempt.ts';
@@ -257,6 +257,7 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
             t.address.toLowerCase(),
             flashTermsFor(cfg, t.address)?.premium ?? cfg.flashloan?.premium ?? 0.0005,
         ])),
+        flashSwap: flashSwapEnabled(cfg),
     };
 }
 

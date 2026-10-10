@@ -92,6 +92,11 @@ export type ScoreThresholds = {
      * the evaluator's flashPremiumFor, which uses the same flashTermsFor.
      */
     flashPremiumByRoot?: Map<string, number>;
+    /**
+     * Cycles whose first hop is V2 are funded by flash-swapping it and pay no
+     * premium (config.ts cyclePremium). Must match the evaluator.
+     */
+    flashSwap?: boolean;
 };
 
 export class TriangleIndex {
@@ -487,7 +492,10 @@ export class TriangleIndex {
             if (cycle_overflows(x, hops)) continue;
             }
 
-            const netProfit = grossProfit - x * (th.flashPremiumByRoot?.get(rootAddr) ?? th.flashPremium);
+            const premium = th.flashSwap && !this.pairIsV3[legs[0].pi]
+                ? 0
+                : (th.flashPremiumByRoot?.get(rootAddr) ?? th.flashPremium);
+            const netProfit = grossProfit - x * premium;
             const roi = x > 0 ? netProfit / x : 0;
             if (netProfit <= minProfit) continue;
             if (x < minInput) continue;

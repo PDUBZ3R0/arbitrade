@@ -38,6 +38,12 @@ const art = JSON.parse(readFileSync(new URL('./artifacts.json', import.meta.url)
 const RPC_URL = 'http://127.0.0.1:8545';
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
 const WORK = process.env.ARB_TEST_WORK ?? '/tmp/arbitrade-hot-test';
+// ARB_TEST_FLASH_SWAP=1 runs the same loop with flashloan.flashSwap on: the
+// trade must then be funded by flash-swapping its first hop (the Aave pool is
+// never touched), and section 8 checks the fall-back to Aave for a pair that
+// does not call back.
+const FLASH = !!process.env.ARB_TEST_FLASH_SWAP;
+if (FLASH) console.log('(flash-swap mode)');
 
 rmSync(WORK, { recursive: true, force: true });
 mkdirSync(WORK, { recursive: true });
@@ -162,6 +168,7 @@ const cfg = {
         provider: 'aave-v3',
         pool: POOL,
         premium: 0.0005,
+        flashSwap: FLASH,
         tokens: [
             { symbol: 'ROOT', address: ROOT, decimals: 18 },
             { symbol: 'B', address: B, decimals: 18 },
@@ -188,6 +195,7 @@ const thresholds = {
     minReserveByToken: Float64Array.from(ix.tokenAddr.map(() => 1 * 1e18)),
     maxRoi: 20,
     flashPremium: 0.0005,
+    flashSwap: FLASH,
 };
 
 // Balanced pools: there must be NO candidate yet. If there is, the venue is
@@ -269,6 +277,15 @@ console.log('\n3. a swap on one pair creates an edge; the loop must trade it');
         const held = await tRoot.balanceOf(EXEC);
         ok(held >= confirmed.realisedProfit, 'executor holds at least the realised profit',
            `${held}`);
+
+        const poolBal = await tRoot.balanceOf(POOL);
+        if (FLASH) {
+            ok(confirmed.funding === 'flash-swap', 'funded by flash-swapping hop 0', `(${confirmed.funding})`);
+            ok(poolBal === E(10_000_000), 'the Aave pool was never touched (no premium paid)', `${poolBal}`);
+        } else {
+            ok(confirmed.funding === 'aave-v3', 'funded by Aave', `(${confirmed.funding})`);
+            ok(poolBal > E(10_000_000), 'Aave was repaid with its premium', `${poolBal}`);
+        }
     }
 }
 
@@ -333,6 +350,11 @@ console.log('\n6. a pair the index has never seen');
 
 // --- 7. the gas floor binds --------------------------------------------------
 console.log('\n7. a profitable candidate that does not cover gas is skipped');
+// The live loop must not be running from here on: it would trade the edge
+// this section creates (cooldown 0, live) and race the "sane margin" attempt
+// below for it. Sections 7-8 drive executors directly and re-read reserves
+// themselves.
+await watcher.stop();
 {
     // The measured reality on Sonic: the best visible candidate covered 0.18x
     // its own gas. That path -- profitable, simulated-clean, and still refused
@@ -384,7 +406,32 @@ console.log('\n7. a profitable candidate that does not cover gas is skipped');
     }
 }
 
-await watcher.stop();
+// --- 8. flash-swap fall-back --------------------------------------------------
+if (FLASH) {
+    console.log('\n8. a pair that never calls back: fall back to the lender, then remember');
+    for (const p of [pAB, pBC, pCA]) await (await p.setFlashOff(true)).wait();
+    for (const p of [pAB, pBC, pCA]) {
+        const [r0, r1] = await p.getReserves();
+        ix.applySync((await p.getAddress()).toLowerCase(), Number(r0), Number(r1));
+    }
+    const cands = ix.scoreAll(thresholds);
+    ok(cands.length > 0, 'a candidate to try', `${cands.length}`);
+    if (cands.length > 0) {
+        const ex = new CandidateExecutor(cfg, provider, pricing, {
+            ownerAddress: w.address, live: false, gasMarginMultiple: 1, minProfitTokens: 0.01,
+        });
+        const a = await ex.attempt(cands[0], db);
+        printAttempt(cfg, a, (x) => console.log(`    ${x}`));
+        ok(a.simulated === true && a.funding === 'aave-v3', 'flash swap reverted, the same cycle simulated clean through Aave',
+           a.simulationError ?? `(${a.funding})`);
+        ok(a.built.hops[0].recipient.toLowerCase() === a.candidate.hops[1].pair.toLowerCase(),
+           'and was re-routed for the lender path (hop 0 straight into hop 1)');
+        ok(ex['noFlashFactories'].has(FACTORY), 'the factory is remembered as not flash-capable');
+        const b = await ex.attempt(cands[0], db);
+        ok(b.simulated === true && b.funding === 'aave-v3', 'next attempt goes straight to the lender', b.simulationError ?? '');
+    }
+}
+
 db.close();
 provider.destroy();
 

@@ -176,6 +176,13 @@ export async function buildHops(
     minProfitWei: bigint,
     /** YoBatches2/3 address (chain.contract) — required when the cycle has a V3 hop. */
     yobatchesAddress?: string,
+    /**
+     * Build for executeFlashSwap: hop 0 is the loan, and a flash swap calls
+     * back whoever receives its output, so hop 0's output comes to the
+     * executor (which forwards it) instead of going straight into hop 1. The
+     * amounts — and so the prediction — are identical to the lender path.
+     */
+    opts: { flashSwap?: boolean } = {},
 ): Promise<BuiltArb | null> {
     const hops = candidate.hops;
     if (hops.length === 0) throw new Error('candidate has no hops');
@@ -237,9 +244,12 @@ export async function buildHops(
         const isLastHop = i === hops.length - 1;
         // Where this hop's output goes: straight into a V2 pair, but to the
         // executor when the next hop is V3 (paid from there in its callback).
-        const recipient = isLastHop || isV3(hops[i + 1]) ? executorAddress : hops[i + 1].pair;
+        const recipient = isLastHop || isV3(hops[i + 1]) || (i === 0 && opts.flashSwap)
+            ? executorAddress
+            : hops[i + 1].pair;
 
         if (isV3(leg)) {
+            if (i === 0 && opts.flashSwap) throw new Error('flash swap needs a V2 first hop');
             if (i === 0) rootAmountIn = amountIn;
             if (amountIn <= 0n) return null;
             const amountOut = v3_amount_out_exact(v3ByPool.get(pairLower), inIsToken0, amountIn);

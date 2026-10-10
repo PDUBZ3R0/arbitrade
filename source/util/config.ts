@@ -222,6 +222,35 @@ export function flashTermsFor(cfg: { flashloan?: RawChainConfig['flashloan'] }, 
     return { provider, source: FLASH_SOURCES[provider], lender, premium };
 }
 
+/**
+ * Whether cycles may be funded by flash-swapping their own first hop
+ * (FlashArbExecutor.executeFlashSwap) instead of borrowing. Opt-in per chain
+ * (`flashloan.flashSwap: true`) because the executor deployed there must be
+ * one that has it: an older executor is driven through a lender, and an
+ * evaluator that had scored the cycle at zero premium would then overstate it.
+ */
+export function flashSwapEnabled(cfg: { flashloan?: RawChainConfig['flashloan'] }): boolean {
+    return cfg.flashloan?.flashSwap === true;
+}
+
+/**
+ * The flash fee a CYCLE pays, as a fraction of its input. Zero when the cycle
+ * can be funded by flash-swapping its first hop — that hop's swap fee is
+ * already in the cycle math, there is nothing on top. Otherwise the root
+ * token's lender premium (flashTermsFor), falling back to the chain premium.
+ *
+ * The evaluator, the hot-loop index and the executor path all decide this the
+ * same way: first hop a V2-style constant-product pair (not V3, not stable).
+ */
+export function cyclePremium(
+    cfg: { flashloan?: RawChainConfig['flashloan'] },
+    root: string,
+    first: { kind?: string; stable?: boolean | number },
+): number {
+    if (flashSwapEnabled(cfg) && first.kind !== 'v3' && !first.stable) return 0;
+    return flashTermsFor(cfg, root)?.premium ?? cfg.flashloan?.premium ?? 0.0005;
+}
+
 export type RawChainConfig = {
     chain: ChainMeta;
     factories: {
@@ -248,6 +277,13 @@ export type RawChainConfig = {
         morpho?: string;
         /** Fee as a fraction of the amount borrowed (0.0005 = 0.05%). Default for every token. */
         premium: number;
+        /**
+         * Fund cycles whose first hop is a V2-style pair by flash-swapping that
+         * pair (no lender, no premium, less gas). Requires an executor with
+         * executeFlashSwap — redeploy, then set true. Cycles starting on a V3
+         * hop still borrow from the lender above. See cyclePremium().
+         */
+        flashSwap?: boolean;
         tokens: FlashToken[];
     };
     /**

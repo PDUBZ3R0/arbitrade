@@ -28,7 +28,7 @@
 // -----------------------------------------------------------------------------
 
 import { ArbitradeDB } from '../util/db.ts';
-import { flashTermsFor, type ChainConfig, type NormalizedFactory } from '../util/config.ts';
+import { flashTermsFor, flashSwapEnabled, type ChainConfig, type NormalizedFactory } from '../util/config.ts';
 import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
 import {
     v3_float_hop, mixed_cycle_product, optimal_mixed_cycle, mixed_cycle_profit, mixed_cycle_overflows,
@@ -475,6 +475,12 @@ export async function evaluateTriangles(
         }
         return p;
     };
+    // Per CYCLE, not per root: a cycle whose first hop is a V2-style pair is
+    // funded by flash-swapping that pair and pays no premium at all. Same rule
+    // as config.ts's cyclePremium (which the hot-loop index mirrors).
+    const swapFunded = flashSwapEnabled(cfg);
+    const cyclePremiumFor = (root: string, first: PairData): number =>
+        swapFunded && first.kind !== 'v3' && !first.stable ? 0 : flashPremiumFor(root);
     const debug = opts.debug ?? false;
     const debugLimit = opts.debugLimit ?? 25;
     let debugPrinted = 0;
@@ -838,7 +844,7 @@ export async function evaluateTriangles(
                     if (cycle_overflows(x, oriented)) { skipReasons.uint112Overflow++; continue; }
                     }
 
-                    const netProfit   = grossProfit - x * flashPremiumFor(root);
+                    const netProfit   = grossProfit - x * cyclePremiumFor(root, first);
                     const roi = x > 0 ? netProfit / x : 0;
 
                     if (netProfit <= minProfit) {
@@ -953,7 +959,7 @@ export async function evaluateTriangles(
                     if (cycle_overflows(xStar, oriented)) { skipReasons.uint112Overflow++; continue; }
                     }
 
-                    const netProfit = grossProfit - xStar * flashPremiumFor(root);
+                    const netProfit = grossProfit - xStar * cyclePremiumFor(root, hops[0].pair);
                     const roi = xStar > 0 ? netProfit / xStar : 0;
 
                     if (netProfit <= minProfit) {

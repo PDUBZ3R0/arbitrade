@@ -23,9 +23,9 @@
 import { Contract, JsonRpcProvider, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
-import { ledgerPath, flashTermsFor } from '../util/config.ts';
+import { ledgerPath, flashTermsFor, flashSwapEnabled, type FlashTerms } from '../util/config.ts';
 import type { Candidate, EvaluateResult } from '../evaluator/evaluator.ts';
-import { buildHops, type BuiltArb } from './build-hops.ts';
+import { buildHops, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 
@@ -39,8 +39,12 @@ export const EXECUTOR_ABI = [
     // (0 Aave V3, 1 Balancer V2, 2 Uniswap V3 pool flash, 3 Morpho Blue).
     // This is what the orchestrator calls; see flashTermsFor in config.ts.
     'function executeArbFrom(uint8 source, address lender, address asset, uint256 amount, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) external',
+    // Funded by the cycle's own first hop (a V2 flash swap): no lender, no
+    // premium. Hop 0's recipient must be the executor — see buildHops.
+    'function executeFlashSwap(uint256 amountIn, uint256 minProfit, (address pair, address tokenIn, uint32 feePpm, address recipient, uint8 kind)[] hops) external',
     'function SOURCE_MORPHO() view returns (uint8)',
     'function HOP_V3() view returns (uint8)',
+    'function FLASH_SWAP() view returns (bool)',
     // Carries the REALISED profit. The off-chain prediction is an upper bound,
     // so the ledger records this rather than what we expected.
     'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
@@ -94,6 +98,8 @@ export type CandidateAttempt = {
     minProfitUsed?: bigint;
     /** True when the candidate was dropped for not covering gas, before simulating. */
     belowGasFloor?: boolean;
+    /** How it was (or would be) funded: 'flash-swap', or the lender's provider ('aave-v3', …). */
+    funding?: string;
 };
 
 export type ExecutorOptions = {
@@ -241,6 +247,16 @@ export class CandidateExecutor {
      */
     private executorVersionError: string | null | undefined;
     private executorHasV3 = false;
+    private executorHasFlashSwap = false;
+    private warnedNoFlashSwap = false;
+    /**
+     * Factories whose pairs failed a flash swap that the lender path then
+     * accepted for the same cycle — a fork whose swap() does not call back,
+     * or calls back with a different argument shape. Later candidates starting
+     * on one of these go straight to the lender. In-memory: a restart retries
+     * them once, which costs one estimateGas.
+     */
+    private readonly noFlashFactories = new Set<string>();
     private async checkExecutorVersion(): Promise<string | null> {
         if (this.executorVersionError !== undefined) return this.executorVersionError;
         try {
@@ -256,6 +272,8 @@ export class CandidateExecutor {
         try {
             await this.executor.HOP_V3();
             this.executorHasV3 = true;
+            try { this.executorHasFlashSwap = (await this.executor.FLASH_SWAP()) === true; }
+            catch { this.executorHasFlashSwap = false; }
         } catch {
             this.executorHasV3 = false;
             this.executor = new Contract(this.cfg.chain.executor!, EXECUTOR_ABI_V2_ONLY, this.provider);
@@ -358,6 +376,49 @@ export class CandidateExecutor {
     }
 
     /**
+     * Whether this cycle should be funded by flash-swapping its first hop.
+     * Same rule as cyclePremium (the evaluator's premium), plus the
+     * factories that have already proven unable to flash swap.
+     */
+    private wantsFlashSwap(candidate: Candidate): boolean {
+        const first = candidate.hops[0];
+        return flashSwapEnabled(this.cfg)
+            && candidate.hops.length >= 2
+            && first.kind !== 'v3'
+            && !this.noFlashFactories.has(first.factory.toLowerCase());
+    }
+
+    /** Why the root's lender cannot fund this cycle, or null if it can. */
+    private lenderUnusable(candidate: Candidate, terms: FlashTerms | null): string | null {
+        if (!terms) {
+            return `no flash lender configured for root ${candidate.rootToken} ` +
+                `(flashloan.provider / pool / vault / morpho, or the token's own provider+lender in conf/${this.cfg.chain.label}.json5)`;
+        }
+        // A V3 pool is locked for the length of its own flash loan, so a
+        // cycle that trades through the lending pool cannot execute.
+        if (terms.provider === 'uniswap-v3' && candidate.hops.some(h => h.pair.toLowerCase() === terms.lender.toLowerCase())) {
+            return `cycle trades through its own flash-loan pool ${terms.lender}`;
+        }
+        return null;
+    }
+
+    /**
+     * The executor call for one funding choice. `args(minProfit)` because the
+     * same call is estimated at the config floor and then simulated and sent
+     * at the gas-adjusted one.
+     */
+    private callFor(useFlash: boolean, terms: FlashTerms | null, root: string, built: BuiltArb) {
+        const hopsArg = this.executorHasV3
+            ? built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])
+            : built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient]);
+        const name = useFlash ? 'executeFlashSwap' : 'executeArbFrom';
+        const args = (minProfit: bigint): unknown[] => useFlash
+            ? [built.rootAmountIn, minProfit, hopsArg]
+            : [terms!.source, terms!.lender, root, built.rootAmountIn, minProfit, hopsArg];
+        return { name, fn: this.executor.getFunction(name), args };
+    }
+
+    /**
      * Build, gas-check, simulate and (if live) broadcast one candidate.
      *
      * Never throws for an unexecutable candidate — a revert, a decayed edge or
@@ -370,19 +431,6 @@ export class CandidateExecutor {
             candidate, built: null, simulated: false, broadcast: false, confirmed: false,
         };
 
-        // Where this root is borrowed from. No lender, no trade.
-        const terms = flashTermsFor(this.cfg, candidate.rootToken);
-        if (!terms) {
-            attempt.simulationError = `no flash lender configured for root ${candidate.rootToken} ` +
-                `(flashloan.provider / pool / vault / morpho, or the token's own provider+lender in conf/${this.cfg.chain.label}.json5)`;
-            return attempt;
-        }
-        // A V3 pool is locked for the length of its own flash loan, so a
-        // cycle that trades through the lending pool cannot execute.
-        if (terms.provider === 'uniswap-v3' && candidate.hops.some(h => h.pair.toLowerCase() === terms.lender.toLowerCase())) {
-            attempt.simulationError = `cycle trades through its own flash-loan pool ${terms.lender}`;
-            return attempt;
-        }
         const versionError = await this.checkExecutorVersion();
         if (versionError) {
             attempt.simulationError = versionError;
@@ -394,6 +442,28 @@ export class CandidateExecutor {
                 `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy`;
             return attempt;
         }
+
+        // Funding. A cycle whose first hop is a V2-style pair is funded by
+        // flash-swapping that pair (no lender, no premium — the evaluator
+        // scored it that way, see cyclePremium). Anything else borrows the
+        // root from its lender.
+        const terms = flashTermsFor(this.cfg, candidate.rootToken);
+        let useFlash = this.wantsFlashSwap(candidate);
+        if (useFlash && !this.executorHasFlashSwap) {
+            if (!this.warnedNoFlashSwap) {
+                this.warnedNoFlashSwap = true;
+                console.warn(
+                    `  [!] flashloan.flashSwap is on but the executor at ${this.cfg.chain.executor} has no executeFlashSwap — ` +
+                    `borrowing instead, and the evaluator's zero-premium scores overstate those cycles. ` +
+                    `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then yarn contract-update ${this.cfg.chain.label}`);
+            }
+            useFlash = false;
+        }
+        if (!useFlash) {
+            const why = this.lenderUnusable(candidate, terms);
+            if (why) { attempt.simulationError = why; return attempt; }
+        }
+
         // The executor answers two swap callbacks. A pool that calls anything
         // else would revert the swap; say so here instead of paying for an
         // estimateGas to find out.
@@ -408,39 +478,55 @@ export class CandidateExecutor {
 
         await this.ensureGasPrice();
 
-        const built = await buildHops(
+        let built = await buildHops(
             this.provider,
             this.cfg.chain.executor!,
             db,
             candidate,
             this.minProfitWeiFor(candidate.rootToken),
             this.cfg.chain.contract,
+            { flashSwap: useFlash },
         );
         attempt.built = built;
         if (!built) return attempt;   // edge decayed since evaluation
 
-        const hopsArg = this.executorHasV3
-            ? built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])
-            : built.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient]);
-
         // 1. Measure gas for THIS candidate. estimateGas also reverts if the
         // path is not executable, so it doubles as a first validation.
+        let call = this.callFor(useFlash, terms, candidate.rootToken, built);
         let gasUnits: bigint;
         try {
-            gasUnits = await this.executor.executeArbFrom.estimateGas(
-                terms.source,
-                terms.lender,
-                candidate.rootToken,
-                built.rootAmountIn,
-                built.minProfitWei,
-                hopsArg,
-                { from: this.opts.ownerAddress },
-            );
-            attempt.gasEstimate = gasUnits;
+            gasUnits = await call.fn.estimateGas(...call.args(built.minProfitWei), { from: this.opts.ownerAddress });
         } catch (err) {
-            attempt.simulationError = (err as Error).message?.slice(0, 300) ?? String(err);
-            return attempt;   // would revert on-chain
+            const msg = (err as Error).message?.slice(0, 300) ?? String(err);
+            // A pair whose swap() never calls back (or calls back with a
+            // different argument shape) fails a flash swap here and nowhere
+            // else. If the root has a usable lender, try the same cycle
+            // through it — same amounts, only hop 0's routing differs, so no
+            // re-read is needed. If THAT estimates, the factory is the problem:
+            // remember it so later candidates go straight to the lender.
+            if (!useFlash || this.lenderUnusable(candidate, terms)) {
+                attempt.simulationError = msg;
+                return attempt;   // would revert on-chain
+            }
+            const viaLender = { ...built, hops: built.hops.map((h, i) =>
+                i === 0 && built!.hops[1].kind !== HOP_V3 ? { ...h, recipient: built!.hops[1].pair } : h) };
+            const lenderCall = this.callFor(false, terms, candidate.rootToken, viaLender);
+            try {
+                gasUnits = await lenderCall.fn.estimateGas(...lenderCall.args(built.minProfitWei), { from: this.opts.ownerAddress });
+            } catch {
+                attempt.simulationError = msg;   // the flash error: it is the one that ran first
+                return attempt;
+            }
+            const factory = candidate.hops[0].factory.toLowerCase();
+            this.noFlashFactories.add(factory);
+            console.warn(`  [!] factory ${factory}: flash swap reverted where ${terms!.provider} did not — borrowing for its pairs from now on (${msg.slice(0, 120)})`);
+            useFlash = false;
+            built = viaLender;
+            attempt.built = built;
+            call = lenderCall;
         }
+        attempt.gasEstimate = gasUnits;
+        attempt.funding = useFlash ? 'flash-swap' : terms!.provider;
 
         // 2. Raise the floor to cover gas. The config floor is a preference;
         // this is the break-even line.
@@ -465,15 +551,7 @@ export class CandidateExecutor {
         // 3. Simulate at the floor we would actually broadcast with, so
         // "simulated clean" means clean under the real constraint.
         try {
-            await this.executor.executeArbFrom.staticCall(
-                terms.source,
-                terms.lender,
-                candidate.rootToken,
-                built.rootAmountIn,
-                effectiveMinProfit,
-                hopsArg,
-                { from: this.opts.ownerAddress },
-            );
+            await call.fn.staticCall(...call.args(effectiveMinProfit), { from: this.opts.ownerAddress });
             attempt.simulated = true;
         } catch (err) {
             attempt.simulationError = (err as Error).message?.slice(0, 300) ?? String(err);
@@ -495,9 +573,8 @@ export class CandidateExecutor {
             // tx straight to the sequencer, and confirm on the read provider: a
             // sequencer endpoint speaks only eth_sendRawTransaction, and once
             // mined the tx is visible to any RPC.
-            const req = await (this.executor.connect(signer) as Contract).executeArbFrom.populateTransaction(
-                terms.source, terms.lender, candidate.rootToken, built.rootAmountIn, effectiveMinProfit, hopsArg,
-            );
+            const req = await (this.executor.connect(signer) as Contract)
+                .getFunction(call.name).populateTransaction(...call.args(effectiveMinProfit));
             req.gasLimit = (gasUnits * 13n) / 10n;
             const prepared = await signer.populateTransaction(req);
             const raw = await signer.signTransaction(prepared);
@@ -533,14 +610,7 @@ export class CandidateExecutor {
         }
 
         const signed = this.executor.connect(signer) as Contract;
-        const tx = await signed.executeArbFrom(
-            terms.source,
-            terms.lender,
-            candidate.rootToken,
-            built.rootAmountIn,
-            effectiveMinProfit,
-            hopsArg,
-        );
+        const tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit));
         attempt.broadcast = true;
         attempt.txHash = tx.hash;
 

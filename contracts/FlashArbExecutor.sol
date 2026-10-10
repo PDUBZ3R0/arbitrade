@@ -95,6 +95,18 @@ interface IUniswapV2Pair {
 /// pool, so existing callers keep working. Deploy with address(0) on a chain
 /// without Aave; executeArb then reverts NoLender and executeArbFrom is the way in.
 ///
+/// FLASH SWAP (`executeFlashSwap`) needs no lender at all. When the first hop
+/// is a V2-style pair, that pair IS the loan: it sends its output here first,
+/// calls back, and is paid its input — the root token — at the end of the
+/// cycle, before its own K check. The "fee" is the swap fee hop 0 charges
+/// anyway, so there is no premium, no lender bookkeeping, and one fewer token
+/// transfer. Every V2 fork calls back with the same
+/// `(address sender, uint256, uint256, bytes)` arguments under a different
+/// name (uniswapV2Call, pancakeCall, Solidly's hook, BiswapCall …); the common
+/// ones are declared, and `fallback` accepts any other spelling, so no
+/// per-factory callback table is needed. The callback is pinned to the exact
+/// bytes this contract handed the pair (see FLASH SWAP SAFETY below).
+///
 /// CALLBACK SAFETY. A flash callback is an external function anyone can call.
 /// Each one accepts exactly one caller: the lender named by the owner's own
 /// executeArb* call, during that call, once. `_lender` is set just before the
@@ -160,6 +172,19 @@ contract FlashArbExecutor {
     address private _swapTokenIn;
     uint256 private _swapMaxIn;
 
+    /// Version probe for the off-chain caller: an executor without it cannot
+    /// flash-swap and is driven through executeArbFrom only.
+    bool public constant FLASH_SWAP = true;
+
+    /// FLASH SWAP SAFETY. keccak256 of the exact `data` handed to the borrowed
+    /// pair, set just before pair.swap() and cleared by the first callback.
+    /// The pair echoes `data` back, and pairs come from factories nobody
+    /// vetted — a hostile one could rewrite the repay amount, the baseline or
+    /// minProfit on the way back. Matching the hash means every value the
+    /// callback acts on is one this contract wrote, and the caller must be
+    /// hops[0].pair, named inside that same data.
+    bytes32 private _flashCtx;
+
     /// Fee scale: parts per million. The DEX registry carries fees as decimals
     /// (0.003, 0.0035, 0.00195, 0.0025) and basis points cannot represent all
     /// of them — 0.00195 is 19.5 bps. 1e6 covers every fee the fee-verifier
@@ -211,6 +236,7 @@ contract FlashArbExecutor {
     error BadHopKind(uint256 hop, uint8 kind);
     error BadRecipient(uint256 hop);
     error SwapOverpaid(uint256 owed, uint256 maxIn);
+    error NoFlashCallback();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -369,12 +395,27 @@ contract FlashArbExecutor {
         (Hop[] memory hops, address rootAsset, uint256 minProfit) =
             abi.decode(params, (Hop[], address, uint256));
         if (asset != rootAsset) revert AssetMismatch();
+        // The loan funds hop 0. Enforced (it was only documented) now that
+        // _cycle pays hop 0 in hops[0].tokenIn rather than in `asset`.
+        if (hops[0].tokenIn != rootAsset) revert AssetMismatch();
 
         // Every lender has already transferred `amount` in. Anything beyond it
         // was here before this trade (unswept profit, dust) and is not ours to
         // count — see PROFIT in the contract header.
         uint256 baseline = IERC20(asset).balanceOf(address(this)) - amount;
 
+        _validate(hops);
+        _cycle(hops, 0, amount);
+
+        uint256 amountOwed = amount + fee;
+        uint256 required = amountOwed + minProfit;
+        uint256 bal = IERC20(asset).balanceOf(address(this)) - baseline;
+        if (bal < required) revert InsufficientRepay(bal, required);
+
+        emit ArbExecuted(asset, amount, fee, bal - amountOwed);
+    }
+
+    function _validate(Hop[] memory hops) internal view {
         uint256 len = hops.length;
         for (uint256 i = 0; i < len; i++) {
             uint8 k = hops[i].kind;
@@ -383,29 +424,138 @@ contract FlashArbExecutor {
             // feeds it must have sent its output here.
             if (k == HOP_V3 && i > 0 && hops[i - 1].recipient != address(this)) revert BadRecipient(i - 1);
         }
+    }
 
+    /// Run hops[from..] with `amount` of hops[from].tokenIn held HERE. Shared
+    /// by the lender path (from = 0, the loan) and the flash-swap path
+    /// (from = 1, what the borrowed pair sent).
+    function _cycle(Hop[] memory hops, uint256 from, uint256 amount) internal {
         // `held` is how much of the current hop's tokenIn this contract holds
-        // FOR that hop — only meaningful when the hop is V3. A V2 first hop is
+        // FOR that hop — only meaningful when the hop is V3. A V2 hop is
         // funded optimistically, V2-swap style.
         uint256 held = amount;
-        if (hops[0].kind == HOP_V2) {
-            IERC20(rootAsset).transfer(hops[0].pair, amount);
+        if (hops[from].kind == HOP_V2) {
+            IERC20(hops[from].tokenIn).transfer(hops[from].pair, amount);
             held = 0;
         }
 
-        for (uint256 i = 0; i < len; i++) {
+        uint256 len = hops.length;
+        for (uint256 i = from; i < len; i++) {
             bool feedsV3 = i + 1 < len && hops[i + 1].kind == HOP_V3;
             held = hops[i].kind == HOP_V3
                 ? _v3Hop(hops[i], i, held, feedsV3)
                 : _hop(hops[i], i, feedsV3);
         }
+    }
 
-        uint256 amountOwed = amount + fee;
-        uint256 required = amountOwed + minProfit;
-        uint256 bal = IERC20(asset).balanceOf(address(this)) - baseline;
+    // ---- flash swap -----------------------------------------------------------------
+
+    /// @notice Arb funded by hop 0 itself: a V2-style flash swap. Owner-only.
+    ///
+    /// hops[0] must be HOP_V2 with recipient == this contract (a flash swap
+    /// calls back whoever receives the output). Its output is sized here from
+    /// live reserves for `amountIn` of hops[0].tokenIn, exactly as the router
+    /// would, so repaying `amountIn` satisfies the pair's K check. hops[1..]
+    /// run as usual inside the callback; the last hop must deliver the root
+    /// token here.
+    ///
+    /// @param amountIn  Root token owed to hops[0].pair — the trade size
+    /// @param minProfit Floor over `amountIn`, enforced on the real balance
+    function executeFlashSwap(uint256 amountIn, uint256 minProfit, Hop[] calldata hops) external onlyOwner {
+        if (hops.length < 2) revert EmptyHops();
+        Hop calldata h0 = hops[0];
+        if (h0.kind != HOP_V2) revert BadHopKind(0, h0.kind);
+        if (h0.recipient != address(this)) revert BadRecipient(0);
+        if (amountIn == 0) revert NothingArrived(0);
+
+        (bool inIsToken0, address mid, uint256 out) = _flashQuote(h0, amountIn);
+        if (hops[1].tokenIn != mid) revert TokenNotInPair(1);
+
+        // Balances before anything arrives, so neither unswept profit in the
+        // root token nor dust in the middle token can be counted as ours.
+        bytes memory data = abi.encode(
+            hops, amountIn, minProfit,
+            IERC20(h0.tokenIn).balanceOf(address(this)),
+            IERC20(mid).balanceOf(address(this))
+        );
+        _flashCtx = keccak256(data);
+        IUniswapV2Pair(h0.pair).swap(inIsToken0 ? 0 : out, inIsToken0 ? out : 0, address(this), data);
+        // A pair that never called back but did not revert either. Not a loss
+        // (it paid out for nothing), but not a trade we understand: refuse.
+        if (_flashCtx != bytes32(0)) revert NoFlashCallback();
+    }
+
+    /// Direction, the token hop 0 pays out, and how much of it `amountIn` buys
+    /// at live reserves — the router's formula, so repaying `amountIn` passes K.
+    function _flashQuote(Hop calldata h0, uint256 amountIn)
+        internal view returns (bool inIsToken0, address mid, uint256 out)
+    {
+        if (h0.feePpm >= FEE_SCALE) revert BadFee(0, h0.feePpm);
+        address t0 = IUniswapV2Pair(h0.pair).token0();
+        address t1 = IUniswapV2Pair(h0.pair).token1();
+        inIsToken0 = h0.tokenIn == t0;
+        if (!inIsToken0 && h0.tokenIn != t1) revert TokenNotInPair(0);
+        mid = inIsToken0 ? t1 : t0;
+
+        (uint112 r0, uint112 r1, ) = IUniswapV2Pair(h0.pair).getReserves();
+        (uint256 reserveIn, uint256 reserveOut) =
+            inIsToken0 ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
+        if (reserveIn == 0 || reserveOut == 0) revert TokenNotInPair(0);
+        out = _amountOut(amountIn, reserveIn, reserveOut, h0.feePpm);
+        if (out == 0) revert ZeroOutput(0);
+    }
+
+    /// @notice Uniswap V2 flash-swap callback. Do not call directly.
+    function uniswapV2Call(address sender, uint256, uint256, bytes calldata data) external {
+        _flashSwapped(sender, data);
+    }
+
+    /// @notice PancakeSwap V2 spelling.
+    function pancakeCall(address sender, uint256, uint256, bytes calldata data) external {
+        _flashSwapped(sender, data);
+    }
+
+    /// @notice Solidly / Velodrome / Aerodrome spelling.
+    function hook(address sender, uint256, uint256, bytes calldata data) external {
+        _flashSwapped(sender, data);
+    }
+
+    /// Any other V2 fork's callback name (BiswapCall, apeCall, …). They all
+    /// pass (address sender, uint256 amount0, uint256 amount1, bytes data).
+    /// Anything else reaching here fails the _flashCtx check in _flashSwapped.
+    fallback() external {
+        if (_flashCtx == bytes32(0) || msg.data.length < 4 + 128) revert NotPool();
+        (address sender, , , bytes memory data) = abi.decode(msg.data[4:], (address, uint256, uint256, bytes));
+        _flashSwapped(sender, data);
+    }
+
+    function _flashSwapped(address sender, bytes memory data) internal {
+        bytes32 ctx = _flashCtx;
+        if (ctx == bytes32(0) || keccak256(data) != ctx) revert NotPool();
+        _flashCtx = bytes32(0);
+        if (sender != address(this)) revert UntrustedInitiator();
+
+        (Hop[] memory hops, uint256 amountIn, uint256 minProfit, uint256 rootBefore, uint256 midBefore) =
+            abi.decode(data, (Hop[], uint256, uint256, uint256, uint256));
+        if (msg.sender != hops[0].pair) revert NotPool();
+        _validate(hops);
+
+        // What actually arrived, not what we asked for: a taxed middle token
+        // delivers less, and hop 1 must not spend the difference.
+        uint256 got = IERC20(hops[1].tokenIn).balanceOf(address(this)) - midBefore;
+        if (got == 0) revert NothingArrived(0);
+        _cycle(hops, 1, got);
+
+        address root = hops[0].tokenIn;
+        uint256 required = amountIn + minProfit;
+        uint256 bal = IERC20(root).balanceOf(address(this)) - rootBefore;
         if (bal < required) revert InsufficientRepay(bal, required);
 
-        emit ArbExecuted(asset, amount, fee, bal - amountOwed);
+        // Pay hop 0 its input. It checks K when this returns. A taxed root
+        // token underpays and the pair reverts — the off-chain side keeps
+        // taxed tokens out of the root position.
+        IERC20(root).transfer(hops[0].pair, amountIn);
+        emit ArbExecuted(root, amountIn, 0, bal - amountIn);
     }
 
     /// Execute one V2 hop, sizing the output from live state. Returns what

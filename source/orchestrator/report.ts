@@ -108,7 +108,7 @@ export function printAttempt(
     log(`      input=${fmtAmount(a.built.rootAmountIn, a.candidate.rootToken)} (${a.built.rootAmountIn} wei)  ` +
         `est. profit=${fmtAmount(a.built.expectedProfit, a.candidate.rootToken)} (${a.built.expectedProfit} wei)  ` +
         `ROI=${fmtRoiPct(a.built.expectedProfit, a.built.rootAmountIn)}`);
-    log(`      gas=${a.gasEstimate ?? '?'} units  ` +
+    log(`      gas=${a.gasEstimate ?? '?'} units${a.funding ? ` via ${a.funding}` : ''}  ` +
         `floor=${fmtAmount(a.minProfitUsed ?? a.built.minProfitWei, a.candidate.rootToken)} enforced on-chain  ` +
         (a.gasFloorWei != null
             ? `(gas-derived; config floor was ${fmtAmount(a.built.minProfitWei, a.candidate.rootToken)})`

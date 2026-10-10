@@ -55,6 +55,10 @@ contract MockToken {
     }
 }
 
+interface IUniswapV2CalleeM {
+    function uniswapV2Call(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external;
+}
+
 /// Constant-product pair with the REAL UniswapV2 K check, so a wrong output
 /// request reverts here exactly as it would on-chain. `feeBps` makes the K
 /// check use this pair's actual fee rather than a hardcoded 0.3%.
@@ -85,13 +89,21 @@ contract MockPair {
         emit Sync(reserve0, reserve1);
     }
 
-    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata) external {
+    /// A pair that ignores `data` — a fork whose swap() never calls back.
+    /// The flash-swap fallback test uses it.
+    bool public flashOff;
+    function setFlashOff(bool v) external { flashOff = v; }
+
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external {
         require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
         (uint112 r0, uint112 r1) = (reserve0, reserve1);
         require(amount0Out < r0 && amount1Out < r1, "UniswapV2: INSUFFICIENT_LIQUIDITY");
 
         if (amount0Out > 0) IERC20M(token0).transfer(to, amount0Out);
         if (amount1Out > 0) IERC20M(token1).transfer(to, amount1Out);
+        // Flash swap, as UniswapV2Pair does it: optimistic transfer, then the
+        // callback, then the K check below decides whether it was paid.
+        if (data.length > 0 && !flashOff) IUniswapV2CalleeM(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);
 
         uint256 bal0 = IERC20M(token0).balanceOf(address(this));
         uint256 bal1 = IERC20M(token1).balanceOf(address(this));
