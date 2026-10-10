@@ -398,11 +398,36 @@
         },
       },
     },
-    // Concentrated liquidity, imported 2026-10-04 from find-factories (all 22
-    // verified: callback read from pool bytecode, YoBatches2 reads them).
-    // Fees are per pool, read at reserves time. Scored by `yarn evaluate`
-    // (marked [v3]); not traded until the executor has a V3 swap path.
-    // Brand names are from DexScreener where it matched a pool.
+
+    algebra: {
+      list: {
+        // 967 pairs in the sweep window (verified on explorer as "AlgebraFactory")
+    // Add under factories["algebra"]:
+        "AlgebraFactory_36077d39": {
+          // measured: Algebra integral, fees 100/233/118/103/275 pips, spacings 60
+          address: "0x36077d39cdc65e1e3fb65810430e5b2c4d5fa29e",
+          algebraVariant: "integral"
+        },
+
+// 173 pairs in the sweep window (verified on explorer as "AlgebraFactory")
+    // Add under factories["algebra"]:
+        "AlgebraFactory_ac900f12": {
+          // measured: Algebra integral, fees 3500/701/700 pips, spacings 60/1
+          address: "0xac900f12fb25d514e3ccfe8572b153a9991ca4e7",
+          algebraVariant: "integral"
+        },
+
+// 144 pairs in the sweep window (verified on explorer as "AlgebraFactory")
+    // Add under factories["algebra"]:
+        "AlgebraFactory_c5396866": {
+          // measured: Algebra integral, fees 454/8/100/80 pips, spacings 1
+          address: "0xc5396866754799b9720125b104ae01d935ab9c7b",
+          algebraVariant: "integral"
+        }
+
+      }
+    },
+
     v3: {
       list: {
         UniswapV3_33128a8f: {   // 1,882,644 pools; fees 3000/500 pips, spacings 60/10
