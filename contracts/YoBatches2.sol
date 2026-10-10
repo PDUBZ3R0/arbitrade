@@ -196,4 +196,128 @@ contract YoBatches2 {
             return(out, sub(w, out))
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Algebra concentrated-liquidity state (V1 / QuickSwap and Integral / Camelot)
+    // -------------------------------------------------------------------------
+
+    /// Same shape and return layout as getV3State, for Algebra pools, which
+    /// getV3State's slot0() probe cannot read (it comes back zeroed, the safe
+    /// answer). Algebra differs from a Uniswap-V3 fork in exactly three reads;
+    /// everything downstream — the window, the tick walk, ticks()'s liquidityNet
+    /// at word 1, tickSpacing() and liquidity() — is identical, so the decoded
+    /// V3Pool is interchangeable:
+    ///
+    ///   price+tick   globalState() 0xe76c01e4, not slot0(): word0 = price
+    ///                (sqrt Q64.96), word1 = int24 tick. Same positions as slot0.
+    ///   fee          globalState() word2 (uint16, 1e-6 pips — the same unit
+    ///                calculus-v3 wants), not a separate fee() call. For V1 this
+    ///                is the live fee; for Integral it is lastFee (the plugin's
+    ///                live fee() can differ by one swap — close enough to rank
+    ///                and size on; execution re-prices on-chain).
+    ///   bitmap       tickTable(int16) 0xc677e3e0, not tickBitmap(int16). Both
+    ///                V1 and Integral expose it with Uniswap's word layout.
+    ///
+    /// Verified against the cryptoalgebra v1-core and integral-core interface
+    /// sources; the on-chain layout still wants a fork check against a live pool
+    /// of each variant (test/fork-algebra-state.mjs) before trusting sizes.
+    function getAlgebraState(address[] calldata pools, uint256 words) external view returns (uint256[] memory) {
+        assembly {
+            let out := mload(0x40)
+            let w := add(out, 0x40)
+            mstore(w, number())
+            w := add(w, 0x20)
+
+            for { let i := 0 } lt(i, pools.length) { i := add(i, 1) } {
+                let pool := calldataload(add(pools.offset, shl(5, i)))
+                let rec := w
+                mstore(rec, 0) mstore(add(rec, 0x20), 0) mstore(add(rec, 0x40), 0)
+                mstore(add(rec, 0x60), 0) mstore(add(rec, 0x80), 0) mstore(add(rec, 0xa0), 0)
+                w := add(rec, 0xc0)
+
+                // globalState() -> (uint160 price, int24 tick, uint16 fee, ...)
+                mstore(0x00, shl(224, 0xe76c01e4))
+                let ok := staticcall(gas(), pool, 0x00, 4, 0x00, 0x60)
+                if lt(returndatasize(), 0x60) { ok := 0 }
+                if iszero(ok) { continue }
+                let sqrtP := mload(0x00)
+                let tick := signextend(2, mload(0x20))
+                let fee := and(mload(0x40), 0xffff)
+                if iszero(sqrtP) { continue }
+
+                // fee() -> the fee the NEXT swap pays. On Integral the plugin
+                // moves it, and globalState's word2 is only lastFee (what the
+                // PREVIOUS swap paid) — seen live on Sonic: fee()=90 vs
+                // lastFee=500. Prefer fee(); keep lastFee when the pool has no
+                // fee() (Algebra V1) or it fails.
+                mstore(0x00, shl(224, 0xddca3f43))
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { fee := and(mload(0x00), 0xffffff) }
+                }
+
+                // liquidity() -> uint128
+                mstore(0x00, shl(224, 0x1a686502))
+                let liq := 0
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { liq := mload(0x00) }
+                }
+
+                // tickSpacing() -> int24
+                mstore(0x00, shl(224, 0xd0c93a7c))
+                let spacing := 0
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { spacing := signextend(2, mload(0x00)) }
+                }
+
+                mstore(rec, sqrtP)
+                mstore(add(rec, 0x20), tick)
+                mstore(add(rec, 0x40), liq)
+                mstore(add(rec, 0x60), fee)
+                mstore(add(rec, 0x80), spacing)
+                if iszero(sgt(spacing, 0)) { continue }
+
+                let c := sdiv(tick, spacing)
+                if and(slt(tick, 0), iszero(iszero(smod(tick, spacing)))) { c := sub(c, 1) }
+                let w0 := sar(8, c)
+
+                let count := 0
+                for { let wp := sub(w0, words) } iszero(sgt(wp, add(w0, words))) { wp := add(wp, 1) } {
+                    if slt(wp, sub(0, 32768)) { continue }
+                    if sgt(wp, 32767) { break }
+
+                    // tickTable(int16) -> uint256
+                    mstore(0x00, shl(224, 0xc677e3e0))
+                    mstore(0x04, wp)
+                    let bm := 0
+                    if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x20) {
+                        if iszero(lt(returndatasize(), 0x20)) { bm := mload(0x00) }
+                    }
+
+                    for { let b := 0 } and(lt(b, 256), iszero(iszero(shr(b, bm)))) { } {
+                        if iszero(and(shr(b, bm), 0xff)) { b := add(b, 8) continue }
+                        if and(shr(b, bm), 1) {
+                            let t := mul(add(shl(8, wp), b), spacing)
+                            // ticks(int24) -> (uint128/uint256 liquidityTotal, int128 liquidityDelta, ...)
+                            mstore(0x00, shl(224, 0xf30dba93))
+                            mstore(0x04, t)
+                            let net := 0
+                            if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x40) {
+                                if iszero(lt(returndatasize(), 0x40)) { net := signextend(15, mload(0x20)) }
+                            }
+                            mstore(w, t)
+                            mstore(add(w, 0x20), net)
+                            w := add(w, 0x40)
+                            count := add(count, 1)
+                        }
+                        b := add(b, 1)
+                    }
+                }
+                mstore(add(rec, 0xa0), count)
+            }
+
+            mstore(out, 0x20)
+            mstore(add(out, 0x20), shr(5, sub(w, add(out, 0x40))))
+            return(out, sub(w, out))
+        }
+    }
 }

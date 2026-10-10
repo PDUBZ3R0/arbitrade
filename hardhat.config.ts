@@ -28,6 +28,7 @@ const ROBINHOOD_RPC = process.env.ROBINHOOD_RPC || 'https://robinhood-rpc.public
 const HYPERLIQUID_RPC = process.env.HYPERLIQUID_RPC || 'https://hyperliquid.drpc.org';
 const ARBITRUM_RPC  = process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc';
 const OPTIMISM_RPC  = process.env.OPTIMISM_RPC || 'https://mainnet.optimism.io';
+const ARC_RPC       = process.env.ARC_RPC || 'https://arc-rpc.publicnode.com';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -130,6 +131,12 @@ export default defineConfig({
         },
         optimism: {
             url: OPTIMISM_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        arc: {
+            url: ARC_RPC,
             accounts,
             type: "http",
             chainType: "generic",

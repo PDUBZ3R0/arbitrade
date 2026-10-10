@@ -31,6 +31,12 @@ const iface = new Interface([
     'function getReservesPacked(bytes req) view returns (bytes)',
     'function getV3StatePacked(bytes pools, uint256 words) view returns (bytes)',
     'function getReservesByPool(bytes pools) view returns (bytes)',
+    // Algebra readers (YoBatches2/3). Same return layouts as the V3 pair above,
+    // for globalState/tickTable pools (Algebra V1 and Integral). Present only on
+    // a contract redeployed with Algebra support — probed for, like the packed
+    // reads, so an older deployment degrades to "no Algebra pools priced".
+    'function getAlgebraState(address[] pools, uint256 words) view returns (uint256[])',
+    'function getAlgebraStatePacked(bytes pools, uint256 words) view returns (bytes)',
 ]);
 
 // -----------------------------------------------------------------------------
@@ -40,20 +46,28 @@ const iface = new Interface([
 // functions; ARB_NO_PACKED=1 forces the ABI forms.
 // -----------------------------------------------------------------------------
 
-const packedSupport = new Map<string, Promise<boolean>>();
+// getCode is fetched once per address and shared by every selector probe.
+const codeCache = new Map<string, Promise<string>>();
+function codeOf(provider: JsonRpcProvider, address: string): Promise<string> {
+    const key = address.toLowerCase();
+    let p = codeCache.get(key);
+    if (!p) { p = provider.getCode(address).then(c => c.toLowerCase()).catch(() => '0x'); codeCache.set(key, p); }
+    return p;
+}
+
+/** Whether `address`'s bytecode contains a `PUSH4 <selector>` for every one of
+ *  `fns` — the dispatcher pattern Solidity emits, the same heuristic the packed
+ *  probe has always used. Checked against a per-address cached getCode. */
+async function hasFns(provider: JsonRpcProvider, address: string, fns: string[]): Promise<boolean> {
+    const c = await codeOf(provider, address);
+    if (c === '0x') return false;
+    return fns.every(fn => c.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
+}
+
 /** Whether `address` exposes the packed reads (checked once per address per process). */
 export function supportsPacked(provider: JsonRpcProvider, address: string): Promise<boolean> {
     if (process.env.ARB_NO_PACKED === '1') return Promise.resolve(false);
-    const key = address.toLowerCase();
-    let p = packedSupport.get(key);
-    if (!p) {
-        p = provider.getCode(address).then(code => {
-            const c = code.toLowerCase();
-            return ['getReservesPacked', 'getV3StatePacked', 'getReservesByPool'].every(fn => c.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
-        }).catch(() => false);
-        packedSupport.set(key, p);
-    }
-    return p;
+    return hasFns(provider, address, ['getReservesPacked', 'getV3StatePacked', 'getReservesByPool']);
 }
 
 /** Cursor over packed bytes. */
@@ -199,52 +213,44 @@ export type V3StateBatch = {
  *
  * `fee` comes back in pips (3000 = 0.3%), as calculus-v3.js expects.
  */
-export async function getV3States(
-    provider: JsonRpcProvider,
-    yobatchesAddress: string,
-    pools: string[],
-    words = 2,
-    blockTag?: number | string,
-): Promise<V3StateBatch> {
-    if (pools.length === 0) return { block: 0, pools: [] };
+// Window (in tick units) the contract walked around the current tick.
+// Deliberately NOT clamped to MIN_TICK/MAX_TICK: v3_swap_exact compares the raw
+// word boundary against these before it clamps, so a clamped bound would flag a
+// swap reaching the end of the price range as incomplete.
+function window(tick: number, tickSpacing: number, words: number): { windowLow: number; windowHigh: number } {
+    const w0 = Math.floor(tick / tickSpacing) >> 8;
+    return { windowLow: (w0 - words) * 256 * tickSpacing, windowHigh: ((w0 + words) * 256 + 255) * tickSpacing };
+}
 
-    if (await supportsPacked(provider, yobatchesAddress)) {
-        const req = '0x' + pools.map(p => p.toLowerCase().slice(2)).join('');
-        const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData('getV3StatePacked', [req, words]), blockTag });
-        const bytes = hexToBytes(iface.decodeFunctionResult('getV3StatePacked', raw)[0] as string);
-        const r = new Rd(bytes);
-        const block = Number(r.u(8));
-        const out: V3StateBatch['pools'] = [];
-        for (const address of pools) {
-            if (r.u(1) === 0n) { out.push(null); continue; }
-            const sqrtPriceX96 = r.v();
-            const tick = Number(r.s(3));
-            const liquidity = r.v();
-            const fee = Number(r.u(3));
-            const tickSpacing = Number(r.s(3));
-            const n = Number(r.u(2));
-            const ticks: V3Pool['ticks'] = [];
-            for (let j = 0; j < n; j++) ticks.push({ index: Number(r.s(3)), liquidityNet: r.s(16) });
-            const w0 = Math.floor(tick / tickSpacing) >> 8;
-            out.push({
-                address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks,
-                windowLow: (w0 - words) * 256 * tickSpacing,
-                windowHigh: ((w0 + words) * 256 + 255) * tickSpacing,
-            });
-        }
-        if (!r.done) throw new Error('getV3StatePacked: trailing bytes — layout mismatch');
-        return { block, pools: out, bytes: (raw.length - 2) / 2 };
+// Decoders for the two transports. The Algebra reads emit the identical layout,
+// so both getV3State* and getAlgebraState* decode through these — `fn` only
+// names the function for error messages.
+function decodeCLPacked(raw: string, pools: string[], words: number, fn: string): V3StateBatch {
+    const r = new Rd(hexToBytes(iface.decodeFunctionResult(fn, raw)[0] as string));
+    const block = Number(r.u(8));
+    const out: V3StateBatch['pools'] = [];
+    for (const address of pools) {
+        if (r.u(1) === 0n) { out.push(null); continue; }
+        const sqrtPriceX96 = r.v();
+        const tick = Number(r.s(3));
+        const liquidity = r.v();
+        const fee = Number(r.u(3));
+        const tickSpacing = Number(r.s(3));
+        const n = Number(r.u(2));
+        const ticks: V3Pool['ticks'] = [];
+        for (let j = 0; j < n; j++) ticks.push({ index: Number(r.s(3)), liquidityNet: r.s(16) });
+        out.push({ address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks, ...window(tick, tickSpacing, words) });
     }
+    if (!r.done) throw new Error(`${fn}: trailing bytes — layout mismatch`);
+    return { block, pools: out };
+}
 
-    const data = iface.encodeFunctionData('getV3State', [pools, words]);
-    const raw = await provider.call({ to: yobatchesAddress, data, blockTag });
-    const f = iface.decodeFunctionResult('getV3State', raw)[0] as bigint[];
-
+function decodeCLAbi(f: bigint[], pools: string[], words: number, fn: string): V3StateBatch {
     const block = Number(f[0]);
     const out: V3StateBatch['pools'] = [];
     let k = 1;
     for (const address of pools) {
-        if (k + 6 > f.length) throw new Error(`getV3State: truncated response at pool ${address}`);
+        if (k + 6 > f.length) throw new Error(`${fn}: truncated response at pool ${address}`);
         const sqrtPriceX96 = f[k];
         const tick = Number(i256(f[k + 1]));
         const liquidity = f[k + 2];
@@ -253,22 +259,56 @@ export async function getV3States(
         const n = Number(f[k + 5]);
         k += 6;
         const ticks: V3Pool['ticks'] = [];
-        for (let j = 0; j < n; j++, k += 2) {
-            ticks.push({ index: Number(i256(f[k])), liquidityNet: i256(f[k + 1]) });
-        }
+        for (let j = 0; j < n; j++, k += 2) ticks.push({ index: Number(i256(f[k])), liquidityNet: i256(f[k + 1]) });
         if (sqrtPriceX96 === 0n || !(tickSpacing > 0)) { out.push(null); continue; }
-
-        // Same window the contract walked, in tick units. Deliberately NOT
-        // clamped to MIN_TICK/MAX_TICK: v3_swap_exact compares the raw word
-        // boundary against these before it clamps, so a clamped bound would
-        // flag a swap reaching the end of the price range as incomplete.
-        const compressed = Math.floor(tick / tickSpacing);
-        const w0 = compressed >> 8;
-        const windowLow = (w0 - words) * 256 * tickSpacing;
-        const windowHigh = ((w0 + words) * 256 + 255) * tickSpacing;
-
-        out.push({ address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks, windowLow, windowHigh });
+        out.push({ address, sqrtPriceX96, tick, liquidity, fee, tickSpacing, ticks, ...window(tick, tickSpacing, words) });
     }
-    if (k !== f.length) throw new Error(`getV3State: ${f.length - k} unread words — layout mismatch`);
-    return { block, pools: out, bytes: (raw.length - 2) / 2 };
+    if (k !== f.length) throw new Error(`${fn}: ${f.length - k} unread words — layout mismatch`);
+    return { block, pools: out };
+}
+
+async function readCLStates(
+    provider: JsonRpcProvider,
+    yobatchesAddress: string,
+    pools: string[],
+    words: number,
+    blockTag: number | string | undefined,
+    fns: { abi: string; packed: string },
+): Promise<V3StateBatch> {
+    if (pools.length === 0) return { block: 0, pools: [] };
+
+    if (await supportsPacked(provider, yobatchesAddress) && await hasFns(provider, yobatchesAddress, [fns.packed])) {
+        const req = '0x' + pools.map(p => p.toLowerCase().slice(2)).join('');
+        const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData(fns.packed, [req, words]), blockTag });
+        return { ...decodeCLPacked(raw, pools, words, fns.packed), bytes: (raw.length - 2) / 2 };
+    }
+
+    const raw = await provider.call({ to: yobatchesAddress, data: iface.encodeFunctionData(fns.abi, [pools, words]), blockTag });
+    const f = iface.decodeFunctionResult(fns.abi, raw)[0] as bigint[];
+    return { ...decodeCLAbi(f, pools, words, fns.abi), bytes: (raw.length - 2) / 2 };
+}
+
+export function getV3States(
+    provider: JsonRpcProvider, yobatchesAddress: string, pools: string[], words = 2, blockTag?: number | string,
+): Promise<V3StateBatch> {
+    return readCLStates(provider, yobatchesAddress, pools, words, blockTag, { abi: 'getV3State', packed: 'getV3StatePacked' });
+}
+
+/** Whether `address` can answer Algebra reads at all (ABI or packed form). An
+ *  older YoBatches without them should route no Algebra pools here. */
+export function supportsAlgebra(provider: JsonRpcProvider, address: string): Promise<boolean> {
+    return hasFns(provider, address, ['getAlgebraState']).then(abi => abi || hasFns(provider, address, ['getAlgebraStatePacked']));
+}
+
+/**
+ * Concentrated-liquidity state for Algebra pools (V1 / Integral), same shape as
+ * getV3States. Pools must be Algebra (globalState/tickTable); a Uniswap-V3 pool
+ * sent here reads as null (its globalState() call fails). If the deployed
+ * YoBatches predates Algebra support, every pool reads null — callers should
+ * gate on supportsAlgebra() and leave these pools unpriced rather than crash.
+ */
+export function getAlgebraStates(
+    provider: JsonRpcProvider, yobatchesAddress: string, pools: string[], words = 2, blockTag?: number | string,
+): Promise<V3StateBatch> {
+    return readCLStates(provider, yobatchesAddress, pools, words, blockTag, { abi: 'getAlgebraState', packed: 'getAlgebraStatePacked' });
 }

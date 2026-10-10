@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # AWS override: container logs to CloudWatch Logs instead of local json files.
 #
-#   docker compose -f compose.yaml -f compose.aws.yaml up -d
+#   docker compose -f compose.aws.yaml up -d
 #
 # The EC2 instance role needs logs:CreateLogGroup, logs:CreateLogStream and
 # logs:PutLogEvents. AWS_REGION defaults to us-east-1. Set a retention period

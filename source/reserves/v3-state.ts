@@ -23,7 +23,7 @@
 
 import type { JsonRpcProvider } from 'ethers';
 import type { ArbitradeDB } from '../util/db.ts';
-import { getV3States, getReservesByPairs } from '../util/yobatches.ts';
+import { getV3States, getAlgebraStates, supportsAlgebra, getReservesByPairs } from '../util/yobatches.ts';
 
 const Q96 = 1n << 96n;
 export const V3_BATCH_SIZE = 100;
@@ -46,11 +46,15 @@ export type V3FetchStats = {
     byFactory: Map<string, { total: number; live: number }>;
 };
 
+/** A CL state reader: getV3States (slot0/tickBitmap) or getAlgebraStates
+ *  (globalState/tickTable). Same signature, same return shape. */
+type CLReader = typeof getV3States;
+
 export async function fetchV3States(
     provider: JsonRpcProvider,
     db: ArbitradeDB,
     yobatches: string,
-    pools: Array<{ pair: string; factory: string }>,
+    pools: Array<{ pair: string; factory: string; clVariant?: string | null }>,
     opts: { batchSize?: number; words?: number; concurrency?: number } = {},
 ): Promise<V3FetchStats> {
     const batchSize = Math.max(1, Math.floor(opts.batchSize ?? V3_BATCH_SIZE));
@@ -65,6 +69,25 @@ export async function fetchV3States(
         stats.byFactory.set(f, e);
     }
 
+    // Split by concentrated-liquidity variant: Algebra pools (globalState /
+    // tickTable) need getAlgebraStates; everything else is a Uniswap-V3-style
+    // slot0 pool. The variant is the pair's cl_variant ('algebra-*' vs 'univ3'
+    // / null), set at scan time.
+    const isAlgebra = (p: { clVariant?: string | null }) => (p.clVariant ?? '').startsWith('algebra');
+    const univ3 = pools.filter(p => !isAlgebra(p));
+    let algebra = pools.filter(isAlgebra);
+
+    // If the deployed YoBatches predates Algebra support, reading these would
+    // just revert every batch. Degrade to "unreadable" with one clear line
+    // pointing at the redeploy, instead of splitting failed batches to death.
+    if (algebra.length > 0 && !(await supportsAlgebra(provider, yobatches))) {
+        console.log(`\n  [algebra] ${algebra.length} Algebra pool(s) skipped: chain.contract has no getAlgebraState — ` +
+            `redeploy with \`yarn deploy-contract\` (YoBatches2/3 now include it) to price them.`);
+        db.upsertV3States(algebra.map(p => ({ pool: p.pair, blockNumber: 0, state: null, reserves0: 0n, reserves1: 0n })));
+        stats.unreadable += algebra.length;
+        algebra = [];
+    }
+
     // Adaptive batch size. A batch's cost on the node is dominated by its
     // pools' initialized ticks, which vary by orders of magnitude (a 1-bp
     // stable pool can have hundreds inside the window, a fresh memecoin pool
@@ -74,87 +97,94 @@ export async function fetchV3States(
     // one grows it back toward the configured maximum, and a failed batch is
     // split and re-queued rather than retried whole.
     const TARGET_MS = 8_000, MIN_SIZE = 5;
-    let size = batchSize;
-    const queue: string[][] = [];
-    let cursor = 0;
-    const take = (): string[] | null => {
-        if (queue.length) return queue.shift()!;
-        if (cursor >= pools.length) return null;
-        const b = pools.slice(cursor, cursor + size).map(p => p.pair);
-        cursor += b.length;
-        return b;
-    };
-
-    let doneCalls = 0, poolsDone = 0, bytes = 0, inflight = 0;
+    let poolsDone = 0, bytes = 0;
     const t0 = Date.now();
     const rpcStats = (provider as any).stats as { ws: number; http: number; fallbacks: number } | undefined;
-    const worker = async () => {
-        while (true) {
-            const batch = take();
-            if (!batch) {
-                // Another worker may still split a failed batch back into the queue.
-                if (inflight === 0) return;
-                await new Promise(r => setTimeout(r, 50));
-                continue;
-            }
-            inflight++;
-            let res: Awaited<ReturnType<typeof getV3States>> | null = null;
-            const bt = Date.now();
-            try {
-                for (let attempt = 0; ; attempt++) {
-                    try { res = await getV3States(provider, yobatches, batch, words); break; }
-                    catch (err) {
-                        // A batch that errors (gas cap, response limit, a
-                        // timeout) is split rather than retried as-is — down
-                        // to single pools, which also isolates one pool that
-                        // breaks every call it is in.
-                        if (batch.length > 1) {
-                            const h = Math.ceil(batch.length / 2);
-                            queue.push(batch.slice(0, h), batch.slice(h));
-                            size = Math.max(MIN_SIZE, Math.min(size, h));
-                            break;
-                        }
-                        if (attempt >= RETRY_DELAYS_MS.length) {
-                            stats.errors.push(`v3 batch of ${batch.length} (${batch[0]}…): ${(err as Error).message.slice(0, 160)}`);
-                            break;
-                        }
-                        await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
-                    }
+
+    // One adaptive worker-pool pass over `subset`, reading through `reader`.
+    // Each pass keeps its own adaptive `size`/queue so a dense-tick group
+    // can't shrink the other's batches.
+    const runPass = async (subset: Array<{ pair: string }>, reader: CLReader, tag: string) => {
+        if (subset.length === 0) return;
+        let size = batchSize;
+        const queue: string[][] = [];
+        let cursor = 0, inflight = 0;
+        const take = (): string[] | null => {
+            if (queue.length) return queue.shift()!;
+            if (cursor >= subset.length) return null;
+            const b = subset.slice(cursor, cursor + size).map(p => p.pair);
+            cursor += b.length;
+            return b;
+        };
+        const worker = async () => {
+            while (true) {
+                const batch = take();
+                if (!batch) {
+                    if (inflight === 0) return;
+                    await new Promise(r => setTimeout(r, 50));
+                    continue;
                 }
-            } finally {
-                inflight--;
+                inflight++;
+                let res: Awaited<ReturnType<CLReader>> | null = null;
+                const bt = Date.now();
+                try {
+                    for (let attempt = 0; ; attempt++) {
+                        try { res = await reader(provider, yobatches, batch, words); break; }
+                        catch (err) {
+                            if (batch.length > 1) {
+                                const h = Math.ceil(batch.length / 2);
+                                queue.push(batch.slice(0, h), batch.slice(h));
+                                size = Math.max(MIN_SIZE, Math.min(size, h));
+                                break;
+                            }
+                            if (attempt >= RETRY_DELAYS_MS.length) {
+                                stats.errors.push(`${tag} batch of ${batch.length} (${batch[0]}…): ${(err as Error).message.slice(0, 160)}`);
+                                break;
+                            }
+                            await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+                        }
+                    }
+                } finally {
+                    inflight--;
+                }
+                if (!res) continue;
+                const ms = Date.now() - bt;
+                if (ms > TARGET_MS) size = Math.max(MIN_SIZE, Math.floor(size / 2));
+                else if (ms < TARGET_MS / 4) size = Math.min(batchSize, Math.ceil(size * 1.5));
+                bytes += res.bytes ?? 0;
+                const rows = batch.map((pool, k) => {
+                    const st = res!.pools[k];
+                    if (!st) { stats.unreadable++; return { pool, blockNumber: res!.block, state: null, reserves0: 0n, reserves1: 0n }; }
+                    const [r0, r1] = virtualReserves(st.sqrtPriceX96, st.liquidity);
+                    if (r0 > 0n && r1 > 0n) {
+                        stats.live++;
+                        const e = stats.byFactory.get(factoryOf.get(pool.toLowerCase())!);
+                        if (e) e.live++;
+                    } else stats.empty++;
+                    stats.ticksStored += st.ticks.length;
+                    return { pool, blockNumber: res!.block, state: { ...st, windowLow: st.windowLow!, windowHigh: st.windowHigh! }, reserves0: r0, reserves1: r1 };
+                });
+                db.upsertV3States(rows);
+                poolsDone += batch.length;
+                const secs = (Date.now() - t0) / 1000;
+                const rate = poolsDone / Math.max(secs, 1e-9);
+                const eta = rate > 0 ? (pools.length - poolsDone) / rate : 0;
+                const rpc = rpcStats ? ` | ws ${rpcStats.ws} http ${rpcStats.http}${rpcStats.fallbacks ? ` fallbacks ${rpcStats.fallbacks}` : ''}` : '';
+                process.stdout.write(`\r  [v3] ${poolsDone}/${pools.length} pools — ${stats.live} live, ${stats.empty} empty, ` +
+                    `${stats.unreadable} unreadable | ${rate.toFixed(1)} pools/s, batch ${size}, ` +
+                    `${(bytes / 1e6 / Math.max(secs, 1e-9)).toFixed(2)} MB/s in, ETA ${fmtDuration(eta)}${rpc}   `);
             }
-            if (!res) continue;
-            const ms = Date.now() - bt;
-            if (ms > TARGET_MS) size = Math.max(MIN_SIZE, Math.floor(size / 2));
-            else if (ms < TARGET_MS / 4) size = Math.min(batchSize, Math.ceil(size * 1.5));
-            bytes += res.bytes ?? 0;
-            const rows = batch.map((pool, k) => {
-                const st = res!.pools[k];
-                if (!st) { stats.unreadable++; return { pool, blockNumber: res!.block, state: null, reserves0: 0n, reserves1: 0n }; }
-                const [r0, r1] = virtualReserves(st.sqrtPriceX96, st.liquidity);
-                if (r0 > 0n && r1 > 0n) {
-                    stats.live++;
-                    const e = stats.byFactory.get(factoryOf.get(pool.toLowerCase())!);
-                    if (e) e.live++;
-                } else stats.empty++;
-                stats.ticksStored += st.ticks.length;
-                // getV3States always sets the window bounds
-                return { pool, blockNumber: res!.block, state: { ...st, windowLow: st.windowLow!, windowHigh: st.windowHigh! }, reserves0: r0, reserves1: r1 };
-            });
-            db.upsertV3States(rows);
-            doneCalls++;
-            poolsDone += batch.length;
-            const secs = (Date.now() - t0) / 1000;
-            const rate = poolsDone / Math.max(secs, 1e-9);
-            const eta = rate > 0 ? (pools.length - poolsDone) / rate : 0;
-            const rpc = rpcStats ? ` | ws ${rpcStats.ws} http ${rpcStats.http}${rpcStats.fallbacks ? ` fallbacks ${rpcStats.fallbacks}` : ''}` : '';
-            process.stdout.write(`\r  [v3] ${poolsDone}/${pools.length} pools — ${stats.live} live, ${stats.empty} empty, ` +
-                `${stats.unreadable} unreadable | ${rate.toFixed(1)} pools/s, batch ${size}, ` +
-                `${(bytes / 1e6 / Math.max(secs, 1e-9)).toFixed(2)} MB/s in, ETA ${fmtDuration(eta)}${rpc}   `);
-        }
+        };
+        await Promise.all(Array.from({ length: Math.min(concurrency, Math.ceil(subset.length / batchSize) || 1) }, worker));
     };
-    await Promise.all(Array.from({ length: Math.min(concurrency, Math.ceil(pools.length / batchSize) || 1) }, worker));
+
+    // Uniswap-V3 pools first, then Algebra — sequential so the two passes don't
+    // contend for the same RPC sockets (each is already concurrency-bounded).
+    await runPass(univ3, getV3States, 'v3');
+    if (algebra.length) {
+        process.stdout.write(`\n  [algebra] ${algebra.length} Algebra pool(s) via getAlgebraState\n`);
+        await runPass(algebra, getAlgebraStates, 'algebra');
+    }
     if (pools.length) process.stdout.write('\n');
     return stats;
 }

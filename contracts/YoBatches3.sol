@@ -245,4 +245,113 @@ contract YoBatches3 is YoBatches2 {
             return(sub(out, 0x20), add(0x40, and(add(len, 31), not(31))))
         }
     }
+
+    /// Packed getAlgebraState: byte-for-byte the getV3StatePacked layout, for
+    /// Algebra pools (V1 / Integral). Differs from getV3StatePacked only in the
+    /// three reads getAlgebraState (YoBatches2) documents — globalState() for
+    /// price+tick+fee, and tickTable() for the bitmap — so the client decodes it
+    /// with the same reader as getV3StatePacked.
+    function getAlgebraStatePacked(bytes calldata pools, uint256 words) external view returns (bytes memory) {
+        assembly {
+            function putVar(ptr, v) -> np {
+                let l := 0
+                for { let x := v } x { x := shr(8, x) } { l := add(l, 1) }
+                mstore8(ptr, l)
+                if l { mstore(add(ptr, 1), shl(mul(8, sub(32, l)), v)) }
+                np := add(ptr, add(1, l))
+            }
+            function putFixed(ptr, v, nb) -> np {
+                mstore(ptr, shl(mul(8, sub(32, nb)), v))
+                np := add(ptr, nb)
+            }
+
+            let out := mload(0x40)
+            let w := add(out, 0x20)
+            mstore(w, shl(192, number()))
+            w := add(w, 8)
+            let n := div(pools.length, 20)
+            for { let i := 0 } lt(i, n) { i := add(i, 1) } {
+                let pool := shr(96, calldataload(add(pools.offset, mul(i, 20))))
+                let flag := w
+                mstore8(flag, 0)
+                w := add(w, 1)
+
+                // globalState() -> (uint160 price, int24 tick, uint16 fee, ...)
+                mstore(0x00, shl(224, 0xe76c01e4))
+                let ok := staticcall(gas(), pool, 0x00, 4, 0x00, 0x60)
+                if lt(returndatasize(), 0x60) { ok := 0 }
+                if iszero(ok) { continue }
+                let sqrtP := mload(0x00)
+                let tick := signextend(2, mload(0x20))
+                let fee := and(mload(0x40), 0xffff)
+                if iszero(sqrtP) { continue }
+                // fee(): live fee (Integral plugin) beats globalState's lastFee;
+                // keep lastFee if the pool has no fee() (V1). See YoBatches2.
+                mstore(0x00, shl(224, 0xddca3f43))
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { fee := and(mload(0x00), 0xffffff) }
+                }
+                // liquidity()
+                mstore(0x00, shl(224, 0x1a686502))
+                let liq := 0
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { liq := mload(0x00) }
+                }
+                // tickSpacing()
+                mstore(0x00, shl(224, 0xd0c93a7c))
+                let spacing := 0
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { spacing := signextend(2, mload(0x00)) }
+                }
+                if iszero(sgt(spacing, 0)) { continue }
+
+                mstore8(flag, 1)
+                w := putVar(w, sqrtP)
+                w := putFixed(w, tick, 3)
+                w := putVar(w, liq)
+                w := putFixed(w, fee, 3)
+                w := putFixed(w, spacing, 3)
+                let countAt := w
+                w := add(w, 2)
+
+                let c := sdiv(tick, spacing)
+                if and(slt(tick, 0), iszero(iszero(smod(tick, spacing)))) { c := sub(c, 1) }
+                let w0 := sar(8, c)
+                let count := 0
+                for { let wp := sub(w0, words) } iszero(sgt(wp, add(w0, words))) { wp := add(wp, 1) } {
+                    if slt(wp, sub(0, 32768)) { continue }
+                    if sgt(wp, 32767) { break }
+                    mstore(0x00, shl(224, 0xc677e3e0))   // tickTable(int16)
+                    mstore(0x04, wp)
+                    let bm := 0
+                    if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x20) {
+                        if iszero(lt(returndatasize(), 0x20)) { bm := mload(0x00) }
+                    }
+                    for { let b := 0 } and(lt(b, 256), iszero(iszero(shr(b, bm)))) { } {
+                        if iszero(and(shr(b, bm), 0xff)) { b := add(b, 8) continue }
+                        if and(shr(b, bm), 1) {
+                            let t := mul(add(shl(8, wp), b), spacing)
+                            mstore(0x00, shl(224, 0xf30dba93))   // ticks(int24)
+                            mstore(0x04, t)
+                            let net := 0
+                            if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x40) {
+                                if iszero(lt(returndatasize(), 0x40)) { net := signextend(15, mload(0x20)) }
+                            }
+                            w := putFixed(w, t, 3)
+                            w := putFixed(w, net, 16)
+                            count := add(count, 1)
+                        }
+                        b := add(b, 1)
+                    }
+                }
+                mstore8(countAt, and(shr(8, count), 0xff))
+                mstore8(add(countAt, 1), and(count, 0xff))
+            }
+            let len := sub(w, add(out, 0x20))
+            mstore(out, len)
+            mstore(w, 0)
+            mstore(sub(out, 0x20), 0x20)
+            return(sub(out, 0x20), add(0x40, and(add(len, 31), not(31))))
+        }
+    }
 }

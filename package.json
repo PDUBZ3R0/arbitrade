@@ -12,6 +12,7 @@
     "aws-push-env": "bash scripts/aws/push-env.sh",
     "aws-push-db": "bash scripts/aws/push-db.sh",
     "preinstall": "npm install -g json5",
+    "aws": "aws ssm start-session --target i-0883e3a47cc9fc6c1",
     "deploy-all": "bash scripts/deploy-all.sh",
     "deploy-contract": "bash scripts/deploy-contract.sh",
     "deploy-flasharb": "bash scripts/deploy-flasharb.sh",

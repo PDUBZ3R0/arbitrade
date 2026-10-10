@@ -507,6 +507,12 @@ contract FlashArbExecutor {
         _v3SwapPay(amount0Delta, amount1Delta);
     }
 
+    /// @notice Algebra (V1 / Integral) spelling of the swap callback. Algebra's
+    /// swap() shares Uniswap's selector but calls back here; same pay semantics.
+    function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        _v3SwapPay(amount0Delta, amount1Delta);
+    }
+
     /// Pay the pool whose swap is in progress — once, in the hop's tokenIn, and
     /// never more than the hop's input.
     function _v3SwapPay(int256 amount0Delta, int256 amount1Delta) internal {

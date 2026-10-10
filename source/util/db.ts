@@ -605,7 +605,7 @@ export class ArbitradeDB {
          * pools only come back when a caller asks for them explicitly.
          */
         kinds?: Array<'v2' | 'v3'>;
-    } = {}): Array<{ pair: string; factory: string; token0: string; token1: string }> {
+    } = {}): Array<{ pair: string; factory: string; token0: string; token1: string; clVariant: string | null }> {
         const wheres: string[] = [];
         const params: any[] = [];
         const kinds = opts.kinds ?? ['v2'];
@@ -628,7 +628,7 @@ export class ArbitradeDB {
         }
         const where = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
         return this.db.prepare(`
-            SELECT p.address AS pair, p.factory, p.token0, p.token1
+            SELECT p.address AS pair, p.factory, p.token0, p.token1, p.cl_variant AS clVariant
             FROM pairs p
             LEFT JOIN reserves r ON r.pair = p.address
             ${where}
