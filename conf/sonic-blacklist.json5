@@ -39,6 +39,25 @@
         {
             address: "0x273126ba6fb9c8e28ca47e50fdced6844994659c",
         },
+        {
+          // Shared bytecode execution proxies and constructor scripts frequently referenced for deploying local sub-pools.
+          address: "0x887b9f4977046d83552a59f9a36ed08a1e68964d",
+        },
+        {
+          // Shared bytecode execution proxies and constructor scripts frequently referenced for deploying local sub-pools.
+          address: "0xbdd2e72d5177317a171796c33fe223f01dbb9f4a",
+        },
+        {
+          // Core factory/pool event registries utilized inside the Sonic Testnet debugging parameters.
+          address: "0x5f209f01a3faac0f0ed6abec41da640384aaf673",
+        },
+        {
+          // Core factory/pool event registries utilized inside the Sonic Testnet debugging parameters.
+          address: "0x32c0c830bd6cf07893fa6095a64059886112d6df",
+        },
+        {
+          address: "0xf2548ea6b811bf0ae2e36b58a37c40e88dd51680",
+        }
 
     ]
 }

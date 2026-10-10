@@ -655,11 +655,13 @@ async function emitReport(
                 if (v.usable) {
                     const { displayName, explorerVerified, implementationName, implementationAddress, nameNote } =
                         await resolveExplorerIdentity(c.address);
-                    console.log(`  ✓ [V3] callback ${v.callback}, poolEvent ${v.poolEvent}, fees ${v.feesSeen.join('/')} pips` +
-                        (v.lensChecked ? ', YoBatches2 reads it' : '') + nameNote);
+                    const tag = v.family === 'algebra' ? `ALGEBRA ${v.algebraVariant}` : 'V3';
+                    const how = v.family === 'algebra' ? '' : `, poolEvent ${v.poolEvent}`;
+                    console.log(`  ✓ [${tag}] callback ${v.callback}${how}, fees ${v.feesSeen.join('/')} pips` +
+                        (v.lensChecked ? ', YoBatches reads it' : '') + nameNote);
                     if (v.samplePool) await printDexScreener(v.samplePool);
                     verified.push({
-                        candidate: c, snippet: v.configSnippet, family: 'v3',
+                        candidate: c, snippet: v.configSnippet, family: v.family,
                         contractName: displayName, implementationName, implementationAddress, explorerVerified,
                     });
                 } else {
@@ -708,7 +710,7 @@ async function emitReport(
         }
     }
 
-    const byFamily = { v2: 0, v2fee: 0, solidly: 0, v3: 0 } as Record<string, number>;
+    const byFamily = { v2: 0, v2fee: 0, solidly: 0, v3: 0, algebra: 0 } as Record<string, number>;
     for (const v of verified) byFamily[v.family] = (byFamily[v.family] ?? 0) + 1;
 
     console.log('\n' + '═'.repeat(72));
@@ -717,6 +719,7 @@ async function emitReport(
     console.log(`  V2Fee:   ${byFamily['v2fee']}`);
     console.log(`  Solidly: ${byFamily['solidly']}`);
     console.log(`  V3 (CL): ${byFamily['v3']}`);
+    console.log(`  Algebra: ${byFamily['algebra']}`);
     console.log('═'.repeat(72));
 
     if (verified.length > 0) {
@@ -740,8 +743,8 @@ async function emitReport(
             // template, we can emit a pre-filled snippet with the right
             // family + feeTarget/feeFunction/feeDivisor and drop the
             // generic placeholder comments.
-            // V3 snippets come straight from measurement; the pattern registry is V2-family only.
-            const pattern = family === 'v3' ? null : (lookupDexPattern(implementationName) ?? lookupDexPattern(contractName));
+            // V3/Algebra snippets come straight from measurement; the pattern registry is V2-family only.
+            const pattern = family === 'v3' || family === 'algebra' ? null : (lookupDexPattern(implementationName) ?? lookupDexPattern(contractName));
 
             let nameHint = '';
             if (implementationName && contractName) {
@@ -788,6 +791,8 @@ async function emitReport(
         console.log('  3. For solidly-* entries: the config comment says which factories group to use');
         console.log('  4. For v3 entries: callback is what the executor must implement for these pools;');
         console.log('     it was read from the pool bytecode, so trust it over the factory\'s name.');
+        console.log('  5. For algebra entries: needs a YoBatches with getAlgebraState (yarn deploy-contract)');
+        console.log('     and an executor with algebraSwapCallback before live trades.');
     }
 }
 

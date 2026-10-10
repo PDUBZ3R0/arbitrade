@@ -39,7 +39,7 @@
         Elk: {
           address: '0xcb018587da9590a18f49ffe2b85314c33af3ad3b',
           deployBlock: 17623247,
-          fee: 0.003,
+          fee: 0.003175, // verify-fees 2026-10-09: measured 0.003175 (was 0.003) — non-round, re-check; higher is the safe side
         },
         UniswapV2Factory_45de240f: {
           address: '0x45de240fbe2077dd3e711299538a09854fae9c9b',
@@ -59,7 +59,7 @@
         KingSwapFactory_977cfffe: {
           address: '0x977cfffece847529190e6771dfeacdd7b5659f9b',
           deployBlock: 14876727,
-          fee: 0.003,
+          fee: 0.0025, // verify-fees 2026-10-09: measured (was 0.003)
         },
         Factory_06530550: {
           address: '0x06530550a48f990360dfd642d2132354a144f31d',
@@ -99,7 +99,7 @@
         ZuniswapV2Factory_3cf5069f: {
           address: '0x3cf5069fbf431ed10b1d1b60fff8758eab72e120',
           deployBlock: 24999269,
-          fee: 0.003,
+          fee: 0.003, // verify-fees 2026-10-09: ZERO Swap events in full history — dead, candidate for blacklist
         },
         Factory_18a41c80: {
           address: '0x18a41c8036d64a49b51342112f2d1fa9421f6d49',
@@ -109,7 +109,7 @@
         Factory_1a4537cb: {
           address: '0x1a4537cb4f8a55992fd2fb56551c3e95de3fe576',
           deployBlock: 19107827,
-          fee: 0.003,
+          fee: 0.002, // verify-fees 2026-10-09: measured (was 0.003)
         },
         Factory_80906dff: {
           address: '0x80906dfff28f4e9773281b9eebab5a3d081d90b4',
@@ -144,7 +144,7 @@
         PandaFactory_2b316b60: {
           address: '0x2b316b60a79b2c5cc7145ccd449e82414d9148ab',
           deployBlock: 24035106,
-          fee: 0.003,
+          fee: 0.0025, // verify-fees 2026-10-09: measured (was 0.003)
         },
         HoyuFactory_63a2c1ec: {
           address: '0x63a2c1ecce577a5c3bc9245450a59e53e9fa5b38',
@@ -209,7 +209,7 @@
         Factory_79ab35e6: {
           address: '0x79ab35e604cc86ecfcc46e8ce9011f521570c119',
           deployBlock: 24948827,
-          fee: 0.003,
+          fee: 0.003, // verify-fees 2026-10-09: ZERO Swap events in full history — dead, candidate for blacklist
         },
       },
     },
@@ -270,6 +270,38 @@
         },
       },
     },
+    algebra: {
+      list: {
+        // 2865 pairs in the sweep window (verified on explorer as "AlgebraFactory")
+    // Add under factories["algebra"]:
+        "AlgebraFactory_a0864cca": {
+          // measured: Algebra v1, fees 2000/100/1249/1380 pips, spacings 60/1
+          address: "0xa0864cca6e114013ab0e27cbd5b6f4c8947da766",
+          algebraVariant: "v1"
+        }
+      }
+    },
+    v3: {
+    list: {
+    // 314 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_f78031cb": {
+          // measured: fees 500/100/3000 pips, spacings 10/1/60
+          address: "0xf78031cbca409f2fb6876bdfdbc1b2df24cf9bef",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 169 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
+    // Add under factories["v3"]:
+        "UniswapV3Factory_e32f7dd7": {
+          // measured: fees 3000 pips, spacings 60
+          address: "0xe32f7dd7e3f098d518ff19a22d5f028e076489b1",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        }
+}
+    }
   },
   flashloan: {
     provider: 'aave-v3',

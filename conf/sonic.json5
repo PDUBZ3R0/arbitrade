@@ -1,4 +1,4 @@
-                                                        {
+{
   chain: {
     id: 146,
     name: 'Sonic',
@@ -6,7 +6,7 @@
     token: '0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38',
     contract: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
     executor: '0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1',
-    probe: "0x9301c3F24DDB4E953df31D51df23F102680155c6",
+    probe: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
@@ -21,9 +21,6 @@
   },
   factories: {
     v2: {
-      abi: [
-        'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
-      ],
       list: {
         'SpookySwap v2': {
           address: '0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741',
@@ -85,106 +82,73 @@
           deployBlock: 19071304,
           fee: 0.002,
         },
-        LibreXFactory_2dd26477: {
+        'LibreXFactory v2': {
           address: '0x2dd26477d07a0612ce3336aaaaf270fe6ddbcb26',
           deployBlock: 1186161,
           fee: 0.003,
         },
-        UniswapV2Factory_01d6747d: {
+        'Silo A V2': {
           address: '0x01d6747dd2d65ddd90faec2c84727c2706ee28e2',
           deployBlock: 270033,
           fee: 0.003,
         },
-        Factory_bb13ade0: {
+        'Silo B V2': {
           address: '0xbb13ade01dc6f897ff81ded9bbe3a0d4e845fbb6',
           deployBlock: 298964,
           fee: 0.003,
         },
-        Factory_d8863d79: {
+        'Beets V2': {
           address: '0xd8863d794520285185197f97215c8b8ad04e8815',
           deployBlock: 300373,
           fee: 0.003,
         },
-        Factory_3638ca70: {
+        'Shadow V2': {
           address: '0x3638ca700d67d560be2a2d0dd471640957564829',
           deployBlock: 139434,
           fee: 0.003,
         },
       },
     },
-    // Shadow Exchange — the LEGACY (Solidly-family) factory only.
-    //
-    // This was previously commented out as "Shadow uses different maths than
-    // v2". Half true, and the half that matters is fine. Read from
-    // Shadow-Exchange/shadow-core, contracts/Pair.sol:
-    //
-    //   _k(x, y)          stable -> x3y+y3x (Solidly); else -> x * y
-    //   _getAmountOut()   stable -> Newton solve via _get_y()
-    //                     else   -> (amountIn * reserveB) / (reserveA + amountIn)
-    //
-    // The volatile branch is plain constant product, identical in form to
-    // swap_output() in source/util/calculus.js. swap(), getReserves() and
-    // Sync(uint112,uint112) all match UniswapV2 exactly, so the executor's
-    // on-chain hop sizing and the hot loop's Sync feed need no changes at all.
-    // The stable pools DO need different maths and are excluded automatically:
-    // getPairsForEnumeration() drops stable = 1, exactly as it already does
-    // for Equalizer's 39 stable pairs.
-    //
-    // FEE SOURCE — the one thing that is NOT the v2fee default.
-    //
-    // The v2fee group defaults to factory.pairFee(pair), and PairFactory does
-    // expose that function. It is the wrong source here: createPair() calls
-    // IPair(pair).setFee(fee) but never writes the factory's _pairFee mapping,
-    // which only governance's setPairFee() populates. So
-    // factory.pairFee(pair) returns 0 for essentially every pair, and a fee of
-    // 0 makes the evaluator overstate every output and the pair's K check
-    // reject every trade. The authoritative value is the pair's own zero-arg
-    // fee() getter, denominated in FEE_DENOM = 1_000_000.
-    //
-    // Scope: this is Shadow's legacy venue only (~$1.79M TVL, ~$27k/day
-    // volume). Shadow's main product is concentrated liquidity
-    // (contracts/CL, a Ramses V3 fork) and is NOT reachable by this pipeline —
-    // RamsesV3Pool has no getReserves() and no V2 swap(). The thin volume is
-    // not purely bad news for us: ~1.5% daily turnover means these pools lag
-    // the market, which is where cross-DEX spread comes from.
-    //
-    // VERIFY BEFORE TRUSTING: the factory address and the fee path are from
-    // source reading, not from a chain call --
-    //   yarn verify sonic         (factory address emits the expected event)
-    //   yarn verify-fees sonic    (empirical fee per pair, as on Polygon)
     v2fee: {
-      abi: [
-        'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
-      ],
       list: {
-        Shadow: {
+        'Shadow Solidly': {
           address: '0x2da25e7446a70d7be65fd4c053948becaa6374c8',
           deployBlock: 4028276,
           hasStableFlag: true,
-          // See the FEE SOURCE note above: pair.fee(), not factory.pairFee(pair).
           feeTarget: 'pair',
           feeFunction: 'fee',
           feeDivisor: 1000000,
         },
       },
     },
-    solidly: {
-      abi: [
-        'event PairCreated(address indexed token0, address indexed token1, bool stable, address pair, uint)',
-      ],
+    algebra: {
       list: {
-        Equalizer: {
+        'SwapX Algebra': {
+          address: '0x8121a3F8c4176E9765deEa0B95FA2BDfD3016794',
+          deployBlock: 0,
+          algebraVariant: 'integral',
+        },
+        'Atlantis Protocol': {
+          address: '0x7C839669a12FAE0BFBE2F6a16516Dd2ADc2F1a1b',
+          deployBlock: 0,
+          algebraVariant: 'integral',
+        },
+      },
+    },
+    solidly: {
+      list: {
+        'Equalizer A Solidly': {
           address: '0xddd9845ba0d8f38d3045f804f67a1a8b9a528fcc',
           deployBlock: 258140,
         },
-        PairFactoryUpgradeable_05c1be79: {
+        'SwapX Solidly': {
           address: '0x05c1be79d3ac21cc4b727eed58c9b2ff757f5663',
           feeTarget: 'factory',
           feeArgSource: 'pair-stable',
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
-        PairFactoryUpgradeable_1e58feab: {
+        'Equalizer B Solidly': {
           address: '0x1e58feab693e488dc370cf86b38d5625d22b858f',
           feeTarget: 'factory',
           feeArgSource: 'pair-stable',
@@ -195,155 +159,76 @@
     },
     v3: {
       list: {
-      // 3397 pairs in the sweep window (verified on explorer as "RamsesV3Factory")
-    // Add under factories["v3"]:
-        "RamsesV3Factory_cd2d0637": {
-          // measured: fees 10000/4001/95/94/1500 pips, spacings 100/50/5/1
-          address: "0xcd2d0637c94fe77c2896bbcbb174ceffb08de6d7",
+        'Ramses v3': {
+          address: '0xcd2d0637c94fe77c2896bbcbb174ceffb08de6d7',
           deployBlock: 1705781,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 906 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_56cfc796": {
-          // measured: fees 10000/3000 pips, spacings 200/60
-          address: "0x56cfc796bc88c9c7e1b38c2b0af9b7120b079aef",
+        'Wagmi v3': {
+          address: '0x56cfc796bc88c9c7e1b38c2b0af9b7120b079aef',
           deployBlock: 276406,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 580 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_3d91b700": {
-          // measured: fees 3000/10000 pips, spacings 60/200
-          address: "0x3d91b700252e0e3ee7805d12e048a988ab69c8ad",
+        'SpookySwap A v3': {
+          address: '0x3d91b700252e0e3ee7805d12e048a988ab69c8ad',
           deployBlock: 286535,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 179 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_46b3fdf7": {
-          // measured: fees 3000/10000 pips, spacings 60/200
-          address: "0x46b3fdf7b5cde91ac049936bf0bdb12c5d22202e",
-          deployBlock: 347590,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        },
-
-// 106 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_5f209f01": {
-          // measured: fees 10000/5000 pips, spacings 200/100
-          address: "0x5f209f01a3faac0f0ed6abec41da640384aaf673",
-          deployBlock: 52770735,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        },
-
-// 104 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_f2548ea6": {
-          // measured: fees 10000/5000 pips, spacings 200/100
-          address: "0xf2548ea6b811bf0ae2e36b58a37c40e88dd51680",
-          deployBlock: 14574310,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        },
-
-// 73 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_7ca1dccf": {
-          // measured: fees 1500/1000/1275/10000 pips, spacings 8
-          address: "0x7ca1dccfb4f49564b8f13e18a67747fd428f1c40",
-          deployBlock: 548413,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        },
-
-// 72 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_cb243677": {
-          // measured: fees 3000/100/500 pips, spacings 60/1/10
-          address: "0xcb2436774c3e191c85056d248ef4260ce5f27a9d",
-          deployBlock: 322744,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        },
-
-// 46 pairs in the sweep window (verified on explorer as "UniswapV3Factory")
-    // Add under factories["v3"]:
-        "UniswapV3Factory_3a1713b6": {
-          // measured: fees 3000/500 pips, spacings 60/10
-          address: "0x3a1713b6c3734cfc883a3897647f3128fe789f39",
+        'SpookySwap B v3': {
+          address: '0x3a1713b6c3734cfc883a3897647f3128fe789f39',
           deployBlock: 57508444,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 31 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_bdd2e72d": {
-          // measured: fees 10000/5000/500 pips, spacings 200/100/10
-          address: "0xbdd2e72d5177317a171796c33fe223f01dbb9f4a",
-          deployBlock: 52205086,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        'SushiSwap v3': {
+          address: '0x46b3fdf7b5cde91ac049936bf0bdb12c5d22202e',
+          deployBlock: 347590,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 30 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_32c0c830": {
-          // measured: fees 10000/5000/500 pips, spacings 200/100/10
-          address: "0x32c0c830bd6cf07893fa6095a64059886112d6df",
-          deployBlock: 7998029,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        'Equalizer V3': {
+          address: '0x7ca1dccfb4f49564b8f13e18a67747fd428f1c40',
+          deployBlock: 548413,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
         },
-
-// 30 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_887b9f49": {
-          // measured: fees 10000/5000/500 pips, spacings 200/100/10
-          address: "0x887b9f4977046d83552a59f9a36ed08a1e68964d",
-          deployBlock: 51524902,
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        }
-
-      }
-    }
+        'Uniswap V3': {
+          address: '0xcb2436774c3e191c85056d248ef4260ce5f27a9d',
+          deployBlock: 322744,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
+    },
   },
   flashloan: {
-    "provider": "aave-v3",
-    "premium": 0.0005,
-    "pool": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3",
-      "tokens": [
-    {
-      "symbol": "stS",
-      "address": "0xe5da20f15420ad15de0fa650600afc998bbe3955",
-      "decimals": 18
-    },
-    {
-      "symbol": "wS",
-      "address": "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38",
-      "decimals": 18
-    },
-    {
-      "symbol": "WETH",
-      "address": "0x50c42deacd8fc9773493ed674b675be577f2634b",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDC",
-      "address": "0x29219dd400f2bf60e5a23d13be72b486d4038894",
-      "decimals": 6
-    }
-  ]
-
-  }
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3',
+    tokens: [
+      {
+        symbol: 'stS',
+        address: '0xe5da20f15420ad15de0fa650600afc998bbe3955',
+        decimals: 18,
+      },
+      {
+        symbol: 'wS',
+        address: '0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38',
+        decimals: 18,
+      },
+      {
+        symbol: 'WETH',
+        address: '0x50c42deacd8fc9773493ed674b675be577f2634b',
+        decimals: 18,
+      },
+      {
+        symbol: 'USDC',
+        address: '0x29219dd400f2bf60e5a23d13be72b486d4038894',
+        decimals: 6,
+      },
+    ],
+  },
 }

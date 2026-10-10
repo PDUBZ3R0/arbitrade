@@ -120,36 +120,91 @@
           fee: 0.0025  // verify-fees 2026-10-08: 0.0025
         },
 
-// 2 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_3644defa": {
-          address: "0x3644defa41a60a8dc4dee8e317138e2446a54ccd",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+			}
+		},
+        v3: {
+        list: {
+        // 2083 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_640887a9": {
+          // measured: fees 3000/10000 pips, spacings 60/200
+          address: "0x640887a9ba3a9c53ed27d0f7e8246a4f933f3424",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
         },
 
-// 1 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_eb85ead0": {
-          address: "0xeb85ead04620a95743855f6627dded4143420b02",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+// 190 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_43e44778": {
+          // measured: fees 10000/500 pips, spacings 200/10
+          address: "0x43e4477813a41bf85928471de388273db8925a96",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
         },
 
-// 1 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_da01d36a": {
-          address: "0xda01d36a9efcadca66622e15b2a38ee334144d1e",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+// 173 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_d8b08261": {
+          // measured: fees 10000/3000/500 pips, spacings 200/60/10
+          address: "0xd8b0826150b7686d1f56d6f10e31e58e1bcf1193",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
         },
 
-// 1 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_ceca1f3d": {
-          address: "0xceca1f3df5221e2ca54882af7a1c1844d1d58641",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+// 81 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_04625b04": {
+          // measured: fees 2000/10000/100/3000 pips, spacings 100/200/1
+          address: "0x04625b046c69577efc40e6c0bb83cdbafab5a55f",
+          poolEvent: "tickspacing",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 25 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_718e46d0": {
+          // measured: fees 500/3000/100/10000 pips, spacings 100/200/1/2000
+          address: "0x718e46d0962a66942e233760a8bd6038ce54edcd",
+          poolEvent: "tickspacing",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 11 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_c31fda0d": {
+          // measured: fees 3000/10000 pips, spacings 60/200
+          address: "0xc31fda0d795de6e219673856d4eab3f064e66efc",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
+        },
+
+// 11 pairs in the sweep window
+    // Add under factories["v3"]:
+        "Factory_ee164cd5": {
+          // measured: fees 10000/3000 pips, spacings 200/60
+          address: "0xee164cd52753d22dbe0174c103b47a4d24d2f98e",
+          poolEvent: "uniswap",
+          callback: "uniswapV3SwapCallback"
         }
 
-			}
-		}
+        }
+        },
+        solidly: {
+        list: {
+        // 130 pairs in the sweep window
+    // Add under factories["solidly"]:
+        "Factory_31832f2a": {
+          // Probed pattern: PoolFactory [high] — all 3 sample(s) in typical fee band (0.0030 to 0.0030)
+          address: "0x31832f2a97fd20664d76cc421207669b55ce4bc0",
+          poolEvent: "velodrome",
+          feeTarget: "factory",
+          feeArgSource: "pair-address-stable",
+          feeFunction: "getFee",
+          feeDivisor: 10000
+        }
+
+        }
+        }
 	},
 
 	flashloan: {

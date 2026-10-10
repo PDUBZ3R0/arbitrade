@@ -128,6 +128,14 @@
     ws: 'wss://robinhood-rpc.publicnode.com',
     explorer: 'https://robinscan.io',
   },
+  arc: {
+    id: 5042,
+    name: 'Arc',
+    currency: 'USDC',
+    host: 'https://arc-rpc.publicnode.com',
+    ws: 'wss://arc-rpc.publicnode.com',
+    explorer: 'https://explorer.arc.io',
+  },
   base: {
     id: 8453,
     name: 'Base',

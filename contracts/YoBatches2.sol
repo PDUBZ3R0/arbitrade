@@ -245,6 +245,16 @@ contract YoBatches2 {
                 let fee := and(mload(0x40), 0xffff)
                 if iszero(sqrtP) { continue }
 
+                // fee() -> the fee the NEXT swap pays. On Integral the plugin
+                // moves it, and globalState's word2 is only lastFee (what the
+                // PREVIOUS swap paid) — seen live on Sonic: fee()=90 vs
+                // lastFee=500. Prefer fee(); keep lastFee when the pool has no
+                // fee() (Algebra V1) or it fails.
+                mstore(0x00, shl(224, 0xddca3f43))
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { fee := and(mload(0x00), 0xffffff) }
+                }
+
                 // liquidity() -> uint128
                 mstore(0x00, shl(224, 0x1a686502))
                 let liq := 0

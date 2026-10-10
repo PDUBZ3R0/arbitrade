@@ -285,6 +285,12 @@ contract YoBatches3 is YoBatches2 {
                 let tick := signextend(2, mload(0x20))
                 let fee := and(mload(0x40), 0xffff)
                 if iszero(sqrtP) { continue }
+                // fee(): live fee (Integral plugin) beats globalState's lastFee;
+                // keep lastFee if the pool has no fee() (V1). See YoBatches2.
+                mstore(0x00, shl(224, 0xddca3f43))
+                if staticcall(gas(), pool, 0x00, 4, 0x00, 0x20) {
+                    if iszero(lt(returndatasize(), 0x20)) { fee := and(mload(0x00), 0xffffff) }
+                }
                 // liquidity()
                 mstore(0x00, shl(224, 0x1a686502))
                 let liq := 0

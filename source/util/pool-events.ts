@@ -23,9 +23,8 @@
 //              Factories that key pools by tick spacing and set the fee per
 //              pool (Velodrome Slipstream / Aerodrome CL style). topic3 = tickSpacing, data = [pool]
 //   Algebra    Pool(address indexed token0, address indexed token1, address pool)
-//              data = [pool]. Discovered and reported, NOT scanned yet:
-//              Algebra pools have a different state layout (globalState,
-//              tickTable) and dynamic fees, which calculus-v3 does not model.
+//              data = [pool]. Scanned under factories["algebra"]; pool state is
+//              read via globalState/tickTable (YoBatches getAlgebraState).
 //
 // For every concentrated-liquidity shape the pool is the LAST data word, so
 // the parser does not need to trust anything else about the layout. Fee and

@@ -21,9 +21,11 @@
 //   5. If YoBatches2 is deployed (chain.contract), does getV3State agree with
 //      the direct reads? That proves the whole reserves path end to end.
 //
-// Algebra factories are recognised and reported, but marked unusable: their
-// state lives in globalState()/tickTable() with dynamic fees, which nothing
-// downstream models yet.
+// Algebra factories (V1 and Integral) get the same treatment through their own
+// reads: globalState() instead of slot0(), tickTable() instead of tickBitmap(),
+// fee() (Integral's live plugin fee) falling back to globalState's fee word,
+// and YoBatches getAlgebraState for the end-to-end check. The variant is
+// measured from globalState()'s width: 7 words = V1, 6 = Integral.
 //
 // Usage (also reached through `yarn verify <chain> <addr>` when the factory
 // emits no PairCreated):
@@ -55,9 +57,11 @@ const CL_LAYOUTS: EventLayout[] = ['v3', 'v3ts', 'algebra'];
 
 export type V3VerifyResult = {
     address: string;
-    /** true when every check passed and the factory can go under factories["v3"]. */
+    /** true when every check passed and the factory can go under factories["v3"] (or ["algebra"]). */
     usable: boolean;
     family: 'v3' | 'algebra' | 'unknown';
+    /** Algebra only: measured from globalState()'s return width. */
+    algebraVariant: 'v1' | 'integral' | null;
     /** Creation event layout seen; v3 -> poolEvent "uniswap", v3ts -> "tickspacing". */
     layout: EventLayout | null;
     poolEvent: 'uniswap' | 'tickspacing' | null;
@@ -204,7 +208,7 @@ export async function verifyV3Factory(
     const provider = ctx.provider ?? sharedProvider(cfg.chain as any);
     const notes: string[] = [];
     const r: V3VerifyResult = {
-        address: address.toLowerCase(), usable: false, family: 'unknown', layout: null, poolEvent: null,
+        address: address.toLowerCase(), usable: false, family: 'unknown', algebraVariant: null, layout: null, poolEvent: null,
         callback: null, deployBlock: null, samplePool: null, feesSeen: [], spacingsSeen: [],
         lensChecked: false, notes, configSnippet: '',
     };
@@ -237,10 +241,7 @@ export async function verifyV3Factory(
     notes.push(`✓ Emits ${layout === 'v3' ? 'PoolCreated (fee-keyed, Uniswap V3 shape)' :
         layout === 'v3ts' ? 'PoolCreated (tick-spacing-keyed)' : 'Pool (Algebra shape)'}; ${hits.length} sampled`);
 
-    if (r.family === 'algebra') {
-        notes.push('✗ Algebra pools (globalState/tickTable, dynamic fee) are not modelled yet — not usable.');
-        return r;
-    }
+    if (r.family === 'algebra') return verifyAlgebraPools(provider, r, hits, cfg.chain.contract);
 
     // 2-3. pool state, on up to 5 sampled pools
     let goodPools = 0, tickLayoutChecked = false;
@@ -349,6 +350,144 @@ export async function verifyV3Factory(
     return r;
 }
 
+// ---- Algebra (V1 / Integral) ---------------------------------------------------
+
+const MIN_SQRT = 4295128739n, MAX_SQRT = 1461446703485210103287273052203988822378723970342n;
+
+/** Pool callback check shared by both families. Returns false (and notes why) when unusable. */
+async function checkCallback(provider: JsonRpcProvider, r: V3VerifyResult, expect?: CallbackName): Promise<boolean> {
+    const { code, via } = await runtimeCode(provider, r.samplePool!);
+    const cbs = findCallbackSelectors(code);
+    if (via) r.notes.push(`  Pool is an EIP-1167 clone of ${via}; inspected the implementation`);
+    if (cbs.length === 1) {
+        r.callback = cbs[0];
+        r.notes.push(`✓ Swap callback: ${cbs[0]} (selector found in pool bytecode)`);
+        if (expect && cbs[0] !== expect) r.notes.push(`  [!] expected ${expect} for this family — the executor must implement ${cbs[0]}`);
+        return true;
+    }
+    if (cbs.length === 0 && expect) {
+        // Algebra pools are often too large to inline the selector as a PUSH4
+        // the walker sees (or route through a library); the family fixes it.
+        r.callback = expect;
+        r.notes.push(`  [!] No callback selector found in pool bytecode — assuming ${expect} (standard for this family)`);
+        return true;
+    }
+    if (cbs.length === 0) {
+        r.notes.push(`✗ No known swap-callback selector in the pool bytecode (${KNOWN_CALLBACKS.join(', ')}). ` +
+            `The executor cannot pay this pool until its callback is identified.`);
+        return false;
+    }
+    r.notes.push(`✗ Several callback selectors present (${cbs.join(', ')}) — ambiguous, check the source.`);
+    return false;
+}
+
+async function verifyAlgebraPools(
+    provider: JsonRpcProvider,
+    r: V3VerifyResult,
+    hits: Array<ParsedCreation & { blockNumber: number }>,
+    yobatches?: string,
+): Promise<V3VerifyResult> {
+    const notes = r.notes;
+    let goodPools = 0, tickLayoutChecked = false;
+    const variants = new Set<'v1' | 'integral'>();
+    for (const h of hits.slice(0, 5)) {
+        const pool = h.pair;
+        const gs = await callWords(provider, pool, 'globalState()');
+        const liq = await callWords(provider, pool, 'liquidity()');
+        const ts = await callWords(provider, pool, 'tickSpacing()');
+        const t0 = await callWords(provider, pool, 'token0()');
+        const liveFee = await callWords(provider, pool, 'fee()');   // Integral: plugin fee for the next swap; V1: absent
+        if (!gs || gs.length < 3 || !liq || !ts || !t0) {
+            notes.push(`  [!] ${pool}: missing ${[!(gs && gs.length >= 3) && 'globalState', !liq && 'liquidity', !ts && 'tickSpacing', !t0 && 'token0'].filter(Boolean).join(', ')}`);
+            continue;
+        }
+        const sqrtP = gs[0], tick = asInt(gs[1], 24), spacing = asInt(ts[0], 24);
+        const feePips = liveFee ? Number(liveFee[0] & 0xffffffn) : Number(gs[2] & 0xffffn);
+        const tokenMatches = ('0x' + t0[0].toString(16).padStart(40, '0')) === h.token0;
+        if (sqrtP === 0n) { notes.push(`  [i] ${pool}: not initialized (price 0) — skipped`); continue; }
+        const sane = sqrtP >= MIN_SQRT && sqrtP < MAX_SQRT && spacing > 0 && spacing <= 16384
+                  && feePips < 1_000_000 && liq[0] < (1n << 128n) && tokenMatches;
+        if (!sane) {
+            notes.push(`  [!] ${pool}: values out of range (sqrtP=${sqrtP}, spacing=${spacing}, fee=${feePips}, token0 match=${tokenMatches})`);
+            continue;
+        }
+        variants.add(gs.length >= 7 ? 'v1' : 'integral');
+        goodPools++;
+        if (!r.feesSeen.includes(feePips)) r.feesSeen.push(feePips);
+        if (!r.spacingsSeen.includes(spacing)) r.spacingsSeen.push(spacing);
+        r.samplePool ??= pool;
+
+        if (!tickLayoutChecked) {
+            const compressed = Math.floor(tick / spacing);
+            for (const w of [compressed >> 8, (compressed >> 8) - 1, (compressed >> 8) + 1]) {
+                const bm = await callWords(provider, pool, 'tickTable(int16)', enc(w));
+                if (!bm || bm[0] === 0n) continue;
+                let b = 0; while (((bm[0] >> BigInt(b)) & 1n) === 0n) b++;
+                const t = (w * 256 + b) * spacing;
+                const info = await callWords(provider, pool, 'ticks(int24)', enc(t));
+                if (!info || info.length < 2) break;
+                const total = info[0], delta = BigInt.asIntN(128, info[1]);
+                const ok = total > 0n && (delta < 0n ? -delta : delta) <= total;
+                notes.push(ok
+                    ? `✓ ticks() layout: tick ${t} has liquidityTotal ${total}, liquidityDelta ${delta}`
+                    : `✗ ticks() layout mismatch at tick ${t}: word0=${total}, word1=${delta}`);
+                tickLayoutChecked = true;
+                if (!ok) return r;
+                break;
+            }
+        }
+    }
+    if (goodPools === 0) {
+        notes.push('✗ No sampled pool answered globalState/liquidity/tickSpacing sanely.');
+        return r;
+    }
+    if (variants.size > 1) {
+        notes.push('✗ Sampled pools disagree on the Algebra variant (globalState width) — check the factory.');
+        return r;
+    }
+    r.algebraVariant = [...variants][0];
+    notes.push(`✓ ${goodPools} pool(s) answer globalState/liquidity/tickSpacing; Algebra ${r.algebraVariant === 'v1' ? 'V1' : 'Integral'}; ` +
+        `fees ${r.feesSeen.join(', ')} pips, spacings ${r.spacingsSeen.join(', ')}`);
+    if (!tickLayoutChecked) notes.push('  [!] No initialized tick near the sampled prices — ticks() layout not checked.');
+
+    if (!(await checkCallback(provider, r, 'algebraSwapCallback'))) return r;
+
+    if (yobatches) {
+        try {
+            const { getAlgebraStates, supportsAlgebra } = await import('./yobatches.ts');
+            if (!(await supportsAlgebra(provider, yobatches))) {
+                notes.push(`  [!] chain.contract ${yobatches} has no getAlgebraState — redeploy YoBatches (yarn deploy-contract) before scanning reserves`);
+            } else {
+                const b = await getAlgebraStates(provider, yobatches, [r.samplePool!], 1);
+                const p = b.pools[0];
+                const gs = await callWords(provider, r.samplePool!, 'globalState()');
+                if (p && gs && p.sqrtPriceX96 === gs[0]) {
+                    r.lensChecked = true;
+                    notes.push(`✓ YoBatches getAlgebraState reads this pool (${p.ticks.length} ticks in ±1 word, fee ${p.fee})`);
+                } else {
+                    notes.push(`✗ YoBatches getAlgebraState did not return this pool's state`);
+                    return r;
+                }
+            }
+        } catch (err) {
+            notes.push(`  [!] getAlgebraState check failed: ${(err as Error).message.slice(0, 100)}`);
+        }
+    } else {
+        notes.push('  [!] chain.contract unset — YoBatches path not checked.');
+    }
+
+    r.usable = true;
+    const deployLine = r.deployBlock ? `\n          deployBlock: ${r.deployBlock},` : '';
+    r.configSnippet =
+        `    // Add under factories["algebra"]:\n` +
+        `        "NAME_ME": {\n` +
+        `          // measured: Algebra ${r.algebraVariant}, fees ${r.feesSeen.join('/')} pips, spacings ${r.spacingsSeen.join('/')}\n` +
+        `          address: "${r.address}",${deployLine}\n` +
+        `          algebraVariant: "${r.algebraVariant}"\n` +
+        `        }`;
+    return r;
+}
+
 // ---- CLI ---------------------------------------------------------------------
 
 export function printV3Report(r: V3VerifyResult): void {
@@ -358,7 +497,7 @@ export function printV3Report(r: V3VerifyResult): void {
     for (const n of r.notes) console.log(`  ${n}`);
     console.log('\n' + '─'.repeat(70));
     console.log(`  Usable:        ${r.usable ? 'YES' : 'NO'}`);
-    console.log(`  Family:        ${r.family}`);
+    console.log(`  Family:        ${r.family}${r.algebraVariant ? ` (${r.algebraVariant})` : ''}`);
     console.log(`  Pool event:    ${r.poolEvent ?? r.layout ?? 'none'}`);
     console.log(`  Callback:      ${r.callback ?? 'unknown'}`);
     console.log(`  Deploy block:  ${r.deployBlock ?? 'unknown'}`);
