@@ -24,6 +24,9 @@
 #        outdated -> wipe Ignition's record for this one contract, deploy fresh
 #        pending  -> refuse: the deployer has a transaction in flight, and a
 #                    deploy now could duplicate one that is about to land
+#        found    -> the deployer already created a contract with this exact
+#                    code (a deploy Ignition called "dropped" that landed):
+#                    point the config at it — no deploy
 #        error    -> refuse: never deploy when we cannot tell
 #   3. HyperEVM: big blocks on for the deploy, and OFF again on every exit path
 #      (success, failure, Ctrl-C) — the deployer is the bot's key.
@@ -104,6 +107,18 @@ DEPLOYMENT_ID="chain-${CHAIN_ID}"
 JOURNAL="ignition/deployments/${DEPLOYMENT_ID}/journal.jsonl"
 
 export HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=false
+
+# One RPC for everything: hardhat.config.ts reads <LABEL>_RPC with its own
+# per-network fallback (dRPC for HyperEVM), the bot reads <LABEL>_RPC or
+# conf/@chains.json5. Resolve it the bot's way and hand Hardhat the same URL,
+# so the checker and the deploy never ask different nodes about the same nonce.
+RPC_HOST=$(node --experimental-strip-types --disable-warning=ExperimentalWarning -e "
+const { loadChainConfig } = await import('./source/util/config.ts'); process.stdout.write(loadChainConfig('${CHAIN}').chain.host);" 2>/dev/null)
+if [ -n "$RPC_HOST" ]; then
+    RPC_ENV="$(echo "$CHAIN" | tr '[:lower:]-' '[:upper:]_')_RPC"
+    export "$RPC_ENV=$RPC_HOST"
+fi
+RPC_SHOWN=$(echo "$RPC_HOST" | sed -E 's#(/[^/]{20,})$#/***#')
 mkdir -p "log/${CHAIN}"
 LOG="log/${CHAIN}/${STAGE}.log"
 
@@ -120,7 +135,7 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
     }
     trap cleanup EXIT
 
-    echo "[deploy] ${CONTRACT} on ${CHAIN} (${DEPLOYMENT_ID})"
+    echo "[deploy] ${CONTRACT} on ${CHAIN} (${DEPLOYMENT_ID}) via ${RPC_SHOWN:-hardhat default RPC}"
     yarn -s hardhat compile || exit 1
 
     RESULT=$(check); RC=$?
@@ -132,6 +147,17 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
         3) echo "[deploy] not deployed — deploying" ;;
         4) echo "[deploy] out of date — deploying the current contracts/${CONTRACT}.sol" ;;
         5) echo "[deploy] refusing: a transaction from the deployer is still in flight (see above). Re-run once it lands."; exit 1 ;;
+        6) FOUND=$(echo "$RESULT" | awk '{print $2}')
+           if [ "$FORCE" != "1" ]; then
+               echo "[deploy] adopting ${FOUND}: setting chain.${FIELD} instead of deploying a duplicate"
+               sh scripts/log.sh source/util contract-update "$CHAIN" --set "${FIELD}=${FOUND}" || exit 1
+               RESULT=$(check); RC=$?
+               echo "[deploy] after adopting: ${RESULT}"
+               [ $RC -eq 0 ] || { echo "[deploy] [!] still not current after adopting ${FOUND}"; exit 1; }
+               echo "[deploy] done: chain.${FIELD} in conf/${CHAIN}.json5 now points at the current ${CONTRACT}"
+               exit 0
+           fi
+           echo "[deploy] --force: deploying a fresh copy although ${FOUND} already has the current code" ;;
         *) echo "[deploy] refusing: could not tell whether the deployed code is current (see above)."; exit 1 ;;
     esac
 
@@ -150,7 +176,20 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
         BIGBLOCKS=1
     fi
 
-    yarn -s hardhat ignition deploy "ignition/modules/${MODULE}.ts" --network "$CHAIN" $PARAMS_ARG || exit 1
+    IGN_OUT=$(mktemp)
+    yarn -s hardhat ignition deploy "ignition/modules/${MODULE}.ts" --network "$CHAIN" $PARAMS_ARG 2>&1 | tee "$IGN_OUT"
+    IGN_RC=${PIPESTATUS[0]}
+    if [ "$IGN_RC" -ne 0 ]; then
+        if grep -q "HHE10400\|HHE10411\|were dropped\|should be .*but the node reports" "$IGN_OUT"; then
+            echo ""
+            echo "[deploy] Ignition lost track of a transaction (\"dropped\", or a nonce it did not send)."
+            echo "         On HyperEVM the deploy often lands anyway — a big block takes up to a minute."
+            echo "         Wait a minute, then re-run this same command: if your deployer created the"
+            echo "         contract, the check finds it and points the config at it instead of deploying again."
+        fi
+        rm -f "$IGN_OUT"; exit 1
+    fi
+    rm -f "$IGN_OUT"
 
     sh scripts/log.sh source/util contract-update "$CHAIN" || exit 1
 

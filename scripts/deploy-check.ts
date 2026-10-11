@@ -23,6 +23,11 @@
 //   4  outdated     code is there and differs
 //   5  pending      the deployer has an unconfirmed transaction — wait; a
 //                   deploy now could duplicate one still in flight
+//   6  found        neither chain.<field> nor Ignition's record holds it, but
+//                   the deployer CREATED a contract with this exact code at one
+//                   of its last 32 nonces — e.g. a deploy Ignition reported
+//                   as "dropped" that landed anyway. deploy.sh adopts it (points
+//                   the config at it) instead of deploying a duplicate.
 //   1  error        could not tell (RPC failure, no artifact) — never deploy blind
 // One line on stdout: "<status> <address|-> <reason>".
 // -----------------------------------------------------------------------------
@@ -30,13 +35,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Wallet, getAddress } from 'ethers';
+import { Wallet, getAddress, getCreateAddress } from 'ethers';
 import 'dotenv/config';
 import { loadChainConfig } from '../source/util/config.ts';
 import { RetryingJsonRpcProvider } from '../source/util/rpc.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [chainArg, contract, field, future] = process.argv.slice(2);
+/** How many of the deployer's most recent nonces to search for an unrecorded deployment. */
+const SCAN = 32;
 const out = (code: number, status: string, addr: string | null, reason: string): never => {
     console.log(`${status} ${addr ?? '-'} ${reason}`);
     process.exit(code);
@@ -87,16 +94,38 @@ const codeAt = async (a: string): Promise<string> => {
 try {
     // A transaction still in flight from the deployer: whatever the code says
     // now may be about to change (tonight's "dropped" deploy had landed).
+    let me: string | null = null, latest = 0;
     if (process.env.PRIVATE_KEY) {
-        const me = new Wallet(process.env.PRIVATE_KEY).address;
-        const [latest, pending] = await Promise.all([
+        me = new Wallet(process.env.PRIVATE_KEY).address;
+        let pending: number;
+        [latest, pending] = await Promise.all([
             provider.getTransactionCount(me, 'latest'), provider.getTransactionCount(me, 'pending'),
         ]);
         if (pending > latest) out(5, 'pending', null, `deployer ${me} has ${pending - latest} unconfirmed transaction(s) (nonce ${latest}..${pending - 1}) — wait for it to land, then re-run`);
     }
 
+    /** The deployer's own recent creations, newest first: one whose code matches is this contract, unrecorded. */
+    const findUnrecorded = async (): Promise<{ address: string; nonce: number } | null> => {
+        if (!me) return null;
+        const nonces: number[] = [];
+        for (let n = latest - 1; n >= Math.max(0, latest - SCAN); n--) nonces.push(n);
+        const codes = await Promise.all(nonces.map(n => codeAt(getCreateAddress({ from: me!, nonce: n }))));
+        for (let i = 0; i < nonces.length; i++) {
+            if (codes[i] !== '0x' && normalizeRuntime(codes[i], art.immutableReferences ?? {}) === want) {
+                return { address: getCreateAddress({ from: me, nonce: nonces[i] }), nonce: nonces[i] };
+            }
+        }
+        return null;
+    };
+    const reportFound = (f: { address: string; nonce: number }): never =>
+        out(6, 'found', f.address, `${contract} with the current code was deployed by ${me} at nonce ${f.nonce} but is not recorded (chain.${field} is ${configured ?? 'unset'})`);
+
     const candidates = [...new Set([configured, ignitionAddr].filter((a): a is string => !!a && /^0x[0-9a-fA-F]{40}$/.test(a)).map(a => getAddress(a)))];
-    if (candidates.length === 0) out(3, 'missing', null, `chain.${field} is not set and Ignition has no ${future} for chain-${cfg.chain.id}`);
+    if (candidates.length === 0) {
+        const f = await findUnrecorded();
+        if (f) reportFound(f);
+        out(3, 'missing', null, `chain.${field} is not set and Ignition has no ${future} for chain-${cfg.chain.id}`);
+    }
 
     let sawCode: string | null = null;
     for (const a of candidates) {
@@ -108,6 +137,8 @@ try {
         }
         sawCode ??= a;
     }
+    const f = await findUnrecorded();
+    if (f) reportFound(f);
     if (sawCode) out(4, 'outdated', sawCode, `code at ${sawCode} differs from contracts/${contract}.sol`);
     out(3, 'missing', candidates[0], `no code at ${candidates.join(' / ')}`);
 } catch (e) {

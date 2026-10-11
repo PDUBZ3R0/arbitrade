@@ -2,6 +2,8 @@
 // the chain block of conf/<chain>.json5.
 //
 //   yarn contract-update <chain> [--dry-run] [--deployment <id>]
+//   yarn contract-update <chain> --set <field>=<address>   (one field, given explicitly —
+//        scripts/deploy.sh uses it to adopt a contract Ignition lost track of)
 //
 // Ignition writes ignition/deployments/chain-<chainId>/deployed_addresses.json
 // ({"<Module>#<Contract>": "0x…"}). This maps those futures onto the chain
@@ -188,6 +190,7 @@ function usage(msg?: string): never {
     if (msg) console.error(msg);
     console.error('Usage: yarn contract-update <chain> [--dry-run] [--deployment <id>]');
     console.error('  --deployment <id>   Ignition deployment id (default chain-<chainId>)');
+    console.error('  --set <field>=<0x…> Set one field (contract|executor|probe|liquidator) to this address instead');
     process.exit(1);
 }
 
@@ -199,6 +202,14 @@ async function main() {
     const di = args.indexOf('--deployment');
     const deploymentArg = di >= 0 ? args[di + 1] : undefined;
     if (di >= 0 && !deploymentArg) usage('--deployment needs an id');
+    const si = args.indexOf('--set');
+    const setArg = si >= 0 ? args[si + 1] : undefined;
+    let setUpdate: { field: Field; future: string; address: string } | null = null;
+    if (si >= 0) {
+        const m = /^(contract|executor|probe|liquidator)=(0x[0-9a-fA-F]{40})$/.exec(setArg ?? '');
+        if (!m) usage('--set needs <field>=<address>, field one of contract, executor, probe, liquidator');
+        setUpdate = { field: m[1] as Field, future: `--set ${m[1]}`, address: m[2] };
+    }
 
     const meta = resolveChain(slug);
     const confPath = path.join(PROJECT_ROOT, 'conf', `${meta.label}.json5`);
@@ -210,20 +221,20 @@ async function main() {
     const chainId = parsed.chain?.id ?? meta.id;
     const deploymentId = deploymentArg ?? `chain-${chainId}`;
     const addrPath = path.join(PROJECT_ROOT, 'ignition', 'deployments', deploymentId, 'deployed_addresses.json');
-    if (!fs.existsSync(addrPath)) {
+    if (!setUpdate && !fs.existsSync(addrPath)) {
         console.error(`No Ignition record for ${meta.name} at ${path.relative(PROJECT_ROOT, addrPath)}.`);
         console.error(`Deploy first: yarn deploy-contract ${meta.label} / yarn deploy-flasharb ${meta.label} / yarn deploy-probe ${meta.label} / yarn deploy-liquidator ${meta.label}`);
         process.exit(1);
     }
-    const deployed = JSON.parse(fs.readFileSync(addrPath, 'utf8')) as Record<string, string>;
+    const deployed = setUpdate ? {} : JSON.parse(fs.readFileSync(addrPath, 'utf8')) as Record<string, string>;
 
     console.log(`${meta.name} (chain ${chainId})`);
-    console.log(`  from ${path.relative(PROJECT_ROOT, addrPath)}`);
+    console.log(`  from ${setUpdate ? `--set ${setArg}` : path.relative(PROJECT_ROOT, addrPath)}`);
     console.log(`  into ${path.relative(PROJECT_ROOT, confPath)}${dryRun ? '  (dry run)' : ''}\n`);
 
-    const updates = pickAddresses(deployed);
+    const updates = setUpdate ? [setUpdate] : pickAddresses(deployed);
     for (const field of Object.keys(FIELD_FUTURES) as Field[]) {
-        if (!updates.some(u => u.field === field)) {
+        if (!setUpdate && !updates.some(u => u.field === field)) {
             console.log(`  ${field.padEnd(9)} — nothing deployed (${FIELD_FUTURES[field].join(' / ')}); left as is`);
         }
     }
