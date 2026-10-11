@@ -5,7 +5,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 // it always reverts with its measurements and is only ever used via eth_call —
 // so it can't hold or move funds. See contracts/TokenProbe.sol.
 //
-// scripts/deploy-probe.sh reuses the aavePool already in
+// scripts/deploy.sh (probe) reuses the aavePool already in
 // ignition/parameters/<chain>.json (under FlashArbModule), so there's no
 // second copy of the address to keep in sync. No default: the wrong chain's
 // pool would make every probe fail.
