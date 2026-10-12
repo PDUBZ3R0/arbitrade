@@ -318,7 +318,18 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             stats.attempts++;
             // IndexedCandidate is structurally the evaluator's Candidate — the
             // index produces the same field names deliberately, so no mapping.
-            const attempt = await deps.attempt(ic as Candidate, deps.db);
+            // Last line of defence: one candidate must never take the loop down.
+            let attempt: Awaited<ReturnType<typeof deps.attempt>>;
+            try {
+                attempt = await deps.attempt(ic as Candidate, deps.db);
+            } catch (err) {
+                log(`  #${ic.triangleId} — attempt threw, skipped: ${(err as Error).message?.slice(0, 200) ?? String(err)}`);
+                filter.noteFailure(ic as Candidate);
+                const n = (failures.get(ic.triangleId) ?? 0) + 1;
+                failures.set(ic.triangleId, n);
+                if (n >= muteAfter) mutedUntil.set(ic.triangleId, now() + muteMs);
+                continue;
+            }
             if (attempt.broadcast) lastAttemptAt = now();
             deps.report(attempt);
             if (attempt.simulated) stats.simulatedClean++;

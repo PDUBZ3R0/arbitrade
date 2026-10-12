@@ -19,7 +19,7 @@ import { JsonRpcProvider } from 'ethers';
 import { loadChainConfig, dbPath, resolveChain } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { populateTokenMetadata } from './util/token-metadata.ts';
-import { makeProvider } from './util/rpc.ts';
+import { makeProvider, redactUrl } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -54,7 +54,7 @@ const dbFile = dbPath(chainArg);
 console.log(`=== tokens (${meta.label}) ===`);
 console.log(`Chain:      ${cfg.chain.name} (id ${cfg.chain.id})`);
 console.log(`DB:         ${dbFile}`);
-console.log(`RPC:        ${cfg.chain.host}`);
+console.log(`RPC:        ${redactUrl(cfg.chain.host)}`);
 console.log(`Filter:     ${useAll ? 'ALL pair tokens' : 'only tokens in pairs with reserves'}${refresh ? ' + refreshing already-fetched' : ''}`);
 console.log(`Batch size: ${batchSize}\n`);
 

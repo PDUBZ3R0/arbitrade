@@ -58,8 +58,9 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
-import { makeProvider } from './util/rpc.ts';
+import { makeProvider, redactUrl } from './util/rpc.ts';
 import { getReservesByPairs, getV3States } from './util/yobatches.ts';
+import { heapMb } from './util/heap.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -165,7 +166,7 @@ const minInputTokens = cfg.evaluator?.minInputTokens ?? 0;
 console.log(`Hot loop for ${cfg.chain.name} (chain id ${cfg.chain.id})`);
 console.log(`Executor:  ${cfg.chain.executor}`);
 console.log(`Mode:      ${live ? 'LIVE — will broadcast clean simulations' : 'DRY RUN — simulate only, no broadcast'}`);
-console.log(`Feed:      ${wsUrl ? `websocket ${wsUrl}` : `HTTP polling every ${pollMs}ms (one block of latency — pass --ws for push)`}`);
+console.log(`Feed:      ${wsUrl ? `websocket ${redactUrl(wsUrl)}` : `HTTP polling every ${pollMs}ms (one block of latency — pass --ws for push)`}`);
 console.log(`Owner:     ${ownerAddress}`);
 console.log(`Per block: up to ${candidatesPerBlock} candidate(s), ${gasMarginMultiple}x gas margin, ${maxRoiPct}% ROI cap`);
 console.log('');
@@ -232,6 +233,8 @@ for (const r of (db as any).db.prepare('select address, decimals from tokens whe
     decimalsByToken.set(String(r.address).toLowerCase(), Number(r.decimals));
 }
 
+const flashRootSet = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
+
 function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds {
     const minReserveByToken = new Float64Array(ix.tokenAddr.length);
     for (let i = 0; i < ix.tokenAddr.length; i++) {
@@ -242,8 +245,16 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
     for (const addr of ix.tokenAddr) {
         const d = 10 ** (decimalsByToken.get(addr) ?? 18);
         const p = pricing[addr];
-        // Fall back to the flat fraction for a root the evaluator did not price
-        // — same fallback the evaluator uses, so the two agree.
+        // Fall back to the flat fraction for a FLASH root the evaluator did
+        // not price — same fallback the evaluator uses, so the two agree. Any
+        // other root without pricing is a swap root that lost its pricing pair
+        // (or swapRoots is off): the evaluator skips its cycles, so the index
+        // must find nothing there either.
+        if (!p && !flashRootSet.has(addr)) {
+            minProfitByRoot.set(addr, Infinity);
+            minInputByRoot.set(addr, Infinity);
+            continue;
+        }
         minProfitByRoot.set(addr, (p?.minProfitInRootTokens ?? minProfitTokens) * d);
         minInputByRoot.set(addr, (p?.minInputInRootTokens ?? minInputTokens) * d);
     }
@@ -258,6 +269,7 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
             flashTermsFor(cfg, t.address)?.premium ?? cfg.flashloan?.premium ?? 0.0005,
         ])),
         flashSwap: flashSwapEnabled(cfg),
+        swapOnlyRoots: new Set(Object.entries(pricing).filter(([, p]) => p.swapOnly).map(([a]) => a)),
     };
 }
 
@@ -533,7 +545,7 @@ setInterval(() => {
         `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
         (s.skippedBelowGas ? `, ${s.skippedBelowGas} skipped below gas` : '') +
         (st.reconnects ? `, ${st.reconnects} reconnect(s)` : '') +
-        `, pricing ${age}m old`);
+        `, pricing ${age}m old, heap ${heapMb()}`);
 
     // A chain that has not advanced a BLOCK is gone; one that has not produced
     // a Sync is merely quiet. The watcher reconnects on its own, so this is a

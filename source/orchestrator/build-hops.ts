@@ -157,6 +157,16 @@ function getAmountOutExact(amountIn: bigint, reserveIn: bigint, reserveOut: bigi
     return denominator > 0n ? (inAfterFee * reserveOut) / denominator : 0n;
 }
 
+/** A hop's pool cannot be read the way its kind says it can — not a decayed edge, a broken pair. */
+export class UnreadablePairError extends Error {
+    readonly pair: string;
+    constructor(pair: string, why: string) {
+        super(`pair ${pair}: ${why}`);
+        this.name = 'UnreadablePairError';
+        this.pair = pair;
+    }
+}
+
 /**
  * Refresh reserves for a candidate's path (one atomic Multicall3 batch) and
  * build the Hop[] for executeArb. Returns null when the path no longer clears
@@ -215,7 +225,17 @@ export async function buildHops(
     const reservesByPair = new Map<string, { reserve0: bigint; reserve1: bigint }>();
     for (let i = 0; i < v2Hops.length; i++) {
         if (!results[i].success) return null; // pair reverted getReserves() — treat as dead
-        const decoded = PAIR_IFACE.decodeFunctionResult('getReserves', results[i].returnData);
+        // A call to an address with NO CODE "succeeds" with empty return data,
+        // and decoding that threw out of the hot loop (Arbitrum, 376 restarts
+        // in two days). Not a decayed edge — the pair is not a V2 pair at all,
+        // so say which one, and let the caller count it as a failure.
+        let decoded: any;
+        try {
+            if (results[i].returnData === '0x') throw new Error('empty return data');
+            decoded = PAIR_IFACE.decodeFunctionResult('getReserves', results[i].returnData);
+        } catch (e) {
+            throw new UnreadablePairError(v2Hops[i].pair, `getReserves() returned ${results[i].returnData === '0x' ? 'nothing (no contract code there?)' : 'data that does not decode'}`);
+        }
         reservesByPair.set(v2Hops[i].pair.toLowerCase(), {
             reserve0: decoded[0] as bigint,
             reserve1: decoded[1] as bigint,

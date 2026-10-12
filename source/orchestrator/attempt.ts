@@ -20,7 +20,7 @@
 // The order of operations here is load-bearing and is documented inline.
 // -----------------------------------------------------------------------------
 
-import { Contract, JsonRpcProvider, type Signer } from 'ethers';
+import { Contract, JsonRpcProvider, id, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
 import { ledgerPath, flashTermsFor, flashSwapEnabled, type FlashTerms } from '../util/config.ts';
@@ -28,6 +28,7 @@ import type { Candidate, EvaluateResult } from '../evaluator/evaluator.ts';
 import { buildHops, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
+import { redactUrl } from '../util/rpc.ts';
 
 export const EXECUTOR_ABI = [
     // Hops carry no output amounts: the contract sizes each swap from live
@@ -100,6 +101,8 @@ export type CandidateAttempt = {
     belowGasFloor?: boolean;
     /** How it was (or would be) funded: 'flash-swap', or the lender's provider ('aave-v3', …). */
     funding?: string;
+    /** The root's decimals/symbol, for rendering a swap root (not in the flash-token config). */
+    rootMeta?: { decimals: number; symbol?: string };
 };
 
 export type ExecutorOptions = {
@@ -208,7 +211,7 @@ export class CandidateExecutor {
         this.sendProvider = opts.live && cfg.chain.sequencer
             ? new JsonRpcProvider(cfg.chain.sequencer, cfg.chain.id, { staticNetwork: true })
             : null;
-        if (this.sendProvider) console.log(`  Broadcasting via sequencer ${cfg.chain.sequencer} (reads stay on ${cfg.chain.host.replace(/\/v2\/[^/]+/, '/v2/***')})`);
+        if (this.sendProvider) console.log(`  Broadcasting via sequencer ${redactUrl(cfg.chain.sequencer)} (reads stay on ${redactUrl(cfg.chain.host)})`);
 
         // `?? 3` alone is not enough: a CLI typo yields NaN, which is not
         // undefined, so it would sail through and blow up in the BigInt
@@ -259,26 +262,41 @@ export class CandidateExecutor {
     private readonly noFlashFactories = new Set<string>();
     private async checkExecutorVersion(): Promise<string | null> {
         if (this.executorVersionError !== undefined) return this.executorVersionError;
-        try {
-            await this.executor.SOURCE_MORPHO();
-            this.executorVersionError = null;
-        } catch {
+        // Read the code and look for each entry point's selector in the
+        // dispatcher (PUSH4 <selector>), rather than calling the functions
+        // and treating any failure as "missing". A call can fail because the
+        // RPC refused it — on HyperEVM's public endpoint a rate-limited
+        // SOURCE_MORPHO() was reported as "executor predates multi-provider
+        // flash loans", which also switched off every V3 pool on the chain.
+        // An RPC that never answers is an RPC problem, and is reported as one
+        // (and NOT cached, so the next attempt tries again).
+        const addr = this.cfg.chain.executor!;
+        let code: string | null = null, lastErr = '';
+        for (let i = 0; i < 4 && code == null; i++) {
+            try { code = (await this.provider.getCode(addr)).toLowerCase(); }
+            catch (e) { lastErr = (e as Error).message?.slice(0, 120) ?? String(e); await new Promise(r => setTimeout(r, 1000 * 2 ** i)); }
+        }
+        if (code == null) return `could not read the executor's code at ${addr} (RPC: ${lastErr}) — will retry`;
+        if (code === '0x') {
+            this.executorVersionError = `no contract at chain.executor ${addr} on ${this.cfg.chain.name} — wrong address, or not deployed here`;
+            console.warn(`  [!] ${this.executorVersionError}`);
+            return this.executorVersionError;
+        }
+        const has = (sig: string) => code!.includes('63' + id(sig).slice(2, 10));
+        if (!has('SOURCE_MORPHO()')) {
             this.executorVersionError =
-                `executor at ${this.cfg.chain.executor} predates multi-provider flash loans (no executeArbFrom) — ` +
+                `executor at ${addr} predates multi-provider flash loans (no executeArbFrom) — ` +
                 `redeploy: yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then update chain.executor`;
             console.warn(`  [!] ${this.executorVersionError}`);
             return this.executorVersionError;
         }
-        try {
-            await this.executor.HOP_V3();
-            this.executorHasV3 = true;
-            try { this.executorHasFlashSwap = (await this.executor.FLASH_SWAP()) === true; }
-            catch { this.executorHasFlashSwap = false; }
-        } catch {
-            this.executorHasV3 = false;
-            this.executor = new Contract(this.cfg.chain.executor!, EXECUTOR_ABI_V2_ONLY, this.provider);
+        this.executorVersionError = null;
+        this.executorHasV3 = has('HOP_V3()');
+        this.executorHasFlashSwap = this.executorHasV3 && has('FLASH_SWAP()');
+        if (!this.executorHasV3) {
+            this.executor = new Contract(addr, EXECUTOR_ABI_V2_ONLY, this.provider);
             console.warn(
-                `  [!] executor at ${this.cfg.chain.executor} predates V3 hops — trading V2-only cycles with it. ` +
+                `  [!] executor at ${addr} predates V3 hops — trading V2-only cycles with it. ` +
                 `For V3: yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then yarn contract-update ${this.cfg.chain.label}`);
         }
         return null;
@@ -332,10 +350,28 @@ export class CandidateExecutor {
      * flat fraction here. Recomputing independently would silently diverge the
      * moment the evaluator's pricing logic changes.
      */
+    /**
+     * A root's decimals: the flash-token config, else what the evaluator
+     * resolved (swap roots carry theirs from the token table), else 18. For a
+     * swap root the 18 fallback never applies — the evaluator does not price
+     * a root with unknown decimals, so its cycles never reach here.
+     */
+    private decimalsOf(root: string): number {
+        const lc = root.toLowerCase();
+        return this.cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === lc)?.decimals
+            ?? this.rootPricing[lc]?.decimals
+            ?? 18;
+    }
+
+    /** True for a swap root: not a flash-loan token, so only a flash swap can fund it. */
+    private isSwapOnly(root: string): boolean {
+        const lc = root.toLowerCase();
+        return !(this.cfg.flashloan?.tokens ?? []).some(t => t.address.toLowerCase() === lc);
+    }
+
     minProfitWeiFor(root: string): bigint {
         const lc = root.toLowerCase();
-        const tokenCfg = this.cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === lc);
-        const decimals = tokenCfg?.decimals ?? 18;
+        const decimals = this.decimalsOf(lc);
         const rootUnits = this.rootPricing[lc]?.minProfitInRootTokens ?? this.minProfitTokens;
         return BigInt(Math.round(rootUnits * 10 ** decimals));
     }
@@ -361,9 +397,7 @@ export class CandidateExecutor {
         const price = this.rootPricing[root.toLowerCase()]?.priceInNumeraire;
         if (price == null || !(price > 0)) return null;
 
-        const rootDecimals = this.cfg.flashloan?.tokens.find(
-            t => t.address.toLowerCase() === root.toLowerCase()
-        )?.decimals ?? 18;
+        const rootDecimals = this.decimalsOf(root);
 
         const gasCostNumeraire = Number(gasUnits * this.gasPriceWei) / 1e18;
         const gasCostRootUnits = gasCostNumeraire / price;
@@ -429,6 +463,7 @@ export class CandidateExecutor {
     async attempt(candidate: Candidate, db: ArbitradeDB): Promise<CandidateAttempt> {
         const attempt: CandidateAttempt = {
             candidate, built: null, simulated: false, broadcast: false, confirmed: false,
+            rootMeta: { decimals: this.decimalsOf(candidate.rootToken), symbol: this.rootPricing[candidate.rootToken.toLowerCase()]?.symbol },
         };
 
         const versionError = await this.checkExecutorVersion();
@@ -478,15 +513,23 @@ export class CandidateExecutor {
 
         await this.ensureGasPrice();
 
-        let built = await buildHops(
-            this.provider,
-            this.cfg.chain.executor!,
-            db,
-            candidate,
-            this.minProfitWeiFor(candidate.rootToken),
-            this.cfg.chain.contract,
-            { flashSwap: useFlash },
-        );
+        let built: BuiltArb | null;
+        try {
+            built = await buildHops(
+                this.provider,
+                this.cfg.chain.executor!,
+                db,
+                candidate,
+                this.minProfitWeiFor(candidate.rootToken),
+                this.cfg.chain.contract,
+                { flashSwap: useFlash },
+            );
+        } catch (err) {
+            // Reading the path failed (an unreadable pair, an RPC error): a
+            // failed attempt the caller can count and mute — never a crash.
+            attempt.simulationError = `could not read the path: ${(err as Error).message?.slice(0, 240) ?? String(err)}`;
+            return attempt;
+        }
         attempt.built = built;
         if (!built) return attempt;   // edge decayed since evaluation
 
@@ -536,6 +579,14 @@ export class CandidateExecutor {
             ? gasFloor
             : built.minProfitWei;
         attempt.minProfitUsed = effectiveMinProfit;
+        // A swap root has no config floor anyone chose for it — its floor is a
+        // numeraire threshold converted at its own pair's price. If gas cannot
+        // be priced in it, nothing says the trade pays for itself: refuse.
+        // (A flash token keeps the old behaviour: config floor, with a warning.)
+        if (gasFloor == null && this.isSwapOnly(candidate.rootToken)) {
+            attempt.simulationError = `gas cannot be priced in swap root ${candidate.rootToken} — refusing rather than trading on the config floor alone`;
+            return attempt;
+        }
         if (gasFloor == null && this.gasFloorUnavailableReason && !this.warnedNoGasFloor) {
             this.warnedNoGasFloor = true;
             console.warn(`  [!] gas-derived profit floor unavailable (${this.gasFloorUnavailableReason}); using the config floor only — trades may not cover gas`);
@@ -645,7 +696,7 @@ export class CandidateExecutor {
         const rootTokenCfg = this.cfg.flashloan?.tokens.find(
             t => t.address.toLowerCase() === candidate.rootToken.toLowerCase()
         );
-        const decimals = rootTokenCfg?.decimals ?? 18;
+        const decimals = this.decimalsOf(candidate.rootToken);
 
         let realisedProfit = built.expectedProfit;
         let profitIsRealised = false;
@@ -685,7 +736,7 @@ export class CandidateExecutor {
                 txHash,
                 blockNumber: receipt.blockNumber,
                 rootToken: candidate.rootToken,
-                rootTokenSymbol: rootTokenCfg?.symbol,
+                rootTokenSymbol: rootTokenCfg?.symbol ?? this.rootPricing[candidate.rootToken.toLowerCase()]?.symbol,
                 profitWei: realisedProfit,
                 profitDecimals: decimals,
                 profitUsd,

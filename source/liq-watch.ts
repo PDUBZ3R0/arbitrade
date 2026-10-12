@@ -94,6 +94,7 @@ import { VenueLiquidator, VENUE_LIQUIDATOR_ABI } from './liquidation/plan-venues
 import type { Venue } from './liquidation/venue.ts';
 import { dbPath } from './util/config.ts';
 import { Contract, Interface, NonceManager, Wallet, formatUnits } from 'ethers';
+import { heapMb } from './util/heap.ts';
 
 type LiquidationConf = {
     venues?: string[];
@@ -679,7 +680,7 @@ while (!stopping) {
         console.log(`  [${head}] ${ticksSince} ticks / ${head - beatStartBlock} blocks, slowest ${(slowestMs / 1000).toFixed(1)}s, ` +
             `${readSince} reads/min${cycles ? ` (${cycles} sweep cycle${cycles > 1 ? 's' : ''} done)` : ''} · ` +
             `liquidatable ${n('liquidatable')} · near ${n('near')} · watch ${n('watch')} (worth ≥$${minProfitUsd}) · ` +
-            `${tracks.map(t => `${t.db.count()} ${t.name}`).join(' / ')} tracked`);
+            `${tracks.map(t => `${t.db.count()} ${t.name}`).join(' / ')} tracked · heap ${heapMb()}`);
         lastBeat = Date.now(); readSince = 0; ticksSince = 0; beatStartBlock = head; slowestMs = 0; cycles = 0;
     }
 }

@@ -60,9 +60,56 @@ export type ProviderOptions = {
     maxRequestMs?: number;
 };
 
+/**
+ * A rate-limit reply: a JSON-RPC error or HTTP failure whose MESSAGE says so.
+ * Not code -32005 alone — Infura-style nodes use -32005 for "query returned
+ * more than 10000 results", which scan must see promptly to shrink its range.
+ */
+const RATE_LIMIT = /rate.?limit|too many requests|\b429\b|request limit|exceeded.*(?:rate|requests per)|capacity exceeded/i;
+export function isRateLimited(e: unknown): boolean {
+    const any = e as any;
+    const msg = [any?.message, any?.shortMessage, any?.error?.message, any?.info?.error?.message,
+                 any?.info?.responseStatus, JSON.stringify(any?.value ?? '')].filter(Boolean).join(' ');
+    return RATE_LIMIT.test(msg) || any?.status === 429 || any?.info?.responseStatus?.startsWith?.('429');
+}
+
+/**
+ * JsonRpcProvider that waits out rate limits instead of failing the caller.
+ *
+ * Public endpoints (rpc.hyperliquid.xyz, publicnode, …) answer bursts with
+ * `{"code":-32005,"message":"rate limited"}`. Inside a batch that error comes
+ * back with `id: null`, ethers cannot match it to a request, and the caller
+ * gets "missing response for request" — which is how one refused eth_getCode
+ * killed `yarn reserves hyperliquid` before it read a single pair. Retrying
+ * the whole payload is safe: a rate-limited request was never executed, and
+ * that includes eth_sendRawTransaction. Anything else is returned untouched.
+ */
+export class RetryingJsonRpcProvider extends JsonRpcProvider {
+    /** Rate-limit waits so far — for logs and tests. */
+    rateLimitRetries = 0;
+    private static readonly MAX_ATTEMPTS = 7;   // ~0.5+1+2+4+8+8 s ≈ 24 s of waiting at most
+    async _send(payload: JsonRpcPayload | JsonRpcPayload[]): Promise<JsonRpcResult[]> {
+        for (let attempt = 1; ; attempt++) {
+            let res: Result[] | undefined;
+            let err: unknown;
+            try { res = (await super._send(payload)) as Result[]; } catch (e) { err = e; }
+            const limited = err !== undefined
+                ? isRateLimited(err)
+                : res!.some(r => 'error' in r && isRateLimited({ message: (r as JsonRpcError).error?.message }));
+            if (!limited || attempt >= RetryingJsonRpcProvider.MAX_ATTEMPTS) {
+                if (err !== undefined) throw err;
+                return res as JsonRpcResult[];
+            }
+            this.rateLimitRetries++;
+            const wait = Math.min(8000, 500 * 2 ** (attempt - 1)) * (0.75 + Math.random() * 0.5);
+            await new Promise(r => setTimeout(r, wait));
+        }
+    }
+}
+
 /** The provider every CLI and loop should use for chain.host / chain.ws. */
 export function makeProvider(chain: RpcEndpoints, opts: ProviderOptions = {}): JsonRpcProvider {
-    if (!chain.ws || opts.http || process.env.ARB_NO_WS === '1') return new JsonRpcProvider(chain.host);
+    if (!chain.ws || opts.http || process.env.ARB_NO_WS === '1') return new RetryingJsonRpcProvider(chain.host);
     return new WsFirstProvider(chain.host, chain.ws, chain.id, opts.timeoutMs, opts.maxRequestMs);
 }
 
@@ -71,7 +118,7 @@ type Result = JsonRpcResult | JsonRpcError;
 const TRANSPORT_FAIL = Symbol('transport');
 const ALREADY_KNOWN = /already known|known transaction|already imported|nonce too low|replacement transaction underpriced/i;
 
-export class WsFirstProvider extends JsonRpcProvider {
+export class WsFirstProvider extends RetryingJsonRpcProvider {
     readonly wsUrl: string;
     private ws: WebSocketProvider | null = null;
     private connecting: Promise<WebSocketProvider | null> | null = null;
@@ -307,4 +354,25 @@ export function sharedProvider(chain: RpcEndpoints): JsonRpcProvider {
     let p = shared.get(key);
     if (!p) { p = makeProvider(chain); shared.set(key, p); }
     return p;
+}
+
+/**
+ * An RPC URL safe to print: API keys in the query (key, token, authorization,
+ * apikey, secret…), long key-like path segments (/v2/<key>, /<token>) and
+ * user:pass are masked. Logs leave the machine (S3, CloudWatch), so every URL a
+ * log line prints goes through this.
+ */
+export function redactUrl(u: string | undefined | null): string {
+    if (!u) return String(u);
+    try {
+        const x = new URL(u);
+        if (x.username || x.password) { x.username = '***'; x.password = ''; }
+        for (const k of [...x.searchParams.keys()]) {
+            if (/key|token|auth|secret|pass|sig/i.test(k)) x.searchParams.set(k, '***');
+        }
+        x.pathname = x.pathname.split('/').map(seg => seg.length >= 20 && /^[A-Za-z0-9_-]+$/.test(seg) ? '***' : seg).join('/');
+        return x.toString().replace(/%2A/g, '*');
+    } catch {
+        return u.replace(/[A-Za-z0-9_-]{20,}/g, '***');
+    }
 }
