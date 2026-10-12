@@ -1,72 +1,36 @@
 // -----------------------------------------------------------------------------
-// DISCOVERY.JSON SCHEMA (planned for phases 2-5 of the classifier work)
+// log/<chain>/discovery.json — written by every run, interrupted ones included
 //
-// Every full sweep will write log/<chain>/discovery.json with every candidate
-// factory it saw, all computed signals, and a verdict. This becomes the audit
-// trail for the classifier: nothing is silently dropped, and future work
-// (better heuristics, manual override, agent replays) can re-classify without
-// re-scanning.
+// The audit trail for a sweep: every factory that emitted a pool-creation
+// event in the window, known or not, with what verification found and what
+// was (or would be) added to the config. Nothing is silently dropped — a
+// candidate that was not verified, failed verification, or was held back from
+// --add is there with the reason.
 //
-// Shape:
 // {
-//   "chain":     "polygon",
-//   "scannedAt": "2026-08-26T10:33:00Z",
+//   "chain": "polygon", "scannedAt": "2026-10-10T…Z", "aborted": false,
 //   "blockRange": { "from": 0, "to": 92709906 },
-//   "totalCandidates": 1243,
-//   "knownInConfig":  5,
-//   "tiers":     { "confident": 3, "optimistic": 6, "curious": 15, "rejected": 1219 },
+//   "totals": { "candidates": 1243, "known": 5, "blacklisted": 12, "unknown": 1226,
+//               "verified": 14, "addable": 9, "added": 9 },
 //   "candidates": [
-//     {
-//       "address":         "0x800b052609c355ca8103e06f022aa30647ead60a",
-//       "pairCount":       628,
-//       "firstBlockSeen":  11791428,
-//       "lastBlockSeen":   68402761,
-//       "matchedTopics":   ["v2"],
-//
-//       // --- Signals (populated by classifier phases as they land) ---
-//       "contractName":     "UniswapV2Factory",     // phase 1: etherscan name (DONE)
-//       "explorerVerified": true,                    // phase 1: source is verified (DONE)
-//       "compilerVersion":  "v0.5.16+commit.9c3226ce",// phase 1
-//       "licenseType":      "GPL-3.0",               // phase 1
-//       "deployBlock":      11633169,                // from verify-factory
-//       "family":           "v2",                    // from verify-factory
-//       "assumedFee":       0.003,                   // from verify-factory
-//       "feeConfidence":    "assumed",               // from verify-factory
-//
-//       // Phase 2: liquidity + activity
-//       "livePairCount":    412,      // pairs with non-zero reserves
-//       "topPairTvlUsd":    284350,   // sum of top 20 pair TVLs, rough USD via native pair anchoring
-//       "pairsAbove1kUsd":  67,
-//       "pairsAbove10kUsd": 23,
-//       "activePairsLast30d": 8,      // pairs created in last 30d
-//       "stopped":          false,   // no new pairs in 90d
-//
-//       // Phase 3: classifier verdict
-//       "tier":             "confident",    // confident | optimistic | curious | rejected
-//       "reasons": [
-//         "contract name matches known DEX pattern",
-//         "top-pair TVL exceeds $100K threshold",
-//         "still actively creating pairs"
-//       ],
-//       "rejectionReasons": [],   // populated when tier === 'rejected'
-//
-//       // Phase 5: auto-add
-//       "autoAddedTo":      "conf/polygon-auto.json5"  // present if config was written
-//     },
-//     ...
+//     { "address": "0x800b…", "pairCount": 628, "firstBlockSeen": 11791428,
+//       "lastBlockSeen": 68402761, "matchedTopics": ["v2"],
+//       "status": "known" | "blacklisted" | "verified" | "unusable" | "error" | "not-verified",
+//       "reason": "…",                         // unusable / error / why held back
+//       "family": "v2", "contractName": "UniswapV2Factory", "implementationName": "…",
+//       "explorerVerified": true,
+//       "proposed": { "group": "v2", "key": "UniswapV2Factory_800b0526",
+//                     "entry": { "address": "0x…", "deployBlock": 11633169, "fee": 0.003 },
+//                     "basis": "fee derived from swap() bytecode" },
+//       "addable": true, "heldBack": "…",       // why not addable, when it isn't
+//       "added": { "group": "v2", "key": "UniswapV2Factory_800b0526" }   // with --add
+//     }, …
 //   ]
 // }
 //
-// Design principles:
-//   - Signals are additive: each phase adds fields but never removes them.
-//   - Rejected candidates are FULLY represented, not filtered out — you can
-//     always see why something was rejected, and override manually.
-//   - `reasons` is human-readable and roughly ordered by weight.
-//   - `tier` is derived from signals + thresholds at classify time. Re-running
-//     with different `--confidence` bounds doesn't need a re-scan; just
-//     replays the classifier over discovery.json.
-// -----------------------------------------------------------------------------
-
+// Not built (yet): the liquidity/activity signals and confidence tiers once
+// sketched for this file. "addable" is the only verdict today — see
+// proposeEntry() for exactly what qualifies.
 // -----------------------------------------------------------------------------
 // Factory finder.
 //
@@ -79,12 +43,15 @@
 //   - Are its pairs YoBatches-compatible?
 //   - What's the deploy block?
 //
-// Emits a report with config snippets ready to paste into conf/{chain}.json5.
+// Emits a report with config snippets ready to paste into conf/{chain}.json5,
+// writes log/<chain>/discovery.json, and with --add puts the verified ones
+// straight into conf/<chain>.json5 (comments preserved; see conf-edit.ts).
 //
 // Usage:
 //   yarn find-factories <chain>                    # default lookback 100k blocks
 //   yarn find-factories <chain> --lookback 500000  # wider sweep
 //   yarn find-factories <chain> --transport rpc    # force RPC (usually needs paid tier)
+//   yarn find-factories <chain> --add              # also write verified factories to conf
 //
 // Notes:
 //   - Only "active" factories show up (dormant ones haven't created pairs recently)
@@ -94,8 +61,17 @@
 // -----------------------------------------------------------------------------
 
 import { ethers, JsonRpcProvider } from 'ethers';
-import { realpathSync } from 'node:fs';
-import { loadChainConfig } from './config.ts';
+import { realpathSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadChainConfig, type FactoryEntry } from './config.ts';
+import { blacklistedAddresses } from './blacklist.ts';
+import { addFactoriesToConf, type FactoryAddition } from './conf-edit.ts';
+import type { VerifyResult } from './verify-factory.ts';
+import type { V3VerifyResult } from './verify-v3-factory.ts';
+import { DEX_PATTERNS, type DexPattern } from './dex-patterns.ts';
+
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 import { etherscanGetLogs, rateLimit, notifyRateLimit } from './etherscan.ts';
 import { verifyFactory } from './verify-factory.ts';
 import { detectProxy } from './proxy-detect.ts';
@@ -328,6 +304,8 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     candidates: FactoryCandidate[];
     unknown: FactoryCandidate[];
     knownCount: number;
+    /** Emitters on conf/<chain>-blacklist.json5 — neither known nor unknown. */
+    blacklisted: FactoryCandidate[];
     scannedRange: { from: number; to: number };
     aborted: boolean;
 }> {
@@ -462,13 +440,19 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     const candidates = Array.from(emitters.values())
         .sort((a, b) => b.pairCreatedCount - a.pairCreatedCount);
 
+    // cfg.factories is already blacklist-filtered, so a blacklisted factory
+    // would otherwise look "unknown" — re-verified every run, and put straight
+    // back into the config by --add.
     const knownAddresses = new Set(cfg.factories.map(f => f.address.toLowerCase()));
-    const unknown = candidates.filter(c => !knownAddresses.has(c.address));
+    const black = blacklistedAddresses(cfg.chain.label);
+    const blacklisted = candidates.filter(c => black.has(c.address) && !knownAddresses.has(c.address));
+    const unknown = candidates.filter(c => !knownAddresses.has(c.address) && !black.has(c.address));
 
     return {
         candidates,
         unknown,
-        knownCount: candidates.length - unknown.length,
+        knownCount: candidates.length - unknown.length - blacklisted.length,
+        blacklisted,
         scannedRange: { from, to },
         aborted: opts.abortSignal?.aborted ?? false,
     };
@@ -500,6 +484,165 @@ function serializeEmitters(emitters: Map<string, FactoryCandidate>): unknown {
         }));
 }
 
+// -----------------------------------------------------------------------------
+// Outcomes, proposals, discovery.json
+
+export type CandidateOutcome = {
+    status: 'verified' | 'unusable' | 'error' | 'not-verified';
+    reason?: string;
+    family?: string;
+    contractName?: string;
+    implementationName?: string;
+    implementationAddress?: string;
+    explorerVerified?: boolean;
+    proposed?: { group: FactoryAddition['group']; key: string; entry: FactoryEntry; basis: string };
+    addable?: boolean;
+    heldBack?: string;
+    added?: { group: string; key: string };
+};
+
+/**
+ * Is a pattern matched by contract NAME borne out on-chain? Patterns with a
+ * fee function need the interface probe to have answered through the same
+ * accessor; name-only patterns (flat fee, fees hardcoded in swap()) have
+ * nothing to call, so for them the name is all the evidence there is.
+ */
+export function patternConfirmed(pattern: DexPattern, r: Pick<VerifyResult, 'probedPattern'>): boolean {
+    if (pattern.fee !== undefined || pattern.stableFees || !pattern.feeFunction) return true;
+    const probed = r.probedPattern ? DEX_PATTERNS[r.probedPattern] : undefined;
+    return !!probed && probed.feeFunction === pattern.feeFunction && probed.feeTarget === pattern.feeTarget
+        && (probed.feeArgSource ?? 'pair-address') === (pattern.feeArgSource ?? 'pair-address') && probed.feeDivisor === pattern.feeDivisor;
+}
+
+/** Swap callbacks FlashArbExecutor can pay (attempt.ts refuses others at trade time). */
+const EXECUTOR_CALLBACKS = new Set(['uniswapV3SwapCallback', 'pancakeV3SwapCallback', 'algebraSwapCallback']);
+const PROBE_CONFIDENT = new Set(['high', 'medium']);
+
+/**
+ * The config entry for a verified factory, and whether --add may write it.
+ *
+ * Addable means every field the pipeline needs to price the factory's pools
+ * was MEASURED or matched a registered DEX pattern — never guessed:
+ *   v3 / algebra   fee tiers, event layout and callback read from real pools;
+ *                  held back if the executor cannot pay that callback
+ *   pattern hit    the contract (or its implementation) is a registered DEX
+ *   v2fee/solidly  the interface probe found the fee accessor (high/medium)
+ *   v2             the fee was derived from swap() bytecode; an ASSUMED fee
+ *                  only with --add-assumed-fees
+ */
+export function proposeEntry(
+    c: FactoryCandidate,
+    key: string,
+    v: VerifyResult | V3VerifyResult,
+    pattern: DexPattern | null,
+    addAssumedFees: boolean,
+): Pick<CandidateOutcome, 'proposed' | 'addable' | 'heldBack'> {
+    const deployBlock = v.deployBlock ?? undefined;
+    if (v.family === 'v3' || v.family === 'algebra') {
+        const r = v as V3VerifyResult;
+        const entry: FactoryEntry = r.family === 'v3'
+            ? { address: c.address, deployBlock, poolEvent: r.poolEvent ?? undefined, callback: r.callback ?? undefined }
+            : { address: c.address, deployBlock, ...({ algebraVariant: r.algebraVariant ?? 'integral' } as object) } as FactoryEntry;
+        const group = r.family as 'v3' | 'algebra';   // narrowed by the if above
+        const proposed = { group, key, entry, basis: `measured: fees ${r.feesSeen.join('/')} pips${r.callback ? `, callback ${r.callback}` : ''}` };
+        if (r.callback && !EXECUTOR_CALLBACKS.has(r.callback)) {
+            return { proposed, addable: false, heldBack: `pools call ${r.callback}, which the executor cannot pay` };
+        }
+        return { proposed, addable: true };
+    }
+
+    const r = v as VerifyResult;
+    const velodrome = c.matchedTopics.has('velodrome') ? 'velodrome' as const : undefined;
+    // A contract NAME is not proof of the fee accessor: "PairFactory" and
+    // "PoolFactory" are what half of all Solidly forks are called. A pattern
+    // whose fee is read through a function is trusted only when the on-chain
+    // probe answered through that same accessor; otherwise the probe's own
+    // answer (below) decides. Name-only patterns (a flat fee, or fees
+    // hardcoded in swap()) have nothing to call, so the name is all there is.
+    let nameNote = '';
+    if (pattern && !patternConfirmed(pattern, r)) {
+        nameNote = `name matches a registered pattern whose fee call did not answer on-chain${r.probedPattern ? `; probe found ${r.probedPattern}` : ''}`;
+        pattern = null;
+    }
+    if (pattern) {
+        const entry: FactoryEntry = { address: c.address, deployBlock, poolEvent: velodrome };
+        if (pattern.hasStableFlag) entry.hasStableFlag = true;
+        if (pattern.fee !== undefined) entry.fee = pattern.fee;
+        else if (pattern.stableFees) entry.stableFees = pattern.stableFees;
+        else {
+            if (pattern.feeTarget) entry.feeTarget = pattern.feeTarget;
+            if (pattern.feeArgSource && pattern.feeArgSource !== 'pair-address') entry.feeArgSource = pattern.feeArgSource;
+            if (pattern.feeFunction) entry.feeFunction = pattern.feeFunction;
+            if (pattern.feeDivisor) entry.feeDivisor = pattern.feeDivisor;
+        }
+        return { proposed: { group: pattern.family, key, entry, basis: 'registered DEX pattern' }, addable: true };
+    }
+    if (r.family === 'v2fee' || r.family === 'solidly') {
+        const entry: FactoryEntry = { address: c.address, deployBlock, poolEvent: r.family === 'solidly' ? r.poolEvent : undefined };
+        if (r.probedFlatFee !== undefined) entry.fee = r.probedFlatFee;
+        else {
+            if (r.probedFeeTarget) entry.feeTarget = r.probedFeeTarget;
+            if (r.probedFeeArgSource && r.probedFeeArgSource !== 'pair-address') entry.feeArgSource = r.probedFeeArgSource as FactoryEntry['feeArgSource'];
+            if (r.probedFeeFunction) entry.feeFunction = r.probedFeeFunction;
+            if (r.probedFeeDivisor) entry.feeDivisor = r.probedFeeDivisor;
+        }
+        if (r.probedHasStableFlag || (r.family === 'v2fee' && !r.probedPattern)) entry.hasStableFlag = true;
+        const proposed = { group: r.family, key, entry, basis: (r.probedPattern ? `probed ${r.probedPattern} [${r.probedConfidence}]` : 'no fee accessor found') + (nameNote ? ` (${nameNote})` : '') };
+        if (!r.probedPattern) return { proposed, addable: false, heldBack: 'per-pair fee accessor unknown — configure feeTarget/feeFunction/feeDivisor by hand' };
+        if (!PROBE_CONFIDENT.has(r.probedConfidence ?? '')) return { proposed, addable: false, heldBack: `fee probe confidence ${r.probedConfidence}` };
+        return { proposed, addable: true };
+    }
+    // pure v2
+    const entry: FactoryEntry = { address: c.address, deployBlock, fee: r.fee ?? undefined };
+    const proposed = { group: 'v2' as const, key, entry, basis: `fee ${r.fee} (${r.feeConfidence})${nameNote ? ` (${nameNote})` : ''}` };
+    if (r.fee == null) return { proposed, addable: false, heldBack: 'fee undetermined' };
+    if (r.feeConfidence === 'derived' || r.feeConfidence === 'probed') return { proposed, addable: true };
+    if (addAssumedFees) return { proposed, addable: true };
+    return { proposed, addable: false, heldBack: `fee ${r.fee} is ${r.feeConfidence} — pass --add-assumed-fees to add anyway, then check with yarn verify-fees` };
+}
+
+/** Write log/<chain>/discovery.json. Returns its path. */
+function writeDiscovery(
+    chainArg: string,
+    result: Awaited<ReturnType<typeof findFactories>>,
+    outcomes: Map<string, CandidateOutcome>,
+): string {
+    const label = loadChainConfig(chainArg).chain.label;
+    const dir = path.join(PROJECT_ROOT, 'log', label);
+    mkdirSync(dir, { recursive: true });
+    const unknown = new Set(result.unknown.map(c => c.address));
+    const black = new Set(result.blacklisted.map(c => c.address));
+    const all = [...outcomes.values()];
+    const doc = {
+        chain: label,
+        scannedAt: new Date().toISOString(),
+        aborted: result.aborted,
+        blockRange: result.scannedRange,
+        totals: {
+            candidates: result.candidates.length,
+            known: result.knownCount,
+            blacklisted: result.blacklisted.length,
+            unknown: result.unknown.length,
+            verified: all.filter(o => o.status === 'verified').length,
+            addable: all.filter(o => o.addable).length,
+            added: all.filter(o => o.added).length,
+        },
+        candidates: result.candidates.map(c => ({
+            address: c.address,
+            pairCount: c.pairCreatedCount,
+            firstBlockSeen: c.firstBlockSeen,
+            lastBlockSeen: c.lastBlockSeen,
+            matchedTopics: [...c.matchedTopics],
+            ...(black.has(c.address) ? { status: 'blacklisted' }
+                : !unknown.has(c.address) ? { status: 'known' }
+                : (outcomes.get(c.address) ?? { status: 'not-verified', reason: result.aborted ? 'sweep interrupted' : 'beyond --verify-limit' })),
+        })),
+    };
+    const p = path.join(dir, 'discovery.json');
+    writeFileSync(p, JSON.stringify(doc, null, 2));
+    return p;
+}
+
 /**
  * Emit the full report — top unknowns, verification, config snippets. Used
  * both for natural completion and for Ctrl-C interruption. If `verify` is
@@ -509,21 +652,23 @@ async function emitReport(
     chainArg: string,
     result: Awaited<ReturnType<typeof findFactories>>,
     explorerApiKey: string | undefined,
-    opts: { verify: boolean; verifyLimit: number },
-) {
+    opts: { verify: boolean; verifyLimit: number; addAssumedFees: boolean },
+): Promise<Map<string, CandidateOutcome>> {
     const { candidates, unknown, knownCount, scannedRange, aborted } = result;
+    const outcomes = new Map<string, CandidateOutcome>();
 
     console.log('\n' + '═'.repeat(72));
     if (aborted) console.log(`Sweep INTERRUPTED at blocks ${scannedRange.from}-${scannedRange.to}`);
     else         console.log(`Sweep complete over blocks ${scannedRange.from}-${scannedRange.to}`);
     console.log(`  Unique factories emitting a pool-creation event: ${candidates.length}`);
     console.log(`  Known (already in config): ${knownCount}`);
+    if (result.blacklisted.length) console.log(`  Blacklisted (skipped): ${result.blacklisted.length}`);
     console.log(`  Unknown (candidates to investigate): ${unknown.length}`);
     console.log('═'.repeat(72));
 
     if (unknown.length === 0) {
         console.log('\nNo new factories found — you already know about all active ones.');
-        return;
+        return outcomes;
     }
 
     console.log('\nTop unknown factories by activity:\n');
@@ -537,7 +682,7 @@ async function emitReport(
 
     if (!opts.verify) {
         console.log('\n[!] Skipping verification step (interrupted). Re-run without interrupt to verify these candidates.');
-        return;
+        return outcomes;
     }
 
     const toVerify = opts.verifyLimit > 0 ? unknown.slice(0, opts.verifyLimit) : unknown;
@@ -645,7 +790,7 @@ async function emitReport(
         } catch { /* best-effort — DexScreener lookup never blocks the report */ }
     };
 
-    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean }> = [];
+    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean; result: VerifyResult | V3VerifyResult }> = [];
     for (const c of toVerify) {
         if (isClCandidate(c)) {
             console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pools, concentrated liquidity)`);
@@ -662,13 +807,16 @@ async function emitReport(
                     if (v.samplePool) await printDexScreener(v.samplePool);
                     verified.push({
                         candidate: c, snippet: v.configSnippet, family: v.family,
-                        contractName: displayName, implementationName, implementationAddress, explorerVerified,
+                        contractName: displayName, implementationName, implementationAddress, explorerVerified, result: v,
                     });
                 } else {
-                    console.log(`  ✗ Not usable: ${v.notes[v.notes.length - 1] ?? 'unknown reason'}`);
+                    const reason = v.notes[v.notes.length - 1] ?? 'unknown reason';
+                    console.log(`  ✗ Not usable: ${reason}`);
+                    outcomes.set(c.address, { status: 'unusable', family: v.family, reason });
                 }
             } catch (err) {
                 console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 120)}`);
+                outcomes.set(c.address, { status: 'error', reason: (err as Error).message.slice(0, 300) });
             }
             continue;
         }
@@ -695,6 +843,7 @@ async function emitReport(
                     implementationName,
                     implementationAddress,
                     explorerVerified,
+                    result: v,
                 });
             } else {
                 // The LAST note is not necessarily the reason: when the fee
@@ -704,9 +853,11 @@ async function emitReport(
                     ? v.notes.find(n => /mismatch|doesn't implement|Failed to read/.test(n))
                     : undefined) ?? v.notes[v.notes.length - 1] ?? 'unknown reason';
                 console.log(`  ✗ Not usable: ${reason}`);
+                outcomes.set(c.address, { status: 'unusable', family: v.family, reason });
             }
         } catch (err) {
             console.log(`  ✗ Verification error: ${(err as Error).message.slice(0, 120)}`);
+            outcomes.set(c.address, { status: 'error', reason: (err as Error).message.slice(0, 300) });
         }
     }
 
@@ -727,7 +878,7 @@ async function emitReport(
         // Load pattern registry lazily so this file doesn't hard-depend on it
         const { lookupDexPattern, renderPatternSnippet } = await import('./dex-patterns.ts');
 
-        for (const { candidate, snippet, family, contractName, implementationName, implementationAddress } of verified) {
+        for (const { candidate, snippet, family, contractName, implementationName, implementationAddress, explorerVerified, result: vr } of verified) {
             // Naming rule for config keys: prefer the implementation's contract
             // name (real DEX identity) when we detected a proxy. Fall back to
             // the top-level contract name, then to a generic Factory_ prefix.
@@ -744,7 +895,14 @@ async function emitReport(
             // family + feeTarget/feeFunction/feeDivisor and drop the
             // generic placeholder comments.
             // V3/Algebra snippets come straight from measurement; the pattern registry is V2-family only.
-            const pattern = family === 'v3' || family === 'algebra' ? null : (lookupDexPattern(implementationName) ?? lookupDexPattern(contractName));
+            const named = family === 'v3' || family === 'algebra' ? null : (lookupDexPattern(implementationName) ?? lookupDexPattern(contractName));
+            // The name is a hint; the snippet below follows it only when the chain agrees.
+            const pattern = named && patternConfirmed(named, vr as VerifyResult) ? named : null;
+            if (named && !pattern) console.log(`// [!] named like a registered pattern, but its fee call did not answer on-chain — using the probe instead`);
+            outcomes.set(candidate.address, {
+                status: 'verified', family, contractName, implementationName, implementationAddress, explorerVerified,
+                ...proposeEntry(candidate, configKey, vr, named, opts.addAssumedFees),
+            });
 
             let nameHint = '';
             if (implementationName && contractName) {
@@ -764,7 +922,7 @@ async function emitReport(
                     candidate.address,
                     // pattern.family override may differ from verify-factory's runtime family;
                     // that's the point of the registry — we trust the template match.
-                    (candidate as any).deployBlock,   // not currently tracked on FactoryCandidate; fine to omit
+                    vr.deployBlock ?? undefined,
                     { ...pattern, poolEvent: candidate.matchedTopics.has('velodrome') ? 'velodrome' : undefined },
                 );
                 const patternNote = pattern.notes
@@ -794,6 +952,7 @@ async function emitReport(
         console.log('  5. For algebra entries: needs a YoBatches with getAlgebraState (yarn deploy-contract)');
         console.log('     and an executor with algebraSwapCallback before live trades.');
     }
+    return outcomes;
 }
 
 if (isMain()) {
@@ -826,6 +985,14 @@ if (isMain()) {
         console.error('  --verify-all           Verify every unknown candidate (may take a long time on');
         console.error('                         chains with many hits; overrides --verify-limit)');
         console.error('  --autosave PATH        Write partial results as JSON every ~15s');
+        console.error('  --add                  Write verified factories into conf/<chain>.json5 (comments');
+        console.error('                         kept; only entries whose fee/callback were measured or match');
+        console.error('                         a registered DEX pattern — see discovery.json for the rest)');
+        console.error('  --add-assumed-fees     With --add: also add pure-V2 factories whose fee was only');
+        console.error('                         ASSUMED (0.3%) — check them with yarn verify-fees after');
+        console.error('');
+        console.error('Every run writes log/<chain>/discovery.json: every candidate, its verdict, the');
+        console.error('entry that would be added, and why anything was held back.');
         console.error('');
         console.error('Ctrl-C during a sweep flushes the partial report before exiting.');
         process.exit(1);
@@ -853,6 +1020,9 @@ if (isMain()) {
     const verifyLimit  = verifyAll ? Number.MAX_SAFE_INTEGER : getNum('--verify-limit', 20);
     const transport    = getStr('--transport', 'auto' as const, ['auto', 'hypersync', 'etherscan', 'rpc'] as const)!;
     const autosavePath = getStr('--autosave', undefined);
+    const addToConf      = args.includes('--add');
+    const addAssumedFees = args.includes('--add-assumed-fees');
+    if (addAssumedFees && !addToConf) console.log('[!] --add-assumed-fees does nothing without --add');
     const explorerApiKey = process.env.ETHERSCAN_API_KEY;
 
     // AbortController wired to SIGINT so Ctrl-C flushes partial results.
@@ -908,12 +1078,56 @@ if (isMain()) {
         console.log(`Final autosave written to ${autosavePath}`);
     }
 
-    await emitReport(chainArg, result, explorerApiKey, {
+    const outcomes = await emitReport(chainArg, result, explorerApiKey, {
         // If interrupted, skip verification so we exit fast — user can re-run
         // on the specific candidates they care about.
         verify: !result.aborted && verifyLimit > 0,
         verifyLimit,
+        addAssumedFees,
     });
+
+    const addable = [...outcomes.entries()].filter(([, o]) => o.addable && o.proposed);
+    const held = [...outcomes.entries()].filter(([, o]) => o.status === 'verified' && !o.addable);
+    if (addToConf) {
+        const label = loadChainConfig(chainArg).chain.label;
+        console.log('\n' + '═'.repeat(72));
+        if (addable.length === 0) {
+            console.log(`--add: nothing qualifies to add to conf/${label}.json5`);
+        } else {
+            const today = new Date().toLocaleDateString('en-CA');   // local YYYY-MM-DD
+            const additions: FactoryAddition[] = addable.map(([addr, o]) => {
+                const c = result.unknown.find(x => x.address === addr)!;
+                const name = o.implementationName ?? o.contractName;
+                return {
+                    group: o.proposed!.group, key: o.proposed!.key, entry: o.proposed!.entry,
+                    comment: `find-factories --add ${today}: ${c.pairCreatedCount} ${o.family === 'v3' || o.family === 'algebra' ? 'pools' : 'pairs'} in sweep` +
+                        `${name ? `, explorer "${name}"` : ', unverified on explorer'}; ${o.proposed!.basis}`,
+                };
+            });
+            try {
+                const added = addFactoriesToConf(path.join(PROJECT_ROOT, 'conf'), label, additions);
+                added.forEach((a, i) => { outcomes.get(addable[i][0])!.added = a; });
+                console.log(`--add: wrote ${added.length} factor${added.length === 1 ? 'y' : 'ies'} to conf/${label}.json5:`);
+                for (const a of added) console.log(`  + factories.${a.group}.${a.key}`);
+                console.log(`Next: yarn scan ${label} && yarn reserves ${label}` +
+                    (addable.some(([, o]) => o.family === 'v2') ? `, and yarn verify-fees ${label} for the v2 fees` : ''));
+            } catch (err) {
+                console.log(`[!] --add failed, conf/${label}.json5 NOT modified: ${(err as Error).message}`);
+            }
+        }
+        if (held.length) {
+            console.log(`Held back (${held.length}) — details in discovery.json:`);
+            for (const [addr, o] of held) console.log(`  - ${o.proposed?.key ?? addr}: ${o.heldBack}`);
+        }
+    } else if (addable.length) {
+        console.log(`\n${addable.length} of these qualify for --add (rerun with --add to write them to the config).`);
+    }
+
+    try {
+        console.log(`\nDiscovery log: ${path.relative(process.cwd(), writeDiscovery(chainArg, result, outcomes))}`);
+    } catch (err) {
+        console.log(`[!] could not write discovery.json: ${(err as Error).message}`);
+    }
 
     console.log('');
     process.exit(result.aborted ? 130 : 0);

@@ -935,7 +935,9 @@ async function fetchPerPairMetadata(
                     `${batch.length - feeSuccesses}/${batch.length} pairs (${(failureRate * 100).toFixed(0)}%) ` +
                     `returned no fee data in the first batch.\n` +
                     `  Config: feeTarget="${feeTarget}", feeFunction="${feeFunction}", feeDivisor=${feeDivisor}\n` +
-                    `  Likely cause: wrong feeTarget or feeFunction. Check the factory contract on the block explorer.\n` +
+                    `  Likely cause: wrong feeTarget or feeFunction.\n` +
+                    `  Find the accessor that answers (for every factory at once): yarn check-fee-config <chain>\n` +
+                    `  …and fix or blacklist the broken entries:                   yarn check-fee-config <chain> --apply\n` +
                     `  Common patterns:\n` +
                     `    Shadow-like (Sonic):  feeTarget="factory", feeFunction="pairFee",    feeDivisor=1000000\n` +
                     `    Equalizer-like:       feeTarget="factory", feeFunction="getRealFee", feeDivisor=1e18\n` +

@@ -69,7 +69,7 @@ export type ProbeMatch = {
  * the pattern doesn't match at all (all calls reverted or all values
  * out-of-range). Returns a ProbeMatch with confidence rating otherwise.
  */
-async function tryPattern(
+export async function tryPattern(
     provider: JsonRpcProvider,
     factory: string,
     samplePairs: SamplePair[],
