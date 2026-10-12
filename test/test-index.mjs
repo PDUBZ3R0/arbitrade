@@ -61,6 +61,21 @@ for (const a of ix.tokenAddr) {
 }
 const th = { minProfitByRoot, minInputByRoot, minReserveByToken, maxRoi: 20, flashPremium: 0.0005 };
 
+// ARB_TEST_FLASH_SWAP=1: score as with flashloan.flashSwap — zero premium for
+// V2-first cycles, and every triangle root that is not a flash token (default:
+// Sonic's four, or ARB_TEST_FLASH_TOKENS=a,b,…) treated as a swap root, whose
+// V3-first directions are unfundable. Run it on a DB enumerated with
+// flashloan.swapRoots so those roots exist.
+if (process.env.ARB_TEST_FLASH_SWAP) {
+    const flash = new Set((process.env.ARB_TEST_FLASH_TOKENS ??
+        '0xe5da20f15420ad15de0fa650600afc998bbe3955,0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38,0x50c42deacd8fc9773493ed674b675be577f2634b,0x29219dd400f2bf60e5a23d13be72b486d4038894')
+        .toLowerCase().split(','));
+    const roots = db.db.prepare('SELECT DISTINCT root_token FROM triangles').all().map(r => String(r.root_token).toLowerCase());
+    th.flashSwap = true;
+    th.swapOnlyRoots = new Set(roots.filter(r => !flash.has(r)));
+    console.log(`(flash-swap mode: ${th.swapOnlyRoots.size} swap roots)\n`);
+}
+
 const key = (c) => `${c.triangleId}|${c.direction}`;
 const summarise = (cs) => {
     const m = new Map();

@@ -97,6 +97,12 @@ export type ScoreThresholds = {
      * premium (config.ts cyclePremium). Must match the evaluator.
      */
     flashSwap?: boolean;
+    /**
+     * Swap roots (util/swap-roots.ts): no lender holds them, so a cycle rooted
+     * at one is only scored in a direction whose first hop is V2 — the hop a
+     * flash swap borrows from. Must match the evaluator's noFunding skip.
+     */
+    swapOnlyRoots?: Set<string>;
 };
 
 export class TriangleIndex {
@@ -456,6 +462,8 @@ export class TriangleIndex {
                 }
                 hops = this.hops3;
             }
+
+            if (th.swapOnlyRoots?.has(rootAddr) && this.pairIsV3[legs[0].pi]) continue;
 
             let x: number, grossProfit: number;
             if (mixed) {

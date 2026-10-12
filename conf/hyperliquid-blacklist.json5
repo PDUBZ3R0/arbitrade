@@ -1,0 +1,15 @@
+{
+    factories: [
+      { address:'0xd5e5fef4cfefb67bba0aa1dc74b2cd196b4786ac' },
+      { address:'0xb1c0fa0b789320044a6f623cfe5ebda9562602e3' },
+      { address:'0x6fc8ff7b2e595742298fc876c3c755a9640b4035' },
+      { address:'0x40059a6f242c3de0e639693973004921b04d96ad' },
+      { address:'0x10253594a832f967994b44f33411940533302acb' },
+      { address:'0xcb1199b0fec86d03a954eeea964d30e2320bbcec' },
+      { address:'0x673ff9beba931c9919df3bbf67e7ea1e69e54f84' },
+      { address:'0x1d9dcf8238daf2e078ff639a5ded6b518bf3e585' },
+      { address:'0xb62ac162c4231bad117689805dbf8fbd4c5dc820' },
+      { address:'0x5c9b66a92670f0be63bf1d8f23878e85ccf8f451' },
+      { address:'0x6f6fd31838cea254b032a5a24d350e0683382357' }
+  ]
+}

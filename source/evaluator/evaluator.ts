@@ -29,6 +29,7 @@
 
 import { ArbitradeDB } from '../util/db.ts';
 import { flashTermsFor, flashSwapEnabled, type ChainConfig, type NormalizedFactory } from '../util/config.ts';
+import { priceSwapRoots, swapRootsMinLiquidity } from '../util/swap-roots.ts';
 import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
 import {
     v3_float_hop, mixed_cycle_product, optimal_mixed_cycle, mixed_cycle_profit, mixed_cycle_overflows,
@@ -222,6 +223,13 @@ export type SkipReasons = {
     v3MissingState: number;
     /** Cycle has a Solidly stable hop and executableOnly was set — the deployed executor can't trade the stable curve yet. */
     stableNotExecutable: number;
+    /**
+     * Rooted at a swap root (no lender holds it) whose first hop in this
+     * direction cannot be flash-swapped (V3 or stable) — nothing can fund it.
+     */
+    noFunding: number;
+    /** Rooted at a swap root that no longer has a qualifying pricing pair — its profit cannot be valued against gas. */
+    swapRootUnpriced: number;
 };
 
 export type EvaluateResult = {
@@ -240,6 +248,10 @@ export type EvaluateResult = {
      */
     rootPricing: Record<string, {
         symbol?: string;
+        /** The root's decimals. Always set for swap roots; flash tokens also carry them in config. */
+        decimals?: number;
+        /** True for a swap root: not a flash-loan token, fundable only by flash-swapping hop 0. */
+        swapOnly?: boolean;
         /** Numeraire units per 1 unit of this root token, or null if no direct pair was found (flat-fraction fallback used). */
         priceInNumeraire: number | null;
         /** Liquidity (numeraire-side reserve) of the pair the price was derived from, for trust-assessment. Null if no pair found. */
@@ -497,6 +509,8 @@ export async function evaluateTriangles(
         v3NotExecutable: 0,
         v3MissingState: 0,
         stableNotExecutable: 0,
+        noFunding: 0,
+        swapRootUnpriced: 0,
     };
 
     const result: EvaluateResult = {
@@ -678,6 +692,39 @@ export async function evaluateTriangles(
                 minInput:  minInputRootUnits  * scale,
             });
         }
+        // Swap roots: priced from their deepest V2 pair against the numeraire
+        // at THIS pass's reserves (util/swap-roots.ts). A root that lost its
+        // pricing pair since enumeration gets no threshold and its cycles are
+        // skipped — never the flat-fraction fallback, which for an arbitrary
+        // token is a number with no relation to gas.
+        const swapOnly = new Set<string>();
+        const swapMinLiq = swapRootsMinLiquidity(cfg);
+        if (swapMinLiq != null && numeraire) {
+            const meta = new Map((db.db.prepare('SELECT address, symbol, decimals FROM tokens').all() as Array<{ address: string; symbol: string | null; decimals: number | null }>)
+                .map(t => [t.address.toLowerCase(), t]));
+            const flash = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
+            const priced = priceSwapRoots(pairsByAddr.values(), numeraire, a => meta.get(a)?.decimals ?? NaN, swapMinLiq, flash);
+            for (const [addr, p] of priced) {
+                if (!Number.isFinite(p.decimals) || !(p.price > 0)) continue;
+                const minProfitRootUnits = minProfitTokensFrac / p.price;
+                const minInputRootUnits  = minInputTokensFrac  / p.price;
+                result.rootPricing[addr] = {
+                    symbol: meta.get(addr)?.symbol ?? undefined,
+                    decimals: p.decimals,
+                    swapOnly: true,
+                    priceInNumeraire: p.price,
+                    sourceLiquidity: p.liquidity,
+                    minProfitInRootTokens: minProfitRootUnits,
+                    minInputInRootTokens: minInputRootUnits,
+                };
+                rootThresholds.set(addr, { minProfit: minProfitRootUnits * 10 ** p.decimals, minInput: minInputRootUnits * 10 ** p.decimals });
+                swapOnly.add(addr);
+            }
+        }
+        const flashRoots = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
+        /** A first hop a flash swap can borrow from: V2-style, constant product. */
+        const swappable = (p: PairData) => p.kind !== 'v3' && !p.stable;
+
         // Base minimum from --min-profit (in wei) still applies on top.
         const baseMinProfit = Number(opts.minProfitWei ?? 0n);
         const thresholdsFor = (root: string) => {
@@ -782,6 +829,10 @@ export async function evaluateTriangles(
             const root  = tri.root_token;
             const tokB  = tri.token_b;
             const tokC  = tri.token_c;
+            // A root that is neither a flash token nor a priced swap root
+            // (swapRoots turned off, or its pricing pair drained): skip.
+            if (!flashRoots.has(root) && !rootThresholds.has(root)) { skipReasons.swapRootUnpriced++; continue; }
+            const isSwapOnly = swapOnly.has(root);
             const { minProfit, minInput } = thresholdsFor(root);
 
             if (tri.hop_count === 2) {
@@ -790,6 +841,7 @@ export async function evaluateTriangles(
                 for (const direction of ['forward', 'reverse'] as const) {
                     const first  = direction === 'forward' ? pAB : pBC;
                     const second = direction === 'forward' ? pBC : pAB;
+                    if (isSwapOnly && !swappable(first)) { skipReasons.noFunding++; continue; }
 
                     // Orient for the direction we're walking: input = root
                     const hasV3 = first.kind === 'v3' || second.kind === 'v3';
@@ -902,6 +954,7 @@ export async function evaluateTriangles(
                             { pair: pBC, tokenIn: tokC, tokenOut: tokB },
                             { pair: pAB, tokenIn: tokB, tokenOut: root },
                           ];
+                    if (isSwapOnly && !swappable(hops[0].pair)) { skipReasons.noFunding++; continue; }
 
                     const hasV3 = hops.some(h => h.pair.kind === 'v3');
                     const hasStable = hops.some(h => h.pair.stable);
@@ -1012,9 +1065,20 @@ export async function evaluateTriangles(
         result.trianglesSkipped =
             skipReasons.missingPair + skipReasons.missingReserves + skipReasons.dustLiquidity +
             skipReasons.belowMinProfit + skipReasons.belowMinInput + skipReasons.roiCapExceeded +
-            skipReasons.v3NotExecutable + skipReasons.v3MissingState;
+            skipReasons.v3NotExecutable + skipReasons.v3MissingState +
+            skipReasons.noFunding + skipReasons.swapRootUnpriced;
 
-        candidates.sort((a, b) => b.netProfit - a.netProfit);
+        // Rank in the numeraire, not in each candidate's own root token: with
+        // swap roots there can be hundreds of different profit tokens, and
+        // 0.5 of a cheap token must not outrank 0.01 WETH. Same rule as the
+        // hot loop's rankValue; an unpriced root sorts last.
+        const decOf = (root: string) => result.rootPricing[root]?.decimals
+            ?? cfg.flashloan?.tokens.find(t => t.address.toLowerCase() === root)?.decimals ?? 18;
+        const valueOf = (c: Candidate) => {
+            const px = result.rootPricing[c.rootToken.toLowerCase()]?.priceInNumeraire;
+            return px != null && px > 0 ? (c.netProfit / 10 ** decOf(c.rootToken.toLowerCase())) * px : -Infinity;
+        };
+        candidates.sort((a, b) => valueOf(b) - valueOf(a));
         result.profitableCount = candidates.length;
         result.topCandidates = opts.limit ? candidates.slice(0, opts.limit) : candidates;
     } finally {

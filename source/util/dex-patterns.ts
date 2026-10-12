@@ -317,8 +317,8 @@ export function lookupDexPattern(contractName: string | undefined): DexPattern |
 /**
  * Render a JSON5-ish config snippet body for a known pattern. Used by
  * find-factories when a candidate's contract name matches a registered
- * pattern. Callers wrap this in the appropriate `factories[<group>].list`
- * container.
+ * pattern. Callers place it under the appropriate `factories[<group>]`
+ * (directly, or inside a legacy `list:` — config.ts accepts both).
  *
  * Emits only the fields that differ from defaults, so config stays readable.
  */

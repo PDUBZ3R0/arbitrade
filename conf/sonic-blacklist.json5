@@ -57,7 +57,161 @@
         },
         {
           address: "0xf2548ea6b811bf0ae2e36b58a37c40e88dd51680",
-        }
-
+        },
+        {
+            address: "0x3638ca700d67d560be2a2d0dd471640957564829",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (9 pairs): decompile=unknown, empirical=ambiguous (6 samples). no plausible fee-constant pair found in swap() body; empirical: only 0/6 samples agree with the median — possible dynamic fee or fee-on-transfer token claude: fee=0.003 curve=constant-product kind=constant conf=low — Decompiled swap() shows the classic 0x3e8 (1000) scaling literal and INSUFFICIENT_INPUT_AMOUNT check typical of UniswapV2's balance*1000 vs amountIn*3 K-check, implying a 0.3% constant fee, but the exact multiplication by 3/997 is obscured by decompiler artifacts.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x15d8d9efd079e0e0633646cb834789d209a5fe5b",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (26 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap-like function (Unresolved_022c0d9f) is too garbled by the decompiler to reconstruct the actual K-check or fee arithmetic; only stray 0x3e8 (1000) literals hint at a possible classic 1000/3 fee pattern but the balance*1000 - amountIn*3 style formula is not clearly present.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x1abc59b8d41aec2cb95fdb2fccfb5e31f26a9e95",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — Decompiled swap() (Unresolved_022c0d9f) matches the Uniswap-V2 swap(amount0Out, amount1Out, to, data) shape with reserve0/reserve1 stored packed in unresolved_0902f1ac, but constant folding has stripped the explicit balance*denom - amountIn*fee K-check; literals 0x1e (30) and 0x2710 (10000) strongly",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xbb4b0d805b50ab73c48a5dd43d702f1d2a50d971",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — Decompiled swap function (Unresolved_022c0d9f) is heavily mangled, but presence of 1000 constant and classic UniswapV2 TRANSFER_FAILED/INSUFFICIENT_INPUT_AMOUNT strings strongly suggests the standard x*y>=k check with balance*1000 - amountIn*3 fee pattern, though the exact K-check line is not legibl",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xfa7173b86fb67921ce3f22a874fb553b2f057349",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap function (Unresolved_022c0d9f) is heavily mangled; the K-check and fee arithmetic (balance*1000 vs amountIn*3 pattern) are not clearly reconstructable, though 0x03e8 (1000) appears suggesting a classic 0.3% fee scheme, it cannot be confirmed from the shown code.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x74648aecc8f358a8666472b882ae21d0fbd8735d",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: could not parse Claude response as JSON (no JSON object in response): {\"curve\": \"unknown\", \"feeKind\": \"unknown\", \"fee\": null, \"numerator\": null, \"denominator\":",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x833aea2bb8dd928c20bd21498ad3d2591f3289a1",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=constant-product kind=unknown conf=low — Function selector 0x022c0d9f matches the canonical UniswapV2 swap(uint256,uint256,address,bytes) and the contract's overall structure (reserves, mint/burn/sync, kLast) strongly suggests a constant-product AMM fork, but the decompiled swap body is too mangled to locate the actual balance-adjustment/K",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x51b298167448fd4cfcba058504298bd78964e475",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=medium — This is the Uniswap V2 swap function (Unresolved_022c0d9f) in decompiled form; the literals 0x03e8 (1000) and 0x03 (3) correspond to the classic balance*1000 vs amountIn*3 fee check, and the mul-overflow check pattern matches the x*y>=k invariant computation.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x1e24ba78f4ce042e26db0800a599cc6d745f0ace",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=medium — Decompiled swap function (Unresolved_022c0d9f) shows classic UniswapV2 balance adjustment pattern with 0x03e8 (1000) and 0x03 (3) literals consistent with the standard *1000 - amountIn*3 fee formula, though heavily obfuscated into unreadable require() chains typical of decompiler artifacts.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x6a71b4bf806756776b2399f98f4ba72a40af9a6f",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — No swap() function or balance-adjusted K invariant check is present in the provided code; only mint/burn/sync-like functions with fee overflow checks are visible, so curve and fee cannot be determined.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xbf461f164c468e2b1739159b41d2de9da58ef78d",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low (evidence NOT verified) — EVIDENCE NOT FOUND VERBATIM IN CODE (possible hallucination or injected instructions) — The decompiled code does not contain a recognizable swap() function with a fee/K-check pattern; function selectors are unresolved and no balance*1000 - amountIn*3 style invariant or stable-curve math",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xbc33a5a886b7c178b2d44551dd7cd21a134cde96",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap function (Unresolved_022c0d9f) is heavily mangled with nonsensical ds-math require statements and lacks a discernible balance*1000 vs amountIn*3 style K-check or curve formula; fee constant 1000 appears but no numerator (e.g., 3) pairing it is identifiable, so curve and fee canno",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xb7536e653cd07c815a4ae52618c63f09223344ff",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap-like function (Unresolved_022c0d9f) is garbled/incoherent and does not contain a recognizable K-check (balance*1000 vs amountIn*3 pattern) or curve invariant comparison, so neither the curve type nor fee value can be reliably determined.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x2b39823ad83e88335fc4cdafe434692536260377",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled 'swap' function (Unresolved_022c0d9f) does not scale balances by 1000/997 or any fee factor before the K check; it compares var_c.length*var_c.length against reserve0*reserve1 directly, so no fee application is visible, and no fee-related multiplier or constant (e.g., 3/1000) appears",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x8679749e7bba02af1ee054ba30cdf18019f4960c",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap-like function (Unresolved_022c0d9f) performs a K-check but the excerpt shows balance*balance compared against reserve0*reserve1 without any visible fee-adjustment (no 1000/997-style scaling or fee variable), so no fee multiplier on the input amount can be identified; the curve ma",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xa93ece83a159dc29ee3ecea08f22a11c1dd0aa4c",
+            reason:  "verify-fees 2026-10-12 NO-SWAP (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape claude: fee=0.003 curve=constant-product kind=constant conf=low — Decompiled code is heavily garbled (variable names like var_c.length used inconsistently) and the actual swap() K-check could not be clearly located; inference of constant-product curve and 0.3% fee is based on the presence of the classic 1000/3 literals and Uniswap V2 error strings, not a directly",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x69d10bc18cd588a4b70f836a471d4e9c2fd86092",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — This is the decompiled Elk (Uniswap-V2 fork) pair contract; swap() logic (Unresolved_022c0d9f) is heavily obfuscated but references 0x03 and 0x03e8 (3 and 1000) consistent with the classic amountIn*3 / balance*1000 fee check, though the actual K-check multiplication is not clearly visible in the dec",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x80da434b49b4d3481af81d58eaa3817c888377d4",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low (evidence NOT verified) — EVIDENCE NOT FOUND VERBATIM IN CODE (possible hallucination or injected instructions) — No swap() function is present in the decompiled code; the shown functions correspond to ERC20/pair bookkeeping (approve, transfer, mint/burn-like logic), not a swap invariant or fee calculation, so cu",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x3fb598b3a6e675b534545005af78303d2d220930",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — The swap function (Unresolved_022c0d9f) is heavily mangled by decompilation, but the literals 0x03 and 0x03e8 (1000) appearing alongside sub-underflow/mul-overflow checks match the classic Uniswap V2 fee pattern (balance*1000 - amountIn*3), implying a 0.3% fee on a constant-product (x*y=k) curve, th",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x63d3c7ab37ca36a2a0a338076c163ff60c72527c",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=medium — Decompiled swap function (Unresolved_022c0d9f) shows the classic UniswapV2 pattern with literals 0x03 (3) and 0x03e8 (1000) used in balance adjustment and overflow checks, consistent with balanceAdjusted = balance*1000 - amountIn*3 and a x*y>=k*1000000 check, implying a 0.3% constant-product fee.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xbbbce5c599ce2db66bc78357add1b999b7cce2fa",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — The swap function (Unresolved_022c0d9f) is heavily mangled by decompilation, but the presence of 0x03 (3) and 0x03e8 (1000) literals in a sub/mul-overflow check pattern strongly suggests the classic Uniswap V2 balance*1000 - amountIn*3 fee formula, though the K-check itself (balance0Adjusted*balance",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xcd52edf30d12e33345dbe57f611224fa068bd004",
+            reason:  "verify-fees 2026-10-12 NO-SWAP (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape claude: fee=null curve=unknown kind=unknown conf=low (evidence NOT verified) — EVIDENCE NOT FOUND VERBATIM IN CODE (possible hallucination or injected instructions) — The decompiled code shown does not contain a recognizable swap() function with balance/reserve K-check or fee computation; functions visible are token transfer/permit/mint/burn style with mostly unres",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xfde31ccaf95b8bf65a0d3805cd1668969787992c",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=low — The swap function (Unresolved_022c0d9f) is heavily mangled by decompilation, but literals 0x03 (3) and 0x03e8 (1000) appear in the fee/K-check region consistent with the classic amountIn*3 / balance*1000 Uniswap V2 fee pattern, and balance/reserve comparisons suggest a constant-product check, though",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x0faef9ea9d333b87407d4bf3660b5e322855c702",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=null curve=unknown kind=unknown conf=low — Decompiled swap-like function (Unresolved_022c0d9f) is too mangled to recover the actual K-check or fee arithmetic; a constant 1000 exists but its use in the fee formula cannot be confirmed from the shown code.",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x4ee0c7de6804b7026bb8595732dda98a59843064",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap function (Unresolved_022c0d9f) is heavily corrupted/obfuscated and does not contain a recognizable K-invariant check or fee-scaled balance comparison, so neither the curve nor the fee formula can be reliably identified despite the presence of a '1000' constant suggesting a possib",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xc0367be71fe11ee2bacf2b7bdb34d321fea09db7",
+            reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude: fee=null curve=unknown kind=unknown conf=low — The swap-like function (selector 0x022c0d9f, matching Uniswap V2's swap signature) is present but its decompiled body is corrupted/truncated — it contains transfer and reserve-underflow checks but no visible balanceAdjusted*balanceAdjusted >= reserve*reserve K-check or fee-numerator (e.g. 997) compu",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x6e92291925907eff19b41f3acc98523683830601",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0x75bcf285b1b1daa01fb1ed52c2787628e2eba7c1",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xe218a1afbcafa1dafeb22015f412d0e7292632cf",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xf2b26b05c24de71ba91341f5548411925165aea7",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-12",
+        },
+        {
+            address: "0xd54aa58eda39230316dc1a949305dd3b4ba8010c",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-12",
+        },
     ]
 }

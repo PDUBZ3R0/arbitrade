@@ -33,8 +33,31 @@ services:
       - gnosis-db:/app/db
       - gnosis-log:/app/log
 
+  hyperliquid:
+    <<: *arb
+    image: arbitrade:hyperliquid
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: hyperliquid } }
+    environment:
+      MODE: "live"
+    volumes:
+      - hyperliquid-db:/app/db
+      - hyperliquid-log:/app/log
+
+  ink:
+    <<: *arb
+    image: arbitrade:ink
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
+    environment:
+      MODE: "live"
+    volumes:
+      - ink-db:/app/db
+      - ink-log:/app/log      
 volumes:
   sonic-db:
   sonic-log:
   gnosis-db:
   gnosis-log:
+  hyperliquid-db:
+  hyperliquid-log:
+  ink-db:
+  ink-log:

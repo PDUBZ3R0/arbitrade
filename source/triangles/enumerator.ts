@@ -26,6 +26,13 @@
 //     on different DEXes do (opt back into the old prune with
 //     pruneSameFactory3 / --prune-same-factory).
 //
+//   - Swap roots (flashloan.swapRoots, with flashSwap on): after the flash
+//     tokens, also root at every token util/swap-roots.ts can price — cycles
+//     a flash swap can fund although no lender holds their start token.
+//     Flash tokens are enumerated FIRST and dedup is global, so every cycle
+//     reachable from a flash token keeps exactly the root it had before;
+//     swap roots only pick up cycles nothing else reached.
+//
 //   - Stable pools excluded by default (constant-product math is wrong for
 //     x³y+xy³=k curves; add stable-swap support later as an opt-in).
 //
@@ -38,6 +45,7 @@
 
 import { ArbitradeDB } from '../util/db.ts';
 import type { ChainConfig } from '../util/config.ts';
+import { loadSwapRoots } from '../util/swap-roots.ts';
 
 export type EnumerateOptions = {
     /** If set, only enumerate triangles rooted at this token address (lowercase). */
@@ -70,6 +78,9 @@ export type EnumerateResult = {
     duplicatesSkipped: number;
     hops2Count: number;
     hops3Count: number;
+    /** Extra roots from flashloan.swapRoots, and the cycles rooted at them. */
+    swapRoots: number;
+    swapRootCycles: number;
     /** 2-hop cycles whose two pools share a factory (fee tiers, stable/volatile). */
     sameFactory2: number;
     /** 3-hop cycles whose three pools share a factory (kept, or pruned if asked). */
@@ -127,20 +138,27 @@ export async function enumerateTriangles(
         throw new Error(`No flash-loan tokens configured for ${cfg.chain.name}. Set flashloan.tokens in the chain config.`);
     }
 
+    const db = new ArbitradeDB(dbFilePath);
+    const swapRoots = loadSwapRoots(db, cfg);   // empty unless flashSwap + swapRoots
+    const allRoots = [...flashLoanTokens, ...[...swapRoots.keys()].filter(a => !flashLoanTokens.includes(a))];
     const rootTokens = opts.onlyRoot
-        ? [opts.onlyRoot.toLowerCase()].filter(r => flashLoanTokens.includes(r))
-        : flashLoanTokens;
+        ? [opts.onlyRoot.toLowerCase()].filter(r => allRoots.includes(r))
+        : allRoots;
 
     if (rootTokens.length === 0) {
-        throw new Error(`No matching root tokens. Provided onlyRoot=${opts.onlyRoot} not in flash-loan set.`);
+        db.close();
+        throw new Error(`No matching root tokens. Provided onlyRoot=${opts.onlyRoot} is neither a flash-loan token nor a swap root.`);
     }
-
-    const db = new ArbitradeDB(dbFilePath);
+    if (swapRoots.size > 0) {
+        console.log(`Swap roots: ${swapRoots.size} token(s) with >= ${cfg.flashloan!.swapRoots!.minLiquidity} numeraire of V2 liquidity, after the ${flashLoanTokens.length} flash token(s)`);
+    }
     const result: EnumerateResult = {
         trianglesInserted: 0,
         duplicatesSkipped: 0,
         hops2Count: 0,
         hops3Count: 0,
+        swapRoots: swapRoots.size,
+        swapRootCycles: 0,
         sameFactory2: 0,
         sameFactory3: 0,
         byRoot: {},
@@ -295,8 +313,10 @@ export async function enumerateTriangles(
             }
 
             result.byRoot[root] = rootTriangles;
+            if (!flashLoanTokens.includes(root)) result.swapRootCycles += rootTriangles;
             rootsProcessed++;
-            console.log(`  root ${root}: ${rootTriangles} candidate triangles`);
+            // Hundreds of swap roots would bury the flash-token lines; summarise those.
+            if (flashLoanTokens.includes(root)) console.log(`  root ${root}: ${rootTriangles} candidate triangles`);
             opts.onProgress?.({
                 pairsLoaded: rawPairs.length,
                 rootsProcessed,

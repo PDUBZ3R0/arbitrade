@@ -67,6 +67,13 @@ export class LenderBook {
                 }
             }
         }
-        return this.aavePool ? { source: 0, lender: this.aavePool, label: 'Aave V3 (0.05%)', feeBps: 5 } : null;
+        if (!this.aavePool) return null;
+        // The Pool's real fee when it is the configured one (an Aave fork such
+        // as HyperLend sets its own FLASHLOAN_PREMIUM_TOTAL; yarn aave-market
+        // reads it), else Aave v3.3's default 0.05%.
+        const fl = this.cfg.flashloan;
+        const configured = fl?.provider === 'aave-v3' && fl.pool && getAddress(fl.pool) === this.aavePool && Number.isFinite(fl.premium);
+        const feeBps = configured ? fl!.premium * 1e4 : 5;
+        return { source: 0, lender: this.aavePool, label: `Aave V3 pool (${(feeBps / 100).toFixed(2)}%)`, feeBps };
     }
 }

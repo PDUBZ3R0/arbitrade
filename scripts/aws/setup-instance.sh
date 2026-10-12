@@ -17,6 +17,8 @@
 #   BRANCH      git branch (default: liquidations)
 #   CLOUDWATCH  1 = container logs to CloudWatch (compose.aws.yaml), 0 = local (default)
 #   ARB_ENV_PARAM  SSM parameter holding .env (default: /arbitrade/env)
+#   LOG_SYNC_MINUTES  push logs to s3://$BUCKET/logs/ this often (default 15;
+#               0 = no timer). Needs the WriteLogs statement of instance-policy.json.
 #
 # What lives where on the box:
 #   /opt/arbitrade             the repo (build context) + .env (mode 600)
@@ -27,7 +29,7 @@ set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 
 REPO_URL="${REPO_URL:-https://github.com/PDUBZ3R0/arbitrade.git}"
-BRANCH="${BRANCH:-liquidations}"
+BRANCH="${BRANCH:-flash-swap}"
 DIR=/opt/arbitrade
 CHAINS="${CHAINS:-base}"
 CLOUDWATCH="${CLOUDWATCH:-0}"
@@ -116,10 +118,42 @@ say "starting: $CHAINS"
 docker compose -f compose.aws.yaml up -d $CHAINS
 docker compose -f compose.aws.yaml ps
 
+# --- log sync to S3 ------------------------------------------------------------------
+LOG_SYNC_MINUTES="${LOG_SYNC_MINUTES:-15}"
+if [ -n "${BUCKET:-}" ] && [ "$LOG_SYNC_MINUTES" != 0 ]; then
+    say "log sync: every ${LOG_SYNC_MINUTES} min → s3://$BUCKET/logs/"
+    cat > /etc/systemd/system/arbitrade-logs.service <<UNIT
+[Unit]
+Description=Push arbitrade logs to s3://$BUCKET/logs/
+After=docker.service
+
+[Service]
+Type=oneshot
+Environment=BUCKET=$BUCKET
+Environment=DIR=$DIR
+Environment=AWS_REGION=$AWS_REGION
+ExecStart=/usr/bin/env bash $DIR/scripts/aws/push-logs.sh
+UNIT
+    cat > /etc/systemd/system/arbitrade-logs.timer <<UNIT
+[Unit]
+Description=Push arbitrade logs to S3 every ${LOG_SYNC_MINUTES} min
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=${LOG_SYNC_MINUTES}min
+
+[Install]
+WantedBy=timers.target
+UNIT
+    systemctl daemon-reload
+    systemctl enable --now arbitrade-logs.timer >/dev/null
+fi
+
 cat <<EOF
 
 Running. Mode per chain comes from MODE / <CHAIN>_MODE in .env (default test = simulate only).
   logs:     cd $DIR && sudo docker compose logs -f $CHAINS$( [ "$CLOUDWATCH" = 1 ] && printf '\n            (CloudWatch: aws logs tail arbitrade/<chain> --follow)' )
   memory:   sudo docker stats --no-stream
+  s3 logs:  sudo systemctl start arbitrade-logs   (push now; journalctl -u arbitrade-logs for its output)
   stop:     cd $DIR && sudo docker compose stop
 EOF

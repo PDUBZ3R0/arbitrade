@@ -23,17 +23,43 @@
 //   - Two confirmed signals that disagree -> CONFLICT; no final fee is
 //     reported. A contradiction is surfaced, never silently resolved.
 //
-// Report only — does NOT edit config. You review and apply fixes by hand.
+// Report only by default. With --apply it acts on the verdicts:
+//   MISMATCH (v2 group)   conf fee set to the resolved fee — and the pairs
+//                         already in the DB too: the scanner stamps the
+//                         factory fee onto each v2 pair row, and the evaluator
+//                         prefers the row, so a conf edit alone changes nothing
+//                         for pairs scanned before it.
+//   NON-CP                reconfigured when the chain shows a stable/volatile
+//                         hybrid the pipeline models (util/curve-reconfig.ts:
+//                         Camelot shape, or Solidly shape with a probed fee
+//                         accessor) — moved to v2fee/solidly with the flag, so
+//                         stable pairs drop out and volatile ones keep trading;
+//                         otherwise blacklisted.
+//   UNKNOWN               blacklisted when something WAS read and still made no
+//                         sense (swap samples that disagree, or Claude reading
+//                         the code). When nothing was read — no swaps in the
+//                         searched range, Claude not consulted — it is held
+//                         back: a quiet but healthy V2 fork looks exactly like
+//                         that (decompile misses real v2-core pairs). Pass
+//                         --blacklist-unread to blacklist those too.
+//   NO-SWAP               blacklisted (no swap(…) selector: not executable).
+//   CONFLICT, NO-SAMPLE   untouched — a human decides.
+// Edits are comment-preserving and verified before writing (util/conf-edit.ts).
 // -----------------------------------------------------------------------------
 
 import { JsonRpcProvider } from 'ethers';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { deriveFeeFromBytecode } from './util/decompile-fee.ts';
 import { empiricallyVerifyFee } from './util/empirical-fee.ts';
 import { acquireCode, analyzeFeeWithClaude, type ClaudeFeeAnalysis } from './util/source-fee.ts';
 import { makeProvider } from './util/rpc.ts';
+import { editFactoriesInConf, type FactoryEdit } from './util/conf-edit.ts';
+import { appendToBlacklist, type BlacklistEntry } from './util/blacklist.ts';
+import { proposeReconfig } from './util/curve-reconfig.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -50,8 +76,14 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --no-heimdall              With --claude: skip the Heimdall decompile fallback.');
     console.error('  --show-snippets            Write sevm swap() bodies for unresolved factories to');
     console.error('                             log/<chain>/verify-fees-snippets/.');
+    console.error('  --apply                    Act on the verdicts: write resolved v2 fees to the conf (and');
+    console.error('                             the DB pair rows), reconfigure NON-CP hybrids the chain shows');
+    console.error('                             a stable flag for, blacklist UNKNOWN / NO-SWAP / other NON-CP.');
+    console.error('                             CONFLICT and NO-SAMPLE are left alone; so is an UNKNOWN');
+    console.error('                             where nothing could be read (no swaps, no Claude) —');
+    console.error('  --blacklist-unread         — unless this is passed too.');
     console.error('');
-    console.error('Prints a report — does not edit config. Fix mismatches by hand.');
+    console.error('Without --apply it prints a report and edits nothing.');
     process.exit(1);
 }
 
@@ -66,6 +98,8 @@ const showSnippets = hasFlag('--show-snippets');
 const useClaude = hasFlag('--claude') || hasFlag('--claude-all');
 const claudeAll = hasFlag('--claude-all');
 const allowHeimdall = !hasFlag('--no-heimdall');
+const apply = hasFlag('--apply');
+const blacklistUnread = hasFlag('--blacklist-unread');
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
 const etherscanKey = process.env.ETHERSCAN_API_KEY;
 
@@ -91,7 +125,9 @@ const hypersync = cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN
 console.log(`Auditing ${factories.length} "${group}" factor(ies) on ${cfg.chain.name}`);
 console.log(`  empirical transport: ${hypersync ? 'HyperSync (full history)' : 'RPC (chunked, recent history only)'}`);
 console.log(`  Claude analysis:     ${useClaude ? `${claudeAll ? 'all factories' : 'unresolved factories only'}; source = verified${allowHeimdall ? ' → heimdall' : ''}; model ${process.env.CLAUDE_MODEL ?? 'claude-sonnet-5'}` : 'off (pass --claude to enable)'}`);
-console.log(`(Report only — nothing is written to conf/${cfg.chain.label}.json5.)\n`);
+console.log(apply
+    ? `(--apply: verdicts will be written to conf/${cfg.chain.label}.json5, its blacklist and the DB after the report.)\n`
+    : `(Report only — nothing is written to conf/${cfg.chain.label}.json5. Pass --apply to act on it.)\n`);
 
 type Status = 'MATCH' | 'MISMATCH' | 'CONFLICT' | 'NON-CP' | 'NO-SAMPLE' | 'NO-SWAP' | 'UNKNOWN';
 type Source = 'decompile' | 'empirical' | 'claude' | 'claude+empirical' | 'none';
@@ -111,6 +147,8 @@ type Row = {
     status: Status;
     snippet: string;
     detail: string;
+    /** Up to 5 of the factory's pairs, most active first — probed by --apply. */
+    pairs: string[];
 };
 const rows: Row[] = [];
 let claudeCalls = 0;
@@ -124,7 +162,7 @@ for (const f of factories) {
             name: f.name, address: f.address, assumedFee: f.fee, finalFee: null, source: 'none',
             decompiledFee: null, decompiledConfidence: '-', empiricalFee: null, empiricalConfidence: '-',
             empiricalSampleCount: 0, claude: null, claudeNote: '', status: 'NO-SAMPLE', snippet: '',
-            detail: 'no scanned pairs for this factory in the DB',
+            detail: 'no scanned pairs for this factory in the DB', pairs: [],
         });
         console.log(`  ${f.name.padEnd(32)} NO-SAMPLE (no pairs scanned yet)`);
         continue;
@@ -237,6 +275,7 @@ for (const f of factories) {
         decompiledFee: decompiled.fee, decompiledConfidence: decompiled.confidence,
         empiricalFee, empiricalConfidence, empiricalSampleCount,
         claude, claudeNote, status, snippet: decompiled.snippet, detail,
+        pairs: candidates.length ? candidates.map(c => c.pair) : [sample.pair],
     });
 
     const feeStr = finalFee !== null ? String(finalFee) : '-';
@@ -302,4 +341,114 @@ if (showSnippets) {
     if (toWrite.length > 0) console.log(`\nWrote ${toWrite.length} sevm swap() snippet(s) to ${snippetDir}/`);
 }
 
+if (apply) await applyVerdicts();
+
 db.close();
+
+// -----------------------------------------------------------------------------
+// --apply
+
+async function applyVerdicts(): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const byAddr = new Map(factories.map(f => [f.address.toLowerCase(), f]));
+    const edits: FactoryEdit[] = [];
+    const feeRows: Array<{ factory: string; fee: number; name: string; from: number | undefined }> = [];
+    const movedRows: Array<{ factory: string; name: string; to: string; basis: string }> = [];
+    const black: Array<BlacklistEntry & { name: string; status: string }> = [];
+    const leftAlone: string[] = [];
+    const clip = (s: string, n: number) => s.replace(/\s+/g, ' ').trim().slice(0, n);
+    const pairCount = (r: Row) => db.countPairs(r.address);
+
+    const tryReconfig = async (r: Row) => {
+        const f = byAddr.get(r.address.toLowerCase())!;
+        return proposeReconfig(cfg.chain.label, provider, { address: f.address, deployBlock: f.deployBlock }, r.pairs, f.name);
+    };
+    const move = (r: Row, rc: NonNullable<Awaited<ReturnType<typeof tryReconfig>>['reconfig']>, why: string) => {
+        edits.push({
+            kind: 'move', group: group, key: r.name, address: r.address, to: rc.group, entry: rc.entry,
+            comment: `verify-fees ${today}: moved from ${group} — ${why}. ${rc.basis}`,
+            note: `${r.name} → factories.${rc.group} (verify-fees ${today})`,
+        });
+        movedRows.push({ factory: r.address, name: r.name, to: rc.group, basis: rc.basis });
+    };
+
+    console.log('\n' + '─'.repeat(80));
+    console.log('Applying (--apply):');
+    for (const r of rows) {
+        const perPairFee = r.claude && (r.claude.feeKind === 'per-pair-storage' || r.claude.feeKind === 'factory-lookup');
+        if (r.status === 'MISMATCH') {
+            if (group !== 'v2') { leftAlone.push(`${r.name}: MISMATCH in ${group} — fees there come from each pair; not written`); continue; }
+            if (perPairFee) {
+                const { reconfig, why } = await tryReconfig(r);
+                if (reconfig) { move(r, reconfig, `its fee is per pair (${r.claude!.feeKind})`); continue; }
+                leftAlone.push(`${r.name}: fee is ${r.claude!.feeKind}, so one factory fee would be wrong, and no per-pair config was found (${why})`);
+                continue;
+            }
+            edits.push({
+                kind: 'setFee', group, key: r.name, address: r.address, fee: r.finalFee!,
+                comment: `verify-fees ${today}: fee ${r.assumedFee ?? 'unset'} → ${r.finalFee} (${r.source}${r.detail ? `, ${r.detail}` : ''})`,
+            });
+            feeRows.push({ factory: r.address, fee: r.finalFee!, name: r.name, from: r.assumedFee });
+        } else if (r.status === 'NON-CP') {
+            const { reconfig, why } = await tryReconfig(r);
+            if (reconfig) { move(r, reconfig, `not constant-product throughout (claude: curve=${r.claude?.curve})`); continue; }
+            black.push({
+                name: r.name, status: r.status, address: r.address,
+                reason: clip(`verify-fees ${today} NON-CP (${pairCount(r)} pairs): curve=${r.claude?.curve}; not reconfigurable (${why}). ${r.claude?.notes ?? ''}`, 600),
+            });
+        } else if (r.status === 'UNKNOWN' || r.status === 'NO-SWAP') {
+            if (r.status === 'UNKNOWN' && r.empiricalSampleCount === 0 && !r.claude && !blacklistUnread) {
+                leftAlone.push(`${r.name}: UNKNOWN, but nothing was read — no swaps seen${hypersync ? '' : ' in the RPC range'}, ` +
+                    `${useClaude ? `no code Claude could read${r.claudeNote ? ` (${r.claudeNote})` : ''}` : 'Claude not consulted'}. ` +
+                    `Rerun with --claude${hypersync ? '' : ' or HyperSync'}, or pass --blacklist-unread to blacklist it anyway`);
+                continue;
+            }
+            black.push({
+                name: r.name, status: r.status, address: r.address,
+                reason: clip(`verify-fees ${today} ${r.status} (${pairCount(r)} pairs): decompile=${r.decompiledConfidence}, empirical=${r.empiricalConfidence} (${r.empiricalSampleCount} samples)${useClaude ? '' : ', Claude not consulted'}. ${r.detail} ${r.claudeNote}`, 600),
+            });
+        } else if (r.status === 'CONFLICT') {
+            leftAlone.push(`${r.name}: CONFLICT (${r.detail}) — resolve by hand`);
+        }
+    }
+
+    // 1. The conf (verified, atomic). If it throws nothing else is touched.
+    const confDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'conf');
+    if (edits.length) {
+        try {
+            editFactoriesInConf(confDir, cfg.chain.label, edits);
+        } catch (e) {
+            console.log(`  [✗] conf/${cfg.chain.label}.json5 not edited, and nothing else was applied: ${(e as Error).message}`);
+            return;
+        }
+    }
+    for (const f of feeRows) console.log(`  fee      ${f.name.padEnd(32)} ${f.from ?? 'unset'} → ${f.fee}`);
+    for (const m of movedRows) console.log(`  moved    ${m.name.padEnd(32)} ${group} → ${m.to}  (${m.basis})`);
+
+    // 2. The DB rows that carry a copy of the old config.
+    const setFee = db.db.prepare(`UPDATE pairs SET fee = ? WHERE factory = ? AND kind != 'v3'`);
+    const clearMeta = db.db.prepare(`UPDATE pairs SET fee = NULL, stable = NULL WHERE factory = ?`);
+    let feeRowsUpdated = 0, metaCleared = 0;
+    db.db.transaction(() => {
+        for (const f of feeRows) feeRowsUpdated += setFee.run(f.fee, f.factory.toLowerCase()).changes;
+        for (const m of movedRows) metaCleared += clearMeta.run(m.factory.toLowerCase()).changes;
+    })();
+    if (feeRows.length) console.log(`           ${feeRowsUpdated} pair row(s) in the DB now carry the new fee`);
+    if (movedRows.length) console.log(`           ${metaCleared} pair row(s) of moved factories cleared — the next yarn reserves reads their fee and stable flag`);
+
+    // 3. The blacklist.
+    if (black.length) {
+        try {
+            const { added, skipped } = appendToBlacklist(cfg.chain.label, black.map(({ address, reason }) => ({ address, reason, addedAt: today })));
+            for (const b of black) console.log(`  blacklist ${b.name.padEnd(31)} ${b.status}`);
+            console.log(`           conf/${cfg.chain.label}-blacklist.json5: ${added} added${skipped ? `, ${skipped} already there` : ''}`);
+        } catch (e) {
+            console.log(`  [✗] blacklist not written: ${(e as Error).message}`);
+        }
+    }
+    for (const l of leftAlone) console.log(`  left     ${l}`);
+    if (!edits.length && !black.length) console.log('  nothing to apply');
+    if (movedRows.length || feeRows.length || black.length) {
+        console.log(`\nNext: ${movedRows.length ? `yarn reserves ${cfg.chain.label}  (fee + stable flag for moved factories), then ` : ''}yarn triangles ${cfg.chain.label}, and restart the hot loop.`);
+    }
+}

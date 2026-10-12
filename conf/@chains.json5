@@ -28,8 +28,8 @@
     name: 'Gnosis',
     currency: 'xDAI',
     hypersyncUrl: 'https://gnosis.hypersync.xyz',
-    host: 'https://gnosis-rpc.publicnode.com',
-    ws: "wss://gnosis-rpc.publicnode.com"
+    host: 'https://rpc.gnosischain.com',
+    ws: "wss://rpc.gnosischain.com/wss"
   },
   unichain: {
     id: 130,
@@ -86,9 +86,8 @@
     name: 'Hyperliquid',
     currency: 'HYPE',
     hypersyncUrl: 'https://hyperliquid.hypersync.xyz',
-    host: 'https://hyperliquid-rpc.publicnode.com',
-    ws: 'wss://hyperliquid.drpc.org',
-    explorer: 'https://testnet.wanscan.org',
+    host: 'https://rpc.hyperlend.finance',
+    ws: 'wss://hyperliquid.drpc.org'
   },
   metis: {
     id: 1088,

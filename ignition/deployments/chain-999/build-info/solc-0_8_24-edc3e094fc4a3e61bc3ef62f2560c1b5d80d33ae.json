@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_24-edc3e094fc4a3e61bc3ef62f2560c1b5d80d33ae",
+  "solcVersion": "0.8.24",
+  "solcLongVersion": "0.8.24+commit.e11b9ed9",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.15.0"
+  },
+  "userSourceNameMap": {
+    "contracts/TokenProbe.sol": "project/contracts/TokenProbe.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/TokenProbe.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n/// @notice Minimal interfaces (prefixed to avoid clashing with FlashArbExecutor's in the same compile unit)\ninterface IProbeERC20 {\n    function transfer(address to, uint256 amount) external returns (bool);\n    function balanceOf(address account) external view returns (uint256);\n}\n\ninterface IProbePool {\n    function flashLoanSimple(\n        address receiverAddress,\n        address asset,\n        uint256 amount,\n        bytes calldata params,\n        uint16 referralCode\n    ) external;\n}\n\ninterface IProbePair {\n    function token0() external view returns (address);\n    function token1() external view returns (address);\n    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);\n    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;\n}\n\n/// @title TokenProbe\n/// @notice Honeypot / fee-on-transfer / restricted-pair detector. Flash-borrows\n/// a small amount of a root token, buys the pair's other token, sells it back,\n/// and measures exactly what arrived at every step.\n///\n/// THIS CONTRACT NEVER COMPLETES A CALL. Every path ends in a revert — either\n/// ProbeResult (measurements) or ProbeFailed (which stage broke, and why). It\n/// is meant to be invoked ONLY via eth_call; the flash loan is never repaid\n/// because the whole call reverts, so it can never hold or move funds. Anyone\n/// can call it; there is nothing to protect.\n///\n/// Swap sizes are computed with a caller-supplied CONSERVATIVE fee cap (e.g.\n/// 200 bps) rather than the pair's real fee, so the pair's K-check passes for\n/// any real fee <= cap without the probe needing to know the fee.\ncontract TokenProbe {\n    address public immutable aavePool;\n\n    uint8 internal constant STAGE_NO_CODE       = 0; // token address has no bytecode\n    uint8 internal constant STAGE_FUND_PAIR     = 1; // root.transfer(pair)\n    uint8 internal constant STAGE_BUY_SWAP      = 2; // pair.swap -> token to this contract\n    uint8 internal constant STAGE_SELL_TRANSFER = 3; // token.transfer(pair) from this contract\n    uint8 internal constant STAGE_SELL_SWAP     = 4; // pair.swap -> root to this contract\n\n    /// @notice Successful round trip. Compare requested vs received to detect taxes.\n    error ProbeResult(\n        uint256 buyRequested,   // token amount we asked the pair to send us\n        uint256 buyReceived,    // token amount that actually landed in this contract\n        uint256 sellSent,       // token amount we transferred back to the pair\n        uint256 sellArrived,    // token amount the pair's balance actually increased by\n        uint256 rootRequested,  // root amount we asked for on the way back\n        uint256 rootReceived    // root amount that actually landed\n    );\n    /// @notice A step reverted (or a transfer returned false). `reason` is the raw revert data.\n    error ProbeFailed(uint8 stage, bytes reason);\n    error NotPool();\n    error UntrustedInitiator();\n\n    constructor(address _aavePool) {\n        aavePool = _aavePool;\n    }\n\n    /// @dev Per-probe context, passed by memory to keep each function's stack\n    /// frame small (a single executeOperation with every local inline exceeds\n    /// the EVM's 16-slot stack limit without viaIR).\n    struct Ctx {\n        address root;\n        address token;\n        IProbePair pair;\n        bool rootIs0;\n        uint16 feeBpsCap;\n    }\n\n    /// @param root       Flash-loanable token that is one side of `pair`\n    /// @param amount     Root amount to borrow and push through the pair\n    /// @param pair       V2-style pair: root / token-under-test\n    /// @param feeBpsCap  Conservative fee assumption for sizing (e.g. 200 = 2%)\n    function probe(address root, uint256 amount, address pair, uint16 feeBpsCap) external {\n        IProbePool(aavePool).flashLoanSimple(address(this), root, amount, abi.encode(pair, feeBpsCap), 0);\n    }\n\n    function executeOperation(\n        address asset,\n        uint256 amount,\n        uint256, /* premium — irrelevant, the call always reverts */\n        address initiator,\n        bytes calldata params\n    ) external returns (bool) {\n        if (msg.sender != aavePool) revert NotPool();\n        if (initiator != address(this)) revert UntrustedInitiator();\n\n        (address pair, uint16 feeBpsCap) = abi.decode(params, (address, uint16));\n        Ctx memory c;\n        c.root = asset;\n        c.pair = IProbePair(pair);\n        c.feeBpsCap = feeBpsCap;\n        c.rootIs0 = c.pair.token0() == asset;\n        c.token = c.rootIs0 ? c.pair.token1() : c.pair.token0();\n        if (c.token.code.length == 0) revert ProbeFailed(STAGE_NO_CODE, \"token has no code\");\n\n        (uint256 buyRequested, uint256 buyReceived) = _buy(c, amount);\n        (uint256 sellArrived, uint256 rootRequested, uint256 rootReceived) = _sell(c, buyReceived);\n        revert ProbeResult(buyRequested, buyReceived, buyReceived, sellArrived, rootRequested, rootReceived);\n    }\n\n    /// Stages 1-2: push borrowed root into the pair, request the token out.\n    function _buy(Ctx memory c, uint256 amount) internal returns (uint256 requested, uint256 received) {\n        (uint256 rRoot, uint256 rTok) = _reserves(c);\n        _transfer(STAGE_FUND_PAIR, c.root, address(c.pair), amount);\n        requested = _amountOut(amount, rRoot, rTok, c.feeBpsCap);\n        uint256 before = IProbeERC20(c.token).balanceOf(address(this));\n        _call(STAGE_BUY_SWAP, address(c.pair), abi.encodeCall(IProbePair.swap,\n            (c.rootIs0 ? 0 : requested, c.rootIs0 ? requested : 0, address(this), bytes(\"\"))));\n        received = IProbeERC20(c.token).balanceOf(address(this)) - before;\n    }\n\n    /// Stages 3-4: send everything received back to the pair, swap to root.\n    function _sell(Ctx memory c, uint256 amount) internal returns (uint256 arrived, uint256 requested, uint256 received) {\n        (uint256 rRoot, uint256 rTok) = _reserves(c);\n        _transfer(STAGE_SELL_TRANSFER, c.token, address(c.pair), amount);\n        uint256 pairBal = IProbeERC20(c.token).balanceOf(address(c.pair));\n        arrived = pairBal > rTok ? pairBal - rTok : 0;\n        requested = _amountOut(arrived, rTok, rRoot, c.feeBpsCap);\n        uint256 before = IProbeERC20(c.root).balanceOf(address(this));\n        _call(STAGE_SELL_SWAP, address(c.pair), abi.encodeCall(IProbePair.swap,\n            (c.rootIs0 ? requested : 0, c.rootIs0 ? 0 : requested, address(this), bytes(\"\"))));\n        received = IProbeERC20(c.root).balanceOf(address(this)) - before;\n    }\n\n    function _reserves(Ctx memory c) internal view returns (uint256 rRoot, uint256 rTok) {\n        (uint112 r0, uint112 r1, ) = c.pair.getReserves();\n        (rRoot, rTok) = c.rootIs0 ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));\n    }\n\n    function _amountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut, uint16 feeBps) internal pure returns (uint256) {\n        uint256 inWithFee = amountIn * (10_000 - uint256(feeBps));\n        return (inWithFee * reserveOut) / (reserveIn * 10_000 + inWithFee);\n    }\n\n    function _call(uint8 stage, address target, bytes memory data) internal {\n        (bool ok, bytes memory ret) = target.call(data);\n        if (!ok) revert ProbeFailed(stage, ret);\n    }\n\n    /// @dev ERC20 transfer tolerant of no-return-value tokens; a `false` return is a failure.\n    function _transfer(uint8 stage, address token, address to, uint256 value) internal {\n        (bool ok, bytes memory ret) = token.call(abi.encodeCall(IProbeERC20.transfer, (to, value)));\n        if (!ok) revert ProbeFailed(stage, ret);\n        if (ret.length >= 32 && !abi.decode(ret, (bool))) revert ProbeFailed(stage, \"transfer returned false\");\n    }\n}\n"
+      }
+    }
+  }
+}

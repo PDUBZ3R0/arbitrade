@@ -129,7 +129,9 @@ const result = await evaluateTriangles(cfg, dbFile, {
 // Show exactly how each root token's threshold was resolved — a root priced
 // via a real DEX pair vs one that fell back to the flat-fraction default are
 // very different levels of trust, worth seeing before trusting the results.
-const pricedRoots = Object.entries(result.rootPricing);
+const pricedRoots = Object.entries(result.rootPricing).filter(([, p]) => !p.swapOnly);
+const swapRootCount = Object.values(result.rootPricing).filter(p => p.swapOnly).length;
+if (swapRootCount > 0) console.log(`Swap roots priced: ${swapRootCount} (flash-swap only; each via its deepest V2 pair against the numeraire)`);
 if (pricedRoots.length > 0) {
     console.log('Root token thresholds:');
     for (const [addr, p] of pricedRoots) {
@@ -162,6 +164,10 @@ console.log(`    ROI cap exceeded:    ${result.skipReasons.roiCapExceeded}`);
 // every attempt. Five such candidates topped the Polygon ranking before
 // this filter existed.
 console.log(`    uint112 overflow:    ${result.skipReasons.uint112Overflow}`);
+if (result.skipReasons.noFunding > 0 || result.skipReasons.swapRootUnpriced > 0) {
+    console.log(`    no funding:          ${result.skipReasons.noFunding}   (swap root, first hop V3/stable — no lender to fall back on)`);
+    console.log(`    swap root unpriced:  ${result.skipReasons.swapRootUnpriced}`);
+}
 if (result.skipReasons.v3MissingState > 0) {
     console.log(`    v3 state missing:    ${result.skipReasons.v3MissingState}   (re-run \`yarn reserves ${cfg.chain.label}\`)`);
 }

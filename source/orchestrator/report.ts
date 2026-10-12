@@ -12,10 +12,15 @@
 import type { ChainConfig } from '../util/config.ts';
 import type { CandidateAttempt } from './attempt.ts';
 
-export function makeFormatters(cfg: ChainConfig) {
+/**
+ * @param extra Token metadata for tokens outside the flash-token config — swap
+ *   roots, whose decimals come from the token table (CandidateAttempt.rootMeta).
+ */
+export function makeFormatters(cfg: ChainConfig, extra?: Record<string, { decimals: number; symbol?: string }>) {
     const tokenMeta = (addr: string) => {
         const t = cfg.flashloan?.tokens.find(x => x.address.toLowerCase() === addr.toLowerCase());
-        return { decimals: t?.decimals ?? 18, symbol: t?.symbol ?? addr.slice(0, 10) };
+        const e = extra?.[addr.toLowerCase()];
+        return { decimals: t?.decimals ?? e?.decimals ?? 18, symbol: t?.symbol ?? e?.symbol ?? addr.slice(0, 10) };
     };
 
     /** Display only — full precision is printed alongside in raw wei where it matters. */
@@ -44,7 +49,8 @@ export function printAttempt(
     a: CandidateAttempt,
     log: (s: string) => void = console.log,
 ): void {
-    const { fmtAmount, fmtRoiPct } = makeFormatters(cfg);
+    const { fmtAmount, fmtRoiPct } = makeFormatters(cfg,
+        a.rootMeta ? { [a.candidate.rootToken.toLowerCase()]: a.rootMeta } : undefined);
     const root = a.candidate.rootToken.slice(0, 10);
     const id = `#${a.candidate.triangleId} [${root}]`;
 

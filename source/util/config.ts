@@ -67,10 +67,64 @@ export type ChainMeta = {
     alchemy?: { apikey?: string };
 };
 
+/**
+ * A factory group (`factories.v2`, `.v3`, `.algebra`, `.v2fee`, `.solidly`).
+ * Two spellings, both accepted — see factoryGroupEntries():
+ *
+ *   flat (preferred)       v2: { QuickSwapV2: '0x…', Other: { address: '0x…', fee: 0.0025 } }
+ *   legacy                 v2: { abi: [ … ], list: { QuickSwapV2: '0x…' } }
+ *
+ * `abi` is optional and informational: creation events are decoded from
+ * pool-events.ts by group, never from this field. A flat group may still carry
+ * an `abi` key; it is skipped when reading entries, as is `list`. So a factory
+ * cannot be NAMED "abi" or "list" — nothing real is.
+ */
 export type FactoryGroup = {
-    abi: string[];             // e.g. ["event PairCreated(...)"]
-    list: Record<string, string | FactoryEntry>;
+    abi?: string[];            // e.g. ["event PairCreated(...)"] — informational
+    list?: Record<string, string | FactoryEntry>;
+    [name: string]: string | FactoryEntry | string[] | Record<string, string | FactoryEntry> | undefined;
 };
+
+/**
+ * The factories in one group, from either spelling (flat, legacy `list`, or
+ * both at once — `list` entries first, then flat ones; a name in both is a
+ * config error and the flat one wins, with a warning). Entries that are
+ * neither an address string nor an object with `address` are reported and
+ * skipped rather than crashing the whole config load.
+ */
+export function factoryGroupEntries(
+    g: FactoryGroup,
+    where: string,
+): Array<[string, string | FactoryEntry]> {
+    const out = new Map<string, string | FactoryEntry>();
+    const legacy = g.list;
+    if (legacy != null) {
+        if (typeof legacy !== 'object' || Array.isArray(legacy)) {
+            console.warn(`[config] ${where}.list is not an object of factories — ignored`);
+        } else {
+            for (const [name, entry] of Object.entries(legacy)) out.set(name, entry);
+        }
+    }
+    for (const [name, entry] of Object.entries(g)) {
+        if (name === 'abi' || name === 'list') continue;
+        if (out.has(name)) {
+            console.warn(`[config] ${where}: "${name}" is listed both inside list: and beside it — using the one beside it`);
+        }
+        out.set(name, entry as string | FactoryEntry);
+    }
+    const entries: Array<[string, string | FactoryEntry]> = [];
+    for (const [name, entry] of out) {
+        const ok = typeof entry === 'string'
+            ? /^0x[0-9a-fA-F]{40}$/.test(entry)
+            : entry != null && typeof entry === 'object' && !Array.isArray(entry) && typeof (entry as FactoryEntry).address === 'string';
+        if (!ok) {
+            console.warn(`[config] ${where}.${name} is not a factory (expected '0x…' or { address: '0x…', … }) — skipped`);
+            continue;
+        }
+        entries.push([name, entry]);
+    }
+    return entries;
+}
 
 /** When you need per-factory overrides, use this form in the config. */
 export type FactoryEntry = {
@@ -284,6 +338,14 @@ export type RawChainConfig = {
          * hop still borrow from the lender above. See cyclePremium().
          */
         flashSwap?: boolean;
+        /**
+         * With flashSwap: also start cycles at tokens that are NOT flash-loan
+         * tokens — any token with a V2-style pair against chain.token holding
+         * at least `minLiquidity` of it (whole units). Such a cycle can only be
+         * funded by flash-swapping its first hop, and its profit lands in that
+         * token. See util/swap-roots.ts. Off when absent.
+         */
+        swapRoots?: { minLiquidity: number };
         tokens: FlashToken[];
     };
     /**
@@ -444,6 +506,7 @@ export type NormalizedFactory = {
      * "v1" in conf for QuickSwap-era factories.
      */
     algebraVariant: 'v1' | 'integral' | undefined;
+    /** The group's `abi`, if the config gave one; [] otherwise. Informational only. */
     abi: string[];
 };
 
@@ -646,7 +709,7 @@ export function loadChainConfig(chainArg: string): ChainConfig {
             group === 'solidly' ? 1e18 :
             10_000;
 
-        for (const [name, entry] of Object.entries(g.list)) {
+        for (const [name, entry] of factoryGroupEntries(g, `${meta.label}.json5 factories.${group}`)) {
             const isString = typeof entry === 'string';
             // Fee defaulting rules:
             //   v2       → fee is authoritative; default 0.003 (canonical Uniswap V2)
@@ -708,7 +771,7 @@ export function loadChainConfig(chainArg: string): ChainConfig {
                 algebraVariant: group === 'algebra'
                     ? (isString ? 'integral' : (((entry as any).algebraVariant as 'v1' | 'integral' | undefined) ?? (pattern as any)?.algebraVariant ?? 'integral'))
                     : undefined,
-                abi: g.abi,
+                abi: Array.isArray(g.abi) ? g.abi : [],
             });
         }
     }

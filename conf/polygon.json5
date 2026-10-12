@@ -560,6 +560,12 @@
           deployBlock: 46393048,                                     // (0x9e5a52f5). Expect mostly dead pairs.
           fee: 0.003,   // UNVERIFIED (finder assumption) — yarn verify-fees polygon
         },
+        // find-factories --add 2026-10-10: 20 pairs in sweep, explorer "DexFactory"; fee 0.003 (assumed)
+        'DexFactory_1d93eca3': {
+          address: '0x1d93eca37ae77b48edb019248111dc57ec2e4721',
+          deployBlock: 91548056,
+          fee: 0.003,
+        },
       },
     },
     v2fee: {
@@ -711,6 +717,40 @@
         //   address: '0xd541bc203cc2b85810d9b8e6a534eed1615528e2',
         //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,   // finder's guess
         // },
+        // find-factories --add 2026-10-10: 33 pairs in sweep, explorer "PairFactory"; registered DEX pattern
+        'PairFactory_d541bc20': {
+          address: '0xd541bc203cc2b85810d9b8e6a534eed1615528e2',
+          deployBlock: 43653442,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable-degen',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-10: 20 pairs in sweep, explorer "BaseV1Factory"; registered DEX pattern
+        'BaseV1Factory_ba06043a': {
+          address: '0xba06043a777652baf540ccc785edafd94ee05b37',
+          deployBlock: 39577746,
+          feeTarget: 'pair',
+          feeFunction: 'swapFee',
+          feeDivisor: 1000000,
+        },
+        // find-factories --add 2026-10-10: 20 pairs in sweep, explorer "PairFactory"; registered DEX pattern
+        'PairFactory_eaf188cd': {
+          address: '0xeaf188cdd22feebcb345dcb529aa18ca9fcb4fbd',
+          deployBlock: 45789047,
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable-degen',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-10: 16 pairs in sweep, explorer "TransparentUpgradeableProxy"; probed BaseV1Factory [high]
+        'TransparentUpgradeableProxy_f54b2dd2': {
+          address: '0xf54b2dd2bacabf25342b581e2d09451fa6046e55',
+          deployBlock: 39034855,
+          feeTarget: 'pair',
+          feeFunction: 'swapFee',
+          feeDivisor: 1000000,
+        },
       },
     },
     // Concentrated liquidity, imported 2026-10-05 from find-factories (all verified:
@@ -764,6 +804,20 @@
           poolEvent: 'uniswap',
           callback: 'uniswapV3SwapCallback',
         },
+        // find-factories --add 2026-10-10: 15 pools in sweep, explorer "RamsesV3Factory"; measured: fees 14/2000/35/1500 pips, callback uniswapV3SwapCallback
+        'RamsesV3Factory_2bef16a0': {
+          address: '0x2bef16a0081565e72100d73cbe19b1bd2d802380',
+          deployBlock: 82177771,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-10: 15 pools in sweep, explorer "UniswapV3Factory"; measured: fees 500/10000/3000 pips, callback uniswapV3SwapCallback
+        'UniswapV3Factory_a2cac4e6': {
+          address: '0xa2cac4e615114952c66b33c3e1b01f1e7e213acf',
+          deployBlock: 94208357,
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
       },
     },
 
@@ -776,6 +830,20 @@
     //   V2-shaped, fee constant not found: 0x684d8c18… (31), 0x595ac8cd… (20)
     //   Already decided earlier, left as they were: 8 in polygon-blacklist.json5 (dead / restricted),
     //     3 commented out above (BaseV1Factory_ba06043a, PairFactory_eaf188cd, Factory_b5d0cb07).
+    algebra: {
+      // find-factories --add 2026-10-10: 8062 pools in sweep, explorer "AlgebraFactory"; measured: fees 704/100/1550 pips, callback algebraSwapCallback
+      'AlgebraFactory_411b0fac': {
+        address: '0x411b0facc3489691f28ad58c47006af5e3ab3a28',
+        deployBlock: 32610688,
+        algebraVariant: 'v1',
+      },
+      // find-factories --add 2026-10-10: 182 pools in sweep, explorer "AlgebraFactory"; measured: fees 2760/118/3000/2258/1282 pips, callback algebraSwapCallback
+      'AlgebraFactory_134c1dbe': {
+        address: '0x134c1dbe4860a9caaf89002574ffe814772d9904',
+        deployBlock: 85606804,
+        algebraVariant: 'integral',
+      },
+    },
   },
   flashloan: {
   "provider": "aave-v3",

@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSON5 from 'json5';
+import { appendToBlacklistText } from './conf-edit.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONF_DIR  = path.resolve(__dirname, '..', '..', 'conf');
@@ -77,10 +78,12 @@ export function blacklistedAddresses(chainLabel: string): Set<string> {
  * Append entries to a chain's blacklist file. Creates the file if missing.
  * De-duplicates by address (case-insensitive) — existing entries win.
  *
- * Used by `yarn reserves --blacklist-dead` after the run's summary.
+ * Used by `yarn reserves --blacklist-dead`, `yarn probe` and `yarn verify-fees --apply`.
+ * An existing file is edited in place — its comments are kept.
  */
 export function appendToBlacklist(chainLabel: string, entries: BlacklistEntry[]): { added: number; skipped: number } {
     if (entries.length === 0) return { added: 0, skipped: 0 };
+    if (!fs.existsSync(CONF_DIR)) throw new Error(`no conf directory at ${CONF_DIR}`);
 
     const p = path.join(CONF_DIR, `${chainLabel}-blacklist.json5`);
     const existing = loadBlacklist(chainLabel);
@@ -103,10 +106,20 @@ export function appendToBlacklist(chainLabel: string, entries: BlacklistEntry[])
         added++;
     }
 
-    // Serialize in a stable, human-friendly format. JSON5's built-in stringify
-    // adds a lot of quoting; roll a simple emitter for readability.
+    const fresh = existing.factories.slice(existing.factories.length - added);
+    if (fs.existsSync(p)) {
+        // Edit the text, so the file's comments and formatting survive.
+        // Throws (file untouched) if the result would not read back right.
+        const text = appendToBlacklistText(fs.readFileSync(p, 'utf8'), fresh);
+        const tmp = `${p}.tmp-${process.pid}`;
+        fs.writeFileSync(tmp, text, 'utf8');
+        fs.renameSync(tmp, p);
+        return { added, skipped };
+    }
+
+    // New file: a stable, human-friendly format (JSON5.stringify quotes everything).
     const lines: string[] = ['{', '    factories: ['];
-    for (const f of existing.factories) {
+    for (const f of fresh) {
         lines.push('        {');
         lines.push(`            address: "${f.address}",`);
         if (f.reason)  lines.push(`            reason:  ${JSON.stringify(f.reason)},`);

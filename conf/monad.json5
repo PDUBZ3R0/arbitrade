@@ -47,17 +47,7 @@
         OctoswapFactory_ce104732: {
           address: '0xce104732685b9d7b2f07a09d828f6b19786cda32',
           deployBlock: 33816413,
-          fee: 0.003,
-        },
-        UniswapV2Factory_8361060e: {
-          address: '0x8361060ed5f4e8789f1442fb4284eca9b4305985',
-          deployBlock: 36764372,
-          fee: 0.003,
-        },
-        Factory_8c5c4f0b: {
-          address: '0x8c5c4f0b24e1496f50e9ab318eaae24b8b1cb70b',
-          deployBlock: 67892595,
-          fee: 0.003,
+ 
         },
         PoolFactory_fadee2fb: {
           address: '0xfadee2fbd4035c03310807f5cfd8514ecccf19b4',
@@ -77,12 +67,14 @@
         UniswapV2Factory_5d36bfea: {
           address: '0x5d36bfea5074456d383e47f5b4df12186ed6e858',
           deployBlock: 42910208,
-          fee: 0.003,
+          // verify-fees 2026-10-11: fee 0.003 → 0.005 (empirical)
+          fee: 0.005,
         },
         ZFFactory_0ff16867: {
           address: '0x0ff16867bcac3c5fdc2dc73558e3f8e2ed89eea2',
           deployBlock: 37605435,
-          fee: 0.003,
+          // verify-fees 2026-10-11: fee 0.003 → 0.002021 (empirical)
+          fee: 0.002021,
         },
         LosuriaDexFactory_923f0117: {
           address: '0x923f01172dff2b7caa5929c393a5f56fdfe2f0f9',
@@ -97,8 +89,483 @@
         UniswapV2Factory_4cd7d556: {
           address: '0x4cd7d556b572fbf4e5d78f5e8a10a24fc5ff7113',
           deployBlock: 37763434,
+          // verify-fees 2026-10-11: fee 0.003 → 0.002 (claude)
+          fee: 0.002,
+        },
+        // find-factories --add 2026-10-10: 6 pairs in sweep, explorer "AllocaDexFactory"; fee 0.003 (assumed)
+        'AllocaDexFactory_b88a4dd3': {
+          address: '0xb88a4dd389c31b225e0ce6017c5aaa66ea894b79',
+          deployBlock: 38348536,
           fee: 0.003,
         },
+        // find-factories --add 2026-10-10: 6 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_419fd8d3': {
+          address: '0x419fd8d33a35fb919dfc4a90defe3028ada441a1',
+          deployBlock: 39538913,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 6 pairs in sweep, explorer "PancakeFactory"; fee 0.003 (assumed)
+        'PancakeFactory_b48dbe6d': {
+          address: '0xb48dbe6d4130f4a664075250ee702715748051d9',
+          deployBlock: 41409614,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 6 pairs in sweep, explorer "PortalSwapFactory"; fee 0.003 (assumed)
+        'PortalSwapFactory_dd60b093': {
+          address: '0xdd60b093a17cc6f0b7ce65eac41dabe0ecb8c3cb',
+          deployBlock: 44738171,
+          // verify-fees 2026-10-11: fee 0.003 → 0.0029 (claude)
+          // verify-fees 2026-10-11: fee 0.0029 → 0.003 (empirical)
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 6 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_a9f2c3e1': {
+          address: '0xa9f2c3e18e22f19e6c2cef49a88c79bce5b482ac',
+          deployBlock: 37263341,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 5 pairs in sweep, explorer "BrownFiV2Factory"; fee 0.003 (assumed)
+        'BrownFiV2Factory_68bc42f8': {
+          address: '0x68bc42f886ddf6a4b0b90a9496493da1f8304536',
+          deployBlock: 39328465,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 4 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_6874896a': {
+          address: '0x6874896a6f61b0d8937dbb2546092cafab0e4b20',
+          deployBlock: 35560089,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 4 pairs in sweep, explorer "SwagFactoryV2"; fee 0.003 (assumed)
+        'SwagFactoryV2_8be4e6b4': {
+          address: '0x8be4e6b46155fd3cd4dbaade983d9892c0973b00',
+          deployBlock: 40133140,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 3 pairs in sweep, explorer "IonaraSwapFactory"; fee 0.003 (assumed)
+        'IonaraSwapFactory_4c6d6a6c': {
+          address: '0x4c6d6a6c9e7fe9321dd8ef9f713670dbe75dffc1',
+          deployBlock: 37707693,
+          // verify-fees 2026-10-11: fee 0.003 → 0.0025 (empirical)
+          fee: 0.0025,
+        },
+        // find-factories --add 2026-10-10: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_4ff42daf': {
+          address: '0x4ff42dafe973660adaaeabeec43454d334e07cf3',
+          deployBlock: 44702243,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_0fefab57': {
+          address: '0x0fefab571c8e69f465103bec22dea6cf46a30f12',
+          deployBlock: 46310153,
+          // verify-fees 2026-10-11: fee 0.003 → 0.00305 (empirical)
+          fee: 0.00305,
+        },
+        // find-factories --add 2026-10-10: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_f15f63b0': {
+          address: '0xf15f63b0dc70c3973a27b0b0be107cfa61602958',
+          deployBlock: 50868697,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-10: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        'Factory_3725b2eb': {
+          address: '0x3725b2ebcf1df77d3fd40a5e53b536d5165247db',
+          deployBlock: 83551287,
+          // verify-fees 2026-10-11: fee 0.003 → 0.0035 (empirical)
+          fee: 0.0035,
+        },
+        // find-factories --add 2026-10-11: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_5938f899: {
+          address: '0x5938f899d4b96d537c7e5f2e0ddeb8f25f3b2449',
+          deployBlock: 92314057,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_5b3a4001: {
+          address: '0x5b3a4001a91f6444874c82f81f94f9a400dab410',
+          deployBlock: 102900987,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 3 pairs in sweep, explorer "FlingSwapFactory"; fee 0.003 (assumed)
+        FlingSwapFactory_72451586: {
+          address: '0x7245158690c89ad38ea8fc0e72f422936b461be6',
+          deployBlock: 103234883,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_a85c58c2: {
+          address: '0xa85c58c2fc1c4aaa15ed4d0770c87276ed045a10',
+          deployBlock: 109427294,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_d0424f51: {
+          address: '0xd0424f516491ee58c03e72d99288327c91d520bc',
+          deployBlock: 37294728,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_c7e191ce: {
+          address: '0xc7e191ce9b468a96862c160053325c1564fbebdb',
+          deployBlock: 41873940,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_14faccbf: {
+          address: '0x14faccbff08a45ec209f1f33cd99021dde7777da',
+          deployBlock: 44474807,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        UniswapV2Factory_85039b2e: {
+          address: '0x85039b2e95558addccf4379728b8433c447e37be',
+          deployBlock: 71175180,
+          // verify-fees 2026-10-11: fee 0.003 → 0.02 (empirical)
+          fee: 0.02,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_84889bcf: {
+          address: '0x84889bcfe634df8f1bed9eafa7a1f6f07a135c07',
+          deployBlock: 73710416,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_da891a2c: {
+          address: '0xda891a2c37ad4fc844697751abe9e730604c6df4',
+          deployBlock: 102020734,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_9ddf0435: {
+          address: '0x9ddf0435c6c6791bbee0bdb7b15e5744168cf007',
+          deployBlock: 106319582,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 2 pairs in sweep, explorer "NadFunFactory"; fee 0.003 (assumed)
+        NadFunFactory_3bb7e52e: {
+          address: '0x3bb7e52ef3dba056af0473b31d8e6c22b60019d6',
+          deployBlock: 109496423,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_7928a2c4: {
+          address: '0x7928a2c48754501f3a8064765ecae541dae5c3e6',
+          deployBlock: 37703214,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_fefdf923: {
+          address: '0xfefdf9234e29dc435d5d04ebe425a0c70d2a1824',
+          deployBlock: 37779440,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "AllocaDexFactory"; fee 0.003 (assumed)
+        AllocaDexFactory_af8e484e: {
+          address: '0xaf8e484ed9e52772ee266e2bfc8028547229ca8f',
+          deployBlock: 38321543,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_e99885b8: {
+          address: '0xe99885b8f549926dd1c1ccdec1137bd64c4f5122',
+          deployBlock: 39318034,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_20d94fa9: {
+          address: '0x20d94fa993528d0bfceefa94df233f3e085581a1',
+          deployBlock: 39657259,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_7b4d590a: {
+          address: '0x7b4d590a48d744cd4c4167efc0ffb5b40eae31a1',
+          deployBlock: 39661813,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_6b7dd9d9: {
+          address: '0x6b7dd9d985bb9cc42d01e6d9d1e6ea3c082e61c4',
+          deployBlock: 32075988,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "ShadowFactory"; fee 0.003 (assumed)
+        ShadowFactory_47e808f1: {
+          address: '0x47e808f1b87252cb713b0459e33c1d8c4bc4be4f',
+          deployBlock: 40280183,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_91084de8: {
+          address: '0x91084de87c01963417c889aebb126960a09bb8ae',
+          deployBlock: 42055180,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_cd65122e: {
+          address: '0xcd65122e0f3e40ce8b3e050b92c59f28514e5613',
+          deployBlock: 42057305,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "StripboyFactory"; fee 0.003 (assumed)
+        StripboyFactory_1357c423: {
+          address: '0x1357c4237726f9fd5533efb9486d57775845e0f7',
+          deployBlock: 42057645,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_3a9fa1cd: {
+          address: '0x3a9fa1cd6b217b9be5e8e4a15c0656e977f18568',
+          deployBlock: 44200152,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_a76cd980: {
+          address: '0xa76cd9803d16f9b18ebefbf4ecc29e3eb85aee6e',
+          deployBlock: 56939974,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_21c2a983: {
+          address: '0x21c2a983f60a3ed269ef7caad5730c69a9a6824b',
+          deployBlock: 71041910,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        UniswapV2Factory_86499055: {
+          address: '0x86499055f871661a66c728de76127d387f25ab3e',
+          deployBlock: 68222455,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_f75747b8: {
+          address: '0xf75747b8efdeaf009bdd5494fd9e4ea46ccbdaa8',
+          deployBlock: 91984144,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_659e6112: {
+          address: '0x659e61128067c07a4fef214e9bba904a2e7733d6',
+          deployBlock: 92012806,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_5b06a678: {
+          address: '0x5b06a678d89622c77d012eb57cb5a2a4851c6a85',
+          deployBlock: 92021899,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        UniswapV2Factory_3e59bf1d: {
+          address: '0x3e59bf1d75b757ca890b4b6ada2b8c8e03809d48',
+          deployBlock: 92026638,
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        UniswapV2Factory_25feec30: {
+          address: '0x25feec300d56b9cb039f630770ac447bb56e6956',
+          deployBlock: 110750431,
+          fee: 0.003,
+        },
+      },
+    },
+    v3: {
+      // find-factories --add 2026-10-10: 3284 pools in sweep, explorer "PancakeV3Factory"; measured: fees 2500/500/100 pips, callback pancakeV3SwapCallback
+      'PancakeV3Factory_0bfbcf9f': {
+        address: '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+        deployBlock: 23058782,
+        poolEvent: 'uniswap',
+        callback: 'pancakeV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 1510 pools in sweep, explorer "UniswapV3Factory"; measured: fees 3000/10000/100/500 pips, callback uniswapV3SwapCallback
+      'UniswapV3Factory_204faca1': {
+        address: '0x204faca1764b154221e35c0d20abb3c525710498',
+        deployBlock: 29255827,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 91 pools in sweep, explorer "UniswapV3Factory"; measured: fees 10000/3000 pips, callback uniswapV3SwapCallback
+      'UniswapV3Factory_35af9218': {
+        address: '0x35af92183701e54f751f8b0376da7f9b151bf5a5',
+        deployBlock: 36764383,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 35 pools in sweep, unverified on explorer; measured: fees 3000/100/500 pips, callback uniswapV3SwapCallback
+      'Factory_30db57a2': {
+        address: '0x30db57a29acf3641dfc3885af2e5f1f5a408d9cb',
+        deployBlock: 33818287,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 14 pools in sweep, unverified on explorer; measured: fees 10000/100/500/3000 pips, callback uniswapV3SwapCallback
+      'Factory_7716f310': {
+        address: '0x7716f310d62aee3d009fd94067c627fe7e2f2aa9',
+        deployBlock: 36151690,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 8 pools in sweep, unverified on explorer; measured: fees 3000/500 pips, callback uniswapV3SwapCallback
+      'Factory_2a6ce23c': {
+        address: '0x2a6ce23c5017af1b07b9c4e4014442ade18bd404',
+        deployBlock: 54650081,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 6 pools in sweep, unverified on explorer; measured: fees 3000/500/10000 pips, callback uniswapV3SwapCallback
+      'Factory_8b336e90': {
+        address: '0x8b336e9042eca9847884220afea73fed512ad2f7',
+        deployBlock: 37678237,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 5 pools in sweep, unverified on explorer; measured: fees 3000/100/10000 pips, callback uniswapV3SwapCallback
+      'Factory_7597950c': {
+        address: '0x7597950c98379d8ab421e2d18a48d92c2e5edd9b',
+        deployBlock: 47370499,
+        poolEvent: 'tickspacing',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-10: 4 pools in sweep, unverified on explorer; measured: fees 3000/250/500 pips, callback uniswapV3SwapCallback
+      'Factory_4493790e': {
+        address: '0x4493790ef09768b89f413faa09e7bf4574c1cb14',
+        deployBlock: 54210283,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 3 pools in sweep, unverified on explorer; measured: fees 500/100 pips, callback uniswapV3SwapCallback
+      Factory_701ac6fa: {
+        address: '0x701ac6fad7850956f966a85655348ac1b7c93368',
+        deployBlock: 32092401,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 3 pools in sweep, unverified on explorer; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      Factory_e5ad59cc: {
+        address: '0xe5ad59ccdf694fa8038d151584ee4ebedecf6b32',
+        deployBlock: 53053269,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 2 pools in sweep, explorer "UniswapV3Factory"; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      UniswapV3Factory_0057cb6f: {
+        address: '0x0057cb6fe6a312ac29d60256299f2de425af734d',
+        deployBlock: 37704657,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 2 pools in sweep, unverified on explorer; measured: fees 10000 pips, callback uniswapV3SwapCallback
+      Factory_84a4b5b0: {
+        address: '0x84a4b5b020663366bdf34be2c8498b517eab3a9d',
+        deployBlock: 40988756,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 2 pools in sweep, explorer "UniswapV3Factory"; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      UniswapV3Factory_a490c09a: {
+        address: '0xa490c09a5fd075d1c2c6402306cc109ba37afbc4',
+        deployBlock: 96791063,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 1 pools in sweep, unverified on explorer; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      Factory_a51a2d8f: {
+        address: '0xa51a2d8fa6715c5341ecf789378f9ab1a703f922',
+        deployBlock: 52919107,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 1 pools in sweep, unverified on explorer; measured: fees 500 pips, callback uniswapV3SwapCallback
+      Factory_4f74bfee: {
+        address: '0x4f74bfee1e0a734d46d556d156fae2f24dfc2a70',
+        deployBlock: 71325239,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-11: 1 pools in sweep, explorer "CLFactory"; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      CLFactory_421ae744: {
+        address: '0x421ae744f3243e8130f8f2d07106331c3e7a4af9',
+        deployBlock: 56025662,
+        poolEvent: 'tickspacing',
+        callback: 'uniswapV3SwapCallback',
+      },
+    },
+    algebra: {
+      // find-factories --add 2026-10-10: 108 pools in sweep, unverified on explorer; measured: fees 380/100/2000/500 pips, callback algebraSwapCallback
+      'Factory_10253594': {
+        address: '0x10253594a832f967994b44f33411940533302acb',
+        deployBlock: 35520610,
+        algebraVariant: 'integral',
+      },
+    },
+    solidly: {
+      // find-factories --add 2026-10-10: 11 pairs in sweep, explorer "PoolFactory"; registered DEX pattern
+      'PoolFactory_08a1739a': {
+        address: '0x08a1739a3fdc826ebc57ebd25718a25cb445f2a8',
+        deployBlock: 55168357,
+        poolEvent: 'velodrome',
+        feeTarget: 'factory',
+        feeArgSource: 'pair-address-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-11: 3 pairs in sweep, explorer "PairFactory"; registered DEX pattern
+      // check-fee-config 2026-10-11: factory.getFee(pair-stable-degen) / 10000 did not answer; PairFactoryUpgradeable does (factory.getFee(pair-stable) / 10000)
+      PairFactory_932cabaa: {
+        address: '0x932cabaacdaa7ab60631e4ff6725612c464dc3ce',
+        deployBlock: 38094665,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-11: 3 pairs in sweep, unverified on explorer; probed PairFactoryUpgradeable [medium]
+      Factory_cb57ed4b: {
+        address: '0xcb57ed4be533e983097acc5dd35171972761b0df',
+        deployBlock: 54210281,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-11: 1 pairs in sweep, explorer "PairFactory"; registered DEX pattern
+      PairFactory_6465d913: {
+        address: '0x6465d913e11b7a4b4e69631bd39f829a91c3b4ba',
+        deployBlock: 37739546,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable-degen',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; probed PairFactoryUpgradeable [high]
+      Factory_5051f987: {
+        address: '0x5051f9871498b3169ced18605c063c6018bbe19f',
+        deployBlock: 46957760,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; probed PairFactoryUpgradeable [medium]
+      Factory_6dbb0b5b: {
+        address: '0x6dbb0b5b201d02ad74b137617658543ecf800170',
+        deployBlock: 54650079,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+    },
+    v2fee: {
+      // find-factories --add 2026-10-11: 1 pairs in sweep, unverified on explorer; probed ShadowV3Factory [high]
+      Factory_d158cdfe: {
+        address: '0xd158cdfec90e9429a290c3144afeb72e8c23603a',
+        deployBlock: 34623272,
+        feeTarget: 'pair',
+        feeFunction: 'fee',
+        feeDivisor: 1000000,
+        hasStableFlag: true,
       },
     },
   },

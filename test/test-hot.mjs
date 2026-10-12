@@ -432,6 +432,71 @@ if (FLASH) {
     }
 }
 
+// --- 9. a swap root: a cycle starting at a token no lender holds -------------
+if (FLASH) {
+    console.log('\n9. swap root: X is not a flash token — only a flash swap can fund an X -> B -> X cycle');
+    // Two X/B pairs; on the second, B buys 4% more X.
+    const tX = await deploy('MockToken', 'X', 0);
+    const X = await tX.getAddress();
+    const pXB1 = await deploy('MockPair', X, B, 30), pXB2 = await deploy('MockPair', X, B, 30);
+    await seed(pXB1, tX, E(1_000_000), tB, E(1_000_000));
+    await seed(pXB2, tX, E(1_040_000), tB, E(1_000_000));
+    for (const p of [pXB1, pXB2]) {
+        const a = (await p.getAddress()).toLowerCase();
+        const [t0, t1] = [(await p.token0()).toLowerCase(), (await p.token1()).toLowerCase()];
+        const [r0, r1] = await p.getReserves();
+        insPair.run(a, FACTORY, t0, t1, 1, 0.003, null);
+        insRes.run(a, r0.toString(), r1.toString(), 1, now);
+    }
+    insTok.run(X.toLowerCase(), 'X', 'X', 18, 'ok', now, now);
+    const [XB1, XB2] = [(await pXB1.getAddress()).toLowerCase(), (await pXB2.getAddress()).toLowerCase()];
+    // Sell X for B where X is scarce (XB1), buy X back with B where X is plentiful (XB2).
+    const cand = {
+        triangleId: 9001, rootToken: X.toLowerCase(), hopCount: 2, direction: 'forward',
+        inputAmount: 5_000 * 1e18, grossProfit: 0, netProfit: 0,
+        hops: [
+            { pair: XB1, factory: FACTORY, tokenIn: X.toLowerCase(), tokenOut: B.toLowerCase(), fee: 0.003, kind: 'v2' },
+            { pair: XB2, factory: FACTORY, tokenIn: B.toLowerCase(), tokenOut: X.toLowerCase(), fee: 0.003, kind: 'v2' },
+        ],
+    };
+    // Priced the way the evaluator prices a swap root (here: X worth 1 ROOT).
+    const swapPricing = { ...pricing, [X.toLowerCase()]: {
+        symbol: 'X', decimals: 18, swapOnly: true, priceInNumeraire: 1, sourceLiquidity: 1e6,
+        minProfitInRootTokens: 0.01, minInputInRootTokens: 0.1,
+    } };
+    const ex = new CandidateExecutor(cfg, provider, swapPricing, {
+        ownerAddress: w.address, live: true, signer: w, gasMarginMultiple: 1, minProfitTokens: 0.01,
+    });
+    const xBefore = await tX.balanceOf(EXEC);
+    const a = await ex.attempt(cand, db);
+    printAttempt(cfg, a, (x) => console.log(`    ${x}`));
+    ok(a.confirmed === true && a.funding === 'flash-swap', 'X-rooted cycle CONFIRMED via flash swap', a.simulationError ?? `(${a.funding})`);
+    if (a.confirmed) {
+        const gained = (await tX.balanceOf(EXEC)) - xBefore;
+        ok(gained === a.realisedProfit && gained > 0n, 'profit landed in X, equal to the ArbExecuted figure', `${gained}`);
+        const ledger = new TradeLedger(LEDGER);
+        try {
+            const row = ledger.db.prepare('SELECT * FROM trades WHERE txHash = ?').get(a.txHash);
+            ok(row && row.rootTokenSymbol === 'X' && String(row.profitWei) === String(a.realisedProfit),
+               'ledger row names X and records the realised profit', row ? `${row.rootTokenSymbol} ${row.profitWei}` : 'no row');
+        } finally { ledger.close(); }
+    }
+
+    // Re-open the edge, then try it with X unpriced: gas cannot be valued in X.
+    await seed(pXB2, tX, E(60_000), tB, 0n);
+    for (const p of [pXB1, pXB2]) {
+        const [r0, r1] = await p.getReserves();
+        raw.prepare('UPDATE reserves SET reserves0 = ?, reserves1 = ? WHERE pair = ?')
+           .run(r0.toString(), r1.toString(), (await p.getAddress()).toLowerCase());
+    }
+    const unpriced = new CandidateExecutor(cfg, provider, pricing, {
+        ownerAddress: w.address, live: false, gasMarginMultiple: 1, minProfitTokens: 0.01,
+    });
+    const u = await unpriced.attempt(cand, db);
+    ok(!u.simulated && /gas cannot be priced in swap root/.test(u.simulationError ?? ''),
+       'unpriced swap root refused before simulating', u.simulationError ?? '(no error)');
+}
+
 db.close();
 provider.destroy();
 

@@ -102,6 +102,11 @@ export type SyncUpdate = {
 
 export type SyncWatcherOptions = {
     /**
+     * How long to wait for a websocket to answer its first request before
+     * giving up on it and polling over HTTP instead. Default 10s.
+     */
+    wsConnectTimeoutMs?: number;
+    /**
      * Called once per drained range with the collapsed updates for pairs the
      * caller cares about. Never called with an empty array.
      */
@@ -214,6 +219,39 @@ export function decodeSync(data: string): { reserve0: number; reserve1: number }
  * Resolves once the first drain has completed, so callers can be sure the index
  * is current before they start trading on it.
  */
+/**
+ * Open a websocket provider and prove it answers, or throw.
+ *
+ * ethers' WebSocketProvider leaves the socket's 'error' event unhandled, so an
+ * endpoint that refuses the upgrade — HyperEVM's public RPC answers 405 —
+ * crashed the whole hot loop from inside the ws library, after the index had
+ * been built and before a single block was watched. The listener added here
+ * stays for the socket's lifetime: a later error is reported through `onError`
+ * (the staleness watchdog does the reconnecting), never thrown into the void.
+ */
+export async function openWebSocket(url: string, timeoutMs: number, onError: (e: Error) => void): Promise<WebSocketProvider> {
+    const ws = new WebSocketProvider(url);
+    const sock: any = (ws as any).websocket;
+    let settle: ((e?: Error) => void) | null = null;
+    const listener = (ev: any) => {
+        const e = ev instanceof Error ? ev : new Error(ev?.message ?? ev?.error?.message ?? 'websocket error');
+        if (settle) settle(e); else onError(e);
+    };
+    if (typeof sock?.on === 'function') sock.on('error', listener);
+    else if (typeof sock?.addEventListener === 'function') sock.addEventListener('error', listener);
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const t = setTimeout(() => settle?.(new Error(`no answer within ${timeoutMs}ms`)), timeoutMs);
+            settle = (e) => { clearTimeout(t); settle = null; e ? reject(e) : resolve(); };
+            ws.getBlockNumber().then(() => settle?.(), (e) => settle?.(e));
+        });
+    } catch (e) {
+        try { await ws.destroy(); } catch { /* never opened */ }
+        throw e;
+    }
+    return ws;
+}
+
 export async function watchSync(
     httpUrl: string,
     wsUrl: string | undefined,
@@ -223,12 +261,23 @@ export async function watchSync(
     const overlap = opts.overlapBlocks ?? 2;
     const pollMs = opts.pollMs ?? 1000;
 
-    let provider: Provider;
+    let provider!: Provider;
     let ws: WebSocketProvider | null = null;
-    if (wsUrl) {
-        ws = new WebSocketProvider(wsUrl);
-        provider = ws;
-    } else {
+    const wsTimeoutMs = opts.wsConnectTimeoutMs ?? 10_000;
+    // A websocket that cannot be opened is not fatal: watch over HTTP instead,
+    // and say so. `liveWsUrl` is what the rest of the watcher believes.
+    let liveWsUrl = wsUrl;
+    if (liveWsUrl) {
+        try {
+            ws = await openWebSocket(liveWsUrl, wsTimeoutMs, (e) => { stats.errors++; opts.onError?.(e, 'websocket'); });
+            provider = ws;
+        } catch (e) {
+            opts.onError?.(new Error(`websocket ${liveWsUrl} unusable (${(e as Error).message}) — falling back to HTTP polling`), 'connect');
+            liveWsUrl = undefined;
+            ws = null;
+        }
+    }
+    if (!ws) {
         const http = new JsonRpcProvider(httpUrl, undefined, { staticNetwork: true });
         http.pollingInterval = pollMs;
         provider = http;
@@ -241,7 +290,7 @@ export async function watchSync(
     let reconnecting = false;
     let staleTimer: ReturnType<typeof setInterval> | null = null;
     const chunkSize = opts.addressChunkSize ?? 400;
-    let transport: SyncTransport = wsUrl ? 'subscribe' : 'topic';
+    let transport: SyncTransport = liveWsUrl ? 'subscribe' : 'topic';
     let ready = false;
     let last = 0;
     let stopped = false;
@@ -480,7 +529,7 @@ export async function watchSync(
      * free and replaying is always safe.
      */
     async function reconnect(reason: string): Promise<void> {
-        if (reconnecting || stopped || !wsUrl) return;
+        if (reconnecting || stopped || !liveWsUrl) return;
         reconnecting = true;
         const gapFrom = last;
         try {
@@ -491,7 +540,7 @@ export async function watchSync(
             ), 'reconnect');
 
             try { ws?.destroy(); } catch { /* already gone */ }
-            ws = new WebSocketProvider(wsUrl);
+            ws = await openWebSocket(liveWsUrl, wsTimeoutMs, (e) => { stats.errors++; opts.onError?.(e, 'websocket'); });
             provider = ws;
             await attachSubscriptions();
             lastActivityAt = Date.now();
