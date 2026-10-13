@@ -259,6 +259,8 @@ export class CandidateExecutor {
     private executorHasStable = false;
     /** The executor answers algebraSwapCallback (Algebra pools call that, not uniswapV3SwapCallback). */
     private executorHasAlgebra = false;
+    /** executeFlashSwap takes a V3 / Algebra first hop (V3_FLASH_SWAP). */
+    private executorHasV3Flash = false;
     private warnedNoFlashSwap = false;
     /**
      * Factories whose pairs failed a flash swap that the lender path then
@@ -303,6 +305,7 @@ export class CandidateExecutor {
         this.executorHasFlashSwap = this.executorHasV3 && has('FLASH_SWAP()');
         this.executorHasStable = this.executorHasV3 && has('HOP_STABLE()');
         this.executorHasAlgebra = this.executorHasV3 && has('algebraSwapCallback(int256,int256,bytes)');
+        this.executorHasV3Flash = this.executorHasFlashSwap && has('V3_FLASH_SWAP()');
         if (!this.executorHasV3) {
             this.executor = new Contract(addr, EXECUTOR_ABI_V2_ONLY, this.provider);
             console.warn(
@@ -328,6 +331,11 @@ export class CandidateExecutor {
      */
     async supportsStable(): Promise<boolean> {
         return (await this.checkExecutorVersion()) === null && this.executorHasStable;
+    }
+
+    /** Whether executeFlashSwap takes a V3 / Algebra first hop (the pool's swap is the loan). */
+    async supportsV3FlashSwap(): Promise<boolean> {
+        return (await this.checkExecutorVersion()) === null && this.executorHasV3Flash;
     }
 
     /** Whether the deployed executor can swap through Algebra pools (algebraSwapCallback). */
@@ -442,7 +450,7 @@ export class CandidateExecutor {
         const first = candidate.hops[0];
         return flashSwapEnabled(this.cfg)
             && candidate.hops.length >= 2
-            && first.kind !== 'v3'
+            && (first.kind !== 'v3' || this.executorHasV3Flash)
             && !this.noFlashFactories.has(first.factory.toLowerCase());
     }
 

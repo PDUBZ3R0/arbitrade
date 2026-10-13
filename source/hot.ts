@@ -199,6 +199,12 @@ console.log(`V3 pools:  ${v3 ? 'on — re-read on every Swap/Mint/Burn'
 console.log(`Stable:    ${stable ? 'on — Solidly stable pools priced on their curve, quoted by the pair'
     : noStable ? 'off (--no-stable)'
     : `off — executor predates HOP_STABLE (yarn deploy flasharb ${cfg.chain.label})`}`);
+// A V3 / Algebra first hop funded by its own swap (no lender premium).
+const v3FlashSwap = v3 && flashSwapEnabled(cfg) && await executor.supportsV3FlashSwap();
+if (v3 && flashSwapEnabled(cfg)) {
+    console.log(`V3 flash:  ${v3FlashSwap ? 'on — a V3 / Algebra first hop is its own loan (no premium)'
+        : `off — executor predates V3_FLASH_SWAP; V3-first cycles borrow from the lender (yarn deploy flasharb ${cfg.chain.label})`}`);
+}
 if (cfg.factories.some(f => f.group === 'algebra') && v3) {
     const executorAlgebra = await executor.supportsAlgebra();
     console.log(`Algebra:   ${executorAlgebra ? 'on — Algebra pools read via globalState/tickTable, swapped through algebraSwapCallback'
@@ -218,6 +224,7 @@ const baseline = await evaluateTriangles(cfg, dbFile, {
     executableOnly: !v3,
     stableHops: stable,
     includeStable: stable,
+    v3FlashSwap,
 });
 console.log(`${Date.now() - t0}ms — ${Object.keys(baseline.rootPricing).length} root(s), ` +
     `${baseline.candidatesFound.toLocaleString()} candidate(s) in the snapshot`);
@@ -289,6 +296,7 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
         ])),
         flashSwap: flashSwapEnabled(cfg),
         stableHops: stable,
+        v3FlashSwap,
         swapOnlyRoots: new Set(Object.entries(pricing).filter(([, p]) => p.swapOnly).map(([a]) => a)),
     };
 }
@@ -576,6 +584,7 @@ if (repriceSec > 0) {
                     executableOnly: !v3,
                     stableHops: stable,
                     includeStable: stable,
+                    v3FlashSwap,
                 });
                 pricing = r.rootPricing;
                 thresholds = buildThresholds(pricing);

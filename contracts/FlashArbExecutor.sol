@@ -190,6 +190,9 @@ contract FlashArbExecutor {
     /// Version probe for the off-chain caller: an executor without it cannot
     /// flash-swap and is driven through executeArbFrom only.
     bool public constant FLASH_SWAP = true;
+    /// Version probe: executeFlashSwap also takes a concentrated-liquidity
+    /// first hop (Uniswap V3 / PancakeV3 / Algebra) — the pool's swap is the loan.
+    bool public constant V3_FLASH_SWAP = true;
 
     /// FLASH SWAP SAFETY. keccak256 of the exact `data` handed to the borrowed
     /// pair, set just before pair.swap() and cleared by the first callback.
@@ -465,9 +468,11 @@ contract FlashArbExecutor {
 
     // ---- flash swap -----------------------------------------------------------------
 
-    /// @notice Arb funded by hop 0 itself: a V2-style flash swap. Owner-only.
+    /// @notice Arb funded by hop 0 itself: a flash swap. Owner-only.
     ///
-    /// hops[0] must be HOP_V2 or HOP_STABLE with recipient == this contract (a flash swap
+    /// hops[0] HOP_V3: the pool's own swap is the loan — see _v3FlashStart.
+    ///
+    /// Otherwise hops[0] must be HOP_V2 or HOP_STABLE with recipient == this contract (a flash swap
     /// calls back whoever receives the output). Its output is sized here from
     /// live reserves for `amountIn` of hops[0].tokenIn, exactly as the router
     /// would, so repaying `amountIn` satisfies the pair's K check. hops[1..]
@@ -479,6 +484,7 @@ contract FlashArbExecutor {
     function executeFlashSwap(uint256 amountIn, uint256 minProfit, Hop[] calldata hops) external onlyOwner {
         if (hops.length < 2) revert EmptyHops();
         Hop calldata h0 = hops[0];
+        if (h0.kind == HOP_V3) return _v3FlashStart(amountIn, minProfit, hops);
         if (h0.kind != HOP_V2 && h0.kind != HOP_STABLE) revert BadHopKind(0, h0.kind);
         if (h0.recipient != address(this)) revert BadRecipient(0);
         if (amountIn == 0) revert NothingArrived(0);
@@ -576,6 +582,69 @@ contract FlashArbExecutor {
         emit ArbExecuted(root, amountIn, 0, bal - amountIn);
     }
 
+    // ---- V3 flash swap: a concentrated-liquidity first hop is the loan ---------------
+    //
+    // A V3-style pool already lends: swap() sends the output FIRST and only
+    // then calls back for the input. So hop 0's output funds hops[1..] inside
+    // that callback, and the pool is paid from the cycle's proceeds — no
+    // lender, no premium, where borrowing the root from Aave cost 0.05%.
+    //
+    // Told apart from an ordinary V3 hop's callback by its data: ordinary hops
+    // swap with empty data, this one with the encoded cycle, whose keccak256
+    // is armed in _flashCtx (the same echo protection as the V2 flash swap).
+    // Ordinary V3 hops inside the cycle use _swapPool/_swapMaxIn as always.
+
+    function _v3FlashStart(uint256 amountIn, uint256 minProfit, Hop[] calldata hops) internal {
+        Hop calldata h0 = hops[0];
+        if (h0.recipient != address(this)) revert BadRecipient(0);
+        if (amountIn == 0 || amountIn > uint256(type(int256).max)) revert NothingArrived(0);
+        (bool zeroForOne, address mid) = _v3Direction(h0.pair, h0.tokenIn, 0);
+        if (hops[1].tokenIn != mid) revert TokenNotInPair(1);
+
+        bytes memory data = abi.encode(
+            hops, amountIn, minProfit,
+            IERC20(h0.tokenIn).balanceOf(address(this)),
+            IERC20(mid).balanceOf(address(this))
+        );
+        _flashCtx = keccak256(data);
+        IUniswapV3Pool(h0.pair).swap(
+            address(this), zeroForOne, int256(amountIn),
+            zeroForOne ? MIN_SQRT_RATIO_PLUS_ONE : MAX_SQRT_RATIO_MINUS_ONE,
+            data
+        );
+        if (_flashCtx != bytes32(0)) revert NoFlashCallback();
+    }
+
+    /// Hop 0's pool has paid out and is waiting to be paid: run the rest of
+    /// the cycle, check the floor, pay the pool exactly what it asks (never
+    /// more than amountIn).
+    function _v3Flashed(int256 amount0Delta, int256 amount1Delta, bytes calldata data) internal {
+        bytes32 ctx = _flashCtx;
+        if (ctx == bytes32(0) || keccak256(data) != ctx) revert NotPool();
+        _flashCtx = bytes32(0);
+
+        (Hop[] memory hops, uint256 amountIn, uint256 minProfit, uint256 rootBefore, uint256 midBefore) =
+            abi.decode(data, (Hop[], uint256, uint256, uint256, uint256));
+        if (msg.sender != hops[0].pair) revert NotPool();
+        _validate(hops);
+
+        uint256 got = IERC20(hops[1].tokenIn).balanceOf(address(this)) - midBefore;
+        if (got == 0) revert NothingArrived(0);
+        _cycle(hops, 1, got);
+
+        int256 owedSigned = amount0Delta > 0 ? amount0Delta : amount1Delta;
+        if (owedSigned <= 0) revert NothingArrived(0);
+        uint256 owed = uint256(owedSigned);
+        if (owed > amountIn) revert SwapOverpaid(owed, amountIn);
+
+        address root = hops[0].tokenIn;
+        uint256 required = owed + minProfit;
+        uint256 bal = IERC20(root).balanceOf(address(this)) - rootBefore;
+        if (bal < required) revert InsufficientRepay(bal, required);
+        IERC20(root).transfer(msg.sender, owed);
+        emit ArbExecuted(root, owed, 0, bal - owed);
+    }
+
     /// Execute one V2 or STABLE hop, sizing the output from live state. Returns what
     /// arrived HERE when `measure` (the next hop is V3 and is paid from this
     /// contract), else 0.
@@ -670,19 +739,26 @@ contract FlashArbExecutor {
     // ---- V3 swap callbacks ----------------------------------------------------------
 
     /// @notice Uniswap V3 swap callback. Do not call directly.
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
-        _v3SwapPay(amount0Delta, amount1Delta);
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        _v3Callback(amount0Delta, amount1Delta, data);
     }
 
     /// @notice PancakeV3 spelling of the swap callback.
-    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
-        _v3SwapPay(amount0Delta, amount1Delta);
+    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        _v3Callback(amount0Delta, amount1Delta, data);
     }
 
     /// @notice Algebra (V1 / Integral) spelling of the swap callback. Algebra's
     /// swap() shares Uniswap's selector but calls back here; same pay semantics.
-    function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
-        _v3SwapPay(amount0Delta, amount1Delta);
+    function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        _v3Callback(amount0Delta, amount1Delta, data);
+    }
+
+    /// Empty data: an ordinary V3 hop (_v3Swap). Anything else: the V3 flash
+    /// swap's first hop — only accepted if it hashes to the armed _flashCtx.
+    function _v3Callback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) internal {
+        if (data.length == 0) _v3SwapPay(amount0Delta, amount1Delta);
+        else _v3Flashed(amount0Delta, amount1Delta, data);
     }
 
     /// Pay the pool whose swap is in progress — once, in the hop's tokenIn, and

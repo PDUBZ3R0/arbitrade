@@ -114,6 +114,8 @@ export type ScoreThresholds = {
      * (no premium) and can fund a swap root. Must match the evaluator's stableHops.
      */
     stableHops?: boolean;
+    /** The executor has V3_FLASH_SWAP: a V3 / Algebra first hop is its own loan. Must match the evaluator. */
+    v3FlashSwap?: boolean;
 };
 
 export class TriangleIndex {
@@ -503,7 +505,7 @@ export class TriangleIndex {
                 hops = this.hops3;
             }
 
-            const firstSwappable = !this.pairIsV3[legs[0].pi] && (!this.pairIsStable[legs[0].pi] || !!th.stableHops);
+            const firstSwappable = (!this.pairIsV3[legs[0].pi] || !!th.v3FlashSwap) && (!this.pairIsStable[legs[0].pi] || !!th.stableHops);
             if (th.swapOnlyRoots?.has(rootAddr) && !firstSwappable) continue;
 
             let x: number, grossProfit: number;

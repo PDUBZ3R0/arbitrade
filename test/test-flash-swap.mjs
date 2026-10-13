@@ -371,7 +371,8 @@ try {
         const stranger = new ethers.Wallet('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', provider);
         const check = async (label, want, f) => { const e = await tryErr(f); ok(e === want, label, `(${e || 'no revert!'})`); };
         await check('owner-only', 'NotOwner', () => rg.exec.connect(stranger).executeFlashSwap.staticCall(E(1), 0n, good));
-        await check('hop 0 must be V2', 'BadHopKind', () => rg.exec.executeFlashSwap.staticCall(E(1), 0n, [H(A.P, R.a, EX, 1), good[1]]));
+        // Kind 1 (V3) is a valid flash-swap first hop now (V3_FLASH_SWAP; test-v3-flash-swap.mjs); an unknown kind is not.
+        await check('hop 0 kind must be V2 / STABLE / V3', 'BadHopKind', () => rg.exec.executeFlashSwap.staticCall(E(1), 0n, [H(A.P, R.a, EX, 3), good[1]]));
         await check('hop 0 output must come here', 'BadRecipient', () => rg.exec.executeFlashSwap.staticCall(E(1), 0n, [H(A.P, R.a, B.P), good[1]]));
         await check('hops[1].tokenIn must be hop 0 output', 'TokenNotInPair', () => rg.exec.executeFlashSwap.staticCall(E(1), 0n, [good[0], H(B.P, Y.a, EX)]));
         await check('root not in hop 0 pair', 'TokenNotInPair', () => rg.exec.executeFlashSwap.staticCall(E(1), 0n, [H(A.P, Y.a, EX), good[1]]));

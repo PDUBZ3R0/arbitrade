@@ -167,6 +167,11 @@ export type EvaluateOptions = {
      * stable first hop is not flash-swappable (it pays the lender premium).
      */
     stableHops?: boolean;
+    /**
+     * The executor has V3_FLASH_SWAP: a V3 / Algebra first hop is funded by
+     * its own swap (no premium) and can fund a swap root.
+     */
+    v3FlashSwap?: boolean;
 };
 
 export type Candidate = {
@@ -501,8 +506,9 @@ export async function evaluateTriangles(
     // as config.ts's cyclePremium (which the hot-loop index mirrors).
     const swapFunded = flashSwapEnabled(cfg);
     const stableHops = opts.stableHops ?? false;
+    const v3FlashSwap = opts.v3FlashSwap ?? false;
     const cyclePremiumFor = (root: string, first: PairData): number =>
-        swapFunded && first.kind !== 'v3' && (!first.stable || stableHops) ? 0 : flashPremiumFor(root);
+        swapFunded && (first.kind !== 'v3' || v3FlashSwap) && (!first.stable || stableHops) ? 0 : flashPremiumFor(root);
     const debug = opts.debug ?? false;
     const debugLimit = opts.debugLimit ?? 25;
     let debugPrinted = 0;
@@ -741,7 +747,7 @@ export async function evaluateTriangles(
         }
         const flashRoots = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
         /** A first hop a flash swap can borrow from: V2-style, constant product. */
-        const swappable = (p: PairData) => p.kind !== 'v3' && (!p.stable || stableHops);
+        const swappable = (p: PairData) => (p.kind !== 'v3' || v3FlashSwap) && (!p.stable || stableHops);
 
         // Base minimum from --min-profit (in wei) still applies on top.
         const baseMinProfit = Number(opts.minProfitWei ?? 0n);

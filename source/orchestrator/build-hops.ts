@@ -311,7 +311,6 @@ export async function buildHops(
             : hops[i + 1].pair;
 
         if (isV3(leg)) {
-            if (i === 0 && opts.flashSwap) throw new Error('flash swap needs a V2 or stable first hop');
             if (i === 0) rootAmountIn = amountIn;
             if (amountIn <= 0n) return null;
             const amountOut = v3_amount_out_exact(v3ByPool.get(pairLower), inIsToken0, amountIn);
