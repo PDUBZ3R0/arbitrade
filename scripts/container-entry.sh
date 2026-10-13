@@ -34,6 +34,8 @@ case "$MODE" in test|live) ;; *) echo "MODE must be test or live (got $MODE)" >&
 ts() { date -u +%FT%TZ; }
 say() { echo "[entry $(ts)] $*"; }
 
+export CONTAINED="YEAH"
+
 # --- 1. seed the DB volume -------------------------------------------------------
 # The volume is the live copy. Seed it ONLY when it has no DB yet (first boot or
 # a deleted volume) — never on a rebuild, so a rebuild can't stomp live data. The
@@ -60,7 +62,7 @@ say "chain ${CHAIN}, mode ${MODE}"
 if [ "${MANUAL_ON_BOOT:-1}" = 1 ]; then
     say "running scripts/manual.sh ${CHAIN}"
     start=$SECONDS
-    if yarn --silent manual "$CHAIN" 2>&1 | sed -u 's/^/[manual] /'; then
+    if yarn --silent manual "$CHAIN" 2>&1 | sed -u 's/^/[!startup!] /'; then
         say "pipeline done in $(( SECONDS - start ))s"
     else
         say "pipeline FAILED after $(( SECONDS - start ))s — starting the loops on the existing DB"
@@ -109,11 +111,11 @@ fi
 
 pids=()
 if [ "${RUN_HOT:-1}" = 1 ]; then
-    supervise hot yarn --silent hot "$CHAIN" "${hot_args[@]}" "${live_flag[@]}" &
+    supervise arbitrage yarn --silent hot "$CHAIN" "${hot_args[@]}" "${live_flag[@]}" &
     pids+=($!)
 fi
 if [ "${RUN_LIQ:-1}" = 1 ]; then
-    supervise liq yarn --silent liq-watch "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
+    supervise liquidate yarn --silent liquidator "$CHAIN" "${liq_args[@]}" "${liq_mode[@]}" &
     pids+=($!)
 fi
 if [ ${#pids[@]} -eq 0 ]; then say "RUN_HOT=0 and RUN_LIQ=0: nothing to run"; exit 0; fi

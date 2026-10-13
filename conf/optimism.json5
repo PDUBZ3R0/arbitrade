@@ -10,10 +10,10 @@
     sequencer: 'https://mainnet-sequencer.optimism.io',
 
     token: '0x4200000000000000000000000000000000000006',   // WETH
-    contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',  // YoBatches3 — yarn deploy-contract optimism
-    executor: '0x0426d7687911f81DcD7769655b995650a765a7D5',  // FlashArbExecutor — yarn deploy-flasharb optimism
-    probe: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
-    liquidator: '0x461834B561E3d193AF97EB02172be56420FF7053',
+    contract: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',  // YoBatches3 — yarn deploy-contract optimism
+    executor: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',  // FlashArbExecutor — yarn deploy-flasharb optimism
+    probe: '0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534',
+    liquidator: '0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
@@ -49,7 +49,8 @@
         },
         UniswapV2Factory_5c69bee7: {   // 45 pairs — explorer: "UniswapV2Factory"
           address: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
-          fee: 0.00305,   // verify-fees 2026-10-08: 0.00305
+          // verify-fees 2026-10-13: fee 0.00305 → 0.00315 (empirical)
+          fee: 0.00315,   // verify-fees 2026-10-08: 0.00305
         },
         UniswapV2Factory_f3c7978d: {   // 35 pairs — explorer: "UniswapV2Factory"
           address: '0xf3c7978ddd70b4158b53e897f980093183ca5c52',
@@ -141,7 +142,8 @@
         },
         SquadswapFactory_ba34aa64: {   // 3 pairs — explorer: "SquadswapFactory"
           address: '0xba34aa640b8be02a439221bcbea1f48c1035eef9',
-          fee: 0.00205,   // verify-fees 2026-10-08: 0.00205
+          // verify-fees 2026-10-13: fee 0.00205 → 0.0021 (empirical)
+          fee: 0.0021,   // verify-fees 2026-10-08: 0.00205
         },
         AquilaFactory_11bb952d: {   // 3 pairs — explorer: "AquilaFactory"
           address: '0x11bb952dc97dd062271e6aa9e0defe2719559944',
@@ -193,7 +195,8 @@
         },
         UniswapV2Factory_71158312: {   // 1 pairs — explorer: "UniswapV2Factory"
           address: '0x711583124b362c68949254e64011f4c3eb254a4a',
-          fee: 0.00305,   // verify-fees 2026-10-08: 0.00305
+          // verify-fees 2026-10-13: fee 0.00305 → 0.0031 (empirical)
+          fee: 0.0031,   // verify-fees 2026-10-08: 0.00305
         },
         FraxswapFactory_a007a971: {   // 1 pairs — explorer: "FraxswapFactory"
           address: '0xa007a9716dba05289df85a90d0fd9d39bee808de',
@@ -221,7 +224,8 @@
         },
         Factory_d343e15a: {   // 1 pairs
           address: '0xd343e15a2a8cfa7b58e812f7120c4838df566374',
-          fee: 0.003025,   // verify-fees 2026-10-08: 0.003025
+          // verify-fees 2026-10-13: fee 0.003025 → 0.00305 (empirical)
+          fee: 0.00305,   // verify-fees 2026-10-08: 0.003025
         },
         UniswapV2Factory_8909dc15: {   // 1 pairs — explorer: "UniswapV2Factory"
           address: '0x8909dc15e40173ff4699343b6eb8132c65e18ec6',
@@ -242,6 +246,48 @@
         EjoeFactory_c439c680: {   // 1 pairs — explorer: "EjoeFactory"
           address: '0xc439c680af70aef985647b2721b68f1790c9b0dc',
           fee: 0.0025,   // verify-fees 2026-10-08: 0.0025
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_dd2ee858: {
+          address: '0xdd2ee85837b2a87a2f518cd75a59b1548cd6d574',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_eb7fe839: {
+          address: '0xeb7fe8397627e9a6334632b39b8197fa07875e6c',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        UniswapV2Factory_541ab7c3: {
+          address: '0x541ab7c31a119441ef3575f6973277de0ef460bd',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_0f7904b9: {
+          address: '0x0f7904b9187b3ad379bbbc0c3a095c62db60817b',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, explorer "PancakeFactory"; fee 0.003 (assumed)
+        PancakeFactory_a26655ba: {
+          address: '0xa26655bab784c9bd9daadaaff2a05a93484bf9c7',
+          // verify-fees 2026-10-13: fee 0.003 → 0.0003 (empirical)
+          fee: 0.0003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, explorer "BrownFiV1Factory"; fee 0.003 (assumed)
+        BrownFiV1Factory_b077ea75: {
+          address: '0xb077ea75bf218bf028aceebe61aea4c4ad85f62c',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_4abff7d9: {
+          address: '0x4abff7d9e8df7f8872ef5bc2efd314f73c1e61e8',
+          fee: 0.003,
+        },
+        // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+        Factory_6064d55b: {
+          address: '0x6064d55bf1e5c6c25db6a9ba5319ddb7a8b00cb3',
+          // verify-fees 2026-10-13: fee 0.003 → 0.0032 (empirical)
+          fee: 0.0032,
         },
       },
     },
@@ -282,6 +328,48 @@
         // },
         // PoolFactory_84444783 / PoolFactory_c781fee9 (2 pairs each): named like Velodrome V2, but
         // which creation event they emit was not recorded, and poolEvent must match it. Skipped.
+        // find-factories --add 2026-10-13: 677 pairs in sweep, explorer "PairFactory"; probed PairFactoryUpgradeable [high] (name matches a registered pattern whose fee call did not answer on-chain; probe found PairFactoryUpgradeable)
+        PairFactory_25cbddb9: {
+          address: '0x25cbddb98b35ab1ff77413456b31ec81a6b6b746',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-13: 19 pairs in sweep, explorer "PairFactory"; probed PairFactoryUpgradeable [high] (name matches a registered pattern whose fee call did not answer on-chain; probe found PairFactoryUpgradeable)
+        PairFactory_12508dd9: {
+          address: '0x12508dd9108abab2c5fd8fc6e4984e46a3cf7824',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-13: 16 pairs in sweep, explorer "BaseV1Factory"; probed PairFactoryUpgradeable [high] (name matches a registered pattern whose fee call did not answer on-chain; probe found PairFactoryUpgradeable)
+        BaseV1Factory_ba06043a: {
+          address: '0xba06043a777652baf540ccc785edafd94ee05b37',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-13: 2 pairs in sweep, explorer "PoolFactory"; registered DEX pattern
+        PoolFactory_84444783: {
+          address: '0x844447832a749d6655ea7f4fcaf1388102dfa6e1',
+          poolEvent: 'velodrome',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-address-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+        // find-factories --add 2026-10-13: 2 pairs in sweep, explorer "PoolFactory"; registered DEX pattern
+        PoolFactory_c781fee9: {
+          address: '0xc781fee9c9bd0d0a2ee61ac7b254375533e9f677',
+          poolEvent: 'velodrome',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-address-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
       },
     },
     // Concentrated liquidity (all verified: callback from pool bytecode). Fees per pool,
@@ -348,6 +436,36 @@
           poolEvent: 'uniswap',
           callback: 'uniswapV3SwapCallback',
         },
+        // find-factories --add 2026-10-13: 51 pools in sweep, explorer "CLFactory"; measured: fees 30000 pips, callback uniswapV3SwapCallback
+        CLFactory_548118c7: {
+          address: '0x548118c7e0b865c2cfa94d15ec86b666468ac758',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-13: 7 pools in sweep, unverified on explorer; measured: fees 40000/20000/100 pips, callback uniswapV3SwapCallback
+        Factory_6136d1ce: {
+          address: '0x6136d1cee9efb89187a40f91124db0db8223e19a',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-13: 6 pools in sweep, explorer "CLFactory"; measured: fees 500/100/3000 pips, callback uniswapV3SwapCallback
+        CLFactory_3fc8e63e: {
+          address: '0x3fc8e63e98f83ba0f28336fb537699655938e2eb',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-13: 4 pools in sweep, unverified on explorer; measured: fees 40000/20000/100 pips, callback uniswapV3SwapCallback
+        Factory_13eedfd3: {
+          address: '0x13eedfd3c90129b3bde16c8a29b14cfe7ead37fa',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-13: 1 pools in sweep, unverified on explorer; measured: fees 500 pips, callback uniswapV3SwapCallback
+        Factory_55454e6c: {
+          address: '0x55454e6ca2f01973ff1692c57097b3dd7077961c',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
       },
     },
 
@@ -359,6 +477,13 @@
     //   V2-event, no standard swap(): 0xfb6a5de1… (4), 0x143527dc… (2), 0xadcd1288… (2), 0xbd3efbbb… (1)
     //   Solidly, no fee pattern: 0xd02d36a5… (7), 0x52534b06… (3)
     //   Verification hit the RPC rate limit (-32005), re-run to classify: 0x53f2dc58… (96), 0x548118c7… (51 pools), and 8 with ≤7
+    algebra: {
+      // find-factories --add 2026-10-13: 7 pools in sweep, explorer "AlgebraFactory"; measured: fees 499/1905/100/1892/99 pips, callback algebraSwapCallback
+      AlgebraFactory_0c8f7b0c: {
+        address: '0x0c8f7b0cb986b31c67d994fb5c224592a03a4afd',
+        algebraVariant: 'v1',
+      },
+    },
   },
   // Also on this chain: Balancer V2 vault (flash fee 0.000%).
   //   { symbol: …, address: …, decimals: …, provider: 'balancer-v2' }

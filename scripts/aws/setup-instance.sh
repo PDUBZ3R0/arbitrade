@@ -29,7 +29,7 @@ set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 
 REPO_URL="${REPO_URL:-https://github.com/PDUBZ3R0/arbitrade.git}"
-BRANCH="${BRANCH:-flash-swap}"
+BRANCH="${BRANCH:-main}"
 DIR=/opt/arbitrade
 CHAINS="${CHAINS:-base}"
 CLOUDWATCH="${CLOUDWATCH:-0}"

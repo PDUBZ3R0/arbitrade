@@ -55,7 +55,7 @@ services:
       RUN_HOT: 1
     volumes:
       - monad-db:/app/db
-      - monad-log:/app/log
+      - monad-log/:/app/log
 
   ink:
     <<: *arb

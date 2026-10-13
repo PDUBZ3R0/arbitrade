@@ -18,11 +18,17 @@ fi
 
 shift
 
+if [[ "$CONTAINED" == "YEAH" ]]; then
+    LDIR="/app/log/${CHAIN}"
+else
+    LDIR="log/${CHAIN}"
+fi
+
 CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $@"
 
-LOG="log/${CHAIN}/${STAGE}.log"
-if [ ! -d "log/${CHAIN}" ]; then
-    mkdir -p "log/${CHAIN}"
+LOG="$LDIR/${STAGE}.log"
+if [ ! -d "$LDIR" ]; then
+    mkdir -p "$LDIR"
 fi
 
 # The exit status of `{ … } | tee` is tee's — always 0 — so a stage that

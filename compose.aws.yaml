@@ -44,18 +44,18 @@ services:
       - base-db:/app/db
       - base-log:/app/log
 
-  # optimism:
-  #   <<: *arb
-  #   image: arbitrade:optimism
-  #   build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
-  #   environment:
-  #     MODE: ${OPTIMISM_MODE:-${MODE:-test}}
-  #   logging:
-  #     <<: *cloudwatch
-  #     options: { <<: *cw, awslogs-group: arbitrade/optimism }
-  #   volumes:
-  #     - optimism-db:/app/db
-  #     - optimism-log:/app/log
+  optimism:
+    <<: *arb
+    image: arbitrade:optimism
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
+    environment:
+      MODE: "live"
+    logging:
+      <<: *cloudwatch
+      options: { <<: *cw, awslogs-group: arbitrade/optimism }
+    volumes:
+      - optimism-db:/app/db
+      - optimism-log:/app/log
 
   arbitrum:
     <<: *arb
@@ -70,25 +70,10 @@ services:
       - arbitrum-db:/app/db
       - arbitrum-log:/app/log
 
-  # ink:
-  #   <<: *arb
-  #   image: arbitrade:ink
-  #   build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
-  #   environment:
-  #     MODE: ${INK_MODE:-${MODE:-test}}
-  #   logging:
-  #     <<: *cloudwatch
-  #     options: { <<: *cw, awslogs-group: arbitrade/ink }
-  #   volumes:
-  #     - ink-db:/app/db
-  #     - ink-log:/app/log
-
 volumes:
   base-db:
   base-log:
-  # optimism-db:
-  # optimism-log:
+  optimism-db:
+  optimism-log:
   arbitrum-db:
   arbitrum-log:
-  # ink-db:
-  # ink-log:
