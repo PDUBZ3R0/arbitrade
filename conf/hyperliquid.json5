@@ -5,9 +5,9 @@
     currency: 'WHYPE',
     token: '0x5555555555555555555555555555555555555555',
     contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
-    executor: '0x0426d7687911f81DcD7769655b995650a765a7D5',
-    probe: '0x9301c3F24DDB4E953df31D51df23F102680155c6',
-    liquidator: '0x461834b561e3d193af97eb02172be56420ff7053',
+    executor: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
+    probe: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
+    liquidator: '0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
@@ -476,50 +476,24 @@
     },
   },
   flashloan: {
-    provider: 'aave-v3',
-    pool: '0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b',
-    addressesProvider: '0x72c98246a98bFe64022a3190e7710E157497170C',
-    premium: 0.0004,
-    flashSwap: true,
-    swapRoots: {
-      minLiquidity: 1,
-    },
+    provider: 'morpho',
+    morpho: '0x68e37dE8d93d3496ae143F2E900490f6280C57cD',
+    premium: 0,
+    flashSwap: true,   // kept from your config
+    swapRoots: { minLiquidity: 1 },   // kept from your config
     tokens: [
-      {
-        symbol: 'kHYPE',
-        address: '0xfD739d4e423301CE9385c1fb8850539D657C296D',
-        decimals: 18,
-      },
-      {
-        symbol: 'wstHYPE',
-        address: '0x94e8396e0869c9F2200760aF0621aFd240E1CF38',
-        decimals: 18,
-      },
-      {
-        symbol: 'WHYPE',
-        address: '0x5555555555555555555555555555555555555555',
-        decimals: 18,
-      },
-      {
-        symbol: 'UBTC',
-        address: '0x9FDBdA0A5e284c32744D2f17Ee5c74B284993463',
-        decimals: 8,
-      },
-      {
-        symbol: 'USDC',
-        address: '0xb88339CB7199b77E23DB6E890353E22632Ba630f',
-        decimals: 6,
-      },
-      {
-        symbol: 'UETH',
-        address: '0xBe6727B535545C67d5cAa73dEa54865B92CF7907',
-        decimals: 18,
-      },
-      {
-        symbol: 'USD₮0',
-        address: '0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb',
-        decimals: 6,
-      },
+      { symbol: 'kHYPE', address: '0xfD739d4e423301CE9385c1fb8850539D657C296D', decimals: 18 },   // 1.00M lendable
+      { symbol: 'WHYPE', address: '0x5555555555555555555555555555555555555555', decimals: 18 },   // 547.5K lendable
+      { symbol: 'UBTC', address: '0x9FDBdA0A5e284c32744D2f17Ee5c74B284993463', decimals: 8 },   // 55.55 lendable
+      { symbol: 'USDC', address: '0xb88339CB7199b77E23DB6E890353E22632Ba630f', decimals: 6 },   // 4.44M lendable
+      { symbol: 'lstHYPE', address: '0x81e064d0eB539de7c3170EDF38C1A42CBd752A76', decimals: 18 },   // 19.7K lendable
+      { symbol: 'USD₮0', address: '0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb', decimals: 6 },   // 1.71M lendable
+      { symbol: 'stHYPE', address: '0xfFaa4a3D97fE9107Cef8a3F48c069F577Ff76cC1', decimals: 18 },   // 18.1K lendable
+      { symbol: 'wstHYPE', address: '0x94e8396e0869c9F2200760aF0621aFd240E1CF38', decimals: 18 },   // 17.5K lendable
+      { symbol: 'beHYPE', address: '0xd8FC8F0b03eBA61F64D08B0bef69d80916E5DdA9', decimals: 18 },   // 3.8K lendable
+      { symbol: 'UETH', address: '0xBe6727B535545C67d5cAa73dEa54865B92CF7907', decimals: 18 },   // 116.8 lendable
+      { symbol: 'USDHL', address: '0xb50A96253aBDF803D85efcDce07Ad8becBc52BD5', decimals: 6 },   // 126.3K lendable
+      { symbol: 'USDe', address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34', decimals: 18 },   // 65.0K lendable
     ],
   },
 }

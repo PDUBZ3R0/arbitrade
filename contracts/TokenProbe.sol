@@ -17,6 +17,24 @@ interface IProbePool {
     ) external;
 }
 
+/// Balancer V2 Vault: lends, calls receiveFlashLoan, checks its balance after.
+interface IProbeBalancerVault {
+    function flashLoan(address recipient, address[] calldata tokens, uint256[] calldata amounts, bytes calldata userData) external;
+}
+
+/// Uniswap V3 pool (and its PancakeV3 / Algebra cousins): flash -> *FlashCallback.
+interface IProbeV3Pool {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function flash(address recipient, uint256 amount0, uint256 amount1, bytes calldata data) external;
+}
+
+/// Morpho Blue singleton (and settlement layers built on it, e.g. Longbow):
+/// lends any token it holds, calls onMorphoFlashLoan, pulls repayment after.
+interface IProbeMorpho {
+    function flashLoan(address token, uint256 assets, bytes calldata data) external;
+}
+
 interface IProbePair {
     function token0() external view returns (address);
     function token1() external view returns (address);
@@ -38,14 +56,35 @@ interface IProbePair {
 /// Swap sizes are computed with a caller-supplied CONSERVATIVE fee cap (e.g.
 /// 200 bps) rather than the pair's real fee, so the pair's K-check passes for
 /// any real fee <= cap without the probe needing to know the fee.
+///
+/// LENDERS. probeFrom() borrows from any lender FlashArbExecutor can borrow
+/// from, with the executor's SOURCE ids, so `yarn probe` works on every chain
+/// the bot trades — not only chains with Aave:
+///   0  Aave V3          flashLoanSimple -> executeOperation
+///   1  Balancer V2      flashLoan       -> receiveFlashLoan
+///   2  Uniswap V3 pool  flash           -> uniswapV3FlashCallback (+ Pancake / Algebra spellings)
+///   3  Morpho Blue      flashLoan       -> onMorphoFlashLoan       (Longbow on Robinhood Chain)
+/// probe() is the original Aave-only entry point, kept so older clients work.
+/// Nothing is ever repaid: every callback ends in a revert, so no lender is
+/// ever left short — the whole eth_call unwinds.
 contract TokenProbe {
     address public immutable aavePool;
+
+    uint8 public constant SOURCE_AAVE_V3     = 0;
+    uint8 public constant SOURCE_BALANCER_V2 = 1;
+    uint8 public constant SOURCE_UNISWAP_V3  = 2;
+    uint8 public constant SOURCE_MORPHO      = 3;
+
+    /// The lender the current probe borrows from; the one callback admitted.
+    /// Storage, not transient: the call always reverts, so it never persists.
+    address private _lender;
 
     uint8 internal constant STAGE_NO_CODE       = 0; // token address has no bytecode
     uint8 internal constant STAGE_FUND_PAIR     = 1; // root.transfer(pair)
     uint8 internal constant STAGE_BUY_SWAP      = 2; // pair.swap -> token to this contract
     uint8 internal constant STAGE_SELL_TRANSFER = 3; // token.transfer(pair) from this contract
     uint8 internal constant STAGE_SELL_SWAP     = 4; // pair.swap -> root to this contract
+    uint8 internal constant STAGE_NO_CALLBACK   = 5; // the lender returned without calling back
 
     /// @notice Successful round trip. Compare requested vs received to detect taxes.
     error ProbeResult(
@@ -60,6 +99,9 @@ contract TokenProbe {
     error ProbeFailed(uint8 stage, bytes reason);
     error NotPool();
     error UntrustedInitiator();
+    error NoLender();
+    error BadSource(uint8 source);
+    error TokenNotInLender();
 
     constructor(address _aavePool) {
         aavePool = _aavePool;
@@ -76,30 +118,92 @@ contract TokenProbe {
         uint16 feeBpsCap;
     }
 
+    /// @notice Original entry point: borrow from the constructor's Aave pool.
     /// @param root       Flash-loanable token that is one side of `pair`
     /// @param amount     Root amount to borrow and push through the pair
     /// @param pair       V2-style pair: root / token-under-test
     /// @param feeBpsCap  Conservative fee assumption for sizing (e.g. 200 = 2%)
     function probe(address root, uint256 amount, address pair, uint16 feeBpsCap) external {
-        IProbePool(aavePool).flashLoanSimple(address(this), root, amount, abi.encode(pair, feeBpsCap), 0);
+        _borrow(SOURCE_AAVE_V3, aavePool, root, amount, pair, feeBpsCap);
     }
 
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256, /* premium — irrelevant, the call always reverts */
-        address initiator,
-        bytes calldata params
-    ) external returns (bool) {
-        if (msg.sender != aavePool) revert NotPool();
-        if (initiator != address(this)) revert UntrustedInitiator();
+    /// @notice Borrow `root` from any supported lender, then probe `pair`.
+    /// @param source  SOURCE_* (same ids as FlashArbExecutor)
+    /// @param lender  Aave pool / Balancer vault / V3 pool holding root / Morpho singleton
+    function probeFrom(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap) external {
+        _borrow(source, lender, root, amount, pair, feeBpsCap);
+    }
 
-        (address pair, uint16 feeBpsCap) = abi.decode(params, (address, uint16));
+    function _borrow(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap) internal {
+        if (lender == address(0)) revert NoLender();
+        bytes memory data = abi.encode(root, pair, feeBpsCap);
+        _lender = lender;
+        if (source == SOURCE_AAVE_V3) {
+            IProbePool(lender).flashLoanSimple(address(this), root, amount, data, 0);
+        } else if (source == SOURCE_BALANCER_V2) {
+            address[] memory tokens = new address[](1);
+            uint256[] memory amounts = new uint256[](1);
+            tokens[0] = root;
+            amounts[0] = amount;
+            IProbeBalancerVault(lender).flashLoan(address(this), tokens, amounts, data);
+        } else if (source == SOURCE_UNISWAP_V3) {
+            bool zero = IProbeV3Pool(lender).token0() == root;
+            if (!zero && IProbeV3Pool(lender).token1() != root) revert TokenNotInLender();
+            IProbeV3Pool(lender).flash(address(this), zero ? amount : 0, zero ? 0 : amount, data);
+        } else if (source == SOURCE_MORPHO) {
+            IProbeMorpho(lender).flashLoan(root, amount, data);
+        } else {
+            revert BadSource(source);
+        }
+        // Unreachable: every callback reverts. A lender that returned without
+        // calling back lands here, and that is a failure too.
+        revert ProbeFailed(STAGE_NO_CALLBACK, "lender returned without calling back");
+    }
+
+    function _claim() internal view {
+        if (_lender == address(0) || msg.sender != _lender) revert NotPool();
+    }
+
+    // ---- lender callbacks: each hands (root, amount, data) to _run ----------------
+
+    /// Aave V3
+    function executeOperation(address, uint256 amount, uint256, address initiator, bytes calldata params) external returns (bool) {
+        _claim();
+        if (initiator != address(this)) revert UntrustedInitiator();
+        _run(amount, params);
+    }
+
+    /// Balancer V2
+    function receiveFlashLoan(address[] calldata, uint256[] calldata amounts, uint256[] calldata, bytes calldata userData) external {
+        _claim();
+        _run(amounts[0], userData);
+    }
+
+    /// Uniswap V3 and spellings. The amount is the root balance we now hold.
+    function uniswapV3FlashCallback(uint256, uint256, bytes calldata data) external { _v3(data); }
+    function pancakeV3FlashCallback(uint256, uint256, bytes calldata data) external { _v3(data); }
+    function algebraFlashCallback(uint256, uint256, bytes calldata data) external { _v3(data); }
+
+    function _v3(bytes calldata data) internal {
+        _claim();
+        (address root, , ) = abi.decode(data, (address, address, uint16));
+        _run(IProbeERC20(root).balanceOf(address(this)), data);
+    }
+
+    /// Morpho Blue
+    function onMorphoFlashLoan(uint256 assets, bytes calldata data) external {
+        _claim();
+        _run(assets, data);
+    }
+
+    /// The probe itself. Always reverts.
+    function _run(uint256 amount, bytes calldata data) internal {
+        (address root, address pair, uint16 feeBpsCap) = abi.decode(data, (address, address, uint16));
         Ctx memory c;
-        c.root = asset;
+        c.root = root;
         c.pair = IProbePair(pair);
         c.feeBpsCap = feeBpsCap;
-        c.rootIs0 = c.pair.token0() == asset;
+        c.rootIs0 = c.pair.token0() == root;
         c.token = c.rootIs0 ? c.pair.token1() : c.pair.token0();
         if (c.token.code.length == 0) revert ProbeFailed(STAGE_NO_CODE, "token has no code");
 

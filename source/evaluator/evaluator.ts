@@ -30,9 +30,10 @@
 import { ArbitradeDB } from '../util/db.ts';
 import { flashTermsFor, flashSwapEnabled, type ChainConfig, type NormalizedFactory } from '../util/config.ts';
 import { priceSwapRoots, swapRootsMinLiquidity } from '../util/swap-roots.ts';
-import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
+import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows, cycle_input_cap } from '../util/calculus.js';
 import {
     v3_float_hop, mixed_cycle_product, optimal_mixed_cycle, mixed_cycle_profit, mixed_cycle_overflows,
+    mixed_input_cap,
 } from '../util/calculus-v3.js';
 
 // -----------------------------------------------------------------------------
@@ -156,13 +157,16 @@ export type EvaluateOptions = {
      */
     executableOnly?: boolean;
     /**
-     * Include Solidly STABLE pools (x³y+y³x curve) in enumeration and score them
-     * with the stable math. Default false — the deployed executor can't trade
-     * the stable curve yet, so this is for `yarn evaluate --include-stable` to
-     * REPORT the stable candidate volume before committing to the contract work.
-     * Under executableOnly, stable cycles are still dropped (stableNotExecutable).
+     * Include Solidly STABLE pools (x³y+y³x curve), scored on the stable curve
+     * (calculus.js stable_amount_out, sized by ternary search). Default true.
      */
     includeStable?: boolean;
+    /**
+     * The executor trades stable pools (FlashArbExecutor.HOP_STABLE). Without
+     * it, executableOnly drops stable cycles (stableNotExecutable), and a
+     * stable first hop is not flash-swappable (it pays the lender premium).
+     */
+    stableHops?: boolean;
 };
 
 export type Candidate = {
@@ -186,6 +190,8 @@ export type Candidate = {
         fee: number;
         /** 'v3' for a concentrated-liquidity hop; absent/'v2' otherwise. */
         kind?: 'v2' | 'v3';
+        /** A Solidly-family STABLE pool (kind 'v2', traded as HOP_STABLE). */
+        stable?: boolean;
     }>;
 };
 
@@ -221,7 +227,7 @@ export type SkipReasons = {
     v3NotExecutable: number;
     /** A v3 pool in the cycle has reserves but no stored pool_state (re-run `yarn reserves`). */
     v3MissingState: number;
-    /** Cycle has a Solidly stable hop and executableOnly was set — the deployed executor can't trade the stable curve yet. */
+    /** Cycle has a Solidly stable hop, executableOnly was set and the executor predates HOP_STABLE. */
     stableNotExecutable: number;
     /**
      * Rooted at a swap root (no lender holds it) whose first hop in this
@@ -352,8 +358,8 @@ export function orientHop(p: PairData, tokenIn: string): any {
  */
 export function scoreMixed(oriented: any[]): { x: number; grossProfit: number } | { skip: 'notProfitable' | 'uint112Overflow' } {
     if (!(mixed_cycle_product(oriented) > 1)) return { skip: 'notProfitable' };
-    let hi = Infinity;
-    for (const h of oriented) if (!h.v3) hi = Math.min(hi, h.rIn / 2);
+    // Half of each non-V3 pool, mapped to the root's units (mixed_input_cap).
+    const hi = mixed_input_cap(oriented);
     if (!(hi > 1)) return { skip: 'notProfitable' };
     let { x } = optimal_mixed_cycle(oriented);
     if (!(x > 0) || !isFinite(x)) return { skip: 'notProfitable' };
@@ -433,6 +439,9 @@ function findBestDirectPrice(
     let best: { price: number; liquidity: number } | null = null;
 
     for (const p of pairsByAddr.values()) {
+        // A stable pool's reserve ratio is not its price (100 USDC / 50 USDT
+        // still trades ~1:1), so it cannot price anything this way.
+        if (p.stable) continue;
         const t0 = p.token0.toLowerCase();
         const t1 = p.token1.toLowerCase();
         let tokenIsToken0: boolean;
@@ -491,8 +500,9 @@ export async function evaluateTriangles(
     // funded by flash-swapping that pair and pays no premium at all. Same rule
     // as config.ts's cyclePremium (which the hot-loop index mirrors).
     const swapFunded = flashSwapEnabled(cfg);
+    const stableHops = opts.stableHops ?? false;
     const cyclePremiumFor = (root: string, first: PairData): number =>
-        swapFunded && first.kind !== 'v3' && !first.stable ? 0 : flashPremiumFor(root);
+        swapFunded && first.kind !== 'v3' && (!first.stable || stableHops) ? 0 : flashPremiumFor(root);
     const debug = opts.debug ?? false;
     const debugLimit = opts.debugLimit ?? 25;
     let debugPrinted = 0;
@@ -527,7 +537,7 @@ export async function evaluateTriangles(
 
     try {
         // 1. Bulk load pairs+reserves+fee into an in-memory index.
-        const pairRows = db.getPairsForEnumeration({ includeStable: opts.includeStable ?? false }) as any[];
+        const pairRows = db.getPairsForEnumeration({ includeStable: opts.includeStable ?? true }) as any[];
 
         // 1a. Decimals lookup for the liquidity filter — same pattern as the
         // reserves fetcher's --dust option (config wins over DB, DB wins over
@@ -540,9 +550,13 @@ export async function evaluateTriangles(
         }
         const minLiquidityTokens = opts.minLiquidityTokens ?? 0;
         let unknownDecimalsTokens = new Set<string>();
-        if (minLiquidityTokens > 0) {
+        // Stable pools need their tokens' decimals for the curve itself, not
+        // just for the dust filter: always load those.
+        const isStableRow = (r: any) => r.stable === 1 || r.stable === true;
+        if (minLiquidityTokens > 0 || pairRows.some(isStableRow)) {
             const allTokenAddrs = new Set<string>();
             for (const r of pairRows) {
+                if (!(minLiquidityTokens > 0) && !isStableRow(r)) continue;
                 allTokenAddrs.add(r.token0.toLowerCase());
                 allTokenAddrs.add(r.token1.toLowerCase());
             }
@@ -569,6 +583,10 @@ export async function evaluateTriangles(
 
         const pairsByAddr = new Map<string, PairData>();
         for (const r of pairRows) {
+            // A stable pool's curve is computed on decimals-normalised reserves;
+            // guessing 18 for a 6-decimal token misprices it by 1e12. Leave such
+            // a pool out (its triangles count as missing pair) until `yarn tokens`.
+            if (isStableRow(r) && (!decimalsByToken.has(r.token0.toLowerCase()) || !decimalsByToken.has(r.token1.toLowerCase()))) continue;
             const minReserve0 = minLiquidityTokens > 0 ? minLiquidityTokens * (10 ** decimalsOf(r.token0)) : 0;
             const minReserve1 = minLiquidityTokens > 0 ? minLiquidityTokens * (10 ** decimalsOf(r.token1)) : 0;
             pairsByAddr.set(r.pair, {
@@ -723,7 +741,7 @@ export async function evaluateTriangles(
         }
         const flashRoots = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
         /** A first hop a flash swap can borrow from: V2-style, constant product. */
-        const swappable = (p: PairData) => p.kind !== 'v3' && !p.stable;
+        const swappable = (p: PairData) => p.kind !== 'v3' && (!p.stable || stableHops);
 
         // Base minimum from --min-profit (in wei) still applies on top.
         const baseMinProfit = Number(opts.minProfitWei ?? 0n);
@@ -848,7 +866,7 @@ export async function evaluateTriangles(
                     const hasStable = !!first.stable || !!second.stable;
                     const hasMixed = hasV3 || hasStable;
                     if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
-                    if (hasStable && opts.executableOnly) { skipReasons.stableNotExecutable++; continue; }
+                    if (hasStable && opts.executableOnly && !stableHops) { skipReasons.stableNotExecutable++; continue; }
                     if ((first.kind === 'v3' && !first.v3) || (second.kind === 'v3' && !second.v3)) {
                         skipReasons.v3MissingState++; continue;
                     }
@@ -877,7 +895,8 @@ export async function evaluateTriangles(
                     // 2-hop path had NO upper bound at all, which is how inputs
                     // large enough to overflow a pair's uint112 reserve slots
                     // reached the orchestrator and had to be clamped there.
-                    const hi = smallestInReserve / 2;
+                    // Half of each pool, in the ROOT's units (see cycle_input_cap).
+                    const hi = cycle_input_cap(oriented);
                     if (!(hi > 1)) { skipReasons.notProfitable++; continue; }
 
                     if (!(cycle_product(oriented) > 1)) { skipReasons.notProfitable++; continue; }
@@ -935,8 +954,8 @@ export async function evaluateTriangles(
                         grossProfit,
                         netProfit,
                         hops: [
-                            { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee,  kind: first.kind },
-                            { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee, kind: second.kind },
+                            { pair: first.pair,  factory: first.factory,  tokenIn: root, tokenOut: tokB, fee: first.fee,  kind: first.kind,  stable: first.stable || undefined },
+                            { pair: second.pair, factory: second.factory, tokenIn: tokB, tokenOut: root, fee: second.fee, kind: second.kind, stable: second.stable || undefined },
                         ],
                     });
                 }
@@ -960,7 +979,7 @@ export async function evaluateTriangles(
                     const hasStable = hops.some(h => h.pair.stable);
                     const hasMixed = hasV3 || hasStable;
                     if (hasV3 && opts.executableOnly) { skipReasons.v3NotExecutable++; continue; }
-                    if (hasStable && opts.executableOnly) { skipReasons.stableNotExecutable++; continue; }
+                    if (hasStable && opts.executableOnly && !stableHops) { skipReasons.stableNotExecutable++; continue; }
                     if (hops.some(h => h.pair.kind === 'v3' && !h.pair.v3)) { skipReasons.v3MissingState++; continue; }
 
                     // Orient once — reused by the gate, the fold, and the
@@ -982,7 +1001,7 @@ export async function evaluateTriangles(
 
                     const smallestInReserve = Math.min(oriented[0].rIn, oriented[1].rIn, oriented[2].rIn);
                     if (smallestInReserve <= 0) { skipReasons.notProfitable++; continue; }
-                    const hi = smallestInReserve / 2;  // never swap more than 50% of any pool
+                    const hi = cycle_input_cap(oriented);  // never swap more than 50% of any pool, in root units
                     if (!(hi > 1)) { skipReasons.notProfitable++; continue; }
 
                     // Gate: P = prod((1-fee) * rOut/rIn) is the marginal return
@@ -1056,6 +1075,7 @@ export async function evaluateTriangles(
                             tokenOut: h.tokenOut,
                             fee: h.pair.fee,
                             kind: h.pair.kind,
+                            stable: h.pair.stable || undefined,
                         })),
                     });
                 }

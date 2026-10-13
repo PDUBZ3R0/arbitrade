@@ -186,7 +186,8 @@ export function choosePairs(market: AaveMarket, positions: Position[], hf: bigin
 
 // --- 3. routes -----------------------------------------------------------------
 
-export type Hop = { pair: string; tokenIn: string; feePpm: number; recipient: string; kind: 0 | 1 };
+/** kind: HopEngine's HOP_V2 (0), HOP_V3 (1), HOP_STABLE (2). */
+export type Hop = { pair: string; tokenIn: string; feePpm: number; recipient: string; kind: 0 | 1 | 2 };
 export type Route = { hops: Hop[]; label: string };
 
 type PoolRow = { address: string; token0: string; token1: string; kind: string; fee: number | null; stable: number | null; factory: string; depth: number };
@@ -194,18 +195,27 @@ type PoolRow = { address: string; token0: string; token1: string; kind: string; 
 /**
  * Exit-route candidates from the arb pipeline's own pool DB. Only pools of
  * factories in the current (non-blacklisted) config, only curves HopEngine
- * prices correctly: V2-style constant product (stable pools excluded) with a
- * known fee, and V3 pools whose swap callback it implements.
+ * prices correctly: V2-style constant product with a known fee; V3 and
+ * Algebra pools whose swap callback it implements; and Solidly stable pools
+ * (HOP_STABLE, sized by the pool's own getAmountOut) when the deployed
+ * liquidator has HOP_STABLE — `stable` in the constructor. Stable pools are
+ * often THE route between two stablecoins or an LST and its base.
+ *
+ * Nothing here prices a route: every candidate is simulated against the real
+ * liquidator (staticCall), which does the curve math on-chain.
  */
 export class RouteFinder {
     private readonly db: Database.Database | null;
     private readonly factories: Map<string, ChainConfig['factories'][number]>;
     readonly hubs: string[];
+    /** The liquidator has HOP_STABLE: stable pools may be exit routes. */
+    readonly stable: boolean;
 
-    constructor(cfg: ChainConfig, dbFile: string, hubs: string[]) {
+    constructor(cfg: ChainConfig, dbFile: string, hubs: string[], opts: { stable?: boolean } = {}) {
         this.db = fs.existsSync(dbFile) ? new Database(dbFile, { readonly: true, fileMustExist: true }) : null;
         this.factories = new Map(cfg.factories.map(f => [f.address.toLowerCase(), f]));
         this.hubs = [...new Set(hubs.map(h => h.toLowerCase()))];
+        this.stable = !!opts.stable;
     }
 
     get available(): boolean { return this.db != null; }
@@ -226,8 +236,11 @@ export class RouteFinder {
         const usable = rows.filter(r => {
             const f = this.factories.get(r.factory.toLowerCase());
             if (!f) return false;                                   // unknown or blacklisted factory
-            if (r.kind === 'v3') return f.group === 'v3' && (!f.callback || /^(uniswapV3SwapCallback|pancakeV3SwapCallback)$/.test(f.callback));
-            if (r.stable === 1) return false;                       // stable curve: constant-product math would be wrong
+            if (r.kind === 'v3') return (f.group === 'v3' || f.group === 'algebra')
+                && (!f.callback || /^(uniswapV3SwapCallback|pancakeV3SwapCallback|algebraSwapCallback)$/.test(f.callback));
+            // A stable pool quotes itself on-chain (HOP_STABLE), so it needs no
+            // fee here — only a liquidator that knows the hop kind.
+            if (r.stable === 1) return this.stable;
             return this.feeOf(r) != null;
         });
         // V2 and V3 depth are not comparable units; interleave the best of each.
@@ -251,19 +264,20 @@ export class RouteFinder {
         const fee = this.feeOf(r) ?? 0;
         return {
             pair: getAddress(r.address), tokenIn: getAddress(tokenIn),
-            feePpm: Math.round(fee * 1e6), recipient: '', kind: r.kind === 'v3' ? 1 : 0,
+            feePpm: Math.round(fee * 1e6), recipient: '', kind: r.kind === 'v3' ? 1 : r.stable === 1 ? 2 : 0,
         };
     }
 
     /** Route candidates from -> to, ending at `executor`. */
     routes(from: string, to: string, executor: string, maxRoutes = 10): Route[] {
         const out: Route[] = [];
-        for (const p of this.pools(from, to)) out.push({ hops: [this.hopFor(p, from)], label: `direct ${p.kind} ${p.address.slice(0, 10)}` });
+        const kindOf = (p: PoolRow) => p.stable === 1 ? 'stable' : p.kind;
+        for (const p of this.pools(from, to)) out.push({ hops: [this.hopFor(p, from)], label: `direct ${kindOf(p)} ${p.address.slice(0, 10)}` });
         for (const h of this.hubs) {
             if (h === from.toLowerCase() || h === to.toLowerCase()) continue;
             const first = this.pools(from, h, 2), second = this.pools(h, to, 2);
             for (const a of first) for (const b of second) {
-                out.push({ hops: [this.hopFor(a, from), this.hopFor(b, h)], label: `via ${h.slice(0, 10)} (${a.kind}/${b.kind})` });
+                out.push({ hops: [this.hopFor(a, from), this.hopFor(b, h)], label: `via ${h.slice(0, 10)} (${kindOf(a)}/${kindOf(b)})` });
             }
         }
         for (const r of out) setRecipients(r.hops, executor);
@@ -271,11 +285,11 @@ export class RouteFinder {
     }
 }
 
-/** Each hop pays the next V2 pair directly, else the executor (FlashArbExecutor's routing rule). */
+/** Each hop pays the next V2 or stable pair directly (both are paid up front), else the executor (FlashArbExecutor's routing rule). */
 export function setRecipients(hops: Hop[], executor: string): void {
     for (let i = 0; i < hops.length; i++) {
         const next = hops[i + 1];
-        hops[i].recipient = next && next.kind === 0 ? next.pair : getAddress(executor);
+        hops[i].recipient = next && next.kind !== 1 ? next.pair : getAddress(executor);
     }
 }
 

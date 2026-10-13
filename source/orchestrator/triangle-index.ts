@@ -41,6 +41,12 @@
 // pool in the evaluator too. A pool with no stored state is left out (the
 // evaluator skips it as v3MissingState).
 //
+// STABLE POOLS (opt-in: build(..., { stable: true }), when the executor has
+// HOP_STABLE). A Solidly stable pool emits Sync like any V2 pair, so it lives in
+// res0/res1 and is kept current by applySync; it is scored on the stable curve
+// through the same scoreMixed path as v3, with its tokens' decimals (a stable
+// pool whose decimals are unknown is left out, as the evaluator leaves it out).
+//
 // SCORING MUST MATCH THE BATCH EVALUATOR EXACTLY. It uses the same
 // cycle_product / optimal_cycle_size / cycle_profit from calculus.js, the same
 // clamp, the same filters in the same order. If these two ever disagree, the
@@ -51,7 +57,7 @@
 
 import type { ChainConfig, NormalizedFactory } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
-import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows } from '../util/calculus.js';
+import { cycle_product, optimal_cycle_size, cycle_profit, cycle_overflows, cycle_input_cap } from '../util/calculus.js';
 import { v3_float_hop } from '../util/calculus-v3.js';
 import { scoreMixed } from '../evaluator/evaluator.ts';
 import { virtualReserves } from '../reserves/v3-state.ts';
@@ -74,7 +80,7 @@ export type IndexedCandidate = {
     inputAmount: number;
     grossProfit: number;
     netProfit: number;
-    hops: Array<{ pair: string; factory: string; tokenIn: string; tokenOut: string; fee: number; kind: 'v2' | 'v3' }>;
+    hops: Array<{ pair: string; factory: string; tokenIn: string; tokenOut: string; fee: number; kind: 'v2' | 'v3'; stable?: boolean }>;
 };
 
 export type ScoreThresholds = {
@@ -103,6 +109,11 @@ export type ScoreThresholds = {
      * flash swap borrows from. Must match the evaluator's noFunding skip.
      */
     swapOnlyRoots?: Set<string>;
+    /**
+     * The executor has HOP_STABLE: a stable first hop can be flash-swapped
+     * (no premium) and can fund a swap root. Must match the evaluator's stableHops.
+     */
+    stableHops?: boolean;
 };
 
 export class TriangleIndex {
@@ -125,6 +136,10 @@ export class TriangleIndex {
     res1!: Float64Array;
     /** 1 for a concentrated-liquidity pool. */
     pairIsV3!: Uint8Array;
+    /** 1 for a Solidly stable pool; its tokens' decimals beside it. */
+    pairIsStable!: Uint8Array;
+    pairDec0!: Uint8Array;
+    pairDec1!: Uint8Array;
     /** v3 pools only: current state, and its float hops per direction (built
      *  on first use, dropped whenever the state is replaced). */
     readonly v3State: Array<V3PoolState | undefined> = [];
@@ -192,7 +207,13 @@ export class TriangleIndex {
         /** v3: also hold concentrated-liquidity pools (see the header). Off by
          *  default: without a V3-capable executor and a V3 feed, a cycle through
          *  one could be found but neither kept current nor traded. */
-        opts: { v3?: boolean } = {},
+        opts: {
+            v3?: boolean;
+            /** Hold Solidly stable pools too — only when the executor has HOP_STABLE. */
+            stable?: boolean;
+            /** Token decimals (lowercase address). Missing tokens are read from the tokens table. */
+            decimalsByToken?: Map<string, number>;
+        } = {},
     ): TriangleIndex {
         const ix = new TriangleIndex();
 
@@ -200,15 +221,27 @@ export class TriangleIndex {
         // V2-style pairs always; v3 pools only when asked AND their state is
         // stored. Leaving a pool out drops every triangle through it (step 3).
         const pairRows = (db as any).getPairsForEnumeration({
-            includeStable: false, kinds: opts.v3 ? ['v2', 'v3'] : ['v2'],
-        }) as Array<{ pair: string; factory: string; token0: string; token1: string; fee: number | null; kind?: string }>;
+            includeStable: !!opts.stable, kinds: opts.v3 ? ['v2', 'v3'] : ['v2'],
+        }) as Array<{ pair: string; factory: string; token0: string; token1: string; fee: number | null; kind?: string; stable?: number | null }>;
+        const isStableRow = (r: { stable?: number | null }) => r.stable === 1;
+        // Decimals for stable pools' tokens: the caller's, then the tokens table.
+        const decimals = new Map<string, number>(opts.decimalsByToken ?? []);
+        if (pairRows.some(isStableRow)) {
+            const want = new Set<string>();
+            for (const r of pairRows) if (isStableRow(r)) for (const t of [r.token0, r.token1]) if (!decimals.has(t.toLowerCase())) want.add(t.toLowerCase());
+            if (want.size) for (const [a, t] of (db as any).getTokens([...want]) as Map<string, { decimals: number | null }>) if (t.decimals != null) decimals.set(a.toLowerCase(), t.decimals);
+        }
         const states: Map<string, V3PoolState> = opts.v3 && pairRows.some(r => r.kind === 'v3')
             ? (db as any).loadV3States() : new Map();
-        const t0: number[] = [], t1: number[] = [], fee: number[] = [], isV3: number[] = [];
+        const t0: number[] = [], t1: number[] = [], fee: number[] = [], isV3: number[] = [],
+              isStable: number[] = [], d0: number[] = [], d1: number[] = [];
         for (const r of pairRows) {
             const v3 = r.kind === 'v3';
             const st = v3 ? states.get(String(r.pair).toLowerCase()) : undefined;
             if (v3 && !st) continue;
+            const stable = !v3 && isStableRow(r);
+            const dec0 = decimals.get(r.token0.toLowerCase()), dec1 = decimals.get(r.token1.toLowerCase());
+            if (stable && (dec0 == null || dec1 == null)) continue;   // the evaluator leaves it out too
             const pi = ix.internPair(r.pair, r.factory);
             t0[pi] = ix.internToken(r.token0);
             t1[pi] = ix.internToken(r.token1);
@@ -219,6 +252,9 @@ export class TriangleIndex {
                 : r.fee != null ? r.fee
                 : (factoriesByAddr.get(r.factory.toLowerCase())?.fee ?? 0.003);
             isV3[pi] = v3 ? 1 : 0;
+            isStable[pi] = stable ? 1 : 0;
+            d0[pi] = stable ? dec0! : 0;
+            d1[pi] = stable ? dec1! : 0;
             if (st) { ix.v3State[pi] = st; ix.v3Count++; }
         }
         ix.pairCount = ix.pairAddr.length;
@@ -226,6 +262,9 @@ export class TriangleIndex {
         ix.pairToken1 = Int32Array.from(t1);
         ix.pairFee = Float64Array.from(fee);
         ix.pairIsV3 = Uint8Array.from(isV3);
+        ix.pairIsStable = Uint8Array.from(isStable);
+        ix.pairDec0 = Uint8Array.from(d0);
+        ix.pairDec1 = Uint8Array.from(d1);
         ix.res0 = new Float64Array(ix.pairCount);
         ix.res1 = new Float64Array(ix.pairCount);
 
@@ -309,6 +348,7 @@ export class TriangleIndex {
     /** Approximate retained bytes, for the startup log. */
     bytes(): number {
         const arrs = [this.pairToken0, this.pairToken1, this.pairFee, this.res0, this.res1, this.pairIsV3,
+            this.pairIsStable, this.pairDec0, this.pairDec1,
             this.triPairs, this.triRoot, this.triTokB, this.triTokC, this.triHops,
             this.triDbId, this.csrOffset, this.csrTri, this.stamp];
         return arrs.reduce((n, a) => n + (a?.byteLength ?? 0), 0);
@@ -430,7 +470,7 @@ export class TriangleIndex {
         const minProfit = th.minProfitByRoot.get(rootAddr) ?? 0;
         const minInput = th.minInputByRoot.get(rootAddr) ?? 0;
         let mixed = false;
-        for (const p of members) if (this.pairIsV3[p]) { mixed = true; break; }
+        for (const p of members) if (this.pairIsV3[p] || this.pairIsStable[p]) { mixed = true; break; }
 
         for (let d = 0; d < 2; d++) {
             const forward = d === 0;
@@ -463,18 +503,26 @@ export class TriangleIndex {
                 hops = this.hops3;
             }
 
-            if (th.swapOnlyRoots?.has(rootAddr) && this.pairIsV3[legs[0].pi]) continue;
+            const firstSwappable = !this.pairIsV3[legs[0].pi] && (!this.pairIsStable[legs[0].pi] || !!th.stableHops);
+            if (th.swapOnlyRoots?.has(rootAddr) && !firstSwappable) continue;
 
             let x: number, grossProfit: number;
             if (mixed) {
-                // The evaluator's mixed path, verbatim: v3 hops as float hops
-                // over their tick window, V2 hops as {rIn, rOut, fee}.
+                // The evaluator's mixed path, verbatim (orientHop): v3 hops as
+                // float hops over their tick window, stable hops with their
+                // decimals, V2 hops as {rIn, rOut, fee}.
                 const oriented: any[] = [];
                 for (let k = 0; k < legs.length; k++) {
                     const l = legs[k];
-                    oriented.push(this.pairIsV3[l.pi]
-                        ? this.v3Hop(l.pi, l.tokenIn)
-                        : { rIn: hops[k].rIn, rOut: hops[k].rOut, fee: hops[k].fee });
+                    if (this.pairIsV3[l.pi]) { oriented.push(this.v3Hop(l.pi, l.tokenIn)); continue; }
+                    if (this.pairIsStable[l.pi]) {
+                        const zeroIn = this.pairToken0[l.pi] === l.tokenIn;
+                        oriented.push({ rIn: hops[k].rIn, rOut: hops[k].rOut, fee: hops[k].fee, stable: true,
+                            decIn: zeroIn ? this.pairDec0[l.pi] : this.pairDec1[l.pi],
+                            decOut: zeroIn ? this.pairDec1[l.pi] : this.pairDec0[l.pi] });
+                        continue;
+                    }
+                    oriented.push({ rIn: hops[k].rIn, rOut: hops[k].rOut, fee: hops[k].fee });
                 }
                 const sc = scoreMixed(oriented);
                 if ('skip' in sc) continue;
@@ -482,7 +530,7 @@ export class TriangleIndex {
             } else {
             const smallest = Math.min(...hops.map(h => h.rIn));
             if (!(smallest > 0)) continue;
-            const hi = smallest / 2;
+            const hi = cycle_input_cap(hops);
             if (!(hi > 1)) continue;
             if (!(cycle_product(hops) > 1)) continue;
 
@@ -500,7 +548,7 @@ export class TriangleIndex {
             if (cycle_overflows(x, hops)) continue;
             }
 
-            const premium = th.flashSwap && !this.pairIsV3[legs[0].pi]
+            const premium = th.flashSwap && firstSwappable
                 ? 0
                 : (th.flashPremiumByRoot?.get(rootAddr) ?? th.flashPremium);
             const netProfit = grossProfit - x * premium;
@@ -524,6 +572,7 @@ export class TriangleIndex {
                     tokenOut: this.tokenAddr[l.tokenOut],
                     fee: this.pairFee[l.pi],
                     kind: this.pairIsV3[l.pi] ? 'v3' as const : 'v2' as const,
+                    ...(this.pairIsStable[l.pi] ? { stable: true } : {}),
                 })),
             });
         }

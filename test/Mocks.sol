@@ -24,6 +24,10 @@ contract MockToken {
         taxBps = _taxBps;
     }
 
+    /// For stable-pool tests with 6-decimal tokens. Set before creating pools:
+    /// a Velodrome pool reads its tokens' decimals once, in its constructor.
+    function setDecimals(uint8 d) external { decimals = d; }
+
     function mint(address to, uint256 amt) external {
         balanceOf[to] += amt;
         totalSupply += amt;
@@ -212,6 +216,12 @@ contract MockMorpho {
 interface IVeloFactoryM { function getFee(address pool, bool stable) external view returns (uint256); }
 interface IPoolCalleeM { function hook(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external; }
 
+interface IERC20DecM { function decimals() external view returns (uint8); }
+
+/// Velodrome V2 Pool: the swap/K/fee mechanics and, for stable pools, the
+/// stable math (getAmountOut, _k, _get_y) ported line for line from
+/// velodrome-finance/contracts Pool.sol — decimals normalisation included —
+/// so HOP_STABLE is tested against the real curve, not a simplification.
 contract MockVeloPool {
     event Sync(uint256 reserve0, uint256 reserve1);
     address public immutable factory;
@@ -220,9 +230,67 @@ contract MockVeloPool {
     bool public immutable stable;
     uint256 public reserve0;
     uint256 public reserve1;
+    uint256 internal immutable decimals0;
+    uint256 internal immutable decimals1;
 
     constructor(address _t0, address _t1, bool _stable) {
         factory = msg.sender; token0 = _t0; token1 = _t1; stable = _stable;
+        decimals0 = 10 ** IERC20DecM(_t0).decimals();
+        decimals1 = 10 ** IERC20DecM(_t1).decimals();
+    }
+
+    function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256) {
+        (uint256 _reserve0, uint256 _reserve1) = (reserve0, reserve1);
+        amountIn -= (amountIn * IVeloFactoryM(factory).getFee(address(this), stable)) / 10000; // remove fee from amount received
+        return _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
+    }
+
+    function _getAmountOut(uint256 amountIn, address tokenIn, uint256 _reserve0, uint256 _reserve1) internal view returns (uint256) {
+        if (stable) {
+            uint256 xy = _k(_reserve0, _reserve1);
+            _reserve0 = (_reserve0 * 1e18) / decimals0;
+            _reserve1 = (_reserve1 * 1e18) / decimals1;
+            (uint256 reserveA, uint256 reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+            amountIn = tokenIn == token0 ? (amountIn * 1e18) / decimals0 : (amountIn * 1e18) / decimals1;
+            uint256 y = reserveB - _get_y(amountIn + reserveA, xy, reserveB);
+            return (y * (tokenIn == token0 ? decimals1 : decimals0)) / 1e18;
+        } else {
+            (uint256 reserveA, uint256 reserveB) = tokenIn == token0 ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+            return (amountIn * reserveB) / (reserveA + amountIn);
+        }
+    }
+
+    function _f(uint256 x0, uint256 y) internal pure returns (uint256) {
+        uint256 _a = (x0 * y) / 1e18;
+        uint256 _b = ((x0 * x0) / 1e18 + (y * y) / 1e18);
+        return (_a * _b) / 1e18;
+    }
+
+    function _d(uint256 x0, uint256 y) internal pure returns (uint256) {
+        return (3 * x0 * ((y * y) / 1e18)) / 1e18 + ((((x0 * x0) / 1e18) * x0) / 1e18);
+    }
+
+    function _get_y(uint256 x0, uint256 xy, uint256 y) internal view returns (uint256) {
+        for (uint256 i = 0; i < 255; i++) {
+            uint256 k = _f(x0, y);
+            if (k < xy) {
+                uint256 dy = ((xy - k) * 1e18) / _d(x0, y);
+                if (dy == 0) {
+                    if (k == xy) return y;
+                    if (_k(x0, y + 1) > xy) return y + 1;
+                    dy = 1;
+                }
+                y = y + dy;
+            } else {
+                uint256 dy = ((k - xy) * 1e18) / _d(x0, y);
+                if (dy == 0) {
+                    if (k == xy || _f(x0, y - 1) < xy) return y;
+                    dy = 1;
+                }
+                y = y - dy;
+            }
+        }
+        revert("!y");
     }
     function getReserves() external view returns (uint256, uint256, uint256) { return (reserve0, reserve1, block.timestamp); }
     function sync() external {
@@ -231,10 +299,12 @@ contract MockVeloPool {
         emit Sync(reserve0, reserve1);
     }
     function _k(uint256 x, uint256 y) internal view returns (uint256) {
-        if (stable) {   // x^3*y + y^3*x, all tokens here are 18-decimal
-            uint256 a = (x * y) / 1e18;
-            uint256 b = (x * x) / 1e18 + (y * y) / 1e18;
-            return (a * b) / 1e18;
+        if (stable) {   // x^3*y + y^3*x on decimals-normalised reserves
+            uint256 _x = (x * 1e18) / decimals0;
+            uint256 _y = (y * 1e18) / decimals1;
+            uint256 _a = (_x * _y) / 1e18;
+            uint256 _b = ((_x * _x) / 1e18 + (_y * _y) / 1e18);
+            return (_a * _b) / 1e18;
         }
         return x * y;
     }

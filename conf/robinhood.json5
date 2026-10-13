@@ -8,8 +8,9 @@
     token: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
 
     contract: "0x2A7e091B283846835f536a889201cbD48365B37E",
-    executor: "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
-    probe: "0x9301c3F24DDB4E953df31D51df23F102680155c6",
+    executor: "0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649",
+    probe: "0x0426d7687911f81DcD7769655b995650a765a7D5",
+    liquidator: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
 
 
     threads: 10,
@@ -118,7 +119,8 @@
         UniswapV2Factory_85039b2e: {   // 6 pairs
           address: '0x85039b2e95558addccf4379728b8433c447e37be',
           deployBlock: 32281199,
-          fee: 0.003,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
+          // verify-fees 2026-10-12: fee 0.003 → 0.02 (empirical)
+          fee: 0.02,   // assumed — UNVERIFIED until `yarn verify-fees robinhood`
         },
         Factory_6cf8e6c0: {   // 5 pairs
           address: '0x6cf8e6c06845da9979b057838e22cfc03676e1cd',
@@ -1175,16 +1177,26 @@
       },
     },
   },
-  // No Aave V3 market here. Balancer V2 vault found (flash fee 0.000%).
-  // It can only lend what it holds — check before adding tokens.
   flashloan: {
-    flashSwap: true,
-    swapRoots: { minLiquidity: 0.1 },
-    provider: 'balancer-v2',
+    provider: 'morpho',
+    morpho: '0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010',
     premium: 0,
-    vault: '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+    flashSwap: true,   // kept from your config
+    swapRoots: { minLiquidity: 0.1 },   // kept from your config
     tokens: [
-      // TODO add flash tokens the vault holds
+      { symbol: 'USDG', address: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168', decimals: 6 },   // 54.74M lendable
+      { symbol: 'NVDA', address: '0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC', decimals: 18 },   // 7.2K lendable
+      { symbol: 'SPCX', address: '0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa', decimals: 18 },   // 8.1K lendable
+      { symbol: 'GOOGL', address: '0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3', decimals: 18 },   // 1.9K lendable
+      { symbol: 'AAPL', address: '0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9', decimals: 18 },   // 1.4K lendable
+      { symbol: 'PONS', address: '0x39dBED3a2bd333467115dE45665cC57F813C4571', decimals: 18 },   // 635.7K lendable
+      { symbol: 'WETH', address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73', decimals: 18 },   // 27.32 lendable
+      { symbol: 'SPY', address: '0x117cc2133c37B721F49dE2A7a74833232B3B4C0C', decimals: 18 },   // 15.40 lendable
+      { symbol: 'Index', address: '0x56910D4409F3a0C78C64DD8D0545FF0705389870', decimals: 18 },   // 689.0K lendable
+      { symbol: 'CASHCAT', address: '0x020bfC650A365f8BB26819deAAbF3E21291018b4', decimals: 18 },   // 31.3K lendable
+      { symbol: 'DELTA', address: '0xe8ffd7e24187F72afB08d75B1bb13088A989a791', decimals: 18 },   // 239.3K lendable
+      { symbol: 'AI', address: '0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18', decimals: 18 },   // 16.6K lendable
     ],
   },
+
 }

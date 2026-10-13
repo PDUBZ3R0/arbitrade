@@ -82,6 +82,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           pricing (default 900). 0 disables.');
     console.error('  --poll-ms N              HTTP block poll interval when --ws is absent (default 1000).');
     console.error('  --no-v3                  Leave V3 pools out even when the executor can trade them.');
+    console.error('  --no-stable              Leave Solidly stable pools out even when the executor can trade them.');
     console.error('  --v3-chunk N             V3 pools per getV3States eth_call (default 50). Lower it for');
     console.error('                           a rate-limited RPC that rejects or drops larger reads.');
     console.error('  --v3-refresh-sec N       Re-read V3 pools whose last state read failed, every N sec');
@@ -130,6 +131,7 @@ const repriceSec = num('--reprice-sec', 900, v => v >= 0, 'zero or more');
 const pollMs = num('--poll-ms', 1000, v => v >= 50, 'at least 50');
 const ownerArg = getStr('--owner');
 const noV3 = hasFlag('--no-v3');
+const noStable = hasFlag('--no-stable');
 const v3ChunkSize = num('--v3-chunk', 50, v => v >= 1, 'at least 1');
 const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 
@@ -187,10 +189,15 @@ const executor = new CandidateExecutor(cfg, provider, {}, {
 });
 const executorV3 = await executor.supportsV3();
 const v3 = !noV3 && executorV3 && !!cfg.chain.contract;
+const executorStable = await executor.supportsStable();
+const stable = !noStable && executorStable;
 console.log(`V3 pools:  ${v3 ? 'on — re-read on every Swap/Mint/Burn'
     : noV3 ? 'off (--no-v3)'
     : !executorV3 ? `off — executor predates V3 hops (yarn deploy-flasharb ${cfg.chain.label} --redeploy)`
     : 'off — no chain.contract (YoBatches) to read them with'}`);
+console.log(`Stable:    ${stable ? 'on — Solidly stable pools priced on their curve, quoted by the pair'
+    : noStable ? 'off (--no-stable)'
+    : `off — executor predates HOP_STABLE (yarn deploy flasharb ${cfg.chain.label})`}`);
 
 // --- startup: one full evaluator pass, for pricing ---------------------------
 //
@@ -203,6 +210,8 @@ const t0 = Date.now();
 const baseline = await evaluateTriangles(cfg, dbFile, {
     limit: 5, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
     executableOnly: !v3,
+    stableHops: stable,
+    includeStable: stable,
 });
 console.log(`${Date.now() - t0}ms — ${Object.keys(baseline.rootPricing).length} root(s), ` +
     `${baseline.candidatesFound.toLocaleString()} candidate(s) in the snapshot`);
@@ -213,7 +222,11 @@ for (const f of cfg.factories ?? []) factoriesByAddr.set(f.address.toLowerCase()
 
 process.stdout.write('Building triangle index... ');
 const tIx = Date.now();
-const ix = TriangleIndex.build(db, factoriesByAddr, { v3 });
+const ix = TriangleIndex.build(db, factoriesByAddr, {
+    v3, stable,
+    // Config decimals win over the tokens table, as in the evaluator.
+    decimalsByToken: new Map((cfg.flashloan?.tokens ?? []).map(t => [t.address.toLowerCase(), t.decimals])),
+});
 console.log(`${ix.triangleCount.toLocaleString()} triangles over ${ix.pairCount.toLocaleString()} pairs` +
     (ix.v3Count ? ` (${ix.v3Count.toLocaleString()} v3)` : '') +
     `, ${(ix.bytes() / 1e6).toFixed(1)} MB, ${Date.now() - tIx}ms`);
@@ -269,6 +282,7 @@ function buildThresholds(pricing: typeof baseline.rootPricing): ScoreThresholds 
             flashTermsFor(cfg, t.address)?.premium ?? cfg.flashloan?.premium ?? 0.0005,
         ])),
         flashSwap: flashSwapEnabled(cfg),
+        stableHops: stable,
         swapOnlyRoots: new Set(Object.entries(pricing).filter(([, p]) => p.swapOnly).map(([a]) => a)),
     };
 }
@@ -476,6 +490,8 @@ if (repriceSec > 0) {
                 const r = await evaluateTriangles(cfg, dbFile, {
                     limit: 1, minProfitTokens, maxRoiPct, minLiquidityTokens, minInputTokens,
                     executableOnly: !v3,
+                    stableHops: stable,
+                    includeStable: stable,
                 });
                 pricing = r.rootPricing;
                 thresholds = buildThresholds(pricing);

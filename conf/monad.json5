@@ -4,9 +4,10 @@
     name: 'Monad',
     currency: 'MON',
     token: '0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A',
-    contract: '0xe9Ef7d955FD5d749f5BcB850B67f59e937f16649',
-    executor: '0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E',
-    probe: "0x2A7e091B283846835f536a889201cbD48365B37E"
+    contract: '0x461834B561E3d193AF97EB02172be56420FF7053',
+    executor: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
+    probe: "0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534",
+    liquidator: '0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1',
   },
   reserves: {
     dust: 0.01,
@@ -570,71 +571,25 @@
     },
   },
   flashloan: {
-    provider: 'aave-v3',
-    premium: 0.0005,
-    pool: '0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef',
-  "tokens": [
-    {
-      "symbol": "syrupUSDC",
-      "address": "0xab6e5a0c3799d020c790d34f7b2c02639e238af7",
-      "decimals": 6
-    },
-    {
-      "symbol": "USDe",
-      "address": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDC",
-      "address": "0x754704bc059f8c67012fed69bc8a327a5aafb603",
-      "decimals": 6
-    },
-    {
-      "symbol": "mUSD",
-      "address": "0xaca92e438df0b2401ff60da7e4337b687a2435da",
-      "decimals": 6
-    },
-    {
-      "symbol": "weETH",
-      "address": "0xa3d68b74bf0528fdd07263c60d6488749044914b",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDT0",
-      "address": "0xe7cd86e13ac4309349f30b3435a9d337750fc82d",
-      "decimals": 6
-    },
-    {
-      "symbol": "GHO",
-      "address": "0xfc421ad3c883bf9e7c4f42de845c4e4405799e73",
-      "decimals": 18
-    },
-    {
-      "symbol": "AUSD",
-      "address": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
-      "decimals": 6
-    },
-    {
-      "symbol": "WETH",
-      "address": "0xee8c0e9f1bffb4eb878d8f15f368a02a35481242",
-      "decimals": 18
-    },
-    {
-      "symbol": "cbBTC",
-      "address": "0xd18b7ec58cdf4876f6afebd3ed1730e4ce10414b",
-      "decimals": 8
-    },
-    {
-      "symbol": "sUSDe",
-      "address": "0x211cc4dd073734da055fbf44a2b4667d5e5fe5d2",
-      "decimals": 18
-    },
-    {
-      "symbol": "wstETH",
-      "address": "0x10aeaf63194db8d453d4d85a06e5efe1dd0b5417",
-      "decimals": 18
-    }
-  ]
-
+  flashSwap: true,
+  swapRoots: { minLiquidity: 1 },
+    provider: 'morpho',
+    morpho: '0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee',
+    premium: 0,
+    tokens: [
+      { symbol: 'wstETH', address: '0x10Aeaf63194db8d453d4D85a06E5eFE1dd0b5417', decimals: 18 },   // 9.4K lendable
+      { symbol: 'USDC', address: '0x754704Bc059F8C67012fEd69BC8A327a5aafb603', decimals: 6 },   // 10.53M lendable
+      { symbol: 'WETH', address: '0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242', decimals: 18 },   // 1.2K lendable
+      { symbol: 'AUSD', address: '0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a', decimals: 6 },   // 2.33M lendable
+      { symbol: 'cbBTC', address: '0xd18B7EC58Cdf4876f6AFebd3Ed1730e4Ce10414b', decimals: 8 },   // 23.66 lendable
+      { symbol: 'WBTC', address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', decimals: 8 },   // 3.323 lendable
+      { symbol: 'XAUt0', address: '0x01bFF41798a0BcF287b996046Ca68b395DbC1071', decimals: 6 },   // 41.28 lendable
+      { symbol: 'WMON', address: '0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A', decimals: 18 },   // 6.52M lendable
+      { symbol: 'mUSD', address: '0xacA92E438df0B2401fF60dA7E4337B687a2435DA', decimals: 6 },   // 15.8K lendable
+      { symbol: 'USDT0', address: '0xe7cd86e13AC4309349F30B3435a9d337750fC82D', decimals: 6 },   // 7.8K lendable
+      { symbol: 'USD1', address: '0x111111d2bf19e43C34263401e0CAd979eD1cdb61', decimals: 6 },   // 925.7 lendable
+      { symbol: 'SOL', address: '0xea17E5a9efEBf1477dB45082d67010E2245217f1', decimals: 9 },   // 0.04720 lendable
+    ],
   },
+
 }

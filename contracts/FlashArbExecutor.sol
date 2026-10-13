@@ -50,6 +50,13 @@ interface IMorpho {
     function flashLoan(address token, uint256 assets, bytes calldata data) external;
 }
 
+/// @notice Solidly-family pair (Solidly, Velodrome/Aerodrome, Equalizer, Ramses,
+/// Camelot …): the pair quotes itself, for either curve, fee included. Its own
+/// router swaps exactly this amount, so the pair's K check accepts it.
+interface ISolidlyPair {
+    function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256);
+}
+
 /// @notice Standard V2-style pair interface. Covers v2, v2fee, and solidly
 /// factory families from the DEX pattern registry — the fee differs per pair
 /// but the swap() and getReserves() surface does not.
@@ -61,18 +68,24 @@ interface IUniswapV2Pair {
 }
 
 /// @title FlashArbExecutor
-/// @notice Executes a cycle of swaps funded by a flash loan. Two hop kinds:
+/// @notice Executes a cycle of swaps funded by a flash loan. Three hop kinds:
 ///
-///   HOP_V2  V2-style pair (v2, v2fee, solidly volatile). Paid up front: its
-///           input must already sit in the pair when the hop runs, and it is
-///           sized here from live reserves (see SIZING below).
-///   HOP_V3  Uniswap V3 / PancakeV3 pool. Paid in the swap callback: its input
-///           must be HERE when the hop runs, and the pool itself sizes the
-///           output (exact-input swap of everything we hold for the hop, no
-///           price limit).
+///   HOP_V2      V2-style pair (v2, v2fee, solidly volatile). Paid up front: its
+///               input must already sit in the pair when the hop runs, and it is
+///               sized here from live reserves (see SIZING below).
+///   HOP_V3      Uniswap V3 / PancakeV3 pool. Paid in the swap callback: its input
+///               must be HERE when the hop runs, and the pool itself sizes the
+///               output (exact-input swap of everything we hold for the hop, no
+///               price limit).
+///   HOP_STABLE  Solidly-family STABLE pool (x³y + xy³ = k, decimals-normalised).
+///               Paid up front and swapped exactly like HOP_V2 — same swap()
+///               surface — but sized by the pair's own getAmountOut(amountIn,
+///               tokenIn) instead of constant-product math: the stable curve has
+///               no closed form, every fork iterates it slightly differently,
+///               and the pair's own quote is the one its K check agrees with.
 ///
 /// ROUTING follows from that. A hop sends its output straight to the next
-/// hop's pair when the next hop is V2 (no intermediate custody, as before),
+/// hop's pair when the next hop is V2 or STABLE (no intermediate custody),
 /// and to this contract when the next hop is V3 or when it is the last hop.
 /// The off-chain builder sets `recipient` accordingly; the contract checks the
 /// one case it cannot recover from (a V3 hop whose input went elsewhere).
@@ -153,6 +166,8 @@ contract FlashArbExecutor {
     /// predates V3 hops, and the off-chain caller refuses to use it.
     uint8 public constant HOP_V2 = 0;
     uint8 public constant HOP_V3 = 1;
+    /// Also a version probe: an executor without it cannot trade stable pools.
+    uint8 public constant HOP_STABLE = 2;
 
     /// TickMath bounds, +1 / -1: a V3 swap with no effective price limit.
     uint160 private constant MIN_SQRT_RATIO_PLUS_ONE  = 4295128740;
@@ -196,10 +211,10 @@ contract FlashArbExecutor {
     ///                  derived from pair.token0() rather than carried
     ///                  alongside, so the two can never disagree.
     /// @param feePpm    V2: this pair's fee in parts per million (0.3% = 3000).
-    ///                  V3: informational only — the pool applies its own fee.
-    /// @param recipient Next hop's pair when that hop is V2; this contract when
-    ///                  the next hop is V3 or this is the last hop
-    /// @param kind      HOP_V2 or HOP_V3
+    ///                  V3 / STABLE: informational only — the pool applies its own fee.
+    /// @param recipient Next hop's pair when that hop is V2 or STABLE; this
+    ///                  contract when the next hop is V3 or this is the last hop
+    /// @param kind      HOP_V2, HOP_V3 or HOP_STABLE
     struct Hop {
         address pair;
         address tokenIn;
@@ -419,7 +434,7 @@ contract FlashArbExecutor {
         uint256 len = hops.length;
         for (uint256 i = 0; i < len; i++) {
             uint8 k = hops[i].kind;
-            if (k > HOP_V3) revert BadHopKind(i, k);
+            if (k > HOP_STABLE) revert BadHopKind(i, k);
             // A V3 hop is paid from this contract's balance, so whatever
             // feeds it must have sent its output here.
             if (k == HOP_V3 && i > 0 && hops[i - 1].recipient != address(this)) revert BadRecipient(i - 1);
@@ -431,10 +446,10 @@ contract FlashArbExecutor {
     /// (from = 1, what the borrowed pair sent).
     function _cycle(Hop[] memory hops, uint256 from, uint256 amount) internal {
         // `held` is how much of the current hop's tokenIn this contract holds
-        // FOR that hop — only meaningful when the hop is V3. A V2 hop is
-        // funded optimistically, V2-swap style.
+        // FOR that hop — only meaningful when the hop is V3. A V2 or STABLE
+        // hop is funded optimistically, V2-swap style.
         uint256 held = amount;
-        if (hops[from].kind == HOP_V2) {
+        if (hops[from].kind != HOP_V3) {
             IERC20(hops[from].tokenIn).transfer(hops[from].pair, amount);
             held = 0;
         }
@@ -452,7 +467,7 @@ contract FlashArbExecutor {
 
     /// @notice Arb funded by hop 0 itself: a V2-style flash swap. Owner-only.
     ///
-    /// hops[0] must be HOP_V2 with recipient == this contract (a flash swap
+    /// hops[0] must be HOP_V2 or HOP_STABLE with recipient == this contract (a flash swap
     /// calls back whoever receives the output). Its output is sized here from
     /// live reserves for `amountIn` of hops[0].tokenIn, exactly as the router
     /// would, so repaying `amountIn` satisfies the pair's K check. hops[1..]
@@ -464,7 +479,7 @@ contract FlashArbExecutor {
     function executeFlashSwap(uint256 amountIn, uint256 minProfit, Hop[] calldata hops) external onlyOwner {
         if (hops.length < 2) revert EmptyHops();
         Hop calldata h0 = hops[0];
-        if (h0.kind != HOP_V2) revert BadHopKind(0, h0.kind);
+        if (h0.kind != HOP_V2 && h0.kind != HOP_STABLE) revert BadHopKind(0, h0.kind);
         if (h0.recipient != address(this)) revert BadRecipient(0);
         if (amountIn == 0) revert NothingArrived(0);
 
@@ -486,11 +501,12 @@ contract FlashArbExecutor {
     }
 
     /// Direction, the token hop 0 pays out, and how much of it `amountIn` buys
-    /// at live reserves — the router's formula, so repaying `amountIn` passes K.
+    /// at live reserves — the router's formula (the pair's own quote for a
+    /// stable pool), so repaying `amountIn` passes K.
     function _flashQuote(Hop calldata h0, uint256 amountIn)
         internal view returns (bool inIsToken0, address mid, uint256 out)
     {
-        if (h0.feePpm >= FEE_SCALE) revert BadFee(0, h0.feePpm);
+        if (h0.kind == HOP_V2 && h0.feePpm >= FEE_SCALE) revert BadFee(0, h0.feePpm);
         address t0 = IUniswapV2Pair(h0.pair).token0();
         address t1 = IUniswapV2Pair(h0.pair).token1();
         inIsToken0 = h0.tokenIn == t0;
@@ -501,7 +517,9 @@ contract FlashArbExecutor {
         (uint256 reserveIn, uint256 reserveOut) =
             inIsToken0 ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
         if (reserveIn == 0 || reserveOut == 0) revert TokenNotInPair(0);
-        out = _amountOut(amountIn, reserveIn, reserveOut, h0.feePpm);
+        out = h0.kind == HOP_STABLE
+            ? ISolidlyPair(h0.pair).getAmountOut(amountIn, h0.tokenIn)
+            : _amountOut(amountIn, reserveIn, reserveOut, h0.feePpm);
         if (out == 0) revert ZeroOutput(0);
     }
 
@@ -558,7 +576,7 @@ contract FlashArbExecutor {
         emit ArbExecuted(root, amountIn, 0, bal - amountIn);
     }
 
-    /// Execute one V2 hop, sizing the output from live state. Returns what
+    /// Execute one V2 or STABLE hop, sizing the output from live state. Returns what
     /// arrived HERE when `measure` (the next hop is V3 and is paid from this
     /// contract), else 0.
     function _hop(Hop memory h, uint256 i, bool measure) internal returns (uint256 received) {
@@ -583,10 +601,10 @@ contract FlashArbExecutor {
         if (measure) received = IERC20(tokenOut).balanceOf(address(this)) - before;
     }
 
-    /// Direction and output of a V2 hop from the pair's live reserves and what
-    /// actually arrived in it.
+    /// Direction and output of a V2 or STABLE hop from the pair's live
+    /// reserves and what actually arrived in it.
     function _v2Quote(Hop memory h, uint256 i) internal view returns (bool inIsToken0, uint256 amountOut) {
-        if (h.feePpm >= FEE_SCALE) revert BadFee(i, h.feePpm);
+        if (h.kind == HOP_V2 && h.feePpm >= FEE_SCALE) revert BadFee(i, h.feePpm);
 
         inIsToken0 = IUniswapV2Pair(h.pair).token0() == h.tokenIn;
         (uint112 r0, uint112 r1, ) = IUniswapV2Pair(h.pair).getReserves();
@@ -605,7 +623,11 @@ contract FlashArbExecutor {
         uint256 balIn = IERC20(h.tokenIn).balanceOf(h.pair);
         if (balIn <= reserveIn) revert NothingArrived(i);
 
-        amountOut = _amountOut(balIn - reserveIn, reserveIn, reserveOut, h.feePpm);
+        // A stable pool quotes itself (stored reserves are still the
+        // pre-transfer state, so this is exactly what its router would quote).
+        amountOut = h.kind == HOP_STABLE
+            ? ISolidlyPair(h.pair).getAmountOut(balIn - reserveIn, h.tokenIn)
+            : _amountOut(balIn - reserveIn, reserveIn, reserveOut, h.feePpm);
         if (amountOut == 0) revert ZeroOutput(i);
     }
 

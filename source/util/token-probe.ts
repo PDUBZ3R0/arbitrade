@@ -25,19 +25,23 @@
 // ignored.
 // -----------------------------------------------------------------------------
 
-import { Contract, Interface, type JsonRpcProvider } from 'ethers';
+import { Contract, Interface, id, type JsonRpcProvider } from 'ethers';
 
 export const PROBE_ABI = [
     'function probe(address root, uint256 amount, address pair, uint16 feeBpsCap)',
+    'function probeFrom(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap)',
     'error ProbeResult(uint256 buyRequested, uint256 buyReceived, uint256 sellSent, uint256 sellArrived, uint256 rootRequested, uint256 rootReceived)',
     'error ProbeFailed(uint8 stage, bytes reason)',
     'error NotPool()',
     'error UntrustedInitiator()',
+    'error NoLender()',
+    'error BadSource(uint8 source)',
+    'error TokenNotInLender()',
 ];
 const PROBE_IFACE = new Interface(PROBE_ABI);
 
 /** Stage numbers — must match TokenProbe.sol. */
-export const STAGE = { NO_CODE: 0, FUND_PAIR: 1, BUY_SWAP: 2, SELL_TRANSFER: 3, SELL_SWAP: 4 } as const;
+export const STAGE = { NO_CODE: 0, FUND_PAIR: 1, BUY_SWAP: 2, SELL_TRANSFER: 3, SELL_SWAP: 4, NO_CALLBACK: 5 } as const;
 
 export type TokenVerdict = 'clean' | 'fee-on-transfer' | 'nonstandard' | 'honeypot' | 'dead';
 export type PairVerdict = 'pair-restricted' | 'pair-rejects';
@@ -171,7 +175,25 @@ export function classifyRevertData(data: string | null): ProbeOutcome {
                 return withStage('error');
         }
     }
+    if (parsed.name === 'NoLender' || parsed.name === 'BadSource' || parsed.name === 'TokenNotInLender')
+        return { status: 'error', ...none, reason: `lender config: ${parsed.name} — check flashloan in the chain conf` };
     return { status: 'error', ...none, reason: `unexpected probe error ${parsed.name}` };
+}
+
+// -----------------------------------------------------------------------------
+
+/** Where the probe borrows from: FlashArbExecutor's SOURCE id and the lender contract. */
+export type ProbeLender = { source: number; lender: string };
+
+const PROBE_FROM_SELECTOR = id('probeFrom(uint8,address,address,uint256,address,uint16)').slice(2, 10);
+
+/**
+ * Whether the TokenProbe deployed at `address` has probeFrom (any lender) or
+ * only the original Aave-only probe(). Read from the dispatcher (PUSH4 selector).
+ */
+export async function probeSupportsLenders(provider: JsonRpcProvider, address: string): Promise<boolean> {
+    const code = (await provider.getCode(address)).toLowerCase();
+    return code.includes('63' + PROBE_FROM_SELECTOR);
 }
 
 // -----------------------------------------------------------------------------
@@ -183,10 +205,13 @@ export async function probePair(
     pair: string,
     amount: bigint,
     feeBpsCap = 200,
+    /** Borrow through probeFrom from this lender; omitted → probe() via the constructor's Aave pool. */
+    via?: ProbeLender,
 ): Promise<ProbeOutcome> {
     const probe = new Contract(probeAddress, PROBE_ABI, provider);
     try {
-        await probe.probe.staticCall(root, amount, pair, feeBpsCap);
+        if (via) await probe.probeFrom.staticCall(via.source, via.lender, root, amount, pair, feeBpsCap);
+        else await probe.probe.staticCall(root, amount, pair, feeBpsCap);
         // Unreachable if TokenProbe is deployed correctly — it always reverts.
         return { status: 'error', buyTaxBps: null, sellTaxBps: null, stage: null, reason: 'probe call returned without reverting — wrong address?' };
     } catch (err) {

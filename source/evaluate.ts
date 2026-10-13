@@ -47,6 +47,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           this to audit whether a filter is behaving correctly');
     console.error('                           against real numbers instead of trusting it blind.');
     console.error('  --debug-limit N          Cap on triangles printed in --debug mode (default 25)');
+    console.error('  --exclude-stable         Leave Solidly stable pools out (scored on the stable curve by default)');
     console.error('');
     console.error('Reads triangles table (built by `yarn triangles`) and reserves');
     console.error('(refreshed by `yarn reserves`), computes optimal input and profit.');
@@ -100,7 +101,9 @@ const limitStr   = getStr('--limit');
 const limit      = limitStr ? parseInt(limitStr, 10) : 20;
 const verbose    = hasFlag('--verbose');
 const debug      = hasFlag('--debug');
-const includeStable = hasFlag('--include-stable');
+// Stable pools are in by default now that the executor trades them
+// (HOP_STABLE); --include-stable is still accepted and does nothing.
+const includeStable = !hasFlag('--exclude-stable');
 const debugLimitStr = getStr('--debug-limit');
 const debugLimit = debugLimitStr ? parseInt(debugLimitStr, 10) : 25;
 
@@ -116,7 +119,7 @@ console.log(`Min profit tokens:  ${minProfitTokens}${minProfitTokensStr ? '' : (
 console.log(`Min input tokens:   ${minInputTokens}${minInputTokensStr ? '' : (chainDefaults.minInputTokens != null ? '  (from conf/' + cfg.chain.label + '.json5)' : '  (global default)')}`);
 console.log('');
 
-if (includeStable) console.log('Including Solidly STABLE pools (scored on the stable curve — REPORT only; the deployed executor cannot trade them yet)');
+if (!includeStable) console.log('Excluding Solidly stable pools (--exclude-stable)');
 console.log('');
 
 const result = await evaluateTriangles(cfg, dbFile, {
@@ -124,6 +127,9 @@ const result = await evaluateTriangles(cfg, dbFile, {
     minLiquidityTokens, minPairReservesWei, maxRoiPct,
     minProfitTokens, minInputTokens,
     debug, debugLimit, includeStable,
+    // Report as the current executor would trade: stable hops included, and a
+    // stable first hop flash-swapped. yarn hot checks the deployed executor.
+    stableHops: true,
 });
 
 // Show exactly how each root token's threshold was resolved — a root priced
@@ -241,7 +247,7 @@ for (const c of result.topCandidates) {
     const roi = c.inputAmount > 0 ? (c.netProfit / c.inputAmount) * 100 : 0;
     // [v3] = has a concentrated-liquidity hop: scored exactly, but the
     // orchestrator will not attempt it until the executor has a V3 path.
-    const v3Tag = c.hops.some(h => h.kind === 'v3') ? ' [v3]' : '';
+    const v3Tag = (c.hops.some(h => h.kind === 'v3') ? ' [v3]' : '') + (c.hops.some(h => h.stable) ? ' [stable]' : '');
     console.log(
         `  #${c.triangleId.toString().padStart(6)}${v3Tag} [${c.hopCount}h ${c.direction.padEnd(7)}] ` +
         `${sym.padEnd(5)}  in=${inTokens.toFixed(6).padStart(14)}  ` +

@@ -15,6 +15,12 @@ interface IV2PairH {
     function token1() external view returns (address);
 }
 
+/// Solidly-family pair (Velodrome/Aerodrome, Solidly, Equalizer, Ramses, Camelot):
+/// quotes itself for either curve, fee included — what its own router swaps.
+interface ISolidlyPairH {
+    function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256);
+}
+
 interface IV3PoolH {
     function token0() external view returns (address);
     function token1() external view returns (address);
@@ -38,12 +44,18 @@ interface IV3PoolH {
 ///                        taxes reduce output instead of reverting.
 ///   ROUTING              A hop sends its output straight to the next V2 pair,
 ///                        or here when the next hop is V3 or it is the last.
+///   STABLE POOLS         HOP_STABLE: a Solidly-family stable pool (x³y+xy³=k),
+///                        paid up front and swapped like V2, but sized by the
+///                        pair's own getAmountOut — the stable curve has no
+///                        closed form and every fork iterates it differently.
 ///   V3 CALLBACK SAFETY   The swap callback pays only the pool whose swap is in
 ///                        progress, once, in that hop's tokenIn, never more than
 ///                        the hop's input — pools come from unvetted factories.
 abstract contract HopEngine {
     uint8 public constant HOP_V2 = 0;
     uint8 public constant HOP_V3 = 1;
+    /// Also the version probe: a liquidator without it cannot route through stable pools.
+    uint8 public constant HOP_STABLE = 2;
 
     uint160 private constant MIN_SQRT_RATIO_PLUS_ONE  = 4295128740;
     uint160 private constant MAX_SQRT_RATIO_MINUS_ONE = 1461446703485210103287273052203988822378723970341;
@@ -80,12 +92,12 @@ abstract contract HopEngine {
         if (len == 0) revert EmptyHops();
         for (uint256 i = 0; i < len; i++) {
             uint8 k = hops[i].kind;
-            if (k > HOP_V3) revert BadHopKind(i, k);
+            if (k > HOP_STABLE) revert BadHopKind(i, k);
             if (k == HOP_V3 && i > 0 && hops[i - 1].recipient != address(this)) revert BadRecipient(i - 1);
         }
 
         uint256 held = amountIn;
-        if (hops[0].kind == HOP_V2) {
+        if (hops[0].kind != HOP_V3) {
             IERC20H(hops[0].tokenIn).transfer(hops[0].pair, amountIn);
             held = 0;
         }
@@ -110,14 +122,16 @@ abstract contract HopEngine {
     }
 
     function _v2Quote(Hop memory h, uint256 i) internal view returns (bool inIsToken0, uint256 amountOut) {
-        if (h.feePpm >= FEE_SCALE) revert BadFee(i, h.feePpm);
+        if (h.kind == HOP_V2 && h.feePpm >= FEE_SCALE) revert BadFee(i, h.feePpm);
         inIsToken0 = IV2PairH(h.pair).token0() == h.tokenIn;
         (uint112 r0, uint112 r1, ) = IV2PairH(h.pair).getReserves();
         (uint256 reserveIn, uint256 reserveOut) = inIsToken0 ? (uint256(r0), uint256(r1)) : (uint256(r1), uint256(r0));
         if (reserveIn == 0 || reserveOut == 0) revert TokenNotInPair(i);
         uint256 balIn = IERC20H(h.tokenIn).balanceOf(h.pair);
         if (balIn <= reserveIn) revert NothingArrived(i);
-        amountOut = _amountOut(balIn - reserveIn, reserveIn, reserveOut, h.feePpm);
+        amountOut = h.kind == HOP_STABLE
+            ? ISolidlyPairH(h.pair).getAmountOut(balIn - reserveIn, h.tokenIn)
+            : _amountOut(balIn - reserveIn, reserveIn, reserveOut, h.feePpm);
         if (amountOut == 0) revert ZeroOutput(i);
     }
 

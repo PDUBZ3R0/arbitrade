@@ -12,13 +12,18 @@
 //
 // Free to run: every probe is an eth_call that reverts by design. Requires a
 // deployed probe (yarn deploy-probe <chain>) set as chain.probe in config.
+//
+// Each root is borrowed from the lender the conf gives it (flashTermsFor —
+// Aave, Balancer, a V3 pool or Morpho Blue / Longbow), the same lender the
+// executor uses. A probe deployed before probeFrom existed can only borrow
+// from Aave; roots with any other lender are skipped until it is redeployed.
 // -----------------------------------------------------------------------------
 
-import { JsonRpcProvider } from 'ethers';
-import { loadChainConfig, dbPath } from './util/config.ts';
+import { Interface } from 'ethers';
+import { loadChainConfig, dbPath, flashTermsFor } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { appendToBlacklist } from './util/blacklist.ts';
-import { probePair, STAGE, TOKEN_VERDICTS, type ProbeOutcome } from './util/token-probe.ts';
+import { probePair, probeSupportsLenders, STAGE, TOKEN_VERDICTS, type ProbeOutcome, type ProbeLender } from './util/token-probe.ts';
 import { makeProvider } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
@@ -70,8 +75,8 @@ if (!cfg.chain.probe) {
     console.error(`  probe: "0x..."  to the chain block of conf/${cfg.chain.label}.json5`);
     process.exit(1);
 }
-const roots = (cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase());
-if (roots.length === 0) {
+const configured = (cfg.flashloan?.tokens ?? []).map(t => ({ address: t.address.toLowerCase(), symbol: t.symbol ?? t.address.slice(0, 10) }));
+if (configured.length === 0) {
     console.error(`No flashloan.tokens configured for ${cfg.chain.name}.`);
     process.exit(1);
 }
@@ -81,9 +86,42 @@ const factoryName = new Map(cfg.factories.map(f => [f.address.toLowerCase(), f.n
 const db = new ArbitradeDB(dbPath(chainArg));
 const provider = makeProvider(cfg.chain);
 
+// Where each root is borrowed from, and how much that lender can lend. Aave
+// lends from its aToken, not its own balance — its liquidity is not capped here.
+const anyLender = await probeSupportsLenders(provider, cfg.chain.probe);
+const ERC20 = new Interface(['function balanceOf(address) view returns (uint256)']);
+const lenderOf = new Map<string, { via: ProbeLender | undefined; label: string; cap: bigint | null }>();
+for (const t of configured) {
+    const terms = flashTermsFor(cfg, t.address);
+    if (!terms) { console.log(`  [!] ${t.symbol}: no usable lender in flashloan (uniswap-v3 needs a premium) — not used as a root`); continue; }
+    if (!anyLender && terms.provider !== 'aave-v3') {
+        console.log(`  [!] ${t.symbol}: lender is ${terms.provider}, but the TokenProbe at ${cfg.chain.probe} only borrows from Aave — redeploy it: yarn deploy probe ${cfg.chain.label}`);
+        continue;
+    }
+    let cap: bigint | null = null;
+    if (terms.provider !== 'aave-v3') {
+        try {
+            const raw = await provider.call({ to: t.address, data: ERC20.encodeFunctionData('balanceOf', [terms.lender]) });
+            cap = (ERC20.decodeFunctionResult('balanceOf', raw)[0] as bigint) * 9n / 10n;
+        } catch { cap = null; }
+    }
+    // An old probe borrows through probe(), from the Aave pool it was deployed with.
+    lenderOf.set(t.address, { via: anyLender ? { source: terms.source, lender: terms.lender } : undefined, label: `${terms.provider} ${terms.lender.slice(0, 10)}`, cap });
+}
+const roots = [...lenderOf.keys()];
+if (roots.length === 0) {
+    console.error(`\nNo root can be borrowed by this probe on ${cfg.chain.name}.`);
+    if (!anyLender) console.error(`Redeploy it so it can use your flashloan lender: yarn deploy probe ${cfg.chain.label}`);
+    process.exit(1);
+}
+
 const tokens = db.getTokensToProbe(roots, { maxAgeSeconds: maxAgeDays * 86_400, refresh, limit });
 console.log(`Probing ${tokens.length} token(s) on ${cfg.chain.name} via TokenProbe ${cfg.chain.probe}`);
 console.log(`  up to ${PAIRS_PER_TOKEN} root pairs each, ${Number(PROBE_SIZE_BPS) / 100}% of root reserve, fee cap ${feeCapBps} bps, concurrency ${concurrency}`);
+for (const t of configured) {
+    const l = lenderOf.get(t.address);
+    if (l) console.log(`  root ${t.symbol.padEnd(10)} borrowed from ${l.label}${l.cap != null ? ` (lends up to ${l.cap} raw)` : ''}`);
+}
 console.log('');
 
 const counts: Record<string, number> = {};
@@ -91,6 +129,8 @@ const bump = (k: string) => { counts[k] = (counts[k] ?? 0) + 1; };
 const flagged: Array<{ token: string; out: ProbeOutcome; pair: string }> = [];
 let done = 0;
 let rpcErrors = 0;
+/** The reasons behind 'error' outcomes — printed, so "retry next run" is not a mystery. */
+const errorSamples: string[] = [];
 
 async function probeToken(token: string): Promise<void> {
     const candidates = db.getRootPairsForToken(token, roots, allowedFactories, PAIRS_PER_TOKEN);
@@ -108,9 +148,12 @@ async function probeToken(token: string): Promise<void> {
     let boughtButCouldNotSell = 0;
     let lastFailedExitReason = '';
     for (const c of candidates) {
-        const amount = (BigInt(c.rootReserve) * PROBE_SIZE_BPS) / 10_000n;
+        const lender = lenderOf.get(c.root.toLowerCase())!;
+        let amount = (BigInt(c.rootReserve) * PROBE_SIZE_BPS) / 10_000n;
+        // Morpho / Balancer / a V3 pool lend only what they hold.
+        if (lender.cap != null && amount > lender.cap) amount = lender.cap;
         if (amount === 0n) continue;
-        const out = await probePair(provider, cfg.chain.probe!, c.root, c.pair, amount, feeCapBps);
+        const out = await probePair(provider, cfg.chain.probe!, c.root, c.pair, amount, feeCapBps, lender.via);
         lastReason = out.reason;
 
         if (out.status === 'pair-restricted' || out.status === 'pair-rejects') {
@@ -127,6 +170,7 @@ async function probeToken(token: string): Promise<void> {
         if (out.status === 'error') {
             pairLevelOnly = false;
             rpcErrors++;
+            if (errorSamples.length < 10) errorSamples.push(`${token} via ${c.pair}: ${out.reason.slice(0, 140)}`);
             continue;
         }
 
@@ -178,6 +222,7 @@ console.log('\n' + '─'.repeat(80));
 console.log('This run:');
 for (const k of [...TOKEN_VERDICTS, 'untestable', 'error (retry next run)']) if (counts[k]) console.log(`  ${k.padEnd(24)} ${counts[k]}`);
 if (rpcErrors > 0) console.log(`  (${rpcErrors} probe call(s) hit RPC errors — those tokens will be retried next run)`);
+for (const e of errorSamples) console.log(`    ${e}`);
 
 const byStatus = (s: string) => flagged.filter(f => f.out.status === s);
 for (const [title, s] of [['🍯 HONEYPOTS (can buy, cannot exit):', 'honeypot'], ['💸 FEE-ON-TRANSFER:', 'fee-on-transfer'], ['🔀 NONSTANDARD (rebasing/reflection):', 'nonstandard'], ['🪦 DEAD (no code):', 'dead']] as const) {

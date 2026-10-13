@@ -289,7 +289,7 @@ try {
             [[p1, R.a, 3000, q, HOP_V2], [q, A.a, 3000, p3, HOP_V3], [p3, B.a, 3000, EX, HOP_V2]]); } catch (e) { e1 = errName(e); }
         ok(e1 === 'BadRecipient', 'a V2 hop feeding a V3 hop must send to the executor', `(${e1})`);
         try { await exec.executeArbFrom.staticCall(SRC_MORPHO, MORPHO, R.a, E(1000), 0n,
-            [[p1, R.a, 3000, p3, 2], [p3, A.a, 3000, EX, HOP_V2]]); } catch (e) { e2 = errName(e); }
+            [[p1, R.a, 3000, p3, 3], [p3, A.a, 3000, EX, HOP_V2]]); } catch (e) { e2 = errName(e); }   // 3: past HOP_STABLE
         ok(e2 === 'BadHopKind', 'an unknown hop kind is refused', `(${e2})`);
     }
 

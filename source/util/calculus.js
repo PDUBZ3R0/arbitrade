@@ -211,6 +211,37 @@ export function optimal_cycle_size(hops) {
 }
 
 /**
+ * The largest cycle input (in the ROOT token's raw units) that swaps no more
+ * than `frac` of any hop's input reserve: hop i's own limit, frac·rIn_i, is in
+ * hop i's input token, so it is mapped back to the root through hops i-1..0
+ * with the exact inverse of swap_output — x = A·y / (g·(B − y)) — and the
+ * smallest wins. A limit a hop can never reach (y ≥ the previous hop's whole
+ * output reserve) does not bind.
+ *
+ * This replaced `min(rIn) / 2`, which compared reserves of DIFFERENT tokens in
+ * their own raw units: a WETH-rooted cycle through USDC was capped at half the
+ * USDC reserve read as wei of WETH — 1.5e-6 WETH on a 3M-USDC pool — so every
+ * cycle feeding a lower-decimal token after its first hop was sized to dust
+ * and dropped as below min profit.
+ *
+ * @param {Array<{rIn: number, rOut: number, fee: number}>} hops
+ * @param {number} [frac=0.5]
+ * @returns {number} cap on the cycle input; Infinity if nothing binds
+ */
+export function cycle_input_cap(hops, frac = 0.5) {
+    let cap = Infinity;
+    for (let i = 0; i < hops.length; i++) {
+        let y = hops[i].rIn * frac;
+        for (let j = i - 1; j >= 0 && Number.isFinite(y); j--) {
+            const h = hops[j], g = 1 - h.fee;
+            y = y < h.rOut ? (h.rIn * y) / (g * (h.rOut - y)) : Infinity;
+        }
+        if (y < cap) cap = y;
+    }
+    return cap;
+}
+
+/**
  * Gross profit of an N-hop cycle at input x, walking the hops one at a time.
  * Kept separate from the folded form on purpose: this is the number we report
  * and rank on, and it uses the same swap_output the rest of the pipeline uses,

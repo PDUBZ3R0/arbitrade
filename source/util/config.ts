@@ -294,14 +294,17 @@ export function flashSwapEnabled(cfg: { flashloan?: RawChainConfig['flashloan'] 
  * token's lender premium (flashTermsFor), falling back to the chain premium.
  *
  * The evaluator, the hot-loop index and the executor path all decide this the
- * same way: first hop a V2-style constant-product pair (not V3, not stable).
+ * same way: first hop a V2-style pair (not V3; a stable pool only when the
+ * executor has HOP_STABLE).
  */
 export function cyclePremium(
     cfg: { flashloan?: RawChainConfig['flashloan'] },
     root: string,
     first: { kind?: string; stable?: boolean | number },
+    /** The executor has HOP_STABLE, so a stable first hop can be flash-swapped too. */
+    stableHops = false,
 ): number {
-    if (flashSwapEnabled(cfg) && first.kind !== 'v3' && !first.stable) return 0;
+    if (flashSwapEnabled(cfg) && first.kind !== 'v3' && (!first.stable || stableHops)) return 0;
     return flashTermsFor(cfg, root)?.premium ?? cfg.flashloan?.premium ?? 0.0005;
 }
 

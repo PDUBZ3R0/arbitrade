@@ -564,6 +564,44 @@ export function hop_output(x, h) {
 }
 
 /**
+ * Smallest input x with hop_output(x, h) >= y, by bisection — the inverse of a
+ * stable or V3 hop, which have no closed form. Infinity if the hop can never
+ * output y (past a V3 window, or more than the pool holds).
+ */
+function hop_input_for(y, h) {
+    if (!(y > 0)) return 0;
+    if (!h.v3 && !h.stable) {
+        const g = 1 - h.fee;
+        return y < h.rOut ? (h.rIn * y) / (g * (h.rOut - y)) : Infinity;
+    }
+    let hi = Math.max(1, h.rIn ?? 1);
+    for (let k = 0; hop_output(hi, h) < y; k++) { if (k > 200) return Infinity; hi *= 4; }
+    let lo = 0;
+    for (let k = 0; k < 100 && hi - lo > hi * 1e-12; k++) {
+        const m = (lo + hi) / 2;
+        if (hop_output(m, h) >= y) hi = m; else lo = m;
+    }
+    return hi;
+}
+
+/**
+ * calculus.js's cycle_input_cap for any mix of hops: the largest cycle input,
+ * in the root token's units, that swaps no more than `frac` of any non-V3
+ * hop's input reserve (a V3 hop is bounded by its tick window instead). Each
+ * hop's limit is mapped back to the root through the hops before it.
+ */
+export function mixed_input_cap(hops, frac = 0.5) {
+    let cap = Infinity;
+    for (let i = 0; i < hops.length; i++) {
+        if (hops[i].v3) continue;
+        let y = hops[i].rIn * frac;
+        for (let j = i - 1; j >= 0 && Number.isFinite(y); j--) y = hop_input_for(y, hops[j]);
+        if (y < cap) cap = y;
+    }
+    return cap;
+}
+
+/**
  * Marginal cycle rate at zero size — the exact gate, as in calculus.js.
  * For a V3 hop the marginal rate is just the (fee-adjusted) pool price.
  */
@@ -621,8 +659,9 @@ export function optimal_mixed_cycle(hops, maxIter = 256) {
     // concave increasing swaps minus x). Bound the search by half the shallowest
     // non-V3 input reserve; a pure report clamps afterward regardless.
     if (hops.some(h => h.stable)) {
-        let bound = Infinity;
-        for (const h of hops) if (!h.v3 && h.rIn > 0) bound = Math.min(bound, h.rIn / 2);
+        // Bound in the ROOT's units (mixed_input_cap), not min(rIn)/2 across
+        // hops of different tokens.
+        const bound = mixed_input_cap(hops);
         if (!Number.isFinite(bound) || !(bound > 0)) return { x: 0, wall: false, iterations: 0 };
         let lo = 0, hi = bound;
         for (let i = 0; i < 200; i++) {

@@ -37,6 +37,7 @@
     "probe": "sh scripts/log.sh source probe",
     "aave-reserves": "sh scripts/log.sh source aave-reserves",
     "aave-market": "sh scripts/log.sh source aave-market",
+    "morpho-market": "sh scripts/log.sh source morpho-market",
     "cleanup": "sh scripts/log.sh source db-clean",
     "all": "bash scripts/all.sh",
     "manual": "sh scripts/manual.sh",

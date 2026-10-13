@@ -5,4 +5,5 @@ yarn scan $1 && \
 	yarn cleanup $1 --yes && \
 	yarn tokens $1 && \
 	yarn probe $1 && \
-	yarn triangles $1
+	yarn triangles $1 && \
+	yarn evaluate $1 --verbose

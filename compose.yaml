@@ -19,6 +19,7 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: sonic } }
     environment:
       MODE: "live"
+      RUN_HOT: 1
     volumes:
       - sonic-db:/app/db
       - sonic-log:/app/log
@@ -29,6 +30,7 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: gnosis } }
     environment:
       MODE: "live"
+      RUN_HOT: 1
     volumes:
       - gnosis-db:/app/db
       - gnosis-log:/app/log
@@ -39,9 +41,21 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: hyperliquid } }
     environment:
       MODE: "live"
+      RUN_HOT: 1
     volumes:
       - hyperliquid-db:/app/db
       - hyperliquid-log:/app/log
+
+  monad:
+    <<: *arb
+    image: arbitrade:monad
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: monad } }
+    environment:
+      MODE: "live"
+      RUN_HOT: 1
+    volumes:
+      - monad-db:/app/db
+      - monad-log:/app/log
 
   ink:
     <<: *arb
@@ -49,9 +63,22 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
     environment:
       MODE: "live"
+      RUN_HOT: 1
     volumes:
       - ink-db:/app/db
-      - ink-log:/app/log      
+      - ink-log:/app/log     
+
+  robinhood:
+    <<: *arb
+    image: arbitrade:robinhood
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: robinhood } }
+    environment:
+      MODE: "live"
+      RUN_HOT: 1
+    volumes:
+      - robinhood-db:/app/db
+      - robinhood-log:/app/log
+          
 volumes:
   sonic-db:
   sonic-log:
@@ -59,5 +86,9 @@ volumes:
   gnosis-log:
   hyperliquid-db:
   hyperliquid-log:
+  monad-db:
+  monad-log:
   ink-db:
   ink-log:
+  robinhood-db:
+  robinhood-log:

@@ -29,6 +29,9 @@ import { buildHops, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 import { redactUrl } from '../util/rpc.ts';
+import { extractRevertData } from '../util/token-probe.ts';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const EXECUTOR_ABI = [
     // Hops carry no output amounts: the contract sizes each swap from live
@@ -46,6 +49,7 @@ export const EXECUTOR_ABI = [
     'function SOURCE_MORPHO() view returns (uint8)',
     'function HOP_V3() view returns (uint8)',
     'function FLASH_SWAP() view returns (bool)',
+    'function HOP_STABLE() view returns (uint8)',
     // Carries the REALISED profit. The off-chain prediction is an upper bound,
     // so the ledger records this rather than what we expected.
     'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
@@ -251,6 +255,8 @@ export class CandidateExecutor {
     private executorVersionError: string | null | undefined;
     private executorHasV3 = false;
     private executorHasFlashSwap = false;
+    /** HOP_STABLE: trades Solidly stable pools through the pair's own getAmountOut. */
+    private executorHasStable = false;
     private warnedNoFlashSwap = false;
     /**
      * Factories whose pairs failed a flash swap that the lender path then
@@ -293,6 +299,7 @@ export class CandidateExecutor {
         this.executorVersionError = null;
         this.executorHasV3 = has('HOP_V3()');
         this.executorHasFlashSwap = this.executorHasV3 && has('FLASH_SWAP()');
+        this.executorHasStable = this.executorHasV3 && has('HOP_STABLE()');
         if (!this.executorHasV3) {
             this.executor = new Contract(addr, EXECUTOR_ABI_V2_ONLY, this.provider);
             console.warn(
@@ -309,6 +316,15 @@ export class CandidateExecutor {
      */
     async supportsV3(): Promise<boolean> {
         return (await this.checkExecutorVersion()) === null && this.executorHasV3;
+    }
+
+    /**
+     * Whether the deployed executor can trade Solidly stable pools
+     * (HOP_STABLE). Callers build the index and run the evaluator with stable
+     * pools only when it can.
+     */
+    async supportsStable(): Promise<boolean> {
+        return (await this.checkExecutorVersion()) === null && this.executorHasStable;
     }
 
     /** Replace the pricing table, e.g. after the hot loop re-runs the evaluator. */
@@ -478,6 +494,13 @@ export class CandidateExecutor {
             return attempt;
         }
 
+        if (!this.executorHasStable && candidate.hops.some(h => h.stable)) {
+            attempt.simulationError =
+                `cycle has a stable-pool hop and the executor at ${this.cfg.chain.executor} predates HOP_STABLE — ` +
+                `yarn deploy flasharb ${this.cfg.chain.label}`;
+            return attempt;
+        }
+
         // Funding. A cycle whose first hop is a V2-style pair is funded by
         // flash-swapping that pair (no lender, no premium — the evaluator
         // scored it that way, see cyclePremium). Anything else borrows the
@@ -548,7 +571,7 @@ export class CandidateExecutor {
             // re-read is needed. If THAT estimates, the factory is the problem:
             // remember it so later candidates go straight to the lender.
             if (!useFlash || this.lenderUnusable(candidate, terms)) {
-                attempt.simulationError = msg;
+                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate);
                 return attempt;   // would revert on-chain
             }
             const viaLender = { ...built, hops: built.hops.map((h, i) =>
@@ -557,7 +580,7 @@ export class CandidateExecutor {
             try {
                 gasUnits = await lenderCall.fn.estimateGas(...lenderCall.args(built.minProfitWei), { from: this.opts.ownerAddress });
             } catch {
-                attempt.simulationError = msg;   // the flash error: it is the one that ran first
+                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate);   // the flash error: it is the one that ran first
                 return attempt;
             }
             const factory = candidate.hops[0].factory.toLowerCase();
@@ -605,7 +628,8 @@ export class CandidateExecutor {
             await call.fn.staticCall(...call.args(effectiveMinProfit), { from: this.opts.ownerAddress });
             attempt.simulated = true;
         } catch (err) {
-            attempt.simulationError = (err as Error).message?.slice(0, 300) ?? String(err);
+            attempt.simulationError = ((err as Error).message?.slice(0, 300) ?? String(err))
+                + await this.diagnoseRepay(err, call, built, effectiveMinProfit, candidate);
             return attempt;
         }
 
@@ -652,7 +676,7 @@ export class CandidateExecutor {
                 return attempt;
             }
             if (receipt.status !== 1) {
-                attempt.simulationError = `transaction broadcast but reverted on-chain (status=0), txHash=${txHash}`;
+                attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
                 return attempt;
             }
             attempt.confirmed = true;
@@ -669,17 +693,81 @@ export class CandidateExecutor {
         // the tx lands successfully; reserves can move between simulate and
         // inclusion. "Successful" for the trade ledger means status=1
         // confirmed, not just sent.
-        const receipt = await tx.wait();
+        //
+        // ethers v6's wait() does not return a status=0 receipt: it THROWS
+        // CALL_EXCEPTION with the receipt attached. Left uncaught, a mined
+        // revert surfaced as "attempt threw … transaction execution reverted"
+        // with no hash, and the attempt was never reported as a broadcast
+        // (Sonic hot run, 2026-10-12, #13814).
+        let receipt: any;
+        try {
+            receipt = await tx.wait();
+        } catch (err: any) {
+            if (err?.receipt) receipt = err.receipt;
+            else {
+                attempt.simulationError = `broadcast, but waiting for the receipt failed: ${String(err?.shortMessage ?? err?.message ?? err).slice(0, 160)}, txHash=${tx.hash}`;
+                return attempt;
+            }
+        }
         if (!receipt || receipt.status !== 1) {
             // Broadcast but reverted on-chain — not a trade, not logged to the
             // ledger. Surfaced via simulationError so the CLI print picks it up.
-            attempt.simulationError = `transaction broadcast but reverted on-chain (status=0), txHash=${tx.hash}`;
+            attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${tx.hash}`;
             return attempt;
         }
 
         attempt.confirmed = true;
         attempt.realisedProfit = await this.recordTrade(candidate, built, tx.hash, receipt);
         return attempt;
+    }
+
+    /**
+     * An InsufficientRepay means the cycle returned less than predicted. Two
+     * very different causes look identical in the log:
+     *   - STALE: the path moved between the read block and the simulation —
+     *     normal on a fast chain, nothing to fix;
+     *   - QUOTE MISMATCH: at the very block the prediction was computed from,
+     *     the executor still gets less — the off-chain math (a V3 fork's swap,
+     *     a stable curve, a fee) disagrees with the pool. A bug.
+     * Re-run the same call pinned to built.blockTag and say which. Mismatches
+     * are appended to log/<chain>/quote-mismatch.jsonl with the full path.
+     * Returns a suffix for simulationError ('' when it cannot tell).
+     */
+    private async diagnoseRepay(err: unknown, call: { fn: any; args: (m: bigint) => unknown[] }, built: BuiltArb, minProfit: bigint, candidate: Candidate): Promise<string> {
+        try {
+            const data = extractRevertData(err);
+            if (!data || !data.toLowerCase().startsWith(INSUFFICIENT_REPAY)) return '';
+            if (built.blockTag == null) return ' [all-V2 path, reads not pinned to a block — cannot tell stale from mismatch]';
+            const B = built.blockTag;
+            let atB: string | null = null;
+            try {
+                await call.fn.staticCall(...call.args(minProfit), { from: this.opts.ownerAddress, blockTag: B });
+                return ` [stale: clean at block ${B}, where the quote was read — the path moved after it]`;
+            } catch (e2) { atB = extractRevertData(e2); }
+            if (!atB || !atB.toLowerCase().startsWith(INSUFFICIENT_REPAY)) {
+                return ` [at block ${B} it reverts differently: ${(atB ?? 'no data').slice(0, 74)}]`;
+            }
+            const got = BigInt('0x' + atB.slice(10, 74));
+            const want = built.expectedAmountOut;
+            const ppm = want > 0n ? Number(((want - got) * 1_000_000n) / want) : 0;
+            const rec = {
+                at: new Date().toISOString(), chain: this.cfg.chain.label, block: B, triangleId: candidate.triangleId,
+                rootToken: candidate.rootToken, amountIn: built.rootAmountIn.toString(),
+                predictedOut: want.toString(), executorOut: got.toString(), shortPpm: ppm,
+                hops: candidate.hops.map((h: any, i: number) => ({
+                    pair: h.pair, factory: h.factory, kind: h.kind ?? 'v2', stable: !!h.stable, fee: h.fee,
+                    tokenIn: h.tokenIn, tokenOut: h.tokenOut, builtKind: built.hops[i]?.kind, feePpm: built.hops[i]?.feePpm,
+                })),
+            };
+            try {
+                const dir = path.join('log', this.cfg.chain.label);
+                fs.mkdirSync(dir, { recursive: true });
+                fs.appendFileSync(path.join(dir, 'quote-mismatch.jsonl'), JSON.stringify(rec) + '\n');
+            } catch { /* diagnostics must never break the loop */ }
+            return ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
+        } catch {
+            return '';
+        }
     }
 
     /**
@@ -759,3 +847,17 @@ export class CandidateExecutor {
         return realisedProfit;
     }
 }
+
+/** ", gas 412,331 (0.0207 native)" for a mined receipt — what a revert cost. */
+function gasSpent(receipt: any): string {
+    try {
+        const used = BigInt(receipt?.gasUsed ?? 0);
+        const price = BigInt(receipt?.gasPrice ?? receipt?.effectiveGasPrice ?? 0);
+        if (used === 0n) return '';
+        const cost = price > 0n ? ` (${(Number(used * price) / 1e18).toFixed(6)} native)` : '';
+        return `, gas ${used.toLocaleString('en-US')}${cost}`;
+    } catch { return ''; }
+}
+
+/** InsufficientRepay(uint256,uint256) — FlashArbExecutor's "the cycle came back short". */
+const INSUFFICIENT_REPAY = id('InsufficientRepay(uint256,uint256)').slice(0, 10);

@@ -43,6 +43,11 @@
 // BEFORE a V3 hop sends its output to the executor, not to the next pool.
 // A V3 hop whose swap would need tick data outside the fetched window cannot
 // be confirmed, and the candidate is dropped rather than guessed at.
+// STABLE HOPS (Solidly-family stable pools, x³y+xy³=k). Predicted by asking
+// the pair: getAmountOut(amountIn, tokenIn) at the same block as the reserves —
+// exactly the call the executor makes for a HOP_STABLE hop, so the prediction
+// is the pair's own number for every fork's variant of the curve, fee included.
+// Routing is V2's: paid up front, output straight into the next V2/stable pair.
 // Still NOT re-derived: fees. Already resolved per-pair by the reserves
 // fetcher's metadata step (pairs.fee in the DB, including the mutable `degen`
 // flag for Retro-degen factories) and carried through the evaluator's
@@ -59,6 +64,7 @@ import type { Candidate } from '../evaluator/evaluator.ts';
 /** FlashArbExecutor's hop kinds. */
 export const HOP_V2 = 0;
 export const HOP_V3 = 1;
+export const HOP_STABLE = 2;
 
 /** Tick window (bitmap words either side) re-read for each V3 hop. */
 const V3_WORDS = 3;
@@ -78,7 +84,7 @@ export type Hop = {
     /** Next hop's pair when that hop is V2; the executor when the next hop
      *  is V3 or this is the final hop. */
     recipient: string;
-    /** HOP_V2 or HOP_V3. */
+    /** HOP_V2, HOP_V3 or HOP_STABLE. */
     kind: number;
 };
 
@@ -94,10 +100,18 @@ export type BuiltArb = {
     inputClamped: boolean;
     /** The evaluator's original off-chain input, before clamping. Diagnostics. */
     requestedAmountIn: bigint;
+    /**
+     * The block every read behind expectedAmountOut was pinned to (V3 state,
+     * reserves, stable quotes). Undefined for an all-V2 path, whose reserves
+     * came from "latest". Lets a revert be re-run at the same block: clean
+     * there means the path moved; a revert there means the quote is wrong.
+     */
+    blockTag?: number;
 };
 
 const PAIR_IFACE = new Interface([
     'function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+    'function getAmountOut(uint256 amountIn, address tokenIn) view returns (uint256)',
 ]);
 
 // Clamp on the flash-loan size: never transfer in more than this fraction of
@@ -214,6 +228,10 @@ export async function buildHops(
         blockTag = st.block;
     }
 
+    // A stable hop is quoted by a second call (the pair's getAmountOut) after
+    // this multicall; pin both to one block so the quote and the reserves agree.
+    if (blockTag === undefined && hops.some(h => h.stable)) blockTag = await provider.getBlockNumber();
+
     const v2Hops = hops.filter(h => !isV3(h));
     const calls: Multicall3Call[] = v2Hops.map(h => ({
         target: h.pair,
@@ -269,7 +287,7 @@ export async function buildHops(
             : hops[i + 1].pair;
 
         if (isV3(leg)) {
-            if (i === 0 && opts.flashSwap) throw new Error('flash swap needs a V2 first hop');
+            if (i === 0 && opts.flashSwap) throw new Error('flash swap needs a V2 or stable first hop');
             if (i === 0) rootAmountIn = amountIn;
             if (amountIn <= 0n) return null;
             const amountOut = v3_amount_out_exact(v3ByPool.get(pairLower), inIsToken0, amountIn);
@@ -300,10 +318,30 @@ export async function buildHops(
         if (reserveIn + amountIn > UINT112_MAX) return null;
 
         const feePpm = feeToPpm(leg.fee);
-        const amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, feePpm);
+        let amountOut: bigint;
+        if (leg.stable) {
+            // The pair's own quote at the reserves' block (see STABLE HOPS above).
+            let ret: string;
+            try {
+                ret = await provider.call({
+                    to: leg.pair,
+                    data: PAIR_IFACE.encodeFunctionData('getAmountOut', [amountIn, leg.tokenIn]),
+                    blockTag,
+                });
+            } catch (e) {
+                // A revert here is the pair refusing this size (Velodrome's _get_y
+                // can fail to converge on a lopsided pool): no trade at this size.
+                if (/revert|CALL_EXCEPTION/i.test((e as Error).message)) return null;
+                throw e;
+            }
+            if (!ret || ret === '0x') throw new UnreadablePairError(leg.pair, 'getAmountOut(uint256,address) returned nothing — not a Solidly-family stable pool');
+            amountOut = PAIR_IFACE.decodeFunctionResult('getAmountOut', ret)[0] as bigint;
+        } else {
+            amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, feePpm);
+        }
         if (amountOut <= 0n) return null; // drained pool or dust — don't build a doomed tx
 
-        builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm, recipient, kind: HOP_V2 });
+        builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm, recipient, kind: leg.stable ? HOP_STABLE : HOP_V2 });
 
         amountIn = amountOut; // chain into next hop's input
     }
@@ -325,5 +363,6 @@ export async function buildHops(
         minProfitWei,
         inputClamped,
         requestedAmountIn,
+        blockTag,
     };
 }

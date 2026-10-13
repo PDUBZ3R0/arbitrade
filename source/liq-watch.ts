@@ -93,7 +93,7 @@ import { Liquidator, RouteFinder, type LiquidationAttempt } from './liquidation/
 import { VenueLiquidator, VENUE_LIQUIDATOR_ABI } from './liquidation/plan-venues.ts';
 import type { Venue } from './liquidation/venue.ts';
 import { dbPath } from './util/config.ts';
-import { Contract, Interface, NonceManager, Wallet, formatUnits } from 'ethers';
+import { Contract, Interface, NonceManager, Wallet, formatUnits, id } from 'ethers';
 import { heapMb } from './util/heap.ts';
 
 type LiquidationConf = {
@@ -288,7 +288,13 @@ if (liquidate) {
         ...(market?.reserves.filter(r => HUB.test(r.symbol)).map(r => r.asset) ?? []),
         ...[...(cometVenue?.comets.values() ?? [])].filter(c => HUB.test(c.baseSymbol)).map(c => c.base),
     ];
-    routeFinder = new RouteFinder(cfg, dbPath(chainArg), hubs);
+    // Stable pools as exit routes need a liquidator that has HOP_STABLE (read
+    // from its bytecode, as the hot loop reads the arb executor's).
+    const liqCode = (await provider.getCode(executor).catch(() => '0x')).toLowerCase();
+    const liqStable = liqCode.includes('63' + id('HOP_STABLE()').slice(2, 10));
+    routeFinder = new RouteFinder(cfg, dbPath(chainArg), hubs, { stable: liqStable });
+    console.log(liqStable ? `  exits    V2, V3/Algebra and Solidly stable pools`
+        : `  exits    V2 and V3/Algebra pools — the liquidator predates HOP_STABLE, so stable pools are not exit routes (yarn deploy liquidator ${cfg.chain.label})`);
     if (!routeFinder.available) console.log(`  [!] no ${dbPath(chainArg)} — only same-asset positions can be exited (run yarn scan ${cfg.chain.label})`);
     const plannerOpts = { executor, owner, signer, live, gasMarginMultiple: num('--gas-margin') ?? 3, minProfitUsd };
     if (market && wanted.includes('aave')) aaveLiq = new Liquidator(cfg, provider, market, routeFinder, plannerOpts);

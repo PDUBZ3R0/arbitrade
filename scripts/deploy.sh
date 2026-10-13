@@ -75,7 +75,8 @@ if [ -z "$CHAIN" ] || [ "${CHAIN#--}" != "$CHAIN" ]; then
 fi
 
 # Constructor parameters. FlashArbExecutor and TokenProbe take the chain's Aave
-# pool from ignition/parameters/<chain>.json (address(0) where there is none).
+# pool from ignition/parameters/<chain>.json (address(0) where there is none —
+# both then borrow from the conf's flashloan lender by SOURCE id instead).
 PARAMS_ARG=""
 PARAMS="ignition/parameters/${CHAIN}.json"
 TMP_PARAMS=""
@@ -165,8 +166,17 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
     # are replacing — must go, or it reports "Nothing new to deploy".
     if [ -f "$JOURNAL" ] && grep -q "\"${FUTURE}\"" "$JOURNAL"; then
         echo "[deploy] wiping Ignition's record of ${FUTURE} so the new code is actually deployed"
-        yarn -s hardhat ignition wipe "$DEPLOYMENT_ID" "$FUTURE" || exit 1
+        yarn -s hardhat ignition wipe "$DEPLOYMENT_ID" "$FUTURE"
     fi
+    # Any OTHER future Ignition still thinks is pending (a deploy it called
+    # "dropped" that landed and was adopted) poisons its nonce check for every
+    # module on this chain (HHE10411 "should be N, but the node reports N+1").
+    # The check above already proved nothing is in flight, so those records
+    # are dead — clear them. See scripts/ignition-stuck.mjs.
+    for STUCK in $(node scripts/ignition-stuck.mjs "$JOURNAL" "$FUTURE"); do
+        echo "[deploy] wiping Ignition's stale pending record of ${STUCK} (it blocks the nonce check; the config is unaffected)"
+        yarn -s hardhat ignition wipe "$DEPLOYMENT_ID" "$STUCK" || exit 1
+    done
 
     # HyperEVM: deployments exceed the small-block gas limit.
     BIGBLOCKS=0; BB_NET=""
@@ -183,6 +193,8 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
         if grep -q "HHE10400\|HHE10411\|were dropped\|should be .*but the node reports" "$IGN_OUT"; then
             echo ""
             echo "[deploy] Ignition lost track of a transaction (\"dropped\", or a nonce it did not send)."
+            echo "         If the deployer key also trades (hot / liq-watch running on this chain), stop"
+            echo "         that service for the deploy: its transactions move the nonce under Ignition."
             echo "         On HyperEVM the deploy often lands anyway — a big block takes up to a minute."
             echo "         Wait a minute, then re-run this same command: if your deployer created the"
             echo "         contract, the check finds it and points the config at it instead of deploying again."

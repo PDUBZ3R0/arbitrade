@@ -542,5 +542,5 @@ Next:
   yarn deploy-flasharb ${slug}        then set chain.executor
   yarn find-factories ${slug}         paste verified factories into conf/${slug}.json5
   yarn scan ${slug} && yarn tokens ${slug} && yarn reserves ${slug} && yarn triangles ${slug} && yarn evaluate ${slug}`);
-if (!aave) console.log(`  [!] No Aave: \`yarn probe\` (TokenProbe) borrows from Aave and will not work on ${slug} yet.`);
+if (!aave) console.log(`  [i] No Aave: \`yarn probe\` (TokenProbe) borrows from your flashloan lender instead (Balancer / Morpho / a V3 pool) — deploy it with yarn deploy-probe ${slug}.`);
 provider.destroy();

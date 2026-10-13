@@ -59,7 +59,7 @@
     name: 'Sonic',
     currency: 'S',
     hypersyncUrl: 'https://sonic.hypersync.xyz',
-    host: 'https://sonic-rpc.publicnode.com',
+    host: 'https://rpc.soniclabs.com',
     ws: "wss://sonic-rpc.publicnode.com"
   },
   xlayer: {
@@ -183,8 +183,8 @@
     name: 'Ink',
     currency: 'ETH',
     hypersyncUrl: 'https://ink.hypersync.xyz',
-    host: 'https://rpc-qnd.inkonchain.com',
-    ws: "wss://rpc-qnd.inkonchain.com"
+    host: 'https://rpc-gel.inkonchain.com',
+    ws: "wss://rpc-gel.inkonchain.com"
   },
   linea: {
     id: 59144,

@@ -1,283 +1,229 @@
 {
-	chain: {
-	    id: 57073,
-	    name: 'Ink',
-	    currency: 'ETH',
-	    hypersyncUrl: 'https://ink.hypersync.xyz',
-	    host: 'https://ink-rpc.publicnode.com',
-	    token: "0x4200000000000000000000000000000000000006",
-	    contract: "0x461834B561E3d193AF97EB02172be56420FF7053",
-	    executor: "0xbc04E12771de574f98401e3cC54b667e147ecA6C",
-        probe: "0x2A7e091B283846835f536a889201cbD48365B37E",
-	    liquidator: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
-	},
-
-  // Tydro is an Aave v3 white-label on Ink (docs/Contract Addresses _ Tydro Documentation.pdf,
-  // ~$133M TVL). The Aave venue liquidates it as-is — its Pool is the same address as
-  // flashloan.pool below. USD prices come from TydroOracle automatically via the Pool's
-  // PoolAddressesProvider.getPriceOracle, so no liquidation.usdOracle is needed.
-  //   yarn liq-watch ink --venue aave --follow --liquidate
-  // If the built-in `ink` Aave subgraph refuses as indexing a different pool, seed from the
-  // deploy block with `--seed hypersync` (ENVIO_API_TOKEN) or `--seed rpc`.
-  liquidation: {
-    pool: "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",   // Tydro Pool
+  chain: {
+    id: 57073,
+    name: 'Ink',
+    currency: 'ETH',
+    hypersyncUrl: 'https://ink.hypersync.xyz',
+    host: 'https://ink-rpc.publicnode.com',
+    token: '0x4200000000000000000000000000000000000006',
+    contract: '0x461834B561E3d193AF97EB02172be56420FF7053',
+    executor: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
+    probe: '0x2A7e091B283846835f536a889201cbD48365B37E',
+    liquidator: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
   },
-
-
-  // Chain-tuned evaluator defaults (piece 5) — absolute floors in whole
-  // tokens, not fractions. WETH is expensive, so 0.001 (~a couple dollars at
-  // typical prices) is a meaningful minimum profit/liquidity floor here.
-  // Override per-run with --min-profit-tokens etc.
+  liquidation: {
+    pool: '0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA',
+  },
   evaluator: {
     minProfitTokens: 0.00001,
     minLiquidityTokens: 0.0001,
     minInputTokens: 0.00001,
   },
-  // Reserves-stage dust threshold (piece 4) — same numeraire conversion as
-  // `evaluator` above, but deliberately looser: this flags factories as
-  // DEAD/THIN, not "below a viable trade size". Override with `--dust`.
   reserves: {
     dust: 0.0001,
   },
-	factories: {
-		v2: {
-			list: {
-
-// 440 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_6c86ab20": {
-          address: "0x6c86ab200661512fdbd27da4bb87df15609a2806",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+  factories: {
+    v2: {
+      list: {
+        Factory_6c86ab20: {
+          address: '0x6c86ab200661512fdbd27da4bb87df15609a2806',
+          fee: 0.003,
         },
-
-// 397 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_458c5d5b": {
-          address: "0x458c5d5b75ccba22651d2c5b61cb1ea1e0b0f95d",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_458c5d5b: {
+          address: '0x458c5d5b75ccba22651d2c5b61cb1ea1e0b0f95d',
+          fee: 0.003,
         },
-
-// 142 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_63b54dbb": {
-          address: "0x63b54dbbd2dabf89d5c536746e534711f6094199",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_63b54dbb: {
+          address: '0x63b54dbbd2dabf89d5c536746e534711f6094199',
+          fee: 0.003,
         },
-
-// 44 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_fe57a6ba": {
-          address: "0xfe57a6ba1951f69ae2ed4abe23e0f095df500c04",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_fe57a6ba: {
+          address: '0xfe57a6ba1951f69ae2ed4abe23e0f095df500c04',
+          fee: 0.003,
         },
-
-// 14 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_bd5b4135": {
-          address: "0xbd5b41358a6601924f1fd708af1535a671f530a9",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_bd5b4135: {
+          address: '0xbd5b41358a6601924f1fd708af1535a671f530a9',
+          fee: 0.003,
         },
-
-// 12 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_c3244474": {
-          address: "0xc32444747b46875b45649f84a44579247d0af18f",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_c3244474: {
+          address: '0xc32444747b46875b45649f84a44579247d0af18f',
+          fee: 0.003,
         },
-
-// 6 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_820bd6bc": {
-          address: "0x820bd6bc3164b65437d2de3bd28e2c485fe45b70",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_820bd6bc: {
+          address: '0x820bd6bc3164b65437d2de3bd28e2c485fe45b70',
+          fee: 0.003,
         },
-
-// 3 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_dc99a556": {
-          address: "0xdc99a5567ad727a1994351ee3f3661f715e9366f",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_dc99a556: {
+          address: '0xdc99a5567ad727a1994351ee3f3661f715e9366f',
+          fee: 0.003,
         },
-
-// 3 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_9e04c362": {
-          address: "0x9e04c3628466aab8ad1caf4937083dd4c6f953e7",
-          fee: 0.003  // ← UNVERIFIED, check pair swap() source (see report notes)
+        Factory_9e04c362: {
+          address: '0x9e04c3628466aab8ad1caf4937083dd4c6f953e7',
+          fee: 0.003,
         },
-
-// 3 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_1d1562ee": {
-          address: "0x1d1562ee59aafc1a3915d9ea374c1dc35959f60e",
-          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
+        Factory_1d1562ee: {
+          address: '0x1d1562ee59aafc1a3915d9ea374c1dc35959f60e',
+          fee: 0.0025,
         },
-
-// 2 pairs in the sweep window
-    // Add under factories["v2"]:
-        "Factory_23cc45b1": {
-          address: "0x23cc45b19f6f64f409af2a758ba84b0218f64d47",
-          fee: 0.0025  // verify-fees 2026-10-08: 0.0025
+        Factory_23cc45b1: {
+          address: '0x23cc45b19f6f64f409af2a758ba84b0218f64d47',
+          fee: 0.0025,
         },
-
-			}
-		},
-        v3: {
-        list: {
-        // 2083 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_640887a9": {
-          // measured: fees 3000/10000 pips, spacings 60/200
-          address: "0x640887a9ba3a9c53ed27d0f7e8246a4f933f3424",
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        Factory_3644defa: {
+          address: '0x3644defa41a60a8dc4dee8e317138e2446a54ccd',
+          fee: 0.003,
         },
-
-// 190 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_43e44778": {
-          // measured: fees 10000/500 pips, spacings 200/10
-          address: "0x43e4477813a41bf85928471de388273db8925a96",
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        Factory_eb85ead0: {
+          address: '0xeb85ead04620a95743855f6627dded4143420b02',
+          fee: 0.003,
         },
-
-// 173 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_d8b08261": {
-          // measured: fees 10000/3000/500 pips, spacings 200/60/10
-          address: "0xd8b0826150b7686d1f56d6f10e31e58e1bcf1193",
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        Factory_2ebe0528: {
+          address: '0x2ebe0528aded9fa8d745b7c7082fb90d7c7b6ec8',
+          fee: 0.003,
         },
-
-// 81 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_04625b04": {
-          // measured: fees 2000/10000/100/3000 pips, spacings 100/200/1
-          address: "0x04625b046c69577efc40e6c0bb83cdbafab5a55f",
-          poolEvent: "tickspacing",
-          callback: "uniswapV3SwapCallback"
+        Factory_8e28edbf: {
+          address: '0x8e28edbfb74f5ef7de12e5091cacdce45ee0beac',
+          fee: 0.003,
         },
-
-// 25 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_718e46d0": {
-          // measured: fees 500/3000/100/10000 pips, spacings 100/200/1/2000
-          address: "0x718e46d0962a66942e233760a8bd6038ce54edcd",
-          poolEvent: "tickspacing",
-          callback: "uniswapV3SwapCallback"
+        Factory_d1cf6649: {
+          address: '0xd1cf664944173140afc302c169efd55c24966b45',
+          fee: 0.003,
         },
-
-// 11 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_c31fda0d": {
-          // measured: fees 3000/10000 pips, spacings 60/200
-          address: "0xc31fda0d795de6e219673856d4eab3f064e66efc",
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
+        Factory_a8636100: {
+          address: '0xa86361004fcba2fdf67cd1bc249f1dae6b5583ae',
+          fee: 0.003,
         },
-
-// 11 pairs in the sweep window
-    // Add under factories["v3"]:
-        "Factory_ee164cd5": {
-          // measured: fees 10000/3000 pips, spacings 200/60
-          address: "0xee164cd52753d22dbe0174c103b47a4d24d2f98e",
-          poolEvent: "uniswap",
-          callback: "uniswapV3SwapCallback"
-        }
-
-        }
-        },
-        solidly: {
-        list: {
-        // 130 pairs in the sweep window
-    // Add under factories["solidly"]:
-        "Factory_31832f2a": {
-          // Probed pattern: PoolFactory [high] — all 3 sample(s) in typical fee band (0.0030 to 0.0030)
-          address: "0x31832f2a97fd20664d76cc421207669b55ce4bc0",
-          poolEvent: "velodrome",
-          feeTarget: "factory",
-          feeArgSource: "pair-address-stable",
-          feeFunction: "getFee",
-          feeDivisor: 10000
-        }
-
-        }
-        }
-	},
-
-	flashloan: {
-  "provider": "aave-v3",
-  "premium": 0.0005,
-  "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",
-  "tokens": [
-    {
-      "symbol": "kBTC",
-      "address": "0x73e0c0d45e048d25fc26fa3159b0aa04bfa4db98",
-      "decimals": 8
+      },
     },
-    {
-      "symbol": "USDC",
-      "address": "0x2d270e6886d130d724215a266106e6832161eaed",
-      "decimals": 6
+    v3: {
+      list: {
+        Factory_640887a9: {
+          address: '0x640887a9ba3a9c53ed27d0f7e8246a4f933f3424',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_43e44778: {
+          address: '0x43e4477813a41bf85928471de388273db8925a96',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_d8b08261: {
+          address: '0xd8b0826150b7686d1f56d6f10e31e58e1bcf1193',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_04625b04: {
+          address: '0x04625b046c69577efc40e6c0bb83cdbafab5a55f',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_718e46d0: {
+          address: '0x718e46d0962a66942e233760a8bd6038ce54edcd',
+          poolEvent: 'tickspacing',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_c31fda0d: {
+          address: '0xc31fda0d795de6e219673856d4eab3f064e66efc',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_ee164cd5: {
+          address: '0xee164cd52753d22dbe0174c103b47a4d24d2f98e',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+        Factory_7cc0c88f: {
+          address: '0x7cc0c88f5482cc1cea9f57692d977f15fd108795',
+          poolEvent: 'uniswap',
+          callback: 'uniswapV3SwapCallback',
+        },
+      },
     },
-    {
-      "symbol": "WETH",
-      "address": "0x4200000000000000000000000000000000000006",
-      "decimals": 18
+    solidly: {
+      list: {
+        Factory_31832f2a: {
+          address: '0x31832f2a97fd20664d76cc421207669b55ce4bc0',
+          poolEvent: 'velodrome',
+          feeTarget: 'factory',
+          feeArgSource: 'pair-address-stable',
+          feeFunction: 'getFee',
+          feeDivisor: 10000,
+        },
+      },
     },
-    {
-      "symbol": "SolvBTC",
-      "address": "0xae4efbc7736f963982aacb17efa37fcbab924cb3",
-      "decimals": 18
-    },
-    {
-      "symbol": "syrupUSDT",
-      "address": "0x8a76fe7fa6da27f85a626c5c53730b38d13603d7",
-      "decimals": 6
-    },
-    {
-      "symbol": "USDT",
-      "address": "0x0200c29006150606b650577bbe7b6248f58470c1",
-      "decimals": 6
-    },
-    {
-      "symbol": "USDG",
-      "address": "0xe343167631d89b6ffc58b88d6b7fb0228795491d",
-      "decimals": 6
-    },
-    {
-      "symbol": "GHO",
-      "address": "0xfc421ad3c883bf9e7c4f42de845c4e4405799e73",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDe",
-      "address": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
-      "decimals": 18
-    },
-    {
-      "symbol": "weETH",
-      "address": "0xa3d68b74bf0528fdd07263c60d6488749044914b",
-      "decimals": 18
-    },
-    {
-      "symbol": "sUSDe",
-      "address": "0x211cc4dd073734da055fbf44a2b4667d5e5fe5d2",
-      "decimals": 18
-    },
-    {
-      "symbol": "ezETH",
-      "address": "0x2416092f143378750bb29b79ed961ab195cceea5",
-      "decimals": 18
-    },
-    {
-      "symbol": "wrsETH",
-      "address": "0x9f0a74a92287e323eb95c1cd9ecdbeb0e397cae4",
-      "decimals": 18
-    }
-  ]
-
-}
+  },
+  flashloan: {
+    flashSwap: true,
+    swapRoots: { minLiquidity: 0.0001 },
+    provider: 'aave-v3',
+    premium: 0.0005,
+    pool: '0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA',
+    tokens: [
+      {
+        symbol: 'kBTC',
+        address: '0x73e0c0d45e048d25fc26fa3159b0aa04bfa4db98',
+        decimals: 8,
+      },
+      {
+        symbol: 'USDC',
+        address: '0x2d270e6886d130d724215a266106e6832161eaed',
+        decimals: 6,
+      },
+      {
+        symbol: 'WETH',
+        address: '0x4200000000000000000000000000000000000006',
+        decimals: 18,
+      },
+      {
+        symbol: 'SolvBTC',
+        address: '0xae4efbc7736f963982aacb17efa37fcbab924cb3',
+        decimals: 18,
+      },
+      {
+        symbol: 'syrupUSDT',
+        address: '0x8a76fe7fa6da27f85a626c5c53730b38d13603d7',
+        decimals: 6,
+      },
+      {
+        symbol: 'USDT',
+        address: '0x0200c29006150606b650577bbe7b6248f58470c1',
+        decimals: 6,
+      },
+      {
+        symbol: 'USDG',
+        address: '0xe343167631d89b6ffc58b88d6b7fb0228795491d',
+        decimals: 6,
+      },
+      {
+        symbol: 'GHO',
+        address: '0xfc421ad3c883bf9e7c4f42de845c4e4405799e73',
+        decimals: 18,
+      },
+      {
+        symbol: 'USDe',
+        address: '0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34',
+        decimals: 18,
+      },
+      {
+        symbol: 'weETH',
+        address: '0xa3d68b74bf0528fdd07263c60d6488749044914b',
+        decimals: 18,
+      },
+      {
+        symbol: 'sUSDe',
+        address: '0x211cc4dd073734da055fbf44a2b4667d5e5fe5d2',
+        decimals: 18,
+      },
+      {
+        symbol: 'ezETH',
+        address: '0x2416092f143378750bb29b79ed961ab195cceea5',
+        decimals: 18,
+      },
+      {
+        symbol: 'wrsETH',
+        address: '0x9f0a74a92287e323eb95c1cd9ecdbeb0e397cae4',
+        decimals: 18,
+      },
+    ],
+  },
 }

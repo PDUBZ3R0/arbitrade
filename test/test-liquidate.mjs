@@ -17,6 +17,9 @@
 //   2. Same asset in eMode (WETH/WETH, 1% bonus): no route, still profitable.
 //   3. V3 exit: collateral only tradable through a Uniswap V3 pool.
 //   4. Two hops via a hub when there is no direct pool.
+//   4b. Stable-pool exit (HOP_STABLE): DAI collateral, USDC debt, the only
+//      route a Velodrome stable pool (Mocks.sol, Velodrome's math, 18↔6 dp).
+//      Without stable routes there is no exit; with them it liquidates through it.
 //   5. MustNotLeaveDust: the 50% amount reverts, the planner's full-debt
 //      fallback succeeds.
 //   6. Refusals: a healthy account (every simulation reverts), a gas floor
@@ -240,9 +243,10 @@ try {
     const POOL = await pool.getAddress();
     await send(prov.setPool(POOL, ov()));
     const tok = async (s, d) => { const t = await deploy(art.LTok, s, d); return { c: t, a: await t.getAddress(), d }; };
-    const WETH = await tok('WETH', 18), USDC = await tok('USDC', 6), XBTC = await tok('XBTC', 18), LINK = await tok('LINK', 18), ORPH = await tok('ORPH', 18);
-    for (const [t, lt, b, f] of [[WETH, 8250, 10500, 1000], [USDC, 7800, 10450, 1000], [XBTC, 7800, 10500, 1000], [LINK, 7000, 10750, 1000], [ORPH, 7000, 10500, 1000]])
+    const WETH = await tok('WETH', 18), USDC = await tok('USDC', 6), XBTC = await tok('XBTC', 18), LINK = await tok('LINK', 18), ORPH = await tok('ORPH', 18), DAI = await tok('DAI', 18);
+    for (const [t, lt, b, f] of [[WETH, 8250, 10500, 1000], [USDC, 7800, 10450, 1000], [XBTC, 7800, 10500, 1000], [LINK, 7000, 10750, 1000], [ORPH, 7000, 10500, 1000], [DAI, 7700, 10500, 1000]])
         await send(pool.addReserve(t.a, lt, b, f, ov()));
+    await send(oracle.set(DAI.a, P(1), ov()));
     await send(oracle.set(WETH.a, P(3000), ov()));
     await send(oracle.set(USDC.a, P(1), ov()));
     await send(oracle.set(XBTC.a, P(60000), ov()));
@@ -271,6 +275,13 @@ try {
     const sqrtP = BigInt(Math.floor(Math.sqrt(raw) * 2 ** 48)) * (1n << 48n);
     await send(v3pool.initialize(sqrtP, ov()));
     await send(harness.mint(XBTC_USDC, -887220, 887220, 10n ** 16n, ov()));
+    // DAI/USDC only on a Velodrome STABLE pool: 2M each, 0.05%.
+    const vf = await deploy(art.MockVeloFactory);
+    const VF = (await vf.getAddress()).toLowerCase();
+    await send(vf.createPool(DAI.a, USDC.a, true, ov()));
+    const DAI_USDC = await vf.allPools(0);
+    await send(DAI.c.mint(DAI_USDC, u(2_000_000, 18), ov())); await send(USDC.c.mint(DAI_USDC, u(2_000_000, 6), ov()));
+    await send(new ethers.Contract(DAI_USDC, art.MockVeloPool.abi, owner).sync(ov()));
 
     // --- pool DB in the scanner's schema ------------------------------------------
     const dbFile = path.join(tmp, 'anvil.sqlite');
@@ -286,12 +297,14 @@ try {
     ins.run(XBTC_USDC.toLowerCase(), V3F, ...sorted(XBTC.a, USDC.a), 0.003, null, 'v3', 60);
     // A stable-curve pool LINK/USDC: must be ignored (constant-product math would be wrong).
     ins.run('0x00000000000000000000000000000000000000aa', V2F, ...sorted(LINK.a, USDC.a), 0.0005, 1, 'v2', null);
+    ins.run(DAI_USDC.toLowerCase(), VF, ...sorted(DAI.a, USDC.a), 0.0005, 1, 'v2', null);
     pdb.prepare('INSERT INTO reserves VALUES (?,?,?,1,1)').run(WETH_USDC.toLowerCase(), '1', '1');
     pdb.close();
 
     const cfg = {
         chain: { id: 31337, label: 'anvil', name: 'Anvil', token: 'WETH' },
-        factories: [{ address: V2F, group: 'v2', fee: 0.003, name: 'mockv2' }, { address: V3F, group: 'v3', fee: undefined, name: 'univ3' }],
+        factories: [{ address: V2F, group: 'v2', fee: 0.003, name: 'mockv2' }, { address: V3F, group: 'v3', fee: undefined, name: 'univ3' },
+                    { address: VF, group: 'solidly', fee: undefined, name: 'velo' }],
         flashloan: undefined,
     };
 
@@ -391,6 +404,32 @@ try {
         ok(r.best?.route.hops[0].recipient.toLowerCase() === WETH_USDC.toLowerCase() && r.best?.route.hops[1].recipient === EXEC,
             'hop 1 pays the next V2 pair directly, hop 2 pays the executor');
         await send(oracle.set(LINK.a, P(15), ov()));
+    }
+
+    console.log('4b. stable-pool exit (HOP_STABLE)');
+    {
+        ok(Number(await new ethers.Contract(EXEC, ['function HOP_STABLE() view returns (uint8)'], provider).HOP_STABLE()) === 2, 'the liquidator has HOP_STABLE = 2');
+        const S = U();
+        await send(pool.supply(DAI.a, u(5000, 18), S, ov()));
+        await send(pool.borrow(USDC.a, u(3700, 6), S, ov()));
+        await send(oracle.set(DAI.a, P(0.95), ov()));            // oracle depeg: HF = 4750 x .77 / 3700 = 0.9885
+        const { hf, eMode } = await account(S);
+        const noStable = await new Liquidator(cfg, provider, market, new RouteFinder(cfg, dbFile, [WETH.a, USDC.a]),
+            { executor: EXEC, owner: owner.address, signer: owner, live: false, minProfitUsd: 1 }).attempt(S, hf, eMode);
+        ok(!noStable.simulated && /no exit route/.test(noStable.reason ?? ''), 'without stable routes: no exit (the stable pool is the only DAI/USDC venue)', noStable.reason);
+        const stableRoutes = new RouteFinder(cfg, dbFile, [WETH.a, USDC.a], { stable: true });
+        const r = await new Liquidator(cfg, provider, market, stableRoutes,
+            { executor: EXEC, owner: owner.address, signer: owner, live: true, minProfitUsd: 1 }).attempt(S, hf, eMode);
+        await resync();
+        ok(r.confirmed && r.best?.route.label.startsWith('direct stable') && r.best.route.hops[0].kind === 2,
+            'executed through the stable pool as HOP_STABLE', r.reason ?? r.best?.route.label);
+        // 50% close factor ($4,750 / $3,700, HF > 0.95): repay 1,850 USDC, seize 1,850 x 1.05 / 0.95 = 2,044.7 DAI,
+        // less 10% of the bonus to the protocol, sold ~1:1 on the stable curve: ≈ $185 before fees and premium.
+        ok(r.realisedProfit > u(170, 6) && r.realisedProfit < u(195, 6) && r.realisedProfit === r.best.profit,
+            'profit ≈ $183 (bonus + depeg on a 50% close, less fees) and equals the simulation',
+            r.realisedProfit != null ? `${fmt(r.realisedProfit, 6)} USDC` : '');
+        stableRoutes.close();
+        await send(oracle.set(DAI.a, P(1), ov()));
     }
 
     console.log('5. MustNotLeaveDust -> reduced amount');

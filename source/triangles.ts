@@ -17,15 +17,15 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('');
     console.error('  --root ADDR         Only enumerate triangles rooted at this token');
     console.error('                      (a flash-loan token, or a swap root when flashloan.swapRoots is set)');
-    console.error('  --include-stable    Include stable pools (constant-product math will');
-    console.error('                      give wrong prices for them — dev only)');
+    console.error('  --exclude-stable    Leave Solidly stable pools out (they are included by default:');
+    console.error('                      scored on the stable curve, traded as HOP_STABLE)');
     console.error('  --prune-same-factory  Skip 3-hop cycles whose three pairs share a factory');
     console.error('                      (old default; a memory lever, not a correctness one)');
     console.error('  --limit N           Cap total triangles emitted (dev sanity)');
     console.error('  --all-roots         List every root in the summary, including those with 0 cycles');
     console.error('');
     console.error('Enumerates 2-hop (cross-DEX) and 3-hop (triangular) arb candidates,');
-    console.error('rooted at each flash-loan token. Skips zero-reserve pairs and stable pools.');
+    console.error('rooted at each flash-loan token. Skips zero-reserve pairs.');
     console.error('Same-factory cycles ARE kept: V3 fee tiers and Solidly stable/volatile pairs');
     console.error('are distinct pools from one factory, and one DEX\'s pairs drift like any others.');
     process.exit(1);
@@ -38,7 +38,7 @@ const getStr = (flag: string): string | undefined => {
 const hasFlag = (flag: string): boolean => args.indexOf(flag) >= 0;
 
 const onlyRoot      = getStr('--root');
-const includeStable = hasFlag('--include-stable');
+const includeStable = !hasFlag('--exclude-stable');
 const pruneSameFactory3 = hasFlag('--prune-same-factory');
 const allRoots      = hasFlag('--all-roots');
 const limitStr      = getStr('--limit');
@@ -51,7 +51,7 @@ console.log(`Enumerating triangles for ${cfg.chain.name} (chain id ${cfg.chain.i
 console.log(`DB: ${dbFile}`);
 console.log(`Flash-loan tokens: ${cfg.flashloan?.tokens.map(t => t.symbol).join(', ') ?? '(none)'}`);
 if (onlyRoot) console.log(`Restricting to root: ${onlyRoot}`);
-if (includeStable) console.log(`Including stable pools (WARNING: prices will be wrong)`);
+if (!includeStable) console.log(`Excluding Solidly stable pools`);
 if (pruneSameFactory3) console.log(`Pruning 3-hop cycles whose pairs all share a factory`);
 if (limit) console.log(`Limit: ${limit}`);
 console.log('');

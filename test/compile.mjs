@@ -2,6 +2,7 @@ import solc from 'solc';
 import { readFileSync, writeFileSync } from 'fs';
 const sources = {
   'FlashArbExecutor.sol': { content: readFileSync(new URL('../contracts/FlashArbExecutor.sol', import.meta.url),'utf8') },
+  'TokenProbe.sol': { content: readFileSync(new URL('../contracts/TokenProbe.sol', import.meta.url),'utf8') },
   'Mocks.sol': { content: readFileSync(new URL('./Mocks.sol', import.meta.url),'utf8') },
   'Multicall3Min.sol': { content: readFileSync(new URL('./Multicall3Min.sol', import.meta.url),'utf8') },
 };

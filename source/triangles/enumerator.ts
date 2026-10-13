@@ -50,7 +50,11 @@ import { loadSwapRoots } from '../util/swap-roots.ts';
 export type EnumerateOptions = {
     /** If set, only enumerate triangles rooted at this token address (lowercase). */
     onlyRoot?: string;
-    /** If true, include stable pools (constant-product math will be wrong for them). */
+    /**
+     * Include Solidly stable pools (default true). They are scored on the stable
+     * curve and traded as HOP_STABLE; the evaluator and hot loop skip them when
+     * the executor predates that, so enumerating them costs nothing but rows.
+     */
     includeStable?: boolean;
     /**
      * Skip 3-hop cycles whose three pairs all come from the same factory.
@@ -167,11 +171,12 @@ export async function enumerateTriangles(
     };
 
     try {
-        // 1. Load all live, non-stable pairs into memory. On Sonic this is
-        //    ~26K rows; on Gnosis ~8K. Trivial for in-memory processing.
-        const rawPairs = db.getPairsForEnumeration({ includeStable: opts.includeStable });
+        // 1. Load all live pairs into memory. On Sonic this is ~26K rows; on
+        //    Gnosis ~8K. Trivial for in-memory processing.
+        const includeStable = opts.includeStable ?? true;
+        const rawPairs = db.getPairsForEnumeration({ includeStable });
         result.pairsUsed = rawPairs.length;
-        console.log(`Loaded ${rawPairs.length} live pairs (excluding zero-reserve${opts.includeStable ? '' : ' and stable'})`);
+        console.log(`Loaded ${rawPairs.length} live pairs (excluding zero-reserve${includeStable ? '' : ' and stable'})`);
 
         if (rawPairs.length === 0) {
             console.log('No pairs to enumerate. Have you run `yarn reserves <chain>` yet?');

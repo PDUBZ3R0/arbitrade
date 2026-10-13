@@ -52,7 +52,8 @@ export function findBestDirectPriceFromDb(
         SELECT p.token0, p.token1, r.reserves0, r.reserves1
         FROM pairs p
         JOIN reserves r ON r.pair = p.address
-        WHERE (p.token0 = ? AND p.token1 = ?) OR (p.token1 = ? AND p.token0 = ?)
+        WHERE ((p.token0 = ? AND p.token1 = ?) OR (p.token1 = ? AND p.token0 = ?))
+          AND (p.stable IS NULL OR p.stable = 0)   -- a stable pool's ratio is not its price
     `).all(tokenLower, numeraireLower, tokenLower, numeraireLower) as Array<{
         token0: string; token1: string; reserves0: string; reserves1: string;
     }>;
@@ -131,7 +132,9 @@ export function buildPriceGraph(
         SELECT p.token0, p.token1, r.reserves0, r.reserves1
         FROM pairs p
         JOIN reserves r ON r.pair = p.address
-        WHERE p.token0 = ? OR p.token1 = ?
+        WHERE (p.token0 = ? OR p.token1 = ?)
+          -- a stable pool's reserve ratio is not its price
+          AND (p.stable IS NULL OR p.stable = 0)
     `);
 
     let hitNodeCap = false;
