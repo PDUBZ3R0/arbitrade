@@ -57,7 +57,7 @@
 import { Interface, type JsonRpcProvider } from 'ethers';
 import type { ArbitradeDB } from '../util/db.ts';
 import { multicall3, type Multicall3Call } from '../util/multicall.ts';
-import { getV3States } from '../util/yobatches.ts';
+import { getV3States, getAlgebraStates } from '../util/yobatches.ts';
 import { v3_amount_out_exact } from '../util/calculus-v3.js';
 import type { Candidate } from '../evaluator/evaluator.ts';
 
@@ -93,7 +93,10 @@ export type BuiltArb = {
     rootAmountIn: bigint;
     /** Predicted, not guaranteed — see the module header. */
     expectedAmountOut: bigint;
+    /** expectedAmountOut − rootAmountIn − flashFee: net of the lender's fee, like ArbExecuted's profit. */
     expectedProfit: bigint;
+    /** What the lender charges on rootAmountIn (0 for a flash swap / free lender). */
+    flashFee: bigint;
     /** Floor to pass to executeArb; the contract enforces it on-chain. */
     minProfitWei: bigint;
     /** True if candidate.inputAmount had to be reduced by the borrow-size clamp. */
@@ -206,7 +209,21 @@ export async function buildHops(
      * executor (which forwards it) instead of going straight into hop 1. The
      * amounts — and so the prediction — are identical to the lender path.
      */
-    opts: { flashSwap?: boolean } = {},
+    opts: {
+        flashSwap?: boolean;
+        /**
+         * The lender's fee as a fraction of the loan (FlashTerms.premium) — 0
+         * for a flash swap or a free lender. The executor requires
+         * amount + fee + minProfit back, so a prediction that leaves the fee
+         * out "clears" minProfit and then reverts InsufficientRepay at the
+         * very block it was computed at (Sonic, 2026-10-13: three cycles off
+         * by exactly Aave's 0.05%, executor output equal to the prediction to
+         * the wei).
+         */
+        premium?: number;
+        /** V3-kind hops that are Algebra pools (globalState/tickTable): read with getAlgebraStates. */
+        algebraPools?: Set<string>;
+    } = {},
 ): Promise<BuiltArb | null> {
     const hops = candidate.hops;
     if (hops.length === 0) throw new Error('candidate has no hops');
@@ -220,12 +237,19 @@ export async function buildHops(
     let blockTag: number | undefined;
     if (v3Hops.length > 0) {
         if (!yobatchesAddress) throw new Error('cycle has a V3 hop but no YoBatches address (chain.contract) was given');
-        const st = await getV3States(provider, yobatchesAddress, v3Hops.map(h => h.pair), V3_WORDS);
-        for (let i = 0; i < v3Hops.length; i++) {
-            if (!st.pools[i]) return null;   // pool stopped answering slot0 — treat as dead
-            v3ByPool.set(v3Hops[i].pair.toLowerCase(), st.pools[i]);
+        // Uniswap-style pools via slot0/tickBitmap; Algebra pools via
+        // globalState/tickTable — pinned to the first read's block.
+        const isAlg = (h: { pair: string }) => !!opts.algebraPools?.has(h.pair.toLowerCase());
+        const uni = v3Hops.filter(h => !isAlg(h)), alg = v3Hops.filter(isAlg);
+        for (const [group, read] of [[uni, getV3States], [alg, getAlgebraStates]] as const) {
+            if (group.length === 0) continue;
+            const st = await read(provider, yobatchesAddress, group.map(h => h.pair), V3_WORDS, blockTag);
+            for (let i = 0; i < group.length; i++) {
+                if (!st.pools[i]) return null;   // pool stopped answering its state reads — treat as dead
+                v3ByPool.set(group[i].pair.toLowerCase(), st.pools[i]);
+            }
+            blockTag ??= st.block;
         }
-        blockTag = st.block;
     }
 
     // A stable hop is quoted by a second call (the pair's getAmountOut) after
@@ -347,7 +371,10 @@ export async function buildHops(
     }
 
     const expectedAmountOut = amountIn;
-    const expectedProfit = expectedAmountOut - rootAmountIn;
+    const flashFee = flashFeeFor(rootAmountIn, opts.premium ?? 0);
+    // NET of the lender's fee — what ArbExecuted will report as profit, and
+    // what the contract checks minProfit against.
+    const expectedProfit = expectedAmountOut - rootAmountIn - flashFee;
 
     if (expectedProfit < minProfitWei) {
         // Edge decayed since evaluation, or was a float-precision phantom that
@@ -364,5 +391,16 @@ export async function buildHops(
         inputClamped,
         requestedAmountIn,
         blockTag,
+        flashFee,
     };
+}
+
+/**
+ * A lender's fee on `amount`, rounded UP (Aave's percentMul rounds half-up;
+ * over-estimating by a wei is safe, under-estimating is a revert).
+ */
+export function flashFeeFor(amount: bigint, premium: number): bigint {
+    if (!(premium > 0)) return 0n;
+    const ppm = BigInt(Math.round(premium * 1_000_000));
+    return (amount * ppm + 999_999n) / 1_000_000n;
 }

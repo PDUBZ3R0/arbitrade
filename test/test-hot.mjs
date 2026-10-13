@@ -264,8 +264,10 @@ console.log('\n3. a swap on one pair creates an edge; the loop must trade it');
         // The whole point of recording realised rather than estimated: the
         // contract sizes hops from reserves at execution, so the prediction is
         // an upper bound.
-        ok(confirmed.realisedProfit <= confirmed.built.expectedProfit,
-           'realised <= estimated (the estimate is an upper bound)',
+        // expectedProfit is net of the lender's fee, rounded UP (the mock pool
+        // rounds down), so an undrifted trade can realise one wei more.
+        ok(confirmed.realisedProfit <= confirmed.built.expectedProfit + 1n,
+           'realised <= estimated (the estimate, net of the premium, is an upper bound)',
            `${confirmed.realisedProfit} vs ${confirmed.built.expectedProfit}`);
         ok(confirmed.minProfitUsed >= confirmed.built.minProfitWei,
            'the enforced floor was at least the config floor',

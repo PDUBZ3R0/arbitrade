@@ -59,7 +59,7 @@ import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-ind
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
 import { makeProvider, redactUrl } from './util/rpc.ts';
-import { getReservesByPairs, getV3States } from './util/yobatches.ts';
+import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { heapMb } from './util/heap.ts';
 
 const args = process.argv.slice(2);
@@ -83,6 +83,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --poll-ms N              HTTP block poll interval when --ws is absent (default 1000).');
     console.error('  --no-v3                  Leave V3 pools out even when the executor can trade them.');
     console.error('  --no-stable              Leave Solidly stable pools out even when the executor can trade them.');
+    console.error('  --no-startup-refresh     Score from the DB snapshot until each pair next trades (skip the one-time read of every pair/pool).');
     console.error('  --v3-chunk N             V3 pools per getV3States eth_call (default 50). Lower it for');
     console.error('                           a rate-limited RPC that rejects or drops larger reads.');
     console.error('  --v3-refresh-sec N       Re-read V3 pools whose last state read failed, every N sec');
@@ -198,6 +199,11 @@ console.log(`V3 pools:  ${v3 ? 'on — re-read on every Swap/Mint/Burn'
 console.log(`Stable:    ${stable ? 'on — Solidly stable pools priced on their curve, quoted by the pair'
     : noStable ? 'off (--no-stable)'
     : `off — executor predates HOP_STABLE (yarn deploy flasharb ${cfg.chain.label})`}`);
+if (cfg.factories.some(f => f.group === 'algebra') && v3) {
+    const executorAlgebra = await executor.supportsAlgebra();
+    console.log(`Algebra:   ${executorAlgebra ? 'on — Algebra pools read via globalState/tickTable, swapped through algebraSwapCallback'
+        : `refused — executor predates algebraSwapCallback; cycles through Algebra pools are skipped (yarn deploy flasharb ${cfg.chain.label})`}`);
+}
 
 // --- startup: one full evaluator pass, for pricing ---------------------------
 //
@@ -317,12 +323,12 @@ const isTransient = (e: unknown): boolean =>
 const staleV3 = new Set<string>();
 
 /** One getV3States call for a chunk, retried on transient RPC failures. Throws if it never gets through. */
-async function readChunk(chunk: string[]): Promise<Array<any>> {
+async function readChunk(chunk: string[], algebra = false): Promise<Array<any>> {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) await sleep(100 * attempt);   // 0, 100, 200ms — bounded so a per-block refresh never stalls long
         try {
-            const st = await getV3States(provider, cfg.chain.contract!, chunk, V3_WORDS);
+            const st = await (algebra ? getAlgebraStates : getV3States)(provider, cfg.chain.contract!, chunk, V3_WORDS);
             return st.pools;
         } catch (e) {
             lastErr = e;
@@ -332,17 +338,31 @@ async function readChunk(chunk: string[]): Promise<Array<any>> {
     throw lastErr;
 }
 
+/** Algebra pools (V1 / Integral) answer globalState/tickTable, not slot0 — read with getAlgebraStates. */
+const algebraFactories = new Set(cfg.factories.filter(f => f.group === 'algebra').map(f => f.address.toLowerCase()));
+const isAlgebraPool = (pool: string): boolean => {
+    const pi = ix.pairIdx.get(pool.toLowerCase());
+    return pi !== undefined && algebraFactories.has(ix.factoryAddr[pi].toLowerCase());
+};
+
 async function readV3(pools: string[], chunkSize = v3ChunkSize): Promise<Array<{ pair: string; state: any }>> {
+    const alg = pools.filter(isAlgebraPool);
+    if (alg.length === 0) return readV3Of(pools, chunkSize, false);
+    const uni = pools.filter(p => !isAlgebraPool(p));
+    return [...await readV3Of(uni, chunkSize, false), ...await readV3Of(alg, chunkSize, true)];
+}
+
+async function readV3Of(pools: string[], chunkSize: number, algebra: boolean): Promise<Array<{ pair: string; state: any }>> {
     const out: Array<{ pair: string; state: any }> = [];
     for (let i = 0; i < pools.length; i += chunkSize) {
         const chunk = pools.slice(i, i + chunkSize);
         try {
-            const states = await readChunk(chunk);
+            const states = await readChunk(chunk, algebra);
             chunk.forEach((p, k) => { out.push({ pair: p, state: states[k] }); staleV3.delete(p); });
         } catch (e) {
             if (chunk.length > 1) {
                 // A smaller read often gets through where the big one was refused.
-                out.push(...await readV3(chunk, Math.max(1, Math.floor(chunk.length / 2))));
+                out.push(...await readV3Of(chunk, Math.max(1, Math.floor(chunk.length / 2)), algebra));
             } else {
                 // One pool, still failing: leave its state unread rather than throwing away
                 // the whole block's refresh. applyV3State(null) is a no-op; the heal timer retries.
@@ -391,6 +411,8 @@ const hot = createHotLoop({
 
 let feedErrors = 0;
 let lastFeedError = '';
+/** Pairs the feed updated while the startup refresh was reading; null once it is done. */
+let touchedDuringRefresh: Set<string> | null = new Set();
 
 const watcher = await watchSync(cfg.chain.host, wsUrl, {
     isInteresting: (pair) => ix.pairIdx.has(pair),
@@ -399,7 +421,13 @@ const watcher = await watchSync(cfg.chain.host, wsUrl, {
     // handing it over costs nothing and is the difference between a working
     // chunked fallback and no feed at all.
     addresses: () => [...ix.pairIdx.keys()],
-    onBatch: hot.onBatch,
+    // While the startup refresh runs, remember what the feed touched: those
+    // pairs are already newer than the refresh's read and must not be
+    // overwritten by it.
+    onBatch: (updates, toBlock) => {
+        if (touchedDuringRefresh) for (const u of updates) touchedDuringRefresh.add(u.pair);
+        return hot.onBatch(updates, toBlock);
+    },
     watchV3: ix.v3Count > 0,
     onError: (err, ctx) => {
         feedErrors++;
@@ -435,6 +463,62 @@ if (!watcher.ready()) {
     console.error(`    If the error mentions -32701 / "specify an address", that RPC forbids`);
     console.error(`    address-less eth_getLogs; a websocket (--ws) sidesteps it entirely.`);
     process.exit(1);
+}
+
+// --- startup refresh ---------------------------------------------------------
+//
+// The index is built from the DB — reserves and V3 state as of the last
+// `yarn reserves`. The feed only corrects a pair when it next trades, so a
+// pair that moved between that run and now, then went quiet, was scored on
+// its old reserves for as long as it stayed quiet: phantom edges that "decay
+// on fresh reserves", real ones missed. (Sonic, 2026-10-13: "resynced 3
+// pair(s) after a decayed edge: 2 were stale in the index".)
+//
+// So read every pair and pool once, now that the feed is up. Done AFTER the
+// feed starts so nothing that trades from here on can be missed, and anything
+// the feed touches meanwhile is skipped — its Sync is newer than this read.
+// Same reads the self-healing resync uses (token balances; YoBatches V3 state).
+if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
+    const t0 = Date.now();
+    process.stdout.write('Startup refresh (every pair and pool, from chain)... ');
+    let movedV2 = 0, readV2 = 0, movedV3 = 0, readV3n = 0, failed = 0;
+    const off = (a: number, b: number) => Math.abs(a - b) > 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1);
+    const v2Pairs: string[] = [], v3Pools: string[] = [];
+    for (const [p, pi] of ix.pairIdx) (ix.pairIsV3[pi] ? v3Pools : v2Pairs).push(p);
+    const CHUNK = 400;
+    for (let i = 0; i < v2Pairs.length; i += CHUNK) {
+        const chunk = v2Pairs.slice(i, i + CHUNK);
+        const triples = chunk.map(p => { const pi = ix.pairIdx.get(p)!; return [p, ix.tokenAddr[ix.pairToken0[pi]], ix.tokenAddr[ix.pairToken1[pi]]] as [string, string, string]; });
+        try {
+            const rows = await getReservesByPairs(provider, cfg.chain.contract, triples, { canonical: true });
+            for (const r of rows) {
+                const p = r.pair.toLowerCase();
+                if (touchedDuringRefresh!.has(p)) continue;
+                const pi = ix.pairIdx.get(p)!;
+                const r0 = Number(r.reserves0), r1 = Number(r.reserves1);
+                readV2++;
+                if (off(ix.res0[pi], r0) || off(ix.res1[pi], r1)) { movedV2++; ix.applySync(p, r0, r1); }
+            }
+        } catch { failed += chunk.length; }
+    }
+    if (v3Pools.length > 0) {
+        for (const f of await readV3(v3Pools)) {
+            if (!f.state || touchedDuringRefresh!.has(f.pair.toLowerCase())) continue;
+            const pi = ix.pairIdx.get(f.pair.toLowerCase());
+            if (pi === undefined) continue;
+            readV3n++;
+            const old = ix.v3State[pi] as any;
+            if (!old || old.sqrtPriceX96 !== f.state.sqrtPriceX96 || old.liquidity !== f.state.liquidity) movedV3++;
+            ix.applyV3State(f.pair, f.state);
+        }
+    }
+    const skipped = touchedDuringRefresh!.size;
+    touchedDuringRefresh = null;
+    console.log(`${Date.now() - t0}ms — ${movedV2}/${readV2} pair(s) and ${movedV3}/${readV3n} v3 pool(s) had moved since the DB snapshot` +
+        (skipped ? `, ${skipped} already updated by the feed` : '') +
+        (failed ? `, ${failed} pair(s) unreadable (left as-is; the feed corrects them on their next trade)` : ''));
+} else {
+    touchedDuringRefresh = null;
 }
 
 // --- startup sweep -----------------------------------------------------------

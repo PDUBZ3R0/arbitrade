@@ -238,7 +238,8 @@ try {
            confirmed ? confirmed.txHash : reports.map(r => r.simulationError ?? '(no error)').join(' | '));
         if (confirmed) {
             ok(confirmed.built.hops.some(h => h.kind === 1 && h.pair.toLowerCase() === BC), 'the trade routed through the V3 pool as a V3 hop');
-            ok(confirmed.realisedProfit > 0n && confirmed.realisedProfit <= confirmed.built.expectedProfit,
+            // Net of the premium, rounded up: at most one wei pessimistic.
+            ok(confirmed.realisedProfit > 0n && confirmed.realisedProfit <= confirmed.built.expectedProfit + 1n,
                'realised profit > 0 and within the prediction', `${confirmed.realisedProfit} vs ${confirmed.built.expectedProfit}`);
         }
     }

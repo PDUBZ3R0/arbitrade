@@ -253,6 +253,107 @@ contract YoBatches3 is YoBatches2 {
     /// with the same reader as getV3StatePacked.
     function getAlgebraStatePacked(bytes calldata pools, uint256 words) external view returns (bytes memory) {
         assembly {
+            // ---- initialized ticks in the window, for both Algebra variants ----
+            // The window is the one the client's window() assumes: words
+            // [w0 - nWords, w0 + nWords] of 256 tick spacings around the price.
+            function ticksFor(pool, tick, spacing, nWords, wIn) -> w, count {
+                let cTick := sdiv(tick, spacing)
+                if and(slt(tick, 0), iszero(iszero(smod(tick, spacing)))) { cTick := sub(cTick, 1) }
+                let w0 := sar(8, cTick)
+                let integral := 0
+                w, count, integral := integralTicks(pool, mul(shl(8, sub(w0, nWords)), spacing),
+                    mul(add(shl(8, add(w0, nWords)), 255), spacing), wIn)
+                if iszero(integral) { w, count := bitmapTicks(pool, w0, nWords, spacing, wIn) }
+            }
+
+            // Algebra INTEGRAL keeps its initialized ticks in a tick TREE whose
+            // leaves (tickTable) are keyed by the RAW tick — not tick/spacing, as
+            // Uniswap's tickBitmap and Algebra V1's tickTable are — so a bitmap
+            // walk reads the wrong words for it (a real Integral 1.1 pool returned
+            // 1 of its 4 ticks; swaps crossing the rest were overstated 13-34%).
+            // Integral also links every initialized tick (ticks(t).prevTick /
+            // nextTick, words 2 and 3) and exposes the nearest one below the price
+            // (prevTickGlobal()), so walk that list instead. integral = 0 when the
+            // pool has no prevTickGlobal() (Algebra V1): w and count untouched.
+            function integralTicks(pool, lo, hi, wIn) -> w, count, integral {
+                w := wIn
+                mstore(0x00, shl(224, 0x050a4d21))   // prevTickGlobal()
+                if iszero(staticcall(gas(), pool, 0x00, 4, 0x00, 0x20)) { leave }
+                if lt(returndatasize(), 0x20) { leave }
+                integral := 1
+                // Down to the lowest initialized tick >= lo ...
+                let t := lowestFrom(pool, signextend(2, mload(0x00)), lo)
+                // ... then up through hi, emitting in ascending order.
+                for { let k := 0 } lt(k, 4096) { k := add(k, 1) } {
+                    if sgt(t, hi) { break }
+                    mstore(0x00, shl(224, 0xf30dba93))   // ticks(int24)
+                    mstore(0x04, t)
+                    if iszero(staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x80)) { break }
+                    if lt(returndatasize(), 0x80) { break }
+                    let net := signextend(15, mload(0x20))
+                    let nx := signextend(2, mload(0x60))
+                    // Sentinels (MIN/MAX_TICK) carry no liquidity: skip zero deltas.
+                    if and(iszero(slt(t, lo)), iszero(iszero(net))) {
+                        w := emitTick(w, t, net)
+                        count := add(count, 1)
+                    }
+                    if iszero(sgt(nx, t)) { break }   // MAX_TICK points at itself
+                    t := nx
+                }
+            }
+
+            function lowestFrom(pool, from, lo) -> start {
+                let t := from
+                start := t
+                for { let k := 0 } lt(k, 4096) { k := add(k, 1) } {
+                    if slt(t, lo) { break }
+                    start := t
+                    mstore(0x00, shl(224, 0xf30dba93))   // ticks(int24)
+                    mstore(0x04, t)
+                    if iszero(staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x80)) { break }
+                    if lt(returndatasize(), 0x80) { break }
+                    let p := signextend(2, mload(0x40))
+                    if iszero(slt(p, t)) { break }   // MIN_TICK points at itself
+                    t := p
+                }
+            }
+
+            // Algebra V1: tickTable(int16) over compressed ticks — Uniswap's layout.
+            function bitmapTicks(pool, w0, nWords, spacing, wIn) -> w, count {
+                w := wIn
+                for { let wp := sub(w0, nWords) } iszero(sgt(wp, add(w0, nWords))) { wp := add(wp, 1) } {
+                    if slt(wp, sub(0, 32768)) { continue }
+                    if sgt(wp, 32767) { break }
+                    mstore(0x00, shl(224, 0xc677e3e0))   // tickTable(int16)
+                    mstore(0x04, wp)
+                    let bm := 0
+                    if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x20) {
+                        if iszero(lt(returndatasize(), 0x20)) { bm := mload(0x00) }
+                    }
+                    for { let b := 0 } and(lt(b, 256), iszero(iszero(shr(b, bm)))) { } {
+                        if iszero(and(shr(b, bm), 0xff)) { b := add(b, 8) continue }
+                        if and(shr(b, bm), 1) {
+                            let t := mul(add(shl(8, wp), b), spacing)
+                            mstore(0x00, shl(224, 0xf30dba93))   // ticks(int24) -> (liquidityTotal, int128 liquidityDelta, ...)
+                            mstore(0x04, t)
+                            let net := 0
+                            if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x40) {
+                                if iszero(lt(returndatasize(), 0x40)) { net := signextend(15, mload(0x20)) }
+                            }
+                            w := emitTick(w, t, net)
+                            count := add(count, 1)
+                        }
+                        b := add(b, 1)
+                    }
+                }
+            }
+
+            function emitTick(wIn, t, net) -> w {
+                mstore(wIn, shl(232, t))              // int24, 3 bytes
+                mstore(add(wIn, 3), shl(128, net))    // int128, 16 bytes
+                w := add(wIn, 19)
+            }
+
             function putVar(ptr, v) -> np {
                 let l := 0
                 for { let x := v } x { x := shr(8, x) } { l := add(l, 1) }
@@ -314,36 +415,9 @@ contract YoBatches3 is YoBatches2 {
                 let countAt := w
                 w := add(w, 2)
 
-                let c := sdiv(tick, spacing)
-                if and(slt(tick, 0), iszero(iszero(smod(tick, spacing)))) { c := sub(c, 1) }
-                let w0 := sar(8, c)
+                // Initialized ticks in the window (Integral: linked list; V1: bitmap).
                 let count := 0
-                for { let wp := sub(w0, words) } iszero(sgt(wp, add(w0, words))) { wp := add(wp, 1) } {
-                    if slt(wp, sub(0, 32768)) { continue }
-                    if sgt(wp, 32767) { break }
-                    mstore(0x00, shl(224, 0xc677e3e0))   // tickTable(int16)
-                    mstore(0x04, wp)
-                    let bm := 0
-                    if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x20) {
-                        if iszero(lt(returndatasize(), 0x20)) { bm := mload(0x00) }
-                    }
-                    for { let b := 0 } and(lt(b, 256), iszero(iszero(shr(b, bm)))) { } {
-                        if iszero(and(shr(b, bm), 0xff)) { b := add(b, 8) continue }
-                        if and(shr(b, bm), 1) {
-                            let t := mul(add(shl(8, wp), b), spacing)
-                            mstore(0x00, shl(224, 0xf30dba93))   // ticks(int24)
-                            mstore(0x04, t)
-                            let net := 0
-                            if staticcall(gas(), pool, 0x00, 0x24, 0x00, 0x40) {
-                                if iszero(lt(returndatasize(), 0x40)) { net := signextend(15, mload(0x20)) }
-                            }
-                            w := putFixed(w, t, 3)
-                            w := putFixed(w, net, 16)
-                            count := add(count, 1)
-                        }
-                        b := add(b, 1)
-                    }
-                }
+                w, count := ticksFor(pool, tick, spacing, words, w)
                 mstore8(countAt, and(shr(8, count), 0xff))
                 mstore8(add(countAt, 1), and(count, 0xff))
             }

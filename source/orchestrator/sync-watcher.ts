@@ -86,8 +86,20 @@ export const PANCAKE_V3_SWAP_TOPIC = '0x19b47279256b2a23a1665c810c8d55a1758940ee
 export const V3_MINT_TOPIC = '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde';
 /** V3 Burn(address,int24,int24,uint128,uint256,uint256). */
 export const V3_BURN_TOPIC = '0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c';
+/**
+ * Algebra pools (V1 and Integral 1.0–1.2) emit Swap/Mint/Burn with exactly the
+ * Uniswap V3 signatures — checked against @cryptoalgebra/integral-core 1.1.0
+ * and 1.2.10's IAlgebraPoolEvents and SwapX pool 0x9c2a…'s verified ABI — so
+ * the topics above already cover them (1.2 reports its extra fees in separate
+ * SwapFee/BurnFee events). Two Algebra events change what the next swap costs
+ * or how ticks are walked without any Swap: Fee(uint16) and TickSpacing(int24).
+ * Both trigger a re-read.
+ */
+export const ALGEBRA_FEE_TOPIC = '0x598b9f043c813aa6be3426ca60d1c65d17256312890be5118dab55b0775ebe2a';
+export const ALGEBRA_TICKSPACING_TOPIC = '0x01413b1d5d4c359e9a0daa7909ecda165f6e8c51fe2ff529d74b22a5a7c02645';
 /** Every event after which a V3 pool's state must be re-read. */
-export const V3_POOL_TOPICS: string[] = [V3_SWAP_TOPIC, PANCAKE_V3_SWAP_TOPIC, V3_MINT_TOPIC, V3_BURN_TOPIC];
+export const V3_POOL_TOPICS: string[] = [V3_SWAP_TOPIC, PANCAKE_V3_SWAP_TOPIC, V3_MINT_TOPIC, V3_BURN_TOPIC,
+    ALGEBRA_FEE_TOPIC, ALGEBRA_TICKSPACING_TOPIC];
 const V3_TOPIC_SET = new Set(V3_POOL_TOPICS);
 
 export type SyncUpdate = {

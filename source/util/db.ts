@@ -123,7 +123,8 @@ const SCHEMA = `
     CREATE TABLE IF NOT EXISTS scan_progress (
         factory      TEXT PRIMARY KEY,
         lastBlock    INTEGER NOT NULL,
-        updatedAt    INTEGER NOT NULL
+        updatedAt    INTEGER NOT NULL,
+        topic        TEXT            -- creation-event topic0 the progress is for
     );
 
     -- Triangles: cached enumeration of arb cycles rooted at flash-loanable tokens.
@@ -217,6 +218,14 @@ function migratePairsColumns(db: import('better-sqlite3').Database): void {
     }
     if (!names.has('cl_variant')) {
         db.exec('ALTER TABLE pairs ADD COLUMN cl_variant TEXT');
+    }
+    // scan_progress.topic: the creation-event topic a factory was scanned
+    // with. Progress is only valid for that topic — a factory moved to
+    // another group (v3 → algebra) or poolEvent was otherwise "caught up"
+    // forever without ever having been scanned for its real event.
+    const sp = new Set((db.prepare('PRAGMA table_info(scan_progress)').all() as Array<{ name: string }>).map(r => r.name));
+    if (sp.size > 0 && !sp.has('topic')) {
+        db.exec('ALTER TABLE scan_progress ADD COLUMN topic TEXT');
     }
 }
 
@@ -569,19 +578,31 @@ export class ArbitradeDB {
     // ------------------------------------------- scan progress
 
     getScanProgress(factory: string): number | null {
-        const row = this.db.prepare('SELECT lastBlock FROM scan_progress WHERE factory = ?')
-            .get(factory.toLowerCase()) as { lastBlock: number } | undefined;
-        return row?.lastBlock ?? null;
+        return this.getScanProgressRow(factory)?.lastBlock ?? null;
     }
 
-    setScanProgress(factory: string, block: number) {
+    /** lastBlock plus the creation-event topic it was scanned for (null for rows written before topics were recorded). */
+    getScanProgressRow(factory: string): { lastBlock: number; topic: string | null } | null {
+        const row = this.db.prepare('SELECT lastBlock, topic FROM scan_progress WHERE factory = ?')
+            .get(factory.toLowerCase()) as { lastBlock: number; topic: string | null } | undefined;
+        return row ? { lastBlock: row.lastBlock, topic: row.topic ?? null } : null;
+    }
+
+    /** `topic`: the creation event scanned for. Omitted keeps whatever was recorded. */
+    setScanProgress(factory: string, block: number, topic?: string) {
         this.db.prepare(`
-            INSERT INTO scan_progress (factory, lastBlock, updatedAt)
-            VALUES (?, ?, ?)
+            INSERT INTO scan_progress (factory, lastBlock, updatedAt, topic)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(factory) DO UPDATE SET
                 lastBlock = excluded.lastBlock,
-                updatedAt = excluded.updatedAt
-        `).run(factory.toLowerCase(), block, Math.floor(Date.now() / 1000));
+                updatedAt = excluded.updatedAt,
+                topic     = COALESCE(excluded.topic, scan_progress.topic)
+        `).run(factory.toLowerCase(), block, Math.floor(Date.now() / 1000), topic?.toLowerCase() ?? null);
+    }
+
+    /** Forget a factory's scan progress: the next scan starts from its deploy block. */
+    resetScanProgress(factory: string) {
+        this.db.prepare('DELETE FROM scan_progress WHERE factory = ?').run(factory.toLowerCase());
     }
 
     // ------------------------------------------- reserves

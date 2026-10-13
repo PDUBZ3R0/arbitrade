@@ -149,6 +149,38 @@ function layoutOf(factory: NormalizedFactory): EventLayout {
            'v2';
 }
 
+/**
+ * Where a factory's scan should resume, or null to start from its deploy block.
+ *
+ * Progress is only valid for the creation event it was scanned for. A factory
+ * whose group or poolEvent changed (so its topic changed) was "caught up" for
+ * the WRONG event: resuming would skip its whole history. Sonic, 2026-10-13:
+ * SwapX Algebra and Atlantis showed 0 pools with progress at the head —
+ * scanned before they were configured as Algebra, never rescanned after.
+ *
+ * Rows written before topics were recorded (topic null) are trusted, except a
+ * concentrated-liquidity factory with no pools at all: that is the exact
+ * signature of the bug above, and re-scanning one (HyperSync: one indexed
+ * query) costs little. `allowLegacyRescan` gates that on HyperSync, where a
+ * history scan is cheap; on chunked RPC it is only reported.
+ */
+export function resumeFor(
+    db: ArbitradeDB, factory: NormalizedFactory, topic: string, allowLegacyRescan: boolean,
+): { resume: number | null; note?: string } {
+    const row = db.getScanProgressRow(factory.address);
+    if (!row) return { resume: null };
+    if (row.topic && row.topic !== topic.toLowerCase()) {
+        return { resume: null, note: `creation event changed since the last scan (was ${row.topic.slice(0, 10)}, now ${topic.slice(0, 10)}) — rescanning from the deploy block` };
+    }
+    const isCL = factory.group === 'v3' || factory.group === 'algebra';
+    if (!row.topic && isCL && db.countPairs(factory.address) === 0) {
+        return allowLegacyRescan
+            ? { resume: null, note: `marked scanned to block ${row.lastBlock} but has no pools, and the event it was scanned for is unrecorded — rescanning from the deploy block` }
+            : { resume: row.lastBlock, note: `marked scanned to block ${row.lastBlock} but has no pools — if that is wrong: yarn scan <chain> --rescan ${factory.address}` };
+    }
+    return { resume: row.lastBlock };
+}
+
 /** A parsed creation event as a pairs-table row. */
 function pairRow(factory: NormalizedFactory, p: { pair: string; token0: string; token1: string; stable: boolean | null;
                  feePips?: number | null; tickSpacing?: number | null; blockNumber: number }): import('../util/db.ts').PairRow {
@@ -270,7 +302,7 @@ export async function scanIncremental(
             if (f.fromBlock > end) continue;
             const rows = rowsByFactory.get(f.factory.address);
             if (rows?.length) found[f.factory.name] += db.insertPairs(rows);
-            db.setScanProgress(f.factory.address, end);
+            db.setScanProgress(f.factory.address, end, f.topic);
         }
 
         cursor = end + 1;
@@ -313,7 +345,6 @@ export async function scanFactory(
     const toRow = (p: Parameters<typeof pairRow>[1]) => pairRow(factory, p);
 
     const head = opts.toBlock ?? await provider.getBlockNumber();
-    const resumeBlock = db.getScanProgress(factory.address);
 
     // Whether the HyperSync fast path is available. Computed up here rather
     // than immediately before the fast path, because it decides whether we
@@ -333,6 +364,8 @@ export async function scanFactory(
     // is enough to exhaust a modest RPC compute-unit budget before the scan has
     // fetched a single log. So skip discovery when HyperSync is on. If HyperSync
     // later fails and we fall through to RPC, we discover lazily at that point.
+    const { resume: resumeBlock, note: resumeNote } = resumeFor(db, factory, eventTopic, canUseHyperSync);
+    if (resumeNote) console.log(`  [i] ${factory.name}: ${resumeNote}`);
     let startBlock = factory.deployBlock;
     if (!startBlock && resumeBlock === null && !canUseHyperSync) {
         startBlock = await discoverAndCacheDeployBlock(provider, db, factory, opts);
@@ -388,7 +421,7 @@ export async function scanFactory(
                         const inserted = db.insertPairs(rows);
                         totalFound += inserted;
                     }
-                    db.setScanProgress(factory.address, progressBlock);
+                    db.setScanProgress(factory.address, progressBlock, eventTopic);
                     opts.onProgress?.({
                         factory: factory.name,
                         block:   progressBlock,
@@ -579,7 +612,7 @@ export async function scanFactory(
             totalFound += inserted;
         }
 
-        db.setScanProgress(factory.address, chunkEnd);
+        db.setScanProgress(factory.address, chunkEnd, eventTopic);
         opts.onProgress?.({
             factory: factory.name,
             block: chunkEnd,
@@ -642,8 +675,11 @@ export async function scanChain(
     if (maxGap > 0 && !opts.forceTransport && opts.fromBlock === undefined) {
         const head = opts.toBlock ?? await provider.getBlockNumber();
         const near: Array<{ factory: NormalizedFactory; fromBlock: number }> = [];
+        const hyper = Boolean(cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN);
         for (const f of cfg.factories) {
-            const resume = db.getScanProgress(f.address);
+            // A factory whose progress is not valid for its current event goes
+            // to the full per-factory scan below, which says why.
+            const { resume } = resumeFor(db, f, TOPIC_BY_LAYOUT[layoutOf(f)], hyper);
             if (resume !== null && head - resume <= maxGap) near.push({ factory: f, fromBlock: resume + 1 });
         }
         if (near.length > 0) {

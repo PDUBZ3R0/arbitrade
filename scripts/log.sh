@@ -10,21 +10,22 @@ STAGE="$1"
 shift
 
 CHAIN="$1"
+shift
 
 if [ -z "$CHAIN" ]; then
     echo "Usage: yarn $STAGE <chain>" >&2
     exit 1
 fi
 
-shift
+RESTARGS="$@"
 
-if [[ "$CONTAINED" == "YEAH" ]]; then
+CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $RESTARGS"
+
+if [ "$CONTAINED" == "YEAH" ]; then
     LDIR="/app/log/${CHAIN}"
 else
     LDIR="log/${CHAIN}"
 fi
-
-CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $@"
 
 LOG="$LDIR/${STAGE}.log"
 if [ ! -d "$LDIR" ]; then
@@ -41,7 +42,7 @@ STATUS_FILE=$(mktemp)
     echo $CALLLOG
     echo "=== $STAGE ($CHAIN) ==="
     rc=0
-    node --experimental-strip-types --disable-warning=ExperimentalWarning $ROOT/$STAGE.ts "$CHAIN" $@ || rc=$?
+    node --experimental-strip-types --disable-warning=ExperimentalWarning $ROOT/$STAGE.ts $CHAIN ${RESTARGS[@]} || rc=$?
     echo $rc > "$STATUS_FILE"
     echo
 

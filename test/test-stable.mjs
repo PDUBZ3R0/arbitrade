@@ -195,9 +195,11 @@ try {
         const a = await quiet(() => ex.attempt(cand, db));
         await resync();
         ok(a.built?.hops.map(h => h.kind).join(',') === `${HOP_STABLE},${HOP_V2}`, 'hops encoded [HOP_STABLE, HOP_V2]', `(${a.built?.hops.map(h => h.kind)})`);
-        const premium = a.built ? (a.built.rootAmountIn * 5n) / 10_000n : 0n;
-        ok(a.confirmed && a.realisedProfit === a.built.expectedProfit - premium,
-            'confirmed; realised profit = prediction − premium, to the wei',
+        // The prediction is net of the lender's fee (rounded up; the mock pool
+        // rounds down), so realised = prediction to within one wei.
+        const d = a.built ? a.realisedProfit - a.built.expectedProfit : -1n;
+        ok(a.confirmed && d >= 0n && d <= 1n && a.built.flashFee === (a.built.rootAmountIn * 5n + 9_999n) / 10_000n,
+            'confirmed; realised profit = prediction (already net of the premium), to the wei',
             a.confirmed ? `(${ethers.formatEther(a.realisedProfit)} DAI on ${ethers.formatEther(a.built.rootAmountIn)})` : `(${a.simulationError?.slice(0, 120)})`);
         db.close();
     }

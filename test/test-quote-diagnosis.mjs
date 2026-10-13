@@ -63,8 +63,18 @@ try {
         ok(/QUOTE MISMATCH at block 1234: predicted 1000000, executor got 996000 \(4000 ppm short\)/.test(r), 'verdict with ppm', r);
         const f = path.join('log', 'katana', 'quote-mismatch.jsonl');
         const rec = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8').trim().split('\n').at(-1)) : null;
-        ok(rec && rec.block === 1234 && rec.shortPpm === 4000 && rec.triangleId === 42, 'jsonl record', JSON.stringify(rec)?.slice(0, 90));
+        ok(rec && rec.block === 1234 && rec.shortPpm === 4000 && rec.triangleId === 42 && rec.kind === 'quote', 'jsonl record', JSON.stringify(rec)?.slice(0, 90));
         ok(rec && rec.hops.length === 2 && rec.hops[0].kind === 'v3' && rec.hops[0].pair === '0xv3pool' && rec.hops[1].feePpm === 3000, 'record carries the path (kinds, pools, fees)');
+    }
+
+    console.log('\n2b. swaps returned exactly the prediction, required was higher → ACCOUNTING');
+    {
+        const s = stub(() => { throw revertWith(repay(1_000_000n, 1_000_500n)); });
+        const r = await ex.diagnoseRepay(first, s.call, built, 10n, candidate);
+        ok(/ACCOUNTING at block 1234: the swaps returned exactly the prediction \(1000000\) but the contract required 1000500/.test(r), 'verdict', r);
+        const f = path.join('log', 'katana', 'quote-mismatch.jsonl');
+        const rec = JSON.parse(fs.readFileSync(f, 'utf8').trim().split('\n').at(-1));
+        ok(rec.kind === 'accounting' && rec.required === '1000500', 'record kind=accounting with required', JSON.stringify({ kind: rec.kind, required: rec.required }));
     }
 
     console.log('\n3. a different revert at the read block');

@@ -25,7 +25,7 @@ import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
 import { ledgerPath, flashTermsFor, flashSwapEnabled, type FlashTerms } from '../util/config.ts';
 import type { Candidate, EvaluateResult } from '../evaluator/evaluator.ts';
-import { buildHops, HOP_V3, type BuiltArb } from './build-hops.ts';
+import { buildHops, flashFeeFor, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 import { redactUrl } from '../util/rpc.ts';
@@ -257,6 +257,8 @@ export class CandidateExecutor {
     private executorHasFlashSwap = false;
     /** HOP_STABLE: trades Solidly stable pools through the pair's own getAmountOut. */
     private executorHasStable = false;
+    /** The executor answers algebraSwapCallback (Algebra pools call that, not uniswapV3SwapCallback). */
+    private executorHasAlgebra = false;
     private warnedNoFlashSwap = false;
     /**
      * Factories whose pairs failed a flash swap that the lender path then
@@ -300,6 +302,7 @@ export class CandidateExecutor {
         this.executorHasV3 = has('HOP_V3()');
         this.executorHasFlashSwap = this.executorHasV3 && has('FLASH_SWAP()');
         this.executorHasStable = this.executorHasV3 && has('HOP_STABLE()');
+        this.executorHasAlgebra = this.executorHasV3 && has('algebraSwapCallback(int256,int256,bytes)');
         if (!this.executorHasV3) {
             this.executor = new Contract(addr, EXECUTOR_ABI_V2_ONLY, this.provider);
             console.warn(
@@ -325,6 +328,11 @@ export class CandidateExecutor {
      */
     async supportsStable(): Promise<boolean> {
         return (await this.checkExecutorVersion()) === null && this.executorHasStable;
+    }
+
+    /** Whether the deployed executor can swap through Algebra pools (algebraSwapCallback). */
+    async supportsAlgebra(): Promise<boolean> {
+        return (await this.checkExecutorVersion()) === null && this.executorHasAlgebra;
     }
 
     /** Replace the pricing table, e.g. after the hot loop re-runs the evaluator. */
@@ -525,11 +533,19 @@ export class CandidateExecutor {
         // The executor answers two swap callbacks. A pool that calls anything
         // else would revert the swap; say so here instead of paying for an
         // estimateGas to find out.
+        const algebraPools = new Set<string>();
         for (const h of candidate.hops) {
             if (h.kind !== 'v3') continue;
-            const cb = this.cfg.factories.find(f => f.address.toLowerCase() === h.factory.toLowerCase())?.callback;
-            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb)) {
-                attempt.simulationError = `v3 hop ${h.pair} calls ${cb}, which the executor does not implement`;
+            const f = this.cfg.factories.find(x => x.address.toLowerCase() === h.factory.toLowerCase());
+            // Algebra pools (V1 and Integral) call algebraSwapCallback, whatever
+            // the conf says; their state is read with getAlgebraState.
+            const algebra = f?.group === 'algebra';
+            const cb = algebra ? 'algebraSwapCallback' : f?.callback;
+            if (algebra) algebraPools.add(h.pair.toLowerCase());
+            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb) && !(cb === 'algebraSwapCallback' && this.executorHasAlgebra)) {
+                attempt.simulationError = cb === 'algebraSwapCallback'
+                    ? `v3 hop ${h.pair} is an Algebra pool and the executor at ${this.cfg.chain.executor} predates algebraSwapCallback — yarn deploy flasharb ${this.cfg.chain.label}`
+                    : `v3 hop ${h.pair} calls ${cb}, which the executor does not implement`;
                 return attempt;
             }
         }
@@ -545,7 +561,7 @@ export class CandidateExecutor {
                 candidate,
                 this.minProfitWeiFor(candidate.rootToken),
                 this.cfg.chain.contract,
-                { flashSwap: useFlash },
+                { flashSwap: useFlash, premium: useFlash ? 0 : (terms?.premium ?? 0), algebraPools },
             );
         } catch (err) {
             // Reading the path failed (an unreadable pair, an RPC error): a
@@ -574,7 +590,10 @@ export class CandidateExecutor {
                 attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate);
                 return attempt;   // would revert on-chain
             }
-            const viaLender = { ...built, hops: built.hops.map((h, i) =>
+            // Same amounts, but now the lender charges its fee: profit shrinks by it.
+            const lenderFee = flashFeeFor(built.rootAmountIn, terms?.premium ?? 0);
+            const viaLender = { ...built, flashFee: lenderFee, expectedProfit: built.expectedProfit + built.flashFee - lenderFee,
+                hops: built.hops.map((h, i) =>
                 i === 0 && built!.hops[1].kind !== HOP_V3 ? { ...h, recipient: built!.hops[1].pair } : h) };
             const lenderCall = this.callFor(false, terms, candidate.rootToken, viaLender);
             try {
@@ -748,10 +767,16 @@ export class CandidateExecutor {
                 return ` [at block ${B} it reverts differently: ${(atB ?? 'no data').slice(0, 74)}]`;
             }
             const got = BigInt('0x' + atB.slice(10, 74));
+            const required = BigInt('0x' + atB.slice(74, 138));
             const want = built.expectedAmountOut;
             const ppm = want > 0n ? Number(((want - got) * 1_000_000n) / want) : 0;
+            // The swaps delivered what we predicted: the gap is on the other
+            // side — what we thought the contract would require (loan + fee +
+            // minProfit). An accounting bug, not swap math.
+            const kind = got >= want ? 'accounting' : 'quote';
             const rec = {
-                at: new Date().toISOString(), chain: this.cfg.chain.label, block: B, triangleId: candidate.triangleId,
+                at: new Date().toISOString(), chain: this.cfg.chain.label, block: B, triangleId: candidate.triangleId, kind,
+                required: required.toString(), flashFee: built.flashFee?.toString(),
                 rootToken: candidate.rootToken, amountIn: built.rootAmountIn.toString(),
                 predictedOut: want.toString(), executorOut: got.toString(), shortPpm: ppm,
                 hops: candidate.hops.map((h: any, i: number) => ({
@@ -764,6 +789,9 @@ export class CandidateExecutor {
                 fs.mkdirSync(dir, { recursive: true });
                 fs.appendFileSync(path.join(dir, 'quote-mismatch.jsonl'), JSON.stringify(rec) + '\n');
             } catch { /* diagnostics must never break the loop */ }
+            if (kind === 'accounting') {
+                return ` [ACCOUNTING at block ${B}: the swaps returned exactly the prediction (${got}) but the contract required ${required} — loan + fee + minProfit was underestimated; logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
+            }
             return ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
         } catch {
             return '';
