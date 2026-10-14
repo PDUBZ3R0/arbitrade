@@ -1,5 +1,5 @@
 // verify-v3-factory's Algebra path against a scripted provider (no RPC).
-// Integral: 6-word globalState + live fee(); V1: 7-word globalState, no fee().
+// Integral: 6-word globalState + live fee(), tickTable keyed by raw tick; V1: 7-word globalState, no fee(), tickTable keyed by tick/spacing.
 //   node --experimental-strip-types test/test-verify-algebra.mjs
 import { ethers } from 'ethers';
 import { verifyV3Factory } from '../source/util/verify-v3-factory.ts';
@@ -30,7 +30,14 @@ function mockProvider({ variant, liveFee, lastFee, callbackInCode = true }) {
         [sel('tickSpacing()')]: () => '0x' + w(spacing),
         [sel('token0()')]: () => '0x' + w(BigInt(T0)),
         [sel('fee()')]: () => { if (liveFee == null) throw new Error('revert'); return '0x' + w(liveFee); },
-        [sel('tickTable(int16)')]: (arg) => '0x' + w(BigInt.asIntN(256, BigInt('0x' + arg)) === 0n ? (1n << BigInt(compressed)) : 0n),
+        // V1 keys tickTable by tick / spacing (word 0, bit 20 for tick 1200);
+        // Integral's tick tree keys its leaves by the RAW tick (word 4, bit 176)
+        // — as @cryptoalgebra/integral-core TickTree.sol does.
+        [sel('tickTable(int16)')]: (arg) => {
+            const word = Number(BigInt.asIntN(256, BigInt('0x' + arg)));
+            const key = variant === 'v1' ? compressed : initTick;
+            return '0x' + w(word === key >> 8 ? (1n << BigInt(key & 255)) : 0n);
+        },
         [sel('ticks(int24)')]: (arg) => {
             const t = Number(BigInt.asIntN(256, BigInt('0x' + arg)));
             return '0x' + (t === initTick ? w(5n * 10n ** 17n) + w(-(3n * 10n ** 17n)) : w(0) + w(0)) + w(0).repeat(4);

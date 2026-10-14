@@ -47,7 +47,13 @@ export const KNOWN_CALLBACKS = [
     'ramsesV2SwapCallback',
     'solidlyV3SwapCallback',
 ] as const;
-export type CallbackName = typeof KNOWN_CALLBACKS[number];
+/**
+ * A known name, or `0x<selector>` for a V3-shaped callback measured on a pool
+ * whose name we do not know (a PancakeV3 fork that renamed it). Every value
+ * is a `(int256,int256,bytes)` callback: the executor's generic fallback
+ * (V3_ANY_CALLBACK) pays any of them.
+ */
+export type CallbackName = typeof KNOWN_CALLBACKS[number] | `0x${string}`;
 const CALLBACK_SELECTORS: Array<{ name: CallbackName; selector: string }> = KNOWN_CALLBACKS.map(name => ({
     name,
     selector: ethers.id(`${name}(int256,int256,bytes)`).slice(2, 10),
@@ -66,6 +72,8 @@ export type V3VerifyResult = {
     layout: EventLayout | null;
     poolEvent: 'uniswap' | 'tickspacing' | null;
     callback: CallbackName | null;
+    /** How the callback was identified: its selector in the bytecode, or a measured swap. */
+    callbackHow?: 'bytecode' | 'measured' | 'family';
     deployBlock: number | null;
     samplePool: string | null;
     /** Fees (pips) and tick spacings seen across the sampled pools. */
@@ -78,10 +86,10 @@ export type V3VerifyResult = {
 
 // ---- raw, tolerant eth_call helpers ----------------------------------------
 
-async function callWords(provider: JsonRpcProvider, to: string, sig: string, args: string = ''): Promise<bigint[] | null> {
+async function callWords(provider: JsonRpcProvider, to: string, sig: string, args: string = '', blockTag?: number): Promise<bigint[] | null> {
     try {
         const data = ethers.id(sig).slice(0, 10) + args;
-        const raw = await provider.call({ to, data });
+        const raw = await provider.call({ to, data, blockTag });
         if (!raw || raw === '0x' || raw.length < 66) return null;
         const out: bigint[] = [];
         for (let i = 2; i + 64 <= raw.length; i += 64) out.push(BigInt('0x' + raw.slice(i, i + 64)));
@@ -123,6 +131,71 @@ export function findCallbackSelectors(codeHex: string): CallbackName[] {
         i += 2 + (op >= 0x60 && op <= 0x7f ? (op - 0x5f) * 2 : 0);
     }
     return [...found];
+}
+
+// ---- measuring the callback --------------------------------------------------
+//
+// The PUSH4 walk only finds names we already know. 9mm's and ZF's pools on
+// Sonic (PancakeV3 forks) carry none of them: they renamed the callback. So
+// ask the pool: eth_call its swap() from an address whose code — set by a
+// state override — reverts with whatever calldata it receives. A V3-style
+// pool sends the output, then calls msg.sender back; that call's calldata
+// (selector + amount0Delta, amount1Delta, data) bubbles out as the revert.
+// A pull-model pool (Solidly V3: transferFrom, no callback) reverts with its
+// own error instead, which is reported as such.
+
+/** Runtime: CALLDATACOPY(0, 0, size); REVERT(0, size). */
+const ECHO_CODE = '0x366000600037366000fd';
+const ECHO_ADDR = '0x00000000000000000000000000000000ca11bac0';
+const SWAP_SEL = ethers.id('swap(address,bool,int256,uint160,bytes)').slice(0, 10);
+
+export type MeasuredCallback =
+    | { ok: true; selector: string; name: CallbackName; known: boolean }
+    | { ok: false; why: string };
+
+function revertData(err: unknown): string | null {
+    const e = err as any;
+    for (const d of [e?.data, e?.info?.error?.data, e?.error?.data, e?.info?.error?.data?.data, e?.error?.data?.data]) {
+        if (typeof d === 'string' && /^0x[0-9a-fA-F]*$/.test(d)) return d.toLowerCase();
+    }
+    const m = /(0x[0-9a-fA-F]{8,})/.exec(String(e?.info?.error?.message ?? e?.message ?? ''));
+    return m ? m[1].toLowerCase() : null;
+}
+
+export async function measureSwapCallback(provider: JsonRpcProvider, pool: string): Promise<MeasuredCallback> {
+    const known = new Map(CALLBACK_SELECTORS.map(c => [c.selector, c.name]));
+    let lastWhy = 'no answer';
+    for (const zeroForOne of [true, false]) {
+        const limit = zeroForOne ? 4295128740n : 1461446703485210103287273052203988822378723970341n;
+        const data = SWAP_SEL + ethers.AbiCoder.defaultAbiCoder()
+            .encode(['address', 'bool', 'int256', 'uint160', 'bytes'], [ECHO_ADDR, zeroForOne, 1000n, limit, '0x']).slice(2);
+        let rd: string | null;
+        try {
+            await provider.send('eth_call', [{ from: ECHO_ADDR, to: pool, data, gas: '0x989680' }, 'latest', { [ECHO_ADDR]: { code: ECHO_CODE } }]);
+            lastWhy = 'swap() returned without calling back (pull-model pool?)';
+            continue;
+        } catch (err) {
+            rd = revertData(err);
+            const msg = String((err as any)?.info?.error?.message ?? (err as any)?.shortMessage ?? (err as Error)?.message ?? '');
+            if (/override|unsupported|not supported|invalid argument 2|too many arguments/i.test(msg) && !rd) {
+                return { ok: false, why: `the RPC refused an eth_call state override (${msg.slice(0, 80)})` };
+            }
+            if (!rd || rd === '0x') { lastWhy = `swap() reverted without data (${msg.slice(0, 80)})`; continue; }
+        }
+        // The echoed callback: selector, then int256, int256, offset 0x60 of `data`.
+        if (rd.length >= 10 + 64 * 4 && BigInt('0x' + rd.slice(10 + 128, 10 + 192)) === 0x60n) {
+            const selector = rd.slice(2, 10);
+            const name = known.get(selector);
+            return { ok: true, selector, name: name ?? (`0x${selector}` as CallbackName), known: !!name };
+        }
+        if (rd.startsWith('0x08c379a0')) {
+            try { lastWhy = `swap() reverted "${ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + rd.slice(10))[0]}" without calling back`; }
+            catch { lastWhy = `swap() reverted ${rd.slice(0, 74)}`; }
+        } else {
+            lastWhy = `swap() reverted ${rd.slice(0, 74)} — not a (int256,int256,bytes) callback`;
+        }
+    }
+    return { ok: false, why: lastWhy };
 }
 
 // ---- sampling pools ---------------------------------------------------------
@@ -301,20 +374,7 @@ export async function verifyV3Factory(
     if (!tickLayoutChecked) notes.push('  [!] No initialized tick near the sampled prices — ticks() layout not checked.');
 
     // 4. callback
-    const { code, via } = await runtimeCode(provider, r.samplePool!);
-    const cbs = findCallbackSelectors(code);
-    if (via) notes.push(`  Pool is an EIP-1167 clone of ${via}; inspected the implementation`);
-    if (cbs.length === 1) {
-        r.callback = cbs[0];
-        notes.push(`✓ Swap callback: ${cbs[0]} (selector found in pool bytecode)`);
-    } else if (cbs.length === 0) {
-        notes.push(`✗ No known swap-callback selector in the pool bytecode (${KNOWN_CALLBACKS.join(', ')}). ` +
-            `The executor cannot pay this pool until its callback is identified.`);
-        return r;
-    } else {
-        notes.push(`✗ Several callback selectors present (${cbs.join(', ')}) — ambiguous, check the source.`);
-        return r;
-    }
+    if (!(await checkCallback(provider, r))) return r;
 
     // 5. YoBatches2 end-to-end, when deployed
     if (cfg.chain.contract) {
@@ -322,7 +382,9 @@ export async function verifyV3Factory(
             const { getV3States } = await import('./yobatches.ts');
             const b = await getV3States(provider, cfg.chain.contract, [r.samplePool!], 1);
             const p = b.pools[0];
-            const s0 = await callWords(provider, r.samplePool!, 'slot0()');
+            // At the reader's own block: a busy pool's price moves between two
+            // calls a block apart, and that is not the reader being wrong.
+            const s0 = await callWords(provider, r.samplePool!, 'slot0()', '', b.block);
             if (p && s0 && p.sqrtPriceX96 === s0[0]) {
                 r.lensChecked = true;
                 notes.push(`✓ YoBatches2.getV3State reads this pool (${p.ticks.length} ticks in ±1 word)`);
@@ -361,20 +423,36 @@ async function checkCallback(provider: JsonRpcProvider, r: V3VerifyResult, expec
     if (via) r.notes.push(`  Pool is an EIP-1167 clone of ${via}; inspected the implementation`);
     if (cbs.length === 1) {
         r.callback = cbs[0];
+        r.callbackHow = 'bytecode';
         r.notes.push(`✓ Swap callback: ${cbs[0]} (selector found in pool bytecode)`);
         if (expect && cbs[0] !== expect) r.notes.push(`  [!] expected ${expect} for this family — the executor must implement ${cbs[0]}`);
         return true;
     }
+    // None of the names we know (a renamed fork), or several (ambiguous):
+    // make the pool call back and see what it calls.
+    const m = await measureSwapCallback(provider, r.samplePool!);
+    if (m.ok) {
+        r.callback = m.name;
+        r.callbackHow = 'measured';
+        r.notes.push(m.known
+            ? `✓ Swap callback: ${m.name} (measured: a simulated swap called it)`
+            : `✓ Swap callback: selector ${m.name} (measured: a simulated swap called it with V3 arguments; name unknown) — ` +
+              `the executor pays it through its generic fallback (V3_ANY_CALLBACK)`);
+        if (expect && m.name !== expect) r.notes.push(`  [!] expected ${expect} for this family`);
+        return true;
+    }
+    r.notes.push(`  [i] callback measurement: ${m.why}`);
     if (cbs.length === 0 && expect) {
         // Algebra pools are often too large to inline the selector as a PUSH4
         // the walker sees (or route through a library); the family fixes it.
         r.callback = expect;
+        r.callbackHow = 'family';
         r.notes.push(`  [!] No callback selector found in pool bytecode — assuming ${expect} (standard for this family)`);
         return true;
     }
     if (cbs.length === 0) {
-        r.notes.push(`✗ No known swap-callback selector in the pool bytecode (${KNOWN_CALLBACKS.join(', ')}). ` +
-            `The executor cannot pay this pool until its callback is identified.`);
+        r.notes.push(`✗ No known swap-callback selector in the pool bytecode (${KNOWN_CALLBACKS.join(', ')}), ` +
+            `and a simulated swap did not call back with V3 arguments. The executor cannot pay this pool.`);
         return false;
     }
     r.notes.push(`✗ Several callback selectors present (${cbs.join(', ')}) — ambiguous, check the source.`);
@@ -418,12 +496,18 @@ async function verifyAlgebraPools(
         r.samplePool ??= pool;
 
         if (!tickLayoutChecked) {
-            const compressed = Math.floor(tick / spacing);
-            for (const w of [compressed >> 8, (compressed >> 8) - 1, (compressed >> 8) + 1]) {
+            // Algebra V1's tickTable is keyed like Uniswap's bitmap (tick /
+            // spacing); Integral's is the leaf layer of its tick tree, keyed by
+            // the RAW tick. Reading Integral as compressed found no tick at the
+            // computed index and rejected real factories ("ticks() layout
+            // mismatch at tick 3600: word0=0" — Sonic, 2026-10-13).
+            const integral = gs.length < 7;
+            const key = integral ? tick : Math.floor(tick / spacing);
+            for (const w of [key >> 8, (key >> 8) - 1, (key >> 8) + 1]) {
                 const bm = await callWords(provider, pool, 'tickTable(int16)', enc(w));
                 if (!bm || bm[0] === 0n) continue;
                 let b = 0; while (((bm[0] >> BigInt(b)) & 1n) === 0n) b++;
-                const t = (w * 256 + b) * spacing;
+                const t = integral ? w * 256 + b : (w * 256 + b) * spacing;
                 const info = await callWords(provider, pool, 'ticks(int24)', enc(t));
                 if (!info || info.length < 2) break;
                 const total = info[0], delta = BigInt.asIntN(128, info[1]);
@@ -460,12 +544,17 @@ async function verifyAlgebraPools(
             } else {
                 const b = await getAlgebraStates(provider, yobatches, [r.samplePool!], 1);
                 const p = b.pools[0];
-                const gs = await callWords(provider, r.samplePool!, 'globalState()');
+                // Compared at the reader's own block — SwapX's busiest pools
+                // moved between two unpinned calls and failed this check
+                // (find-factories, Sonic 2026-10-13: "did not return this
+                // pool's state" while yarn reserves read 101 of its pools fine).
+                const gs = await callWords(provider, r.samplePool!, 'globalState()', '', b.block);
                 if (p && gs && p.sqrtPriceX96 === gs[0]) {
                     r.lensChecked = true;
                     notes.push(`✓ YoBatches getAlgebraState reads this pool (${p.ticks.length} ticks in ±1 word, fee ${p.fee})`);
                 } else {
-                    notes.push(`✗ YoBatches getAlgebraState did not return this pool's state`);
+                    notes.push(`✗ YoBatches getAlgebraState did not return this pool's state` +
+                        (p ? ` (reader price ${p.sqrtPriceX96}, pool ${gs?.[0] ?? 'unreadable'} at block ${b.block})` : ` (reader returned nothing for ${r.samplePool} at block ${b.block})`));
                     return r;
                 }
             }

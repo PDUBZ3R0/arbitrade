@@ -186,6 +186,22 @@
             addedAt: "2026-10-13",
         },
         {
+            address: "0x14fb5abea0578b37d9e1a831bb7e77bd3d7684a6",
+            reason: "restricted xfers"
+        },
+        {
+            address: "0x074581e3875f8e63a62f645952c207fa47c7db00",
+            reason: "restricted xfers"
+        },
+        {
+            address: "0x7fb37e8f30125c298d51158dc1098ee3ce17ba37",
+            reason: "restricted xfers"
+        },
+        {
+            address: "0x5f8017621825bc10d63d15c3e863f893946781f7",
+            reason: "restricted xfers"
+        },
+        {
             address: "0xe19c307024e0ce71fefa0d31f0ae1a1eac57d8f5",
             reason:  "verify-fees 2026-10-13 NO-SWAP (71 pairs): decompile=unknown, empirical=unknown (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape; empirical: 8 Swap event(s) found but none decodable as a standard V2 swap (hypersync searched blocks 0–95448157) claude: fee=null curve=unknown kind=unknown conf=low (evidence NOT verified) — EVIDENCE NOT FOUND VERBATIM IN CODE (possible hallucination or injected instructions) — No swap() logic or invariant code is present in the provided contract; only an unresolved storage variable is shown.",
             addedAt: "2026-10-13",
@@ -3484,6 +3500,3506 @@
             address: "0xd222315043a48289ddf21905696a75691a9b5355",
             reason:  "verify-fees 2026-10-13 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
             addedAt: "2026-10-13",
+        },
+        {
+            address: "0x0e9b4e396ccb72aadb1e7bcffe64f75a67fd53e4",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x237bf17ec6c0dadce470ffd930643e3a7691fe3d",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x281054f1993fa4cdf98495974e8b5952ec7bf020",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x358a253cdacb7771f75c42914614f9f574ae6f54",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7927f17da22467cf7bab2e8aea4310334970051c",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd45dfa96c011ca5764982dde4d52723d4e4eaa45",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe19c307024e0ce71fefa0d31f0ae1a1eac57d8f5",
+            reason:  "FractionSwapV2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x972c77e47cffaf6017d617e0aa09cf51ecb43b4c",
+            reason:  "CroptoDexV2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd54187ea5a6758fc8abdfaa353aae8f16ca59ef3",
+            reason:  "JetswapFactory_d54187ea (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3d6aa5217857167d30962be0f3adceb70c41b1d5",
+            reason:  "WolfFactory_3d6aa521 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe859a7685c906dd7a53919da5891cae0cb531f6e",
+            reason:  "BestDexV2Factory_e859a768 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x56cfc115e04dfcda3ad47eae1db86f70c1f8d8a5",
+            reason:  "DEXFactory_56cfc115 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc2d0e0bc81494adb71ce9aa350cc875dae12d81d",
+            reason:  "Factory_c2d0e0bc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x150170a4a4fa8a34dfc407f68cde789e4dffc103",
+            reason:  "Factory_150170a4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x50722715417efc40cbf9f5e6493698ba75b8d9ea",
+            reason:  "Factory_50722715 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbc6220ef43be7c15e0710e23ec2a142dca0e9811",
+            reason:  "Factory_bc6220ef (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf9773e320f09f1cf33aa808aaf744a330ff0e279",
+            reason:  "Factory_f9773e32 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdc1b62f7910f429d4179c8c700c086a604c03f4c",
+            reason:  "PancakeFactory_dc1b62f7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+            reason:  "UniswapV2Factory_5c69bee7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1d93eca37ae77b48edb019248111dc57ec2e4721",
+            reason:  "DexFactory_1d93eca3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8b6e24976002e0daf9cd8331d4024d8c9d652ee4",
+            reason:  "UniswapV2Factory_8b6e2497 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x332c157e7a68daa46f3454951a188350e1ff05ff",
+            reason:  "WolfFactory_332c157e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x13783d02a0ce7b8fb2795182584c00d04732234b",
+            reason:  "WolfFactory_13783d02 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5f2f3729c30cdd678fe6d0b35c322985ee4eb3fd",
+            reason:  "BestDexV2Factory_5f2f3729 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xde04248784f83e4bc828d665bad500d79d7d8638",
+            reason:  "Factory_de042487 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x86c988176ef956c087ab4fdda54c83d472f55768",
+            reason:  "FractionSwapFactory_86c98817 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdf61e96f6d26c99a4f7b2b6ef2069f4a6c3e2b73",
+            reason:  "Factory_df61e96f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa535eb8c8e0ddef9bc19fbe3614c44211d8142d8",
+            reason:  "Factory_a535eb8c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2bee5ddc682fa1d59992ec37e75d725826d51817",
+            reason:  "Factory_2bee5ddc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x758e377852b686dcd80cfff6b9309a8da13aea1f",
+            reason:  "Factory_758e3778 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x326a4638c64445e059c89b0402ff366ad5396e21",
+            reason:  "Factory_326a4638 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x439d0fd1c533cfa77aa8e6e7ed54334d4af9b88b",
+            reason:  "Factory_439d0fd1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc576e11faf779071974c63f6416f5831ef873c13",
+            reason:  "Factory_c576e11f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x100d89509c1cefecb2590c48a5de3c7238f6865c",
+            reason:  "Factory_100d8950 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x28ee04c14f447b6898101bbc3b9bd74a9188b1ee",
+            reason:  "Factory_28ee04c1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0603de213b7f964fd02e6a991af045507d6eb40f",
+            reason:  "Factory_0603de21 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe70e3339836ca2dcce9ddb70caafaecd1ea6765b",
+            reason:  "Factory_e70e3339 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x07d48e4ec3d9450688b728f44944b48538fe5a6f",
+            reason:  "Factory_07d48e4e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x67cc7b624e283e568e609b44c3312f504314de8b",
+            reason:  "Factory_67cc7b62 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3a3febad9bfc28dfbcac9546768350cece07d0ba",
+            reason:  "Factory_3a3febad (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x64c1abe15be9075eb248628028b52c48724c040a",
+            reason:  "Factory_64c1abe1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfe10ac5abce19834d4d41239efa4bd3c92800036",
+            reason:  "Factory_fe10ac5a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x043363667830067045ab507dbdfa5ec9eb9e3d2a",
+            reason:  "Factory_04336366 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9731551e69f41e5718f5e5ae50bbe24a60b2f33a",
+            reason:  "FairSwapFactory_9731551e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6c33d8e36321f6deb4a825a8870a0ebdc9d7ca62",
+            reason:  "Factory_6c33d8e3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4570d354aec03be304859e9329734eeda396fa1c",
+            reason:  "Factory_4570d354 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9b5301307896806b5452cb32606ea4025444f4b8",
+            reason:  "Factory_9b530130 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x687ab21215d9a42708fd8cce72f68e7823db86f0",
+            reason:  "Factory_687ab212 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb2a44b07c67c017f5be17de7dd59db9e734407bf",
+            reason:  "BrewlabsFactory_b2a44b07 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xadb110c1fc735363394f1ef4db3efff36e9ed681",
+            reason:  "Factory_adb110c1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf3bc907d0ef605607bb2cbefe32f081736115aad",
+            reason:  "Factory_f3bc907d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb01387ab8d4a4701ce0783628f930dfaf8a36d60",
+            reason:  "Factory_b01387ab (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x33b834235b2cc607bb462eec2b04e68138a3abb4",
+            reason:  "Factory_33b83423 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc65e68dfaac8f65afca4f9b72e2b5baa4286383a",
+            reason:  "Factory_c65e68df (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x50ca4a3e0764babd43beb791f4b57c4e3ab05089",
+            reason:  "Factory_50ca4a3e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbadc7e9b75c63a1f977514cb210c9c9176576fbd",
+            reason:  "Factory_badc7e9b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x79fb850367321e26b30050cb8545adb71d7cd1a4",
+            reason:  "Factory_79fb8503 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb7c736d65745fe9fca4cebd7959d0e21877e0daf",
+            reason:  "Factory_b7c736d6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3c96c7be4f82c5ebc319d546215c31e335d2a396",
+            reason:  "Factory_3c96c7be (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa32f97ee7b931c6aa25a4af55ee296dc4d1944ca",
+            reason:  "Factory_a32f97ee (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0fe85484a96169cfb717f151f7057dbc6c2296cc",
+            reason:  "Factory_0fe85484 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x33fd493cebb32233c24f8793720503ca75555e6e",
+            reason:  "Factory_33fd493c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x076ef7e5122e72c451126eb3920adb4361cef94e",
+            reason:  "Factory_076ef7e5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x03f66cd52f7399bca0722ef284928efbe52a7768",
+            reason:  "Factory_03f66cd5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2504997b1a2bbd3985f3e1395d73b964f27cc31b",
+            reason:  "OptimusFactory_2504997b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7c54816c40476eac79ef49efdcf850dc04e8470c",
+            reason:  "Factory_7c54816c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xabbc6e7ac3b8dd07b2fa1c3394d8d6fb95ee05d0",
+            reason:  "Factory_abbc6e7a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x82c204a1afb5305153850c01e983443e43d88c0d",
+            reason:  "Factory_82c204a1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeeb794727a3ccc9bb0c9e700abe01283a2935ae3",
+            reason:  "Factory_eeb79472 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xee11ece7593f44dc2d1b229f7bdec2cfcbdf5027",
+            reason:  "Factory_ee11ece7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfe5bc53cb50bd1b4ee52e9e5f7659da383444bf2",
+            reason:  "Factory_fe5bc53c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5f3b7a206241419fb4c48a68f89cb4cbd4e3e74c",
+            reason:  "Factory_5f3b7a20 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe4014272b122d065bc29ae7708df2de221a05e69",
+            reason:  "UniswapV2FactoryCustomFee_e4014272 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x14e85da7bab54af01c1968d9f2a35bc79185a3d5",
+            reason:  "Factory_14e85da7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdf2ec38e2128e8c8c403f9603237edcff65cc35e",
+            reason:  "UniswapV2FactoryCustomFee_df2ec38e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x60556d9ed35a33c4e3fa2d04bc0190421d58d405",
+            reason:  "UniswapV2Factory_60556d9e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa347adf8c314c1051f85e5c4edb5b3d2768bed21",
+            reason:  "UniswapV2Factory_a347adf8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc7dc845c56bf582204c1603e0393b322d1ad4329",
+            reason:  "Factory_c7dc845c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x380ce99a2b6415904e802620f621c2023de8957f",
+            reason:  "SamoswapFactory_380ce99a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9f945ec54c8e3c89f928fe29d07cfd9be06afa72",
+            reason:  "Factory_9f945ec5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5e932dbf7f27d4074e08d4b50caef71b56a28754",
+            reason:  "Factory_5e932dbf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1c1e6daf9153738f42b238e0918a338c875a01d8",
+            reason:  "Factory_1c1e6daf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3df80bd1588406fa24dc4cf7fb76ba34b61605bc",
+            reason:  "PearzapFactory_3df80bd1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9d35d257f4c8e7c108797160da08dbb35a079417",
+            reason:  "Factory_9d35d257 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x060783e5a6bb7ac688325561955a54dfd9b8bb5d",
+            reason:  "Factory_060783e5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x639d034fda312abe47f69aee2ff7c39c5d0e37e3",
+            reason:  "Factory_639d034f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbefb109a063ecc830bfb53d5e52bf81cc5403a08",
+            reason:  "Factory_befb109a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdd692b1e218c647d519edb4e208d95122214664a",
+            reason:  "Factory_dd692b1e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf0710fb94f2b812404f7806660cf3b226c32c122",
+            reason:  "Factory_f0710fb9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xae15a1e718d64f196f1432fb9ebb39bd915ce01b",
+            reason:  "Factory_ae15a1e7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc59701f1dfc51ff619c43fdb2c8575823a246e17",
+            reason:  "Factory_c59701f1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x105562a3a7249a0519a56275156701c52b70dbee",
+            reason:  "Factory_105562a3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x74b1c2b3b6e349acc674fb350ba34bdb549c27f2",
+            reason:  "Factory_74b1c2b3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc2772ed7d964450396517b70e1e0566268b32bb",
+            reason:  "Factory_fc2772ed (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0286192015ce63202625806ff7d760aefbca3eec",
+            reason:  "Factory_02861920 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xee89dd878dffb432ed0ab988f28e923e48364de3",
+            reason:  "Factory_ee89dd87 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xab8c0dd387179a08c22f085e779ff188b4330cf9",
+            reason:  "Factory_ab8c0dd3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf301ae81800aa97f68148531d487696ef939170e",
+            reason:  "LiquidFactory_f301ae81 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x82eeb5a22a25310ac15352197d92d6c17a49602e",
+            reason:  "Factory_82eeb5a2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe831acb36982ca8a2561b49d530f31fe2d5eb77b",
+            reason:  "Factory_e831acb3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x82e58545fb0eac400d6c1b621f42c0ee51d0e8c9",
+            reason:  "Factory_82e58545 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xee8406b9cc3c4b6173a02d292800476427948c5f",
+            reason:  "Factory_ee8406b9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xad3ef1a21b73c122d35f53314b3b2097ff9263bd",
+            reason:  "Factory_ad3ef1a2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1f4669ffea7859ba54100842875f30fc022df215",
+            reason:  "Factory_1f4669ff (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xaf223b3577b995fbdfe06ce85ae12417b342eec8",
+            reason:  "Factory_af223b35 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x47d04327850b680440e495bbaf3936909e05c384",
+            reason:  "Factory_47d04327 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3f1372ba0dbc8785c3de6a2ec20d8f28f2ac6044",
+            reason:  "UniswapV2Factory_3f1372ba (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2a6332210b992734a1b311bfe65ef308225e91ac",
+            reason:  "Factory_2a633221 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x05977bd46547a9a5791292dd39533665992ba870",
+            reason:  "Factory_05977bd4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa0dd1e8ffe400c9d2586f6ea1254ddc4f06f3ad7",
+            reason:  "SamoPupFactory_a0dd1e8f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4c743780c7fbc7eae1fd674785e35227f9304c7a",
+            reason:  "Factory_4c743780 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3e9587795073b41e99a08477fa9b40d3aaefd28a",
+            reason:  "PSMoonFactory_3e958779 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfa50a63971a084169face4457ac2a8ebddb54f5d",
+            reason:  "Factory_fa50a639 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x82cdb7c53c5b0af471aefc138de8e841803abe2f",
+            reason:  "Factory_82cdb7c5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe03ce7dcd543924e0a28e7b3b13189cc33635d74",
+            reason:  "Factory_e03ce7dc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xab794b39c5dd7aae68db30b92550c5f9662d76fd",
+            reason:  "DEXFactory_ab794b39 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2254a56b3cf286e1419f4d65936fb4916d8b9afe",
+            reason:  "MintyswapFactory_2254a56b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2641ba02e31e17249ce58e6c7d8fffef5a5d742b",
+            reason:  "Factory_2641ba02 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x19b5e69b40b43438e69e393a6a808b218d20163b",
+            reason:  "UniswapV2Factory_19b5e69b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x13066fe41f6740970af951b4260c9d950aada149",
+            reason:  "UniswapV2Factory_13066fe4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x56f5c394f1f07a10a6662cb0574bef0838cecbe8",
+            reason:  "Factory_56f5c394 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x563c86d9f17914ff868bcbe3903b3ef829a82f9e",
+            reason:  "BrewlabsFactory_563c86d9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x57a389fc1258679b416fd06248f0281a332c2985",
+            reason:  "Factory_57a389fc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa69147f2993a9b90b71b737a730ca0144c0d5191",
+            reason:  "SwapFactory_a69147f2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3b4ee4c76b04fef6c5061c339cefde9c88a81591",
+            reason:  "REDSFFactory_3b4ee4c7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x99960f49ea1de189cf4af11b31b43c81684718e7",
+            reason:  "UniswapV2Factory_99960f49 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa22e073494a3d80ff7eceed8de9062c361e16580",
+            reason:  "FractionSwapFactory_a22e0734 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc8f8d0877699d90e91ea15c1e33d19814a5079bf",
+            reason:  "Factory_c8f8d087 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x32ce36f6ea8d97f9fc19aab83b9c6d2f52d74470",
+            reason:  "UnisaveV2Factory_32ce36f6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8528af25f5dbb16a0fd3d2c89d0ab38f160753e6",
+            reason:  "UniswapV2Factory_8528af25 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2220c7cd9946b9c03f0bdbbd24fa4df76e7c63e7",
+            reason:  "UnifiFactory_2220c7cd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8e532e87e643a1ac52e3087a971e3e7147a59a4d",
+            reason:  "Factory_8e532e87 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xee9e5959bc2332ef6f29acf40758a27ada9ce6cb",
+            reason:  "DexSwapFactory_ee9e5959 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4ccf52e9795b1a69a2ab791b3ec3b90d8cf08d39",
+            reason:  "SamoPupFactory_4ccf52e9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x683cf11cfc604195821487a492057c32de18a63d",
+            reason:  "Factory_683cf11c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x349fd6d50d054f8a601480ea832a99d3b37e552a",
+            reason:  "Factory_349fd6d5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x57556d10e6e9de56d72b9b322d433b9ed06741d0",
+            reason:  "VulcanV2Factory_57556d10 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0a4b1ce11af514846f9f3358ea8a8969f5da4935",
+            reason:  "Factory_0a4b1ce1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x59204d4bb3eb22f8ccb67c77e4a6b4eadb627788",
+            reason:  "Factory_59204d4b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x380c35d2bdb3ad5662e3cacd8e7cea904416d7d1",
+            reason:  "Factory_380c35d2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x754df3d571086fff7af31c57df33ae02f2afd978",
+            reason:  "Factory_754df3d5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9359193e9ddcd3a6cc2aff4b4d9005222f3fa4ee",
+            reason:  "Factory_9359193e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xea34e89a96a0779e5934b6ea55b45ac28df538a2",
+            reason:  "Factory_ea34e89a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcbe236f1d5806b10381d2d2a4bdcfa77af681f50",
+            reason:  "UniswapV2Factory_cbe236f1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0556e066b30b0ecc2c7773a50c82be2df20f3ea0",
+            reason:  "Factory_0556e066 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe42e2cc55a904dd5ad000a15fc1eff4e33c425a6",
+            reason:  "Factory_e42e2cc5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6b7dc714e73b7d06e7d496e0e18122f164a28091",
+            reason:  "Factory_6b7dc714 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1289ae78422b94414c1f827c534a1fe8e31e71aa",
+            reason:  "Factory_1289ae78 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7ce9f74f69ae65bff0922a744c919d304b27c623",
+            reason:  "Factory_7ce9f74f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6b3658fb68f0cf7769a2e38944586f10961864db",
+            reason:  "Factory_6b3658fb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x331a74428e585beea9cd3c70fc62aa05ab1696eb",
+            reason:  "Factory_331a7442 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x055133cf912411bdcf5c797f42425fb8848a0e23",
+            reason:  "SevenDexFactory_055133cf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd5b4700b2026d6f986a0582565c913c5e5c44fbb",
+            reason:  "Factory_d5b4700b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9d99fb0652fb4c6402ee59b20bf96503a4a83808",
+            reason:  "UniswapV2Factory_9d99fb06 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb840057756cf4d41248d2e4bf45959308ac973f2",
+            reason:  "GlazeFactory_b8400577 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8488ba20c6bd8317874473ee9657d618eb0816fb",
+            reason:  "UniswapV2Factory_8488ba20 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2fcadc83035c4fb3a271386203cce02eb9afafd9",
+            reason:  "SwapFactory_2fcadc83 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9bb104dd8452eba797ec00792268d81f5683fac4",
+            reason:  "SwapFactory_9bb104dd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8e5dff1c121f661971d02950698f8c5efc3dfa78",
+            reason:  "DonaswapFactory_8e5dff1c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa5528d3e00c7ef4010d89154ecc4153106474ed6",
+            reason:  "FairSwapFactory_a5528d3e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x42bb04d02c914b2317c9e24d721a0287d867df4f",
+            reason:  "SwapFactory_42bb04d0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd7936316a5e0816e1a59e87efa76a6bd64abd3f7",
+            reason:  "SwapFactory_d7936316 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeb99f524637b38b18fee3070d114444ed395366d",
+            reason:  "SwapFactory_eb99f524 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf5f07e59044bb22a8526ec6caa8e4dc9a11f5c59",
+            reason:  "Factory_f5f07e59 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x312ea90b2d21f8f33624e2c2957a98c9d5ed42a7",
+            reason:  "PancakeFactory_312ea90b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x09816eb1ecec7aa5e444726939ca048f1cfbbf43",
+            reason:  "Factory_09816eb1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc30eaeff4780dbb1e2f8b88cebc0c6c7baf3855",
+            reason:  "Factory_fc30eaef (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x87c23d7b5e153f88c0bc1f7d60da5a16372b97ad",
+            reason:  "Factory_87c23d7b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x59ae1851e653dc5a09a84166a57df6396426ced4",
+            reason:  "Factory_59ae1851 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xac6f2b14a7ce08d101163626636424768d24f239",
+            reason:  "Factory_ac6f2b14 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbbb4401bb2e293fd4fcbf1c324a55b5bcdaf6288",
+            reason:  "Factory_bbb4401b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x43ba7c23b559def2040bdb57ac6b8909aea1f56f",
+            reason:  "Factory_43ba7c23 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x18b92f2e9120f94779b77edfc186d4be7e458272",
+            reason:  "Factory_18b92f2e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x75c1e1b8593cc8261496f9dbf9b47ad67b113c6f",
+            reason:  "UniswapV2Factory_75c1e1b8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x680177437043bd30e9e8f04c5557c828db709a10",
+            reason:  "UniswapV2Factory_68017743 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5d03e459d1cabff7af228b3a66fc097756ec60ed",
+            reason:  "Factory_5d03e459 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x697c9bf5943e68fbc724386911e72c4ae1f83e09",
+            reason:  "Factory_697c9bf5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x025d0844fbf5eeef63bccad04cf0113567ec2be9",
+            reason:  "Factory_025d0844 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9b1c1084018bc4c179113fa9731df464fa77a875",
+            reason:  "UniswapV2Factory_9b1c1084 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x90fa59448739b3a881f74c2baa0d6747b3a7c9fa",
+            reason:  "Factory_90fa5944 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbda9e8758ec341cde93752ac3164eb17afdf57ff",
+            reason:  "Factory_bda9e875 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa57514740789b07a69da92cf9421617c2f7a09cc",
+            reason:  "Factory_a5751474 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfa72e352fd119dc3602589089b540f8109467c41",
+            reason:  "Factory_fa72e352 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf9e1a0cbad01f5cf7a68dd38fb8b0ec493c18fa5",
+            reason:  "PancakeFactory_f9e1a0cb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9fb3f1e188b55cc5ee64bde64bde389491ea9aaa",
+            reason:  "PancakeFactory_9fb3f1e1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x38c07249088a227dab88ae535e13881a7de7e602",
+            reason:  "Factory_38c07249 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd90656e356ed222c8b70a84cfcd5f9b2c6218ce0",
+            reason:  "DEXFactory_d90656e3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8f6766ec89507a000a733b691814d936e92f32c4",
+            reason:  "UniswapV2Factory_8f6766ec (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4f6effdca22ff7c09b261ed53de3c1c0326ca332",
+            reason:  "Factory_4f6effdc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x202789539ce31f97da266cc6d942b5a54e06953b",
+            reason:  "DEXFactory_20278953 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd293a7064e7e3b61bfbf2728f976d2500206dc73",
+            reason:  "DEXFactory_d293a706 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x116008789abea85c1546967246e68ff830131980",
+            reason:  "Factory_11600878 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3bb3cf6f6075da137c2ff96af13478de32b2ff69",
+            reason:  "Factory_3bb3cf6f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4c2df2c4e7b6a391a269509293cfe06ae53342a3",
+            reason:  "UniswapV2Factory_4c2df2c4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2e921655ffe7d590430cb3882141355976d69da5",
+            reason:  "Factory_2e921655 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x356ebaf857d0f1acbcb9c57463e34e20a8250298",
+            reason:  "Factory_356ebaf8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcfb78a4aa0d340ebb78eab6a56ac7d773f55abff",
+            reason:  "Factory_cfb78a4a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcc633e761fc6ade79cc6670a1669d15b8f86ca9c",
+            reason:  "Factory_cc633e76 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x74f8779a4bdc9102ed9aa5d3a818d315a05de413",
+            reason:  "RYZRSwapFactory_74f8779a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9859d0a27316db6abad61d65bd765f8fcdbafc34",
+            reason:  "UniswapV2Factory_9859d0a2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x86c39bf6c11c35342668e263b787b81b939e4bef",
+            reason:  "Factory_86c39bf6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xad83be91cc860ef64634414a5fd0fafe867d24b1",
+            reason:  "Factory_ad83be91 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x33e0c7329f305bd5e441b3ecde6784dc7c08ca2b",
+            reason:  "UniswapV2Factory_33e0c732 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3948b40ee53891a94a8822a3621a12f415ef6b68",
+            reason:  "SwapOceanFactory_3948b40e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb4adb3714ccf62a7ec8e90a18073b6fcebaba7fe",
+            reason:  "Factory_b4adb371 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9decab2d190f449bfc81777f02986a4929d1d6dd",
+            reason:  "Factory_9decab2d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x87976d66d7b558c582decc60b315ae494cd19a47",
+            reason:  "Factory_87976d66 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x810546648a14bb23b86db85ff0b8de00bb5584df",
+            reason:  "Factory_81054664 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc3120cbd0e8707f01adca7f853e96e6e0ff85d9d",
+            reason:  "Factory_c3120cbd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x24df3e38c7bf83b91c1a1f940ebfd9e6c2d59604",
+            reason:  "SwapFactory_24df3e38 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcda55592cd1922cc7cd5e0e49fe657de9f23172d",
+            reason:  "Factory_cda55592 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xde57cda805f01c1647c4b6fc6ffdaf36ae6f6600",
+            reason:  "UniswapV2Factory_de57cda8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5a275044b767ab98d65826376f6d58e279805424",
+            reason:  "Factory_5a275044 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x76e4213a645b7c3b05f5ce9695d484d732c93f96",
+            reason:  "UniswapV2Factory_76e4213a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x33a94e74454ecfbf1c96d6b8981765614f49987a",
+            reason:  "Factory_33a94e74 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5bef6dafd2120bee075dfd0d971e28502810cdd0",
+            reason:  "Factory_5bef6daf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3ef73099b826a61e769ea0db89fdc9f6993f0a79",
+            reason:  "Factory_3ef73099 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb70334742c27497d645cbdd43369892722987333",
+            reason:  "Factory_b7033474 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1101d4bc5f47c85b2be3327cd98d26b1c56be675",
+            reason:  "UniswapV2Factory_1101d4bc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x03f8e5cd1e204250d5959254268d936ace03ff45",
+            reason:  "CroptoDExFactory_03f8e5cd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x82a50f0635b0819dc6c0d1e6bb1dc6da68744dde",
+            reason:  "Factory_82a50f06 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x50a505594146bb8e2817061290f970202ec453b3",
+            reason:  "Factory_50a50559 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3f6f555da42e8e83327a7eeaa9b7f74386a124e6",
+            reason:  "FractionSwapFactory_3f6f555d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x42dae9d8ecc3e9a1b353ec3a1011a0000a489da8",
+            reason:  "UniswapV2Factory_42dae9d8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcf4b0ede55b60948a3a9499dee2cdb2162141501",
+            reason:  "UniswapV2Factory_cf4b0ede (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3badef4954f76c7e911027593141111ef26e1fb0",
+            reason:  "Factory_3badef49 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcd529f06f422dfd87aed1c4c18e55c3525099e23",
+            reason:  "Factory_cd529f06 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeaae6512bde2714fbaad521637a0a068cbe6f3c1",
+            reason:  "Factory_eaae6512 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa1ad884285e1bf975e50e305a58418bf40922aea",
+            reason:  "Factory_a1ad8842 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5938f899d4b96d537c7e5f2e0ddeb8f25f3b2449",
+            reason:  "Factory_5938f899 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x711a016f56872826a5be829775969dac21cd26f6",
+            reason:  "PancakeFactory_711a016f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdf066f78c6121f37d5f984bbe2290cfac7bdba6e",
+            reason:  "Factory_df066f78 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3a87a04b57c42cdc739b63c484b063e060a3d287",
+            reason:  "Factory_3a87a04b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5294645e58c004f3ebdadfe6b6596e6c77860f6a",
+            reason:  "Factory_5294645e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7c2629388225e218a19f96b166459cd46ed252b4",
+            reason:  "UniswapV2Factory_7c262938 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe01e3091f3e5eab894e95e74405cdfda6c51e2a0",
+            reason:  "UniswapV2Factory_e01e3091 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa05481e0495b1867afc306f1bb5492c5e61f30a2",
+            reason:  "UniswapV2Factory_a05481e0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1dbbb8280d065ccb6d8edfe19c8ac33bce8f65ee",
+            reason:  "WolfFactory_1dbbb828 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc88b702e8f6a7cdfd53ab2e10619611a607ef84d",
+            reason:  "Factory_c88b702e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6153ec4ea8b7fbc9945be4e586560f35f38f0a49",
+            reason:  "PentagonFactory_6153ec4e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x72026dbc35daa85c50f83e10dd59baadf73e556f",
+            reason:  "Factory_72026dbc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf6b7167c2bfc8a2b256d977396134483c3237fd9",
+            reason:  "Factory_f6b7167c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcd6b9b61ce8ba2575dc5798499bc05547f9cf003",
+            reason:  "UniswapV2Factory_cd6b9b61 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1db38002c710029f4dba229400e3e525ca10edea",
+            reason:  "DexSwapFactory_1db38002 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdf0f9a498e9ecd5f27bbef952fdfa76cc46242be",
+            reason:  "Factory_df0f9a49 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd7c69e5f5d9617f7cbd720e2d83dea32faf301c5",
+            reason:  "UnifiFactory_d7c69e5f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xff04a8c75e321d2b43360cde6fc1600d1ff86aca",
+            reason:  "Factory_ff04a8c7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x16e29a4fedc2be6e2575a6d3e22c3c8daa5789d7",
+            reason:  "Factory_16e29a4f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeb52ec2c612f97b661a430e8f169f985cf301eb0",
+            reason:  "Factory_eb52ec2c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3424cdd994c9dd8521fc72759bc702d5905c5ee9",
+            reason:  "Factory_3424cdd9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5a23d875abd47e2e6b813d77704c8e2a8d0ae540",
+            reason:  "PancakeFactory_5a23d875 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1498e0f92251918125acf35a22e176998248ac2b",
+            reason:  "Factory_1498e0f9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xafcc44c9ff7377b59fa8eba4d3c365836cd0b063",
+            reason:  "Factory_afcc44c9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x55c6fa3fdb1862dfa3d9be4e789d9175a74046db",
+            reason:  "CorgiSFactory_55c6fa3f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2421c0d73533b088d737164f975701cff8dafa5c",
+            reason:  "TestV2Factory_2421c0d7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6e9065e55374d7c6e8125f544584a6499fba7029",
+            reason:  "PairFactory_6e9065e5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf1723b01470101bcc542982ccaa31c74cd1c2fd5",
+            reason:  "PairFactory_f1723b01 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x643b949137132257ec8a151173af2cf320ef3668",
+            reason:  "Factory_643b9491 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6fe5d02293a3c4a165648dfae33f003849951b85",
+            reason:  "Factory_6fe5d022 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8de83c7ab9b3a03f7e2ae7179241ce7f375bf3d8",
+            reason:  "Factory_8de83c7a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf5357a3e65fd89f328610261f9d2414e5d58e8fe",
+            reason:  "NerveswapV2Factory_f5357a3e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3f0067d65d9411061ebab483c02a550bda6cbb64",
+            reason:  "Factory_3f0067d6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcaffa54ebbbf8a49bd35bec9ce80152da49d1213",
+            reason:  "Factory_caffa54e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x62eff0dbc54ab109add3145b648365486c605de9",
+            reason:  "UniswapV2Factory_62eff0db (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8df2a095670e45f21c607de4375afd3e99b7d0fe",
+            reason:  "BlackbullFactory_8df2a095 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x92fa6bc8391935dd711708d39d0a375b14f0eb66",
+            reason:  "Factory_92fa6bc8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1cd1d26fe0d0fd189d34298326bf7b7f38d63aeb",
+            reason:  "UExchangeFactory_1cd1d26f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbde706e5d31d0aa8e5d7f68568f6e69b05b98278",
+            reason:  "UniswapV2Factory_bde706e5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3d7bb2f2e273a2b3f0a2d8bf08cb69c598545481",
+            reason:  "Factory_3d7bb2f2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf27f9bfd06fdd29c6561f152b8c4a851274be8c1",
+            reason:  "Factory_f27f9bfd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x770671f3b634cacb45eaec4e57c4ae5a4932a088",
+            reason:  "Factory_770671f3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x186f14bd207f2a532817b86200bc8b94c94be640",
+            reason:  "PangolinFactory_186f14bd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0fdde992db222cd6768c2684ae5768dd2ac25359",
+            reason:  "PangolinFactory_0fdde992 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2276e7ac85d712adf4128a5a62d0fa5f1265fd86",
+            reason:  "PangolinFactory_2276e7ac (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9486a4de46bfd396f41b17108a4000d43f59b6b9",
+            reason:  "UniswapV2Factory_9486a4de (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa66f8e7dedcf31fcf7fa973de0da47d3e984c1da",
+            reason:  "Factory_a66f8e7d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x908222d4e4030bdc59b903eab50b6fefed1e4e55",
+            reason:  "Factory_908222d4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x224900d9489a750ee7ef3de039d9e00173d2eb60",
+            reason:  "UniswapV2Factory_224900d9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa0ecac241bdab0936efea2a039c8e09e87a8fed9",
+            reason:  "PancakeFactory_a0ecac24 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf4b6d0c02db823675fec3f36fc5689991225ba50",
+            reason:  "UniswapV2Factory_f4b6d0c0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeedf9e4e69e58e7b97d4916b7a4c6c4afe3660ed",
+            reason:  "Factory_eedf9e4e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1e30eff4358e6fd18139af0ee36d813460e44083",
+            reason:  "FraxswapFactory_1e30eff4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa22382a9b0d80d21b945136524d53ea3c1136350",
+            reason:  "Factory_a22382a9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3c8bcfda1ffb81a05f2f90f42542364f9937ddc7",
+            reason:  "Factory_3c8bcfda (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8223434b631377c387f731fa5289dae188566af1",
+            reason:  "Factory_8223434b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x41768a735efd2fd9d7da52e71ca55522df510ebf",
+            reason:  "Factory_41768a73 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7471926486cd6940159c7d1478df6ce3dccb2fe1",
+            reason:  "PancakeFactory_74719264 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcaaae2cc1b1e1dbd3fe148cfecda6c6fc8202dc1",
+            reason:  "TresLechesSwapFactory_caaae2cc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x53db8b3d2efaad8d2e5d440698b84585af99ea79",
+            reason:  "Factory_53db8b3d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2fcb5d3ab09b5a3aefca6fda5c62074411aea6b3",
+            reason:  "Factory_2fcb5d3a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc5233f3177e59e908bcfbadcc52f77c8c9d6ca43",
+            reason:  "Factory_c5233f31 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa391c0ae71881c59dda5d681158323b9545db13c",
+            reason:  "Factory_a391c0ae (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x846d8fc36ea74929161317afe7c33af3731b372a",
+            reason:  "Factory_846d8fc3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6acfa70727d523d178c12a4fc3bd05371cf41812",
+            reason:  "FlashLiquidityFactory_6acfa707 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1d6525e762ff01eb80efb77b0eb98137d0fd31df",
+            reason:  "Factory_1d6525e7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1660ea96b03af04d7e9b3f4bb083ec0e32b8968a",
+            reason:  "Factory_1660ea96 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4732c7a93ba2aa2d78ec66c432437abd3e8de739",
+            reason:  "Factory_4732c7a9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x552597965cbc9d8688c926e11d0b26a57dd3ea3c",
+            reason:  "Factory_55259796 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc470f6e42eee5b805bfb10e5c7fe2811d2f00afd",
+            reason:  "CiaoSwapFactory_c470f6e4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc5240a99cd17225b4e2471101aca86d84a3ed295",
+            reason:  "TransparentUpgradeableProxy_c5240a99 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x590184d7c808c1f68304debdceabec039226cbe5",
+            reason:  "TransparentUpgradeableProxy_590184d7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd05bf133f956a8881da2af4cca84c944ee36c31b",
+            reason:  "Factory_d05bf133 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2d5a96860cb412a24531094874716cea35b03726",
+            reason:  "Factory_2d5a9686 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x04990f0bf8a7ef2b2fd50a7c041153fccc1b3237",
+            reason:  "EagleSwapFactory_04990f0b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfd5cc11b0678a08ed24162e64ba2fa8c8ecc5424",
+            reason:  "Factory_fd5cc11b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x51bcf3fd3fd111d00a578a1525307467656d822c",
+            reason:  "Factory_51bcf3fd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5f095661badea345d3a0410ce9e7aa7b94f062b4",
+            reason:  "Factory_5f095661 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x26785bc8cb9fda0ff295b3fd1c3f3da0affdba9b",
+            reason:  "Factory_26785bc8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x126c3d19e1564625265c81593e060eb5c9e5bf43",
+            reason:  "FlexiSwapV2Factory_126c3d19 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3eafac7f109fc1b534de4839a6cdc17a8f0c1d96",
+            reason:  "UniswapV2Factory_3eafac7f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x32873748c53bed6654253eaaa906db5f0b0ca06c",
+            reason:  "SwapFactory_32873748 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6adbb4b6e842d2763fad6a595aa383fe4fe9c11b",
+            reason:  "SwapFactory_6adbb4b6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7c72143a033218b58841d073b7127902ec174631",
+            reason:  "Factory_7c72143a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4e56c9d6be6913114f65f6138a27261b7d8af757",
+            reason:  "Factory_4e56c9d6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6e98cb993a173babb0cbe299b2770def28229bc7",
+            reason:  "Factory_6e98cb99 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcd52edf30d12e33345dbe57f611224fa068bd004",
+            reason:  "SlsV1Factory_cd52edf3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x97a90bb26197414a69627c6e64e34afce4cea6dd",
+            reason:  "Factory_97a90bb2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x039e485d6d775c30524d3c2b0a006c983700f109",
+            reason:  "Factory_039e485d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9a77562efeb087238d44a8a6fa0d172b0db577cc",
+            reason:  "Factory_9a77562e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6d79ba86daf21e7f47a69e8e405b19414b70ad3e",
+            reason:  "Factory_6d79ba86 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xff04e4adb27b57418e4b04882d251259687170a7",
+            reason:  "Factory_ff04e4ad (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb3d9ce14002ef9deeb8fc55abfbc7402dea06230",
+            reason:  "AlfiFactory_b3d9ce14 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb2d55ac00fce9550e6303163a7e5c517168c3296",
+            reason:  "Factory_b2d55ac0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x485c805a372449f00dff0aa95c508c19162e6989",
+            reason:  "Factory_485c805a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbbb97cbb9f8747d0d769e0baf86e039b8ef1f8eb",
+            reason:  "FractionSwapFactory_bbb97cbb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x52289920af230df951501c151b2fe9f6fb3cc1f0",
+            reason:  "Factory_52289920 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x54d24e8b5fb671af2e8638e363ec5eeb5f89c663",
+            reason:  "Factory_54d24e8b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1501177ae0f9c6da9162be90ebddae168a4321d7",
+            reason:  "Factory_1501177a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf0a37036f0c81955961ceed2761df78c2db38a96",
+            reason:  "Factory_f0a37036 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0d36ef51f7d69f196c6144fff88e2c0295912caf",
+            reason:  "Factory_0d36ef51 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x246761e1c9ad9018703bd19ec8322ab19b41036c",
+            reason:  "Factory_246761e1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x595cb217debcbdab1b426e2a2af82435f3ec06c2",
+            reason:  "Factory_595cb217 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0a298d3b4082bdd5ed13154317b29d211a0d8eaf",
+            reason:  "Factory_0a298d3b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcf58b9466f2dc080ae7beaf0495aa2412ddacf52",
+            reason:  "MRTDexFactory_cf58b946 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf79685d4007ca898317f2096b829cded3bc20ca7",
+            reason:  "Factory_f79685d4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x23c52a8f4f63b039c8c4c57bb9901c8cef1a662b",
+            reason:  "Factory_23c52a8f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2a0c8fa33b3e6343699d372445ae68216fa3119d",
+            reason:  "UniswapV2Factory_2a0c8fa3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6da6bcb2bcd2f5e7f65335e74ce6937aeaeb7874",
+            reason:  "Factory_6da6bcb2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x989d0fbd6778eda0940cd39b22f64c5f9f87a663",
+            reason:  "Factory_989d0fbd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdf9401225cc62d474c559e9c4558fb193137bceb",
+            reason:  "Factory_df940122 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc6d115f146710402f6ed1ae7bf6df6a36413e36d",
+            reason:  "Factory_c6d115f1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x97ee29dc31413df2104e62b7b94ca762cc60aad1",
+            reason:  "Factory_97ee29dc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x094ded44d91a237053427ef6c91f7bab3176aabf",
+            reason:  "Factory_094ded44 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8e81fcf2a33833b736951c57fce4e569a8f0ae5d",
+            reason:  "PancakeFactory_8e81fcf2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x844819f62b5d430fe62fed58077e3ff1fe20528c",
+            reason:  "Factory_844819f6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5c1fcf3a509408676540f869cf3490a7829eeb27",
+            reason:  "Factory_5c1fcf3a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x39c815a224c7ee89fdb239fcd08dc4fab234a2ec",
+            reason:  "WolfFactory_39c815a2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeb1b408534c10eb97102f037b74d9b3dea87d92d",
+            reason:  "WolfFactory_eb1b4085 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x37ac7adf7f8b6a578c2f33baf5ffb7bd423ef600",
+            reason:  "WolfFactory_37ac7adf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa5c727b28d1365760a2177726e11d4a4b160814f",
+            reason:  "WolfFactory_a5c727b2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xea97de5b6d325ae4dc047f1dfca5c723b32e8e97",
+            reason:  "WolfFactory_ea97de5b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb95e202d94037f9c947ea30d3c17652a6fc9a826",
+            reason:  "WolfFactory_b95e202d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe6a9d7e07fd8cd51e075d205d6d93e0291413073",
+            reason:  "WolfFactory_e6a9d7e0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe001509c15833650fe8b882417aac7368617dd19",
+            reason:  "WolfFactory_e001509c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x65b63229276b69618d9010a5c252058d7202cf87",
+            reason:  "WolfFactory_65b63229 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xba76e8f0f9cd28730cb5d9398d7ebe271cbb7904",
+            reason:  "WolfFactory_ba76e8f0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc02936972a8b9fa215e6753a0868136b21b1ec2a",
+            reason:  "WolfFactory_c0293697 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x70364ad86280e07379c0dcae5821a49b554f84d8",
+            reason:  "WolfFactory_70364ad8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x74e46ebabca60b60cc16a32c5df19f2e3b98bb2d",
+            reason:  "WolfFactory_74e46eba (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x387f2e52c4a8ea6f05035e42087ea39391f176d5",
+            reason:  "WolfFactory_387f2e52 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x233a88c87108ebe2282bcf60cf271e15c6ae489b",
+            reason:  "WolfFactory_233a88c8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x490b721e25188f6994ec8ddeb60d7e4972a2509f",
+            reason:  "WolfFactory_490b721e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0042be010ec7e99f28420c5fbea900014ac232aa",
+            reason:  "WolfFactory_0042be01 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc521de3b35ea1139fab9b9036579896955576d4",
+            reason:  "WolfFactory_fc521de3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd90db606126c02fb5c0e24c8a9550e4079787f0c",
+            reason:  "WolfFactory_d90db606 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd03e1c32b9cd26f897ffa22a1a304f4c3067fd43",
+            reason:  "WolfFactory_d03e1c32 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0bd4bedad4352f4cb094efb1ced8542cb9576269",
+            reason:  "WolfFactory_0bd4beda (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd1ee84690a6f052ab845ce65338f07a7c0ff8f05",
+            reason:  "WolfFactory_d1ee8469 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9b883ba01b3abe740320ba316633a3b1b04acd93",
+            reason:  "WolfFactory_9b883ba0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa43b29976183cb303e5043139706b479a7acd5ae",
+            reason:  "WolfFactory_a43b2997 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x83d992e608188a3a7ee5cfebd0b3c00647085164",
+            reason:  "WolfFactory_83d992e6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf9657ced0eb01adfa69bcdce082de1be8a48bcb0",
+            reason:  "WolfFactory_f9657ced (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2caba2c9f2efd1f7559d212ee73ff16a5a964a28",
+            reason:  "WolfFactory_2caba2c9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x00fe77e73326a0a6128cc6f956cad1eacca54752",
+            reason:  "WolfFactory_00fe77e7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc4a1dea913316ce43144427617db50d84069f60c",
+            reason:  "Factory_c4a1dea9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x34b0dc979b5619a40afb079fc498f34923a67dac",
+            reason:  "Factory_34b0dc97 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3ebc88bb977c6e136eb672c8105310dfd97a7670",
+            reason:  "UniswapV2Factory_3ebc88bb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd8d97cb94bf70809072f67be5e2ba493edd51f22",
+            reason:  "Factory_d8d97cb9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x44fcfec9d01b8a93dbd26309558516a07369682a",
+            reason:  "UniswapV2Factory_44fcfec9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc6ecab9c67bbbadd3ca26f2b32354036c49c49de",
+            reason:  "PentagonFactory_c6ecab9c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x13408cedbd4e624f30a5201de80dd5994227a5cf",
+            reason:  "PolydexFactory_13408ced (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xde25a2d1ad885af4df667132f2214b920b225e52",
+            reason:  "PolydexFactory_de25a2d1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x41a06001f37dd3d651ca5e561ad8e2435b943eef",
+            reason:  "Factory_41a06001 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x60d70b21b0d32e763728d0f910bec7afdb17b005",
+            reason:  "Factory_60d70b21 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc9156046837eb394813e15474c8b1682b203901",
+            reason:  "PantherFactory_fc915604 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8a6d97947bd45f72ee234aab1c95fc9d41744d38",
+            reason:  "Factory_8a6d9794 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4a62d715edb378c74317f52a9728d9d7890389e3",
+            reason:  "MoonliftFactory_4a62d715 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x03b37cf08aebcd1b8bc776d351a47d075da01d23",
+            reason:  "UniswapV2Factory_03b37cf0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa404652eee5e3e1c022008e5d9419f6eb59883c4",
+            reason:  "UniswapV2Factory_a404652e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xac8119d7e335af88e231da8314ce58f59c558dc3",
+            reason:  "UniswapV2Factory_ac8119d7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x01f8a77c26e6f73b9773586fb3f05fdc03e92561",
+            reason:  "PancakeFactory_01f8a77c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x641e81aeaef4ee088da65b2170dc35799ae1f413",
+            reason:  "MumuSwapFactory_641e81ae (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf405994181635a189dfe65c2766ab256a304bdf2",
+            reason:  "DexSwapFactory_f4059941 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9d3fae04574911293ec02e091c001e9f32c179d0",
+            reason:  "Factory_9d3fae04 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xab9a2cb71e526add626747fd4d738f80572233d2",
+            reason:  "LuckyswapFactory_ab9a2cb7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2a4277345a09a0eb7667af94bec478f80b272e5b",
+            reason:  "Factory_2a427734 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbe1279c49c29521b010863f2f1b95f644b6d3d65",
+            reason:  "Factory_be1279c4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc0dfb5256417f0e4f05005a9078bfc889140a6fe",
+            reason:  "Factory_c0dfb525 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6857244a101ff39d6e8063abd83f8fb73d999c7b",
+            reason:  "Factory_6857244a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x196d0a535cdaefeafab6163e13cf086f44ab0ee3",
+            reason:  "Factory_196d0a53 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb6814838244f18ba5573612d7e19be9f860824ab",
+            reason:  "Factory_b6814838 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2d68648e43993ccc813eecb812a851fbf6a20f52",
+            reason:  "Factory_2d68648e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb4d3550503735632e91263982b43098046fcbb8e",
+            reason:  "Factory_b4d35505 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x88f867f776d217cfb94271759166bfac15de6da2",
+            reason:  "Factory_88f867f7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf0f904667487174c6b7c918b1625e2b01f432d87",
+            reason:  "Factory_f0f90466 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb556c8e37f36c49100f576236fad9b83d7bb56b7",
+            reason:  "MaticSwapFactory_b556c8e3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x96bc9a2047c90c2cd2aed87158d728ee13d332bd",
+            reason:  "Factory_96bc9a20 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1be6762d7834187fa11936bcdd585c5d6633000e",
+            reason:  "Factory_1be6762d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5a18f15d3dc5da92e37fca9cf044ba25c6c2a933",
+            reason:  "Factory_5a18f15d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x213c25900f365f1be338df478cd82bef7fd43f85",
+            reason:  "VulcanV2Factory_213c2590 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2b544f1dfdf10cb0ef48850e93175cb2e70b4cf9",
+            reason:  "PancakeFactory_2b544f1d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x74614b0db4586fbec150bf679bfc3f7e919e1fde",
+            reason:  "Factory_74614b0d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0fc9092a940780d70524f8b76509e0bacd83e0d7",
+            reason:  "TSPFactory_0fc9092a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9ad03b0aebef7f73fc02a2d3e33b9e1654904d3b",
+            reason:  "AtariswapFactory_9ad03b0a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2ba39a521bf3ac705b20ba32b749afdd3c6fb2bc",
+            reason:  "EddaFactory_2ba39a52 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xce60b4a0a6446270bfcddce5af8f6c49c84decdb",
+            reason:  "Factory_ce60b4a0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdc2c631dd3ad7835311fbfc9041575ed4cee914c",
+            reason:  "Factory_dc2c631d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe39f6d9b140cb15213fa7f7f711f4f4b3ecf5ff2",
+            reason:  "Factory_e39f6d9b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcee306635bead05b2f1e66ea00db4255bed8c235",
+            reason:  "SafeSwapV2Factory_cee30663 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf961d45d2ed8c56a7b93de6231cd624e668e036f",
+            reason:  "Factory_f961d45d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x90d54bcb7b63f3ea55bc1fd21b979311c409dd30",
+            reason:  "UniswapV2Factory_90d54bcb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe03bd715ae891518e5b2cfaffba5ef3cfcbbebe6",
+            reason:  "Factory_e03bd715 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf1a949cb4b08a96ddbaec9ffa4125b681a51be18",
+            reason:  "Factory_f1a949cb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbf39dad38e15e15d8e434f1e963bcff4b80afdef",
+            reason:  "BelveswapV1Factory_bf39dad3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeba6d170be9f0884cacb97e27672329d09ed85e3",
+            reason:  "NydroniaswapFactory_eba6d170 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6d8466130f99bf51111e7cd838e51309d400341b",
+            reason:  "UniswapV2Factory_6d846613 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc566975757e1fe7affa9e820a8584ccdd9e7dda8",
+            reason:  "PancakeFactory_c5669757 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8c2ee40aa63ecbf40e0262e9025fd357e0d84e67",
+            reason:  "Factory_8c2ee40a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd05050ffc6ff9c4c8fdbf75e7df468f7ba4f9481",
+            reason:  "Factory_d05050ff (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x000000d2f4c5febc9d90970c4a8b3dcd549fa0fc",
+            reason:  "Factory_000000d2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x000000ae6fe70904d21ac381336ce96f230b6571",
+            reason:  "Factory_000000ae (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x30de741cde55ffde89293a5a19aa812471d057b4",
+            reason:  "UniswapV2Factory_30de741c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcf4a237146ca9f2a88ef31e43125d9d662809b44",
+            reason:  "Factory_cf4a2371 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x937191f509736fabf4718ecefe805fee33a4d9be",
+            reason:  "Factory_937191f5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4993ee90d81f2b8277a1a86027d747f7052493e5",
+            reason:  "UniswapV2Factory_4993ee90 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x76764b514f7caaae7b368e7c389843b2cab8c342",
+            reason:  "UniswapV2Factory_76764b51 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd6c44f107127b559bbaac84fce62aab14e530a24",
+            reason:  "UniswapV2Factory_d6c44f10 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x51c443fab46fbc214700b443a4a9c7195db4f5e2",
+            reason:  "Factory_51c443fa (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc86373d272b27a13546a3b28f93be7c674c2bb2f",
+            reason:  "Factory_c86373d2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5ed55f9ccbef6b8c2cfaedcbd4eb6c20164f9ad1",
+            reason:  "UniswapV2Factory_5ed55f9c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x998eefa9358f002a006c987ebaf1d8b12dbeba57",
+            reason:  "UniswapV2Factory_998eefa9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdabfee359dead729bebb6e165c10f9f9e2b9e395",
+            reason:  "UniswapV2Factory_dabfee35 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5e898cca81102332873360c2f236f245a2a4b92f",
+            reason:  "Factory_5e898cca (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x20bf895693f96e529236193783b203d18cd11803",
+            reason:  "Factory_20bf8956 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xae9ecc0b9bd2e0768202e9da5fc1095e13817e52",
+            reason:  "Factory_ae9ecc0b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd3f178b25209bff39e040edf352e7f909291c1ff",
+            reason:  "Factory_d3f178b2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9f14fa33c45cd2164ee8cc1ebb1e28c94d027f8c",
+            reason:  "Factory_9f14fa33 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x679a2a77681f8cdec46cd881c86395441c5d3302",
+            reason:  "UniswapV2Factory_679a2a77 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x84e4cccab04baddbe824d2553d4daa81a7cfb853",
+            reason:  "UniswapV2Factory_84e4ccca (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbfbfdb9d9b54a2bf3a174d22b6cd2f36dd2aab89",
+            reason:  "Factory_bfbfdb9d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x28e0aae51f19b9df350f4056d20aee5677db1b60",
+            reason:  "UniswapV2Factory_28e0aae5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb68b6c2c8f2214732c07d91074f6b77fa60678f2",
+            reason:  "UniswapV2Factory_b68b6c2c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9767ebb6c5cedbd71341214cfc3741ed522acd5c",
+            reason:  "UniswapV2Factory_9767ebb6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0ba9723882a698312af7491335ddafc07597a1a0",
+            reason:  "DXswapFactory_0ba97238 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x079c19e587dc8a74f856c53be76a5790d8729244",
+            reason:  "UniswapV2Factory_079c19e5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x63942055711434ab40b07488c98d16dcce45de4f",
+            reason:  "UniswapV2Factory_63942055 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc20d3a3da4328ceb642b8f65765a925cab354d4",
+            reason:  "UniswapV2Factory_fc20d3a3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xea110afb356062c6350e6eb9ee8a97a35399c260",
+            reason:  "UniswapV2Factory_ea110afb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbb42fe6ea96d2f38e09bf050401619cd49769033",
+            reason:  "UniswapV2Factory_bb42fe6e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb332c430c68798b1e4cab30642586532bbd9d23a",
+            reason:  "UniswapV2Factory_b332c430 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xce1ca831895e227ff660a7cfe511bf0effa3a544",
+            reason:  "Factory_ce1ca831 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc30653231517320a0f254520fae4e929db934beb",
+            reason:  "Factory_c3065323 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7050024feb61d04994eef8a6da090d4fb2a20281",
+            reason:  "Factory_7050024f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfa5b5d59845dda7b023492d47803f8280f3ad78e",
+            reason:  "Factory_fa5b5d59 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x80906dfff28f4e9773281b9eebab5a3d081d90b4",
+            reason:  "Factory_80906dff (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdd8fb1a3e02f8b6aab90765c0c8f04340faf22a8",
+            reason:  "UniswapV2Factory_dd8fb1a3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x48ce0ee4bcd6775070e47042ad0b061302594af9",
+            reason:  "UniswapV2Factory_48ce0ee4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x617a0d8632c14a785598ec9d72d0d6385d617981",
+            reason:  "UniswapV2Factory_617a0d86 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb2d0af0c692c827fa25f28a42660a3b6d0b4fdd3",
+            reason:  "UniswapV2Factory_b2d0af0c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbff2d62b5310707486909a55ce62d366267697ed",
+            reason:  "UniswapV2Factory_bff2d62b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9922c8e918a47ceade74b7c47eb827d7cf32f086",
+            reason:  "Factory_9922c8e9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc3548922e7f64d3c6ffae8f05c5eb1e7fa8cf525",
+            reason:  "Factory_c3548922 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x494adbf4173ce26a04d4107bba01c67b4ac1d395",
+            reason:  "Factory_494adbf4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc81511a0214990202528e19d53458cef48a5d92a",
+            reason:  "UniswapV2Factory_c81511a0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1097769f262405b51016fc25daa1a31eb360f8e7",
+            reason:  "UnilayerFactory_1097769f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb7c02e9970fb5e66e4b2931646853624ca138554",
+            reason:  "UniswapV2Factory_b7c02e99 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfd0b3960d3678b864376612a1c9d080a5b546395",
+            reason:  "UniswapV2Factory_fd0b3960 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0653cb540fab6f0deee93b49708cc3eb9c909867",
+            reason:  "UniswapV2Factory_0653cb54 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x336138f8a35dae3f0188a614850ddca74cac8ba0",
+            reason:  "UniswapV2Factory_336138f8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe9311c3a90ae29efd24e2b7e01dacd06fb3f1f4a",
+            reason:  "Factory_e9311c3a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd571a79d90f9d0c714277c7d74c21becc72d7c55",
+            reason:  "UniswapV2Factory_d571a79d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1f3529b6c494d124f2413f8bbb4b7142bd2ac1c4",
+            reason:  "PancakeFactory_1f3529b6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x88a986f648ff5cf770c686b82f8ffa5d8dfd392b",
+            reason:  "Factory_88a986f6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x92423279ff4ea1f4b191aa9af3633c2565af7a65",
+            reason:  "XILSwapFactory_92423279 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf46fc20a49c827b6074d9f582a0dd12da3c949cc",
+            reason:  "Factory_f46fc20a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9c335cb6d6f9f6df2d906c114cfd64ef987e7df9",
+            reason:  "UniV2TWAMMFactory_9c335cb6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9083c527f6d4a70eb58c006e8b079aaece87bace",
+            reason:  "UniV2TWAMMFactory_9083c527 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x326781637571dabdeb4c8c250117dec8f00ddeba",
+            reason:  "UniV2TWAMMFactory_32678163 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc79ed0a7286045b088b135cd9e1b514ad719f7d9",
+            reason:  "UniV2TWAMMFactory_c79ed0a7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc8371d28aacf49be3740b64129aa8bf8adcdc673",
+            reason:  "UniV2TWAMMFactory_c8371d28 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1865c95daea440d7061064777b8de6ec88dc6a4f",
+            reason:  "UniV2TWAMMFactory_1865c95d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb8b3465b3da1dbe3c064014c9a85a675542ed43d",
+            reason:  "UniV2TWAMMFactory_b8b3465b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1d13a57e80b588c718504719352f96100ca68f2b",
+            reason:  "UniV2TWAMMFactory_1d13a57e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x73d37f2c424fd06460a8fb1e159b5b2e8728de35",
+            reason:  "UniV2TWAMMFactory_73d37f2c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2a86f4ae8f1109754ecf50cb1b49165a091da391",
+            reason:  "UniV2TWAMMFactory_2a86f4ae (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2618e4b7591da54a6c1b39244342e7bfbee87bfd",
+            reason:  "Factory_2618e4b7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe55eb0b1b3bfe7b50d3295106e3fc536df3e4ef7",
+            reason:  "Factory_e55eb0b1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9693277eb9a0ef3ccad11d597d2341cd0619ccc3",
+            reason:  "Factory_9693277e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xca5936821e15ad6071c5ff23ff592c6b794cd481",
+            reason:  "Factory_ca593682 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xadfcbb9c32f31c629ae67eae179dc3c28b4639b3",
+            reason:  "Factory_adfcbb9c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9fd95b0dc0a42d8adf5855fed985a5b290ba2e53",
+            reason:  "DexFactory_9fd95b0d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb5a784e4a352e159a2faf3870598d1a538cf65ff",
+            reason:  "Factory_b5a784e4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x01cb1a8615313aae5ac8da4f8c84e5ec80bc5c98",
+            reason:  "Factory_01cb1a86 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7c71bcd00813752a01996d347c68c80ffd164a33",
+            reason:  "Factory_7c71bcd0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6172f6405677b913b1f005c4d7b4ff802ddbf63d",
+            reason:  "DyorFactory_6172f640 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6592905dbea0071adee8047f0fea9ba3d9fbe832",
+            reason:  "Factory_6592905d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8fbd6062a503fe45de253ddca3c2946bb3e27a6d",
+            reason:  "Factory_8fbd6062 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1b102173cf0aba248b97f72e15174453251ce058",
+            reason:  "Factory_1b102173 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x61d71aa66255a3f05ae25f18fa77a7210c5551dd",
+            reason:  "Factory_61d71aa6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4651ed94968a4a8ecfdb26a1036815a271a23d1a",
+            reason:  "Factory_4651ed94 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x00c79974d250db3f3bb511f56f01767ee96d2b30",
+            reason:  "Factory_00c79974 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd412911f6d0b10945533d704019878df7a79da4a",
+            reason:  "Factory_d412911f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x26ce1f35fdeba04f8c4a032a18be6e67b652624e",
+            reason:  "Factory_26ce1f35 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb0cde29c2590c90f57bccaa48356f942c2789f6d",
+            reason:  "Factory_b0cde29c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9ee942d5ec400ee0145d43b18a65cdf1c0220550",
+            reason:  "Factory_9ee942d5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x864abbb0fbec98d4836758d46454b3d6100465ba",
+            reason:  "UniswapV2Factory_864abbb0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5fdcb2e0d338d22f8fba68a5baf903920900fe58",
+            reason:  "Factory_5fdcb2e0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2818030e36afef79a2203069b3f4388af2ce012b",
+            reason:  "UniswapV2Factory_2818030e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x055fb172d083c9841adb9225ff57bd7395a29b6a",
+            reason:  "Factory_055fb172 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcda758af5f0fa955d81d77a15f067a6db07b2c0d",
+            reason:  "UniswapV2Factory_cda758af (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x326a197393c35c68da3f0b126fdc5210686bc96c",
+            reason:  "UniswapV2Factory_326a1973 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd04428ab5bdf12d0c79b0b2d8c29790f025ae6a8",
+            reason:  "UniswapV2Factory_d04428ab (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8552917753bb6e21bab3b305b0c2e8fd0d88cfba",
+            reason:  "UniswapV2Factory_85529177 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1cef3bd70a357ece4bb0cc4ab8b63ac185596ba9",
+            reason:  "UniswapV2Factory_1cef3bd7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8bc2febde87d78f38fe092d0ffd8ffa7937e5962",
+            reason:  "Factory_8bc2febd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x95438c52ac1d47be21e1872d4c9dc1b8fc21c1ea",
+            reason:  "Factory_95438c52 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3e5123996516eaa259acf4b16728a051896801cc",
+            reason:  "UniswapV2Factory_3e512399 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xee73e8c4b139850d030c06130cef0f8367ffa77d",
+            reason:  "Factory_ee73e8c4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7d05c60c07238fc46897e5b38f789704d1b00780",
+            reason:  "Factory_7d05c60c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6938a08099259a97666ffedf87c9bae2a163d70a",
+            reason:  "Factory_6938a080 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x54e22b95b5ec69f651e320945a80e31dc3e88f36",
+            reason:  "Factory_54e22b95 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf330e37f083468e56c6acfa76c6dde09b02c3b49",
+            reason:  "Factory_f330e37f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbedfac0ff3dd530b4363a0f99abcba8b25d3eb74",
+            reason:  "Factory_bedfac0f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa433e9f1069f06a67d4d2259e5b8393fa08f2093",
+            reason:  "BowFactory_a433e9f1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3eecef6d34583dc9434d4d5f24959a04f4b40bed",
+            reason:  "UniswapV2Factory_3eecef6d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x11779f40a564cd49047d0852b650d5709482150f",
+            reason:  "Factory_11779f40 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xacf76d3abcd794e1d41e55474f6c839129653755",
+            reason:  "UniswapV2Factory_acf76d3a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x77a8f64f38b11f470c8ad1a1cdb9614ca393764c",
+            reason:  "Factory_77a8f64f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x49d0bb5f870b4c2420ec78d0187ef01deffa525d",
+            reason:  "Factory_49d0bb5f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe0a99d6b641075ab8fd784e81b4bd667a59d24e6",
+            reason:  "Factory_e0a99d6b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xaa4837866fff4ae5efb043491eb7ff1d26f1319b",
+            reason:  "PancakeFactory_aa483786 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9f82305ddc172d0bed93f8e7ac621ef69a838649",
+            reason:  "PancakeFactory_9f82305d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd445555fc8fa20c991d18a27ec73d56c6c4eb7e5",
+            reason:  "PancakeFactory_d445555f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x21173dba4b1c927fde9e587ec1e12ce747b1fbd6",
+            reason:  "Factory_21173dba (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcb1a9b6aaf9cfb40c365f90c2763da38cb53a84f",
+            reason:  "BullFactory_cb1a9b6a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x06c0e32eab6b5e470303832e18b53e459d087c28",
+            reason:  "Factory_06c0e32e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb9916b95d991743e6568e6bb28b5d5d241a1732d",
+            reason:  "Factory_b9916b95 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc8328c8f52f8396751babe5772a37c94cd6fad76",
+            reason:  "Factory_c8328c8f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1e33ab66f5d70c3e4d721fc9969d790862a45796",
+            reason:  "Factory_1e33ab66 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x83bb0b415a578940d1b9e729b1caf0e21a6f53be",
+            reason:  "Factory_83bb0b41 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x742b008c01e016c65586e00c38c515752d73c709",
+            reason:  "Factory_742b008c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xba50af13cfe19c3d4fadfea9e6fd3241f07e0296",
+            reason:  "Factory_ba50af13 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa4f4132f15bd64fa94adb488c6825a03c15e1b06",
+            reason:  "Factory_a4f4132f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3d225a66c4a609634fb2c2d75d30fd6610ebb1bd",
+            reason:  "Factory_3d225a66 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xcf60c82ba15ee90c0ff28b1ba3c35dbff1f8ad11",
+            reason:  "Factory_cf60c82b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7fb1902c6457d1e33be665823e711873379fe0c0",
+            reason:  "Factory_7fb1902c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x83357304a3cae4dc7b1397c404e39717db8e1654",
+            reason:  "UniswapV2Factory_83357304 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x22f984499ae980da09ac4e085bf5f8ba48a9ffee",
+            reason:  "UniswapV2Factory_22f98449 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2eb91a36bcafb7f4a4500683cdc796c65f1aae43",
+            reason:  "UniswapV2Factory_2eb91a36 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x119d28de1c046ae6d1ccd019048c5afd3b80659d",
+            reason:  "UniswapV2Factory_119d28de (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf7b049423ed9c90b48f3aee825ec5aad38af4a09",
+            reason:  "Factory_f7b04942 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3138899892b5562cd938056afa2fb59a8d813318",
+            reason:  "NomiswapStableFactory_31388998 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd78b1e7f221671abfdff3896c9ad102264ee0824",
+            reason:  "Factory_d78b1e7f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0399590b464d8af36e4a10a0a051eebc460b4d0d",
+            reason:  "Factory_0399590b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x02c245e8a3b0c9ef7b102f756d2b0c2994cb790a",
+            reason:  "Factory_02c245e8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x88f5961e044cd9b1c0cbf74553afff50095f85a4",
+            reason:  "Factory_88f5961e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1083ceaca54bebb1d8f2deedafda625bb60c183c",
+            reason:  "Factory_1083ceac (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x951d0bd16e57325b62f89b0606e971ed98138535",
+            reason:  "Factory_951d0bd1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x15265ca12feb5583897e4c43632687364e905f69",
+            reason:  "Factory_15265ca1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x119d58f99a5150306cd49f2aee5740f5de803103",
+            reason:  "Factory_119d58f9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4aa337b9dbfb608153f347d3907265a3fb2b6e5e",
+            reason:  "Factory_4aa337b9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x65d55269cbd794fbc393eb52181144cdaa65b7c6",
+            reason:  "Factory_65d55269 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x19de007c3a48044c3ab0c9d55c3624a938442a2a",
+            reason:  "Factory_19de007c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x16d33a78fec1ba51e59fcae83cb976f9f16ce8e2",
+            reason:  "UniswapV2Factory_16d33a78 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x580a9e9c750841628cb9ba2e217512a9703d8662",
+            reason:  "Factory_580a9e9c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2f58db146e9adc6a467d0dc90e42ac1e55086d4e",
+            reason:  "Factory_2f58db14 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x94f8b11339d2630a522ff6410b7e145dfbe41f79",
+            reason:  "Factory_94f8b113 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x94356698e77112d36e24b54bc1a522b728d6b066",
+            reason:  "Factory_94356698 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x673813639d010713fdf119a9b1585fdc69f6b893",
+            reason:  "Factory_67381363 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x000603f287c583199ed93b6f323ceba636d33408",
+            reason:  "Factory_000603f2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb41b8e0587d0ff4045378d3acff6d81b76fa89c8",
+            reason:  "Factory_b41b8e05 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf43a78b4e8f9b1506f9c69071962b33939132e47",
+            reason:  "Factory_f43a78b4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa38e322be435e6094fc02949198959cdff82c4a1",
+            reason:  "Factory_a38e322b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1c75e6121ef88e8e7c13d2d8f24a1b3a02dd7255",
+            reason:  "UniswapV2Factory_1c75e612 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x03dd3b632b767e808e9b3de47852e90250112382",
+            reason:  "TransparentUpgradeableProxy_03dd3b63 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd53f43279438f61e795e2170b97bf67b083ecea1",
+            reason:  "Factory_d53f4327 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0f37f0e2b7ddafd9b7be0c66d90b75b766bbb2d2",
+            reason:  "Factory_0f37f0e2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x02cd23aa119ad817c3f7f85b582c4647c67f6450",
+            reason:  "UniswapV2Factory_02cd23aa (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe3317f07f5792c11afe722a587115787340a9eff",
+            reason:  "PancakeFactory_e3317f07 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8724eec28e9a0e5ec7b7950d27a8cb4092aa8cab",
+            reason:  "UniswapV2Factory_8724eec2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xac430362bd49833fedadd83ea4eecdeeb0287a2c",
+            reason:  "UniswapV2Factory_ac430362 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa176a668223a7b3707295731bd8ad4a47bc51eac",
+            reason:  "MEXUFactory_a176a668 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd0930d932a83f79e7b11f0e02f4ab9ddb57b32bc",
+            reason:  "PancakeFactory_d0930d93 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x950b2d5848242c509aa94b7b82ee6f30a0840147",
+            reason:  "UniswapV2Factory_950b2d58 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x741df9733c9f3d3766d690202222fdbd55c2b203",
+            reason:  "SevenDexFactory_741df973 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2f3e064e2d92b18c147b6f25ee2f5ee8f5f3f8ec",
+            reason:  "UniswapV2Factory_2f3e064e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x069d5d508d29fc2a7111ac4a418334a222c3c7f5",
+            reason:  "SwapFactory_069d5d50 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3957291e92f5322624cdff1f333f01731984a70b",
+            reason:  "Factory_3957291e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x83bf51f6014039969f0f14783160ede37ce18b02",
+            reason:  "Factory_83bf51f6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8e58d830c39a6bb4e317a34c570787c2918cb559",
+            reason:  "Factory_8e58d830 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x68822c167e112adf5c6bb0d05f95d3b94f309304",
+            reason:  "UniswapV2Factory_68822c16 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb80f6016f0b9d423d5f4157625220583d935cf90",
+            reason:  "HEROFactory_b80f6016 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x72a99b3253a60e06aef721339306d248d02d9e22",
+            reason:  "UniswapV2Factory_72a99b32 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x01b84935889dbe70bf7fad5cb06e41f4513590da",
+            reason:  "Factory_01b84935 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3cf801b5c08bdf129abd9d8d44429f9ab8b70034",
+            reason:  "Factory_3cf801b5 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xaa61a0223cad2eb0dfc5b8c1456d76e1702d45d1",
+            reason:  "LiquidXv2Factory_aa61a022 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc617e2e1dc7031bbf7d9dccc0ce35f29cf6538f7",
+            reason:  "Factory_c617e2e1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc11f1a2cc84aca9c93bbec5f9fce8d609d563c26",
+            reason:  "UniswapV2Factory_c11f1a2c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe6090326e97c01244777175a7547efcc2f8158af",
+            reason:  "UniswapV2Factory_e6090326 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb404e98dd35ab3d493e5391a56cca54ac4409e35",
+            reason:  "Factory_b404e98d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x06bd01ec7cf22a625323e3cb73c589ce95c2792e",
+            reason:  "UniswapV2Factory_06bd01ec (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x177aeb3727c91c4796766336923c4da431c59637",
+            reason:  "LovelyFactory_177aeb37 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xddfbcfcf168bc58aaccd80786bef558ef7b42138",
+            reason:  "SwapFactory_ddfbcfcf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x567c1b34b713a4ac596e12a0a0ecf5802f94b269",
+            reason:  "SwapFactory_567c1b34 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7817f99f0eceac0f14c4a26d78db4d26eb37ebb3",
+            reason:  "SwapFactory_7817f99f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1b908060390c892f5cba67b89504b27ca17f6526",
+            reason:  "Factory_1b908060 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x052b683d8c36d715133593092261d5eee7872c58",
+            reason:  "Factory_052b683d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x23a30127fd10db2ad10b1bd850ccd4b474a5f9a1",
+            reason:  "Factory_23a30127 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc6a4cc346b8f93ad700c93bb9ae0ad144988565c",
+            reason:  "SwapFactory_c6a4cc34 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9763f2ce2664a9cb4e4618248d14e5881f9ba317",
+            reason:  "Factory_9763f2ce (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x17eff53c359bf756d4abec00590921230304e2e4",
+            reason:  "Factory_17eff53c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf060f5fb1b342e0fc8fa1821fee6be644145a625",
+            reason:  "Factory_f060f5fb (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x59d2f0c2f1a9c6c6236f059ca3e867223abf9a61",
+            reason:  "UniswapV2Factory_59d2f0c2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc643a45d4d2c58849c5cb5c3705ce010b016087d",
+            reason:  "UniswapV2Factory_c643a45d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x08bba30cb7550a8593a60c5bc9ef9cbb5c24b7b3",
+            reason:  "Factory_08bba30c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf939529a2e241f6074276c482fb02a4946ee4e41",
+            reason:  "Factory_f939529a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1a440a2a30a3d7c5482e7e482a66d0ce7720b31b",
+            reason:  "UniswapV2Factory_1a440a2a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x15f65b2541dcb285e1d96d0a11a24e016d8315a5",
+            reason:  "UniswapV2Factory_15f65b25 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x169377f1c1887e4c8d9177bd70e8a086a1797538",
+            reason:  "UniswapV2Factory_169377f1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x680a2046632067379fcd1928e6d6ab13e2975eb5",
+            reason:  "UniswapV2Factory_680a2046 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x925f31160f70baef428b8df6b8201244520498fa",
+            reason:  "UniswapV2Factory_925f3116 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc030ea784feea26540ac6c61f96c94e74be09b3f",
+            reason:  "Factory_c030ea78 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb48e1f75322da809b937752080c79803ebcd2b85",
+            reason:  "UniswapV2Factory_b48e1f75 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8de18e16d2a3ca9ecf8ad470cc5290674c8b3176",
+            reason:  "Factory_8de18e16 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8dd7e3357d7c7bf49c64bbd82cad4da80e4f457c",
+            reason:  "Factory_8dd7e335 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1968a8e998916651c9b37ac4b02a5ffec50c69c0",
+            reason:  "Factory_1968a8e9 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x966fab527402f60373220d1a008c42d84a34cfa8",
+            reason:  "Factory_966fab52 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xac58c9bdde9930573d4105d171339a4efb41e98a",
+            reason:  "Factory_ac58c9bd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xbc68b9867110f5f863064d48ee064a6f47c51a05",
+            reason:  "Factory_bc68b986 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9dbb369603e2840710b7da4097a5bf4e361239f8",
+            reason:  "Factory_9dbb3696 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x42874252cd585d6d618da5b73340d703d47baa4b",
+            reason:  "Factory_42874252 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0bd75cd06ca1fcba8372c3bd80f415018a9d10fd",
+            reason:  "Factory_0bd75cd0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdbbf7acc1dd9733548606a82a68c21bde044128b",
+            reason:  "Factory_dbbf7acc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb955e714d476d263ceda04f4ca824ea31b7d0287",
+            reason:  "NASFactory_b955e714 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x6944452f2c5ab0794b6cd581049a0253e066ba38",
+            reason:  "Factory_6944452f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf79d586cd53180f8dc36ebb8ac2ca5df816f842c",
+            reason:  "Factory_f79d586c (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x73de9ef746560a1c49b606d08947b42ce527bd56",
+            reason:  "OSWAP_Factory_73de9ef7 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x84cf3ddc833cef1669ce80b08034f1fc5e74ed62",
+            reason:  "Factory_84cf3ddc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe04fe965e0db8e70504d62ad8e4ffe2924dd3c35",
+            reason:  "Factory_e04fe965 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe776a9bc327bd13c89173ca58c0d1318e27eeb36",
+            reason:  "Factory_e776a9bc (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3d28ece0f13c44a665b374b38bb40f501ceb6404",
+            reason:  "DynamicFactory_3d28ece0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7ca2478b748c9f986472d604656f1e11a4cd34b0",
+            reason:  "Factory_7ca2478b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xff5e964603995f7cf5fcdd8e9d4be7c114197615",
+            reason:  "Factory_ff5e9646 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe434fb0e85dfaef0c0d1dc275e0c6702216078be",
+            reason:  "Factory_e434fb0e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0a97129dc6a491fad28cee29c27bf61ac020e122",
+            reason:  "Factory_0a97129d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5f6a738b34376e7bfb1a110981731a2804b3f278",
+            reason:  "Factory_5f6a738b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x57feba20852dead4043c93dd062c2837a5b61b42",
+            reason:  "Factory_57feba20 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe1dce999d6d81fc37569be164c2f18d1bfdf59a9",
+            reason:  "Factory_e1dce999 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf74f036808561d03cc314a1442446226ba0561c8",
+            reason:  "PancakeFactory_f74f0368 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x354a10a8264252ae25a0ce7507cb0ae680c96ae3",
+            reason:  "PancakeFactory_354a10a8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x724386cd47309b877dc5c66ae79242ab3b944f6c",
+            reason:  "JaguarBetSwapFactory_724386cd (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x36a21b824296b5d893469d740e55ac868bbd1328",
+            reason:  "AlfiFactory_36a21b82 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xad359064d6315e30045d24dcbd41a078fc8dfacc",
+            reason:  "Factory_ad359064 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe5333d220859d8de42e6121610bdeaabc4be633b",
+            reason:  "Factory_e5333d22 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x510838e0aee3f5ddcb0aff139ddd1c45d0ae8a26",
+            reason:  "ApexDexFactory_510838e0 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9021f13a70da37f9bfdaa99c118f02a865d8bb72",
+            reason:  "UniswapV2Factory_9021f13a (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x4a05bdf35b9e9cf43236fb0fdb1edacf0c4b0606",
+            reason:  "UniswapV2Factory_4a05bdf3 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5c66bab8ee0c4e17992402c52a35a1825374f0c9",
+            reason:  "UniswapV2Factory_5c66bab8 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x43d83507730005837a0ee3a96adcb3c8fd30ce43",
+            reason:  "Factory_43d83507 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x248225c6aafedb42c08cd089438c12b90a589e8d",
+            reason:  "Factory_248225c6 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x954eb13b02102602931c859057b7a1c1b85c1229",
+            reason:  "UniswapV2Factory_954eb13b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8870bb3f0f990973cb6cdfdfce9e411c8d0ccac6",
+            reason:  "Factory_8870bb3f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xfc793b5eb05cb100d561a29771bc3e2768bfb70a",
+            reason:  "Factory_fc793b5e (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9bd827e4a2c065fb80bd877daf041bb4bfe7fce2",
+            reason:  "Factory_9bd827e4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9c78e2ea2b6df83b92cff958fba317697299711b",
+            reason:  "Factory_9c78e2ea (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x1a73d6b2b0de84e08c254b860990237a2708ac04",
+            reason:  "Factory_1a73d6b2 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa46db5cf905fa5583c528e3c49ab22620ed7bed5",
+            reason:  "Factory_a46db5cf (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x61641765da55d23c2b2eb65ef1fccf1a6bdba357",
+            reason:  "Factory_61641765 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x73c8337bf72202f00e5d664f3e1de4df356e53ef",
+            reason:  "Factory_73c8337b (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xec2913a1e57805db2f2da4a16cc6bbb1dac567c6",
+            reason:  "Factory_ec2913a1 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xdbefa1fe8a0d3b25b7d3e15e01fd617ae77b4fc8",
+            reason:  "UniswapV2Factory_dbefa1fe (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x856bafa409a3f96edae3d62b547cbf93ee62411e",
+            reason:  "Factory_856bafa4 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa10f6fffc6f88d53269d8ad13707826d52c59d5d",
+            reason:  "Factory_a10f6fff (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0ae25c1535b50807b020f723811481bb529b43b1",
+            reason:  "Factory_0ae25c15 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd76f02caf82abf0ac6d156dc626508c41ff3bd83",
+            reason:  "Factory_d76f02ca (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7b3f511f366de61096d09e3199cade0a07815ea6",
+            reason:  "Factory_7b3f511f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe3612b2d9263503ba27f15e52fb5f4a5c30580f8",
+            reason:  "Factory_e3612b2d (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x5c00f23f1679ee2db1df394c53fd1db263bdd6c3",
+            reason:  "Factory_5c00f23f (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd222315043a48289ddf21905696a75691a9b5355",
+            reason:  "Factory_d2223150 (v2): no pairs after a scan to block 95487042 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0dda821b6550b9ccdd5923e46da82aa81910c4b5",
+            reason:  "UniswapV2FactoryCustomFee_0dda821b (v2fee): no pairs after a scan to block 95487056 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x05cb9ee637a145576681c53bb6df078f398e19b7",
+            reason:  "UniswapV2FactoryCustomFee_05cb9ee6 (v2fee): no pairs after a scan to block 95487056 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x53994a003eaa36431cac14c3a575f4cffd7b38cb",
+            reason:  "UniswapV2FactoryCustomFee_53994a00 (v2fee): no pairs after a scan to block 95487056 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x30030aa4bc9bf07005cf61803ac8d0eb53e576ec",
+            reason:  "Retro (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3a8976137630b297462c7c2a3b92714facf48d74",
+            reason:  "Factory_3a897613 (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0b7795bcc47594e53c376e56c148f5ff40e97fdd",
+            reason:  "PairFactoryUpgradeable_0b7795bc (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xd541bc203cc2b85810d9b8e6a534eed1615528e2",
+            reason:  "PairFactory_d541bc20 (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xba06043a777652baf540ccc785edafd94ee05b37",
+            reason:  "BaseV1Factory_ba06043a (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeaf188cdd22feebcb345dcb529aa18ca9fcb4fbd",
+            reason:  "PairFactory_eaf188cd (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xf54b2dd2bacabf25342b581e2d09451fa6046e55",
+            reason:  "TransparentUpgradeableProxy_f54b2dd2 (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xc03c125359111d188b1c4cd7e5ccd935edbb5833",
+            reason:  "PairFactory_c03c1253 (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
         },
     ]
 }

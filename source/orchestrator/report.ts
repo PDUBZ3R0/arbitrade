@@ -94,6 +94,7 @@ export function printAttempt(
         const realised = a.realisedProfit ?? a.built.expectedProfit;
         const drifted = a.realisedProfit != null && a.realisedProfit !== a.built.expectedProfit;
         log(`  ${id} — CONFIRMED on-chain: ${a.txHash} (recorded to ledger)`);
+        if (a.latency) log(`      ${a.latency}`);
         log(`      input=${fmtAmount(a.built.rootAmountIn, a.candidate.rootToken)}  ` +
             `profit=${fmtAmount(realised, a.candidate.rootToken)}  ROI=${fmtRoiPct(realised, a.built.rootAmountIn)}` +
             (drifted ? `  (estimated ${fmtAmount(a.built.expectedProfit, a.candidate.rootToken)} before drift/taxes)` : '') +
@@ -104,6 +105,7 @@ export function printAttempt(
     if (a.broadcast) {
         log(`  ${id} — broadcast but reverted on-chain: ${a.txHash} (not recorded — see error below)`);
         log(`      ${a.simulationError}`);
+        if (a.latency) log(`      ${a.latency}`);
         return;
     }
 

@@ -20,7 +20,7 @@
 // The order of operations here is load-bearing and is documented inline.
 // -----------------------------------------------------------------------------
 
-import { Contract, JsonRpcProvider, id, type Signer } from 'ethers';
+import { Contract, Interface, JsonRpcProvider, id, type Signer } from 'ethers';
 import type { ChainConfig } from '../util/config.ts';
 import type { ArbitradeDB } from '../util/db.ts';
 import { ledgerPath, flashTermsFor, flashSwapEnabled, type FlashTerms } from '../util/config.ts';
@@ -29,7 +29,7 @@ import { buildHops, flashFeeFor, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 import { redactUrl } from '../util/rpc.ts';
-import { extractRevertData } from '../util/token-probe.ts';
+import { extractRevertData, decodeRevertReason, probePair, UNSAFE_TOKEN_VERDICTS } from '../util/token-probe.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -97,12 +97,20 @@ export type CandidateAttempt = {
     realisedProfit?: bigint;
     /** eth_estimateGas for this exact candidate, in gas units. */
     gasEstimate?: bigint;
+    /**
+     * Where the time went on a broadcast attempt, and how far behind the
+     * quote the transaction landed: "quoted @B, landed @L (+n blocks);
+     * build 40ms, estimate 120ms, simulate 90ms, send 110ms".
+     */
+    latency?: string;
     /** gasEstimate x live gas price x margin, in root-token wei. Null if it couldn't be priced. */
     gasFloorWei?: bigint | null;
     /** max(config floor, gas floor) — what the contract actually enforced. */
     minProfitUsed?: bigint;
     /** True when the candidate was dropped for not covering gas, before simulating. */
     belowGasFloor?: boolean;
+    /** Refused before any RPC: a pair that refuses the executor or a token measured unsafe (CandidateExecutor.knownBad). */
+    knownBad?: boolean;
     /** How it was (or would be) funded: 'flash-swap', or the lender's provider ('aave-v3', …). */
     funding?: string;
     /** The root's decimals/symbol, for rendering a swap root (not in the flash-token config). */
@@ -261,6 +269,8 @@ export class CandidateExecutor {
     private executorHasAlgebra = false;
     /** executeFlashSwap takes a V3 / Algebra first hop (V3_FLASH_SWAP). */
     private executorHasV3Flash = false;
+    /** The executor's fallback pays a V3-shaped callback under any name (V3_ANY_CALLBACK). */
+    private executorHasAnyCallback = false;
     private warnedNoFlashSwap = false;
     /**
      * Factories whose pairs failed a flash swap that the lender path then
@@ -270,6 +280,48 @@ export class CandidateExecutor {
      * them once, which costs one estimateGas.
      */
     private readonly noFlashFactories = new Set<string>();
+
+    /**
+     * Pairs whose swap() refuses this executor — permissioned forks that only
+     * serve their own router ("UniswapV2: caller is not verified", "TOMI
+     * PAIR : FORBIDDEN", "UniswapV2: UNAUTHORISED", "ConveyorV2: FORBIDDEN!").
+     * Polygon, 2026-10-13: five such pairs caused 1,900 of 1,939 simulation
+     * reverts in 90 minutes, because the failed-pair memory only lasts one
+     * block. A refusal does not depend on reserves, so it is remembered for
+     * the run (and in the DB as pair-restricted, which the next `yarn
+     * triangles` drops).
+     */
+    private readonly gatedPairs = new Map<string, string>();
+    /** Tokens a QUOTE MISMATCH led us to probe and find unsafe (transfer tax, …). */
+    private readonly unsafeTokens = new Map<string, string>();
+    private readonly probedAfterMismatch = new Set<string>();
+    /** The DB of the attempt in progress, for the diagnostics that write to it. */
+    private attemptDb: ArbitradeDB | null = null;
+
+    /** Seed the known-bad sets from what the DB already knows (earlier runs, `yarn probe`). */
+    seedKnownBad(db: ArbitradeDB): { pairs: number; tokens: number } {
+        const kb = db.getKnownBad();
+        for (const r of kb.pairs) this.gatedPairs.set(r.address, r.reason ?? 'pair-restricted');
+        for (const r of kb.tokens) this.unsafeTokens.set(r.address, r.status);
+        return { pairs: kb.pairs.length, tokens: kb.tokens.length };
+    }
+
+    /**
+     * Why this candidate cannot trade, known without a round trip: a pair
+     * that refuses the executor, or a token measured unsafe. Null when nothing
+     * is known against it.
+     */
+    knownBad(c: Candidate): string | null {
+        for (const h of c.hops) {
+            const r = this.gatedPairs.get(h.pair.toLowerCase());
+            if (r) return `pair ${h.pair} refuses the executor (${r})`;
+        }
+        for (const h of c.hops) {
+            const r = this.unsafeTokens.get(h.tokenOut.toLowerCase());
+            if (r) return `token ${h.tokenOut} is ${r}`;
+        }
+        return null;
+    }
     private async checkExecutorVersion(): Promise<string | null> {
         if (this.executorVersionError !== undefined) return this.executorVersionError;
         // Read the code and look for each entry point's selector in the
@@ -306,6 +358,7 @@ export class CandidateExecutor {
         this.executorHasStable = this.executorHasV3 && has('HOP_STABLE()');
         this.executorHasAlgebra = this.executorHasV3 && has('algebraSwapCallback(int256,int256,bytes)');
         this.executorHasV3Flash = this.executorHasFlashSwap && has('V3_FLASH_SWAP()');
+        this.executorHasAnyCallback = this.executorHasV3 && has('V3_ANY_CALLBACK()');
         if (!this.executorHasV3) {
             this.executor = new Contract(addr, EXECUTOR_ABI_V2_ONLY, this.provider);
             console.warn(
@@ -497,7 +550,13 @@ export class CandidateExecutor {
             candidate, built: null, simulated: false, broadcast: false, confirmed: false,
             rootMeta: { decimals: this.decimalsOf(candidate.rootToken), symbol: this.rootPricing[candidate.rootToken.toLowerCase()]?.symbol },
         };
+        this.attemptDb = db;
+        const bad = this.knownBad(candidate);
+        if (bad) { attempt.simulationError = `known bad: ${bad}`; attempt.knownBad = true; return attempt; }
 
+        const t0 = Date.now();
+        const marks: Array<[string, number]> = [];
+        const mark = (label: string) => marks.push([label, Date.now()]);
         const versionError = await this.checkExecutorVersion();
         if (versionError) {
             attempt.simulationError = versionError;
@@ -550,10 +609,13 @@ export class CandidateExecutor {
             const algebra = f?.group === 'algebra';
             const cb = algebra ? 'algebraSwapCallback' : f?.callback;
             if (algebra) algebraPools.add(h.pair.toLowerCase());
-            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb) && !(cb === 'algebraSwapCallback' && this.executorHasAlgebra)) {
+            // Every callback the verifier records is (int256,int256,bytes)-shaped;
+            // an executor with V3_ANY_CALLBACK pays it under whatever name.
+            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb) && !this.executorHasAnyCallback
+                && !(cb === 'algebraSwapCallback' && this.executorHasAlgebra)) {
                 attempt.simulationError = cb === 'algebraSwapCallback'
                     ? `v3 hop ${h.pair} is an Algebra pool and the executor at ${this.cfg.chain.executor} predates algebraSwapCallback — yarn deploy flasharb ${this.cfg.chain.label}`
-                    : `v3 hop ${h.pair} calls ${cb}, which the executor does not implement`;
+                    : `v3 hop ${h.pair} calls ${cb}, which the executor at ${this.cfg.chain.executor} does not answer (predates V3_ANY_CALLBACK) — yarn deploy flasharb ${this.cfg.chain.label}`;
                 return attempt;
             }
         }
@@ -579,6 +641,7 @@ export class CandidateExecutor {
         }
         attempt.built = built;
         if (!built) return attempt;   // edge decayed since evaluation
+        mark('build');
 
         // 1. Measure gas for THIS candidate. estimateGas also reverts if the
         // path is not executable, so it doubles as a first validation.
@@ -595,7 +658,7 @@ export class CandidateExecutor {
             // re-read is needed. If THAT estimates, the factory is the problem:
             // remember it so later candidates go straight to the lender.
             if (!useFlash || this.lenderUnusable(candidate, terms)) {
-                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate);
+                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate) + await this.diagnoseGated(err, candidate);
                 return attempt;   // would revert on-chain
             }
             // Same amounts, but now the lender charges its fee: profit shrinks by it.
@@ -607,7 +670,7 @@ export class CandidateExecutor {
             try {
                 gasUnits = await lenderCall.fn.estimateGas(...lenderCall.args(built.minProfitWei), { from: this.opts.ownerAddress });
             } catch {
-                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate);   // the flash error: it is the one that ran first
+                attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate) + await this.diagnoseGated(err, candidate);   // the flash error: it is the one that ran first
                 return attempt;
             }
             const factory = candidate.hops[0].factory.toLowerCase();
@@ -619,6 +682,7 @@ export class CandidateExecutor {
             call = lenderCall;
         }
         attempt.gasEstimate = gasUnits;
+        mark('estimate');
         attempt.funding = useFlash ? 'flash-swap' : terms!.provider;
 
         // 2. Raise the floor to cover gas. The config floor is a preference;
@@ -654,9 +718,10 @@ export class CandidateExecutor {
         try {
             await call.fn.staticCall(...call.args(effectiveMinProfit), { from: this.opts.ownerAddress });
             attempt.simulated = true;
+            mark('simulate');
         } catch (err) {
             attempt.simulationError = ((err as Error).message?.slice(0, 300) ?? String(err))
-                + await this.diagnoseRepay(err, call, built, effectiveMinProfit, candidate);
+                + await this.diagnoseRepay(err, call, built, effectiveMinProfit, candidate) + await this.diagnoseGated(err, candidate);
             return attempt;
         }
 
@@ -691,6 +756,7 @@ export class CandidateExecutor {
                 attempt.simulationError = `sequencer did not accept the tx: ${(err as Error).message?.slice(0, 160)}`;
                 return attempt;
             }
+            mark('send');
             attempt.broadcast = true;
             attempt.txHash = txHash;
 
@@ -702,6 +768,7 @@ export class CandidateExecutor {
                 attempt.simulationError = `broadcast but not mined within 60s, txHash=${txHash}`;
                 return attempt;
             }
+            attempt.latency = latencyNote(built.blockTag, receipt.blockNumber, t0, marks);
             if (receipt.status !== 1) {
                 attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
                 return attempt;
@@ -711,8 +778,21 @@ export class CandidateExecutor {
             return attempt;
         }
 
+        // Explicit gasLimit: without it ethers re-runs eth_estimateGas before
+        // sending — a whole extra round trip after a simulation that just
+        // passed, while the edge ages (Sonic: ~3 blocks a second). The same
+        // estimate + 30% headroom as the sequencer path.
         const signed = this.executor.connect(signer) as Contract;
-        const tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit));
+        let tx: any;
+        try {
+            tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit), { gasLimit: (gasUnits * 13n) / 10n });
+        } catch (err) {
+            // Refused before it was sent (nonce, funds, a node-side check):
+            // nothing went on-chain, so it is a failed attempt, not a crash.
+            attempt.simulationError = `not sent: ${String((err as any)?.shortMessage ?? (err as Error)?.message ?? err).slice(0, 200)}`;
+            return attempt;
+        }
+        mark('send');
         attempt.broadcast = true;
         attempt.txHash = tx.hash;
 
@@ -736,6 +816,7 @@ export class CandidateExecutor {
                 return attempt;
             }
         }
+        attempt.latency = latencyNote(built.blockTag, receipt?.blockNumber, t0, marks);
         if (!receipt || receipt.status !== 1) {
             // Broadcast but reverted on-chain — not a trade, not logged to the
             // ledger. Surfaced via simulationError so the CLI print picks it up.
@@ -800,10 +881,81 @@ export class CandidateExecutor {
             if (kind === 'accounting') {
                 return ` [ACCOUNTING at block ${B}: the swaps returned exactly the prediction (${got}) but the contract required ${required} — loan + fee + minProfit was underestimated; logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
             }
-            return ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
+            return ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`
+                + await this.probeAfterMismatch(candidate);
         } catch {
             return '';
         }
+    }
+
+    /**
+     * A revert with a reason string that is not ours: find out whether one of
+     * the path's V2/stable pairs refuses the executor outright. Each such pair
+     * is asked directly — swap(1, 0, executor, "") from the executor's address.
+     * An ordinary pair answers with its own input check (INSUFFICIENT_INPUT_
+     * AMOUNT, K, …); a permissioned one fails its access check first, with the
+     * same reason the cycle hit. Only an exact match convicts a pair.
+     */
+    private async diagnoseGated(err: unknown, candidate: Candidate): Promise<string> {
+        try {
+            const data = extractRevertData(err);
+            if (!data || !data.toLowerCase().startsWith('0x08c379a0')) return '';
+            const reason = decodeRevertReason(data);
+            if (!reason) return '';
+            const exec = this.cfg.chain.executor!;
+            const swapData = V2_SWAP_IFACE.encodeFunctionData('swap', [1n, 0n, exec, '0x']);
+            for (const h of candidate.hops as any[]) {
+                if (h.kind === 'v3') continue;
+                const pair = h.pair.toLowerCase();
+                let got = '';
+                try { await this.provider.call({ from: exec, to: pair, data: swapData }); continue; }
+                catch (e) { got = decodeRevertReason(extractRevertData(e)); }
+                if (got !== reason) continue;
+                this.gatedPairs.set(pair, `swap() reverts "${reason}" for any caller but its router`);
+                let saved = '';
+                try { this.attemptDb?.setPairProbe(pair, 'pair-restricted', `hot loop: swap() from the executor reverts "${reason}"`); saved = '; marked pair-restricted in the DB — `yarn triangles` drops it'; }
+                catch { /* read-only DB: the in-memory ban still holds for this run */ }
+                return ` [permissioned pair ${pair} (factory ${h.factory}): its swap() refuses the executor — skipped for the rest of the run${saved}]`;
+            }
+            return '';
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * A QUOTE MISMATCH that is not staleness: the executor received less than
+     * exact pool math predicts, at the very block the quote was read. The
+     * usual cause is a transfer tax the probe has not measured (its token was
+     * never probed, or the probe errored). Probe each non-root token of the
+     * path once, through a V2 hop that pairs it with a flash-loan root, and
+     * ban it if it is unsafe.
+     */
+    private async probeAfterMismatch(candidate: Candidate): Promise<string> {
+        const probe = this.cfg.chain.probe;
+        if (!probe) return '';
+        const roots = new Set((this.cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
+        const found: string[] = [];
+        for (const h of candidate.hops as any[]) {
+            if (h.kind === 'v3' || h.stable) continue;
+            const a = h.tokenIn.toLowerCase(), b = h.tokenOut.toLowerCase();
+            const [root, token] = roots.has(a) && !roots.has(b) ? [a, b] : roots.has(b) && !roots.has(a) ? [b, a] : [null, null];
+            if (!root || !token || this.probedAfterMismatch.has(token)) continue;
+            this.probedAfterMismatch.add(token);
+            try {
+                const pair = new Contract(h.pair, ['function getReserves() view returns (uint112, uint112, uint32)', 'function token0() view returns (address)'], this.provider);
+                const [[r0, r1], t0] = await Promise.all([pair.getReserves(), pair.token0()]);
+                const rootReserve = (t0 as string).toLowerCase() === root ? BigInt(r0) : BigInt(r1);
+                const out = await probePair(this.provider, probe, root, h.pair, rootReserve * 5n / 1000n);
+                if (!(UNSAFE_TOKEN_VERDICTS as readonly string[]).includes(out.status)) continue;
+                const what = `${out.status}${out.buyTaxBps != null ? ` (buy ${out.buyTaxBps} bps / sell ${out.sellTaxBps} bps)` : ''}`;
+                this.unsafeTokens.set(token, what);
+                try { this.attemptDb?.setTokenProbe(token, { status: out.status, buyTaxBps: out.buyTaxBps, sellTaxBps: out.sellTaxBps, reason: `hot loop after a quote mismatch: ${out.reason}`, pair: h.pair }); }
+                catch { /* read-only DB */ }
+                found.push(`${token} ${what}`);
+            } catch { /* probing is best effort */ }
+        }
+        return found.length ? ` [probed: ${found.join(', ')} — excluded from now on and recorded in the DB]` : '';
     }
 
     /**
@@ -897,3 +1049,19 @@ function gasSpent(receipt: any): string {
 
 /** InsufficientRepay(uint256,uint256) — FlashArbExecutor's "the cycle came back short". */
 const INSUFFICIENT_REPAY = id('InsufficientRepay(uint256,uint256)').slice(0, 10);
+const V2_SWAP_IFACE = new Interface(['function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes data)']);
+
+/**
+ * "quoted @80922919, landed @80922925 (+6 blocks); build 35ms, estimate 140ms,
+ * simulate 95ms, send 120ms". The block lag is how stale the edge was by the
+ * time it executed — the number to watch when broadcasts revert on a fast chain.
+ */
+function latencyNote(quoteBlock: number | undefined, landedBlock: number | undefined, t0: number, marks: Array<[string, number]>): string {
+    const parts: string[] = [];
+    let prev = t0;
+    for (const [label, t] of marks) { parts.push(`${label} ${t - prev}ms`); prev = t; }
+    const blocks = quoteBlock != null && landedBlock != null
+        ? `quoted @${quoteBlock}, landed @${landedBlock} (+${landedBlock - quoteBlock} block${landedBlock - quoteBlock === 1 ? '' : 's'}); `
+        : landedBlock != null ? `landed @${landedBlock}; ` : '';
+    return blocks + parts.join(', ');
+}

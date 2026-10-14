@@ -56,7 +56,7 @@
 
 import { Interface, type JsonRpcProvider } from 'ethers';
 import type { ArbitradeDB } from '../util/db.ts';
-import { multicall3, type Multicall3Call } from '../util/multicall.ts';
+import { multicall3, MULTICALL3_ADDRESS, type Multicall3Call } from '../util/multicall.ts';
 import { getV3States, getAlgebraStates } from '../util/yobatches.ts';
 import { v3_amount_out_exact } from '../util/calculus-v3.js';
 import type { Candidate } from '../evaluator/evaluator.ts';
@@ -111,6 +111,8 @@ export type BuiltArb = {
      */
     blockTag?: number;
 };
+
+const MC3_BLOCK = new Interface(['function getBlockNumber() view returns (uint256)']);
 
 const PAIR_IFACE = new Interface([
     'function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
@@ -262,7 +264,16 @@ export async function buildHops(
         allowFailure: false,
         callData: PAIR_IFACE.encodeFunctionData('getReserves', []),
     }));
+    // An all-V2 path is read at "latest": ask Multicall3 which block that was,
+    // in the same call, so the quote still has a block (for the stale-vs-
+    // mismatch diagnosis and the broadcast's block lag) at no extra round trip.
+    const askBlock = blockTag === undefined;
+    if (askBlock) calls.push({ target: MULTICALL3_ADDRESS, allowFailure: true, callData: MC3_BLOCK.encodeFunctionData('getBlockNumber', []) });
     const results = await multicall3(provider, calls, blockTag);
+    if (askBlock) {
+        const r = results.pop()!;
+        try { if (r.success && r.returnData !== '0x') blockTag = Number(MC3_BLOCK.decodeFunctionResult('getBlockNumber', r.returnData)[0]); } catch { /* left undefined */ }
+    }
 
     const reservesByPair = new Map<string, { reserve0: bigint; reserve1: bigint }>();
     for (let i = 0; i < v2Hops.length; i++) {

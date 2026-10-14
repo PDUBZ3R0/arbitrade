@@ -117,8 +117,11 @@ interface IUniswapV2Pair {
 /// `(address sender, uint256, uint256, bytes)` arguments under a different
 /// name (uniswapV2Call, pancakeCall, Solidly's hook, BiswapCall …); the common
 /// ones are declared, and `fallback` accepts any other spelling, so no
-/// per-factory callback table is needed. The callback is pinned to the exact
-/// bytes this contract handed the pair (see FLASH SWAP SAFETY below).
+/// per-factory callback table is needed. The same holds for V3-style swap
+/// callbacks `(int256, int256, bytes)` (V3_ANY_CALLBACK): uniswapV3 /
+/// pancakeV3 / algebra are declared, any renamed fork's lands in `fallback`.
+/// The callback is pinned to the exact bytes this contract handed the pair
+/// (see FLASH SWAP SAFETY below).
 ///
 /// CALLBACK SAFETY. A flash callback is an external function anyone can call.
 /// Each one accepts exactly one caller: the lender named by the owner's own
@@ -193,6 +196,11 @@ contract FlashArbExecutor {
     /// Version probe: executeFlashSwap also takes a concentrated-liquidity
     /// first hop (Uniswap V3 / PancakeV3 / Algebra) — the pool's swap is the loan.
     bool public constant V3_FLASH_SWAP = true;
+    /// Version probe: `fallback` also pays a V3-shaped swap callback under any
+    /// name — `(int256 amount0Delta, int256 amount1Delta, bytes data)` — so a
+    /// PancakeV3 fork that renamed its callback (9mm, ZF, …) is tradeable
+    /// without a per-fork function here.
+    bool public constant V3_ANY_CALLBACK = true;
 
     /// FLASH SWAP SAFETY. keccak256 of the exact `data` handed to the borrowed
     /// pair, set just before pair.swap() and cleared by the first callback.
@@ -544,13 +552,38 @@ contract FlashArbExecutor {
         _flashSwapped(sender, data);
     }
 
-    /// Any other V2 fork's callback name (BiswapCall, apeCall, …). They all
-    /// pass (address sender, uint256 amount0, uint256 amount1, bytes data).
-    /// Anything else reaching here fails the _flashCtx check in _flashSwapped.
+    /// Any other spelling of a callback this contract already answers:
+    ///
+    ///  - V3-shaped `(int256 amount0Delta, int256 amount1Delta, bytes data)`
+    ///    (a PancakeV3 fork's renamed swap callback):
+    ///      * from the pool of the ordinary V3 hop in progress (_swapPool)
+    ///        → paid exactly as uniswapV3SwapCallback would pay it;
+    ///      * otherwise only as the V3 flash swap's first hop, and only if
+    ///        `data` hashes to the armed _flashCtx (as in _v3Flashed).
+    ///  - V2-shaped `(address sender, uint256, uint256, bytes data)`
+    ///    (BiswapCall, apeCall, …) → _flashSwapped, pinned to _flashCtx.
+    ///
+    /// The two shapes are told apart by the first word: a V2 callback's is
+    /// `sender`, which for our own flash swap is this contract; a V3 delta
+    /// is never that number. A wrong guess fails closed either way — every
+    /// branch is gated on _swapPool or on the keccak of the echoed data.
     fallback() external {
+        if (msg.data.length < 4 + 96) revert NotPool();
+        // Ordinary V3 hop: the armed pool, and only it.
+        address pool = _swapPool;
+        if (pool != address(0) && msg.sender == pool) {
+            (int256 a0, int256 a1) = abi.decode(msg.data[4:68], (int256, int256));
+            _v3SwapPay(a0, a1);
+            return;
+        }
         if (_flashCtx == bytes32(0) || msg.data.length < 4 + 128) revert NotPool();
-        (address sender, , , bytes memory data) = abi.decode(msg.data[4:], (address, uint256, uint256, bytes));
-        _flashSwapped(sender, data);
+        if (uint256(bytes32(msg.data[4:36])) == uint256(uint160(address(this)))) {
+            (address sender, , , bytes memory data) = abi.decode(msg.data[4:], (address, uint256, uint256, bytes));
+            _flashSwapped(sender, data);
+        } else {
+            (int256 a0, int256 a1, bytes memory data) = abi.decode(msg.data[4:], (int256, int256, bytes));
+            _v3Flashed(a0, a1, data);
+        }
     }
 
     function _flashSwapped(address sender, bytes memory data) internal {
@@ -618,7 +651,7 @@ contract FlashArbExecutor {
     /// Hop 0's pool has paid out and is waiting to be paid: run the rest of
     /// the cycle, check the floor, pay the pool exactly what it asks (never
     /// more than amountIn).
-    function _v3Flashed(int256 amount0Delta, int256 amount1Delta, bytes calldata data) internal {
+    function _v3Flashed(int256 amount0Delta, int256 amount1Delta, bytes memory data) internal {
         bytes32 ctx = _flashCtx;
         if (ctx == bytes32(0) || keccak256(data) != ctx) revert NotPool();
         _flashCtx = bytes32(0);

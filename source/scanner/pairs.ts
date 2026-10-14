@@ -57,6 +57,13 @@ const CHUNK_TOO_LARGE_RE = /(response size|range|limit|too large|too many|free t
 // timeouts, network blips). These don't change the chunk size.
 const TRANSIENT_ERROR_RE = /(rate limit|timeout|429|502|503|504|EAI_AGAIN|ECONNRESET|ETIMEDOUT|network|gateway)/i;
 
+// The provider refused the filter itself — too many addresses, too many
+// topics, or a "heavy" query it will not run (publicnode/Sonic: "Request
+// blocked"; -32701 "please specify an address"; explicit address caps).
+// Retrying the same request after a wait gets the same answer; a lighter
+// request may not.
+const FILTER_REFUSED_RE = /(request blocked|-32701|too many addresses|addresses? (list )?(is )?too (long|large)|exceeds? (the )?(max(imum)?|limit) (number of )?(addresses|topics)|too many topics)/i;
+
 // Regex for "the RPC has pruned historical event logs for this range".
 // When we hit this, RPC transport is dead for historical scanning; we fall
 // through to the Etherscan V2 logs API for the rest of this factory's scan.
@@ -142,7 +149,7 @@ async function discoverAndCacheDeployBlock(
 }
 
 /** Creation-event layout and topic for a factory's group / poolEvent. */
-function layoutOf(factory: NormalizedFactory): EventLayout {
+export function layoutOf(factory: NormalizedFactory): EventLayout {
     return factory.group === 'solidly' ? (factory.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
            factory.group === 'v3'      ? LAYOUT_BY_POOL_EVENT[(factory.poolEvent as 'uniswap' | 'tickspacing' | undefined) ?? 'uniswap'] :
            factory.group === 'algebra' ? 'algebra' :
@@ -243,11 +250,15 @@ export async function scanIncremental(
         byAddr.set(f.factory.address.toLowerCase(), { ...f, layout, topic: TOPIC_BY_LAYOUT[layout] });
         found[f.factory.name] = 0;
     }
-    const topics = [...new Set([...byAddr.values()].map(f => f.topic))];
     const addresses = [...byAddr.keys()];
-    // Providers cap the address list of one filter; 200 is well inside the
-    // usual limits and one call still covers every factory on most chains.
-    const ADDR_CHUNK = 200;
+    // How much one eth_getLogs may ask for. Providers cap the address list,
+    // the topic OR-list, or just refuse a "heavy" filter without saying which
+    // (Sonic's RPC: "Request blocked" for 63 factories x 7 creation topics).
+    // So the first refusal splits the call by creation topic; the next ones
+    // halve the address list down to one; then the block range shrinks. The
+    // first shape that gets through is kept for the rest of the catch-up.
+    let addrChunk = Math.min(200, addresses.length);
+    let perTopic = false;
 
     let cursor = Math.min(...factories.map(f => f.fromBlock));
     let chunk = tuning.chunkStart;
@@ -263,17 +274,45 @@ export async function scanIncremental(
         const end = Math.min(cursor + chunk - 1, head);
         let logs: Array<{ address: string; topics: readonly string[]; data: string; blockNumber: number }> = [];
         try {
-            for (let i = 0; i < addresses.length; i += ADDR_CHUNK) {
-                // Only factories that still need [cursor, end].
-                const want = addresses.slice(i, i + ADDR_CHUNK).filter(a => byAddr.get(a)!.fromBlock <= end);
+            for (let i = 0; i < addresses.length; i += addrChunk) {
+                // Only factories that still need [cursor, end], and only their topics.
+                const want = addresses.slice(i, i + addrChunk).filter(a => byAddr.get(a)!.fromBlock <= end);
                 if (want.length === 0) continue;
-                const part = await provider.getLogs({ address: want, topics: [topics], fromBlock: cursor, toBlock: end });
-                calls++;
-                logs = logs.concat(part as any);
+                const wantTopics = [...new Set(want.map(a => byAddr.get(a)!.topic))];
+                for (const tg of perTopic ? wantTopics.map(t => [t]) : [wantTopics]) {
+                    const addrs = perTopic ? want.filter(a => byAddr.get(a)!.topic === tg[0]) : want;
+                    const part = await provider.getLogs({ address: addrs, topics: [tg], fromBlock: cursor, toBlock: end });
+                    calls++;
+                    logs = logs.concat(part as any);
+                }
             }
         } catch (err) {
             const raw = err as any;
             const msg = `${raw?.message ?? String(err)} ${raw?.error?.message ?? raw?.info?.error?.message ?? ''}`;
+            if (FILTER_REFUSED_RE.test(msg)) {
+                // The provider refused the SHAPE of the request: make it lighter
+                // rather than wait — waiting does not change the answer.
+                const why = msg.match(FILTER_REFUSED_RE)![0];
+                if (!perTopic) {
+                    log(`  [!] "${why}" — one creation topic per eth_getLogs`);
+                    perTopic = true;
+                    continue;
+                }
+                if (addrChunk > 1) {
+                    const next = Math.ceil(addrChunk / 2);
+                    log(`  [!] "${why}" — ${addrChunk} → ${next} addresses per eth_getLogs`);
+                    addrChunk = next;
+                    continue;
+                }
+                if (chunk > tuning.chunkMin) {
+                    const next = Math.max(tuning.chunkMin, Math.floor(chunk / 4));
+                    log(`  [!] "${why}" — chunk ${chunk} → ${next} blocks`);
+                    chunk = next;
+                    continue;
+                }
+                throw new Error(`incremental getLogs ${cursor}-${end}: refused even for one address, one topic, ${chunk} blocks — ` +
+                    `the RPC itself is blocking (rate limit or IP); last: ${trim(errText(msg), 160)}`);
+            }
             if (++fails > MAX_FAILS) throw new Error(`incremental getLogs ${cursor}-${end}: ${MAX_FAILS} failures in a row, last: ${trim(errText(msg), 160)}`);
             const suggested = extractSuggestedRange(msg);
             if (suggested && chunk > suggested) { chunk = suggested; continue; }
@@ -310,7 +349,8 @@ export async function scanIncremental(
         if (chunk < tuning.chunkMax && logs.length < 1000) chunk = Math.min(tuning.chunkMax, Math.floor(chunk * 1.25));
         if (tuning.chunkDelayMs > 0) await sleep(tuning.chunkDelayMs);
     }
-    log(`  ${factories.length} factories caught up to block ${head} in ${calls} eth_getLogs call(s)`);
+    log(`  ${factories.length} factories caught up to block ${head} in ${calls} eth_getLogs call(s)` +
+        (addrChunk < Math.min(200, addresses.length) || perTopic ? ` (${addrChunk} address(es)${perTopic ? ', one topic' : ''} per call — what this RPC accepts)` : ''));
     return found;
 }
 

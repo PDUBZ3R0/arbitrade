@@ -211,6 +211,13 @@ if (cfg.factories.some(f => f.group === 'algebra') && v3) {
         : `refused — executor predates algebraSwapCallback; cycles through Algebra pools are skipped (yarn deploy flasharb ${cfg.chain.label})`}`);
 }
 
+// Pairs that refuse the executor and tokens measured unsafe, from earlier runs
+// and `yarn probe`: skipped without a round trip. Attempts add to these.
+{
+    const kb = executor.seedKnownBad(db);
+    console.log(`Known bad: ${kb.pairs} permissioned pair(s), ${kb.tokens} unsafe token(s) — skipped without a simulation; the loop adds any it finds`);
+}
+
 // --- startup: one full evaluator pass, for pricing ---------------------------
 //
 // Deliberately not for its candidates — the index supersedes those within a
@@ -398,6 +405,7 @@ const hot = createHotLoop({
     pricing: () => pricing,
     decimalsByToken,
     attempt: (c, d) => executor.attempt(c, d),
+    knownBad: (c) => executor.knownBad(c),
     report: (a) => printAttempt(cfg, a),
     candidatesPerBlock,
     cooldownMs,
@@ -653,6 +661,7 @@ setInterval(() => {
         `${s.batches} batch(es), ${s.trianglesRescored} triangle re-scores, ` +
         `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
         (s.skippedBelowGas ? `, ${s.skippedBelowGas} skipped below gas` : '') +
+        (s.skippedKnownBad ? `, ${s.skippedKnownBad} skipped known-bad` : '') +
         (st.reconnects ? `, ${st.reconnects} reconnect(s)` : '') +
         `, pricing ${age}m old, heap ${heapMb()}`);
 
@@ -704,6 +713,7 @@ const shutdown = async (sig: string) => {
         (h.v3RefreshErrors ? `, ${h.v3RefreshErrors} failed v3 re-read batch(es)` : '') +
         (h.skippedMuted ? `, ${h.skippedMuted} candidate(s) skipped as muted` : '') +
         (h.skippedBelowGas ? `, ${h.skippedBelowGas} candidate(s) skipped below a known gas floor` : '') +
+        (h.skippedKnownBad ? `, ${h.skippedKnownBad} candidate(s) skipped through a permissioned pair or unsafe token` : '') +
         (h.pairsUnknown ? `, ${h.pairsUnknown} update(s) for unknown pairs (re-run \`yarn reserves\`)` : ''));
     db.close();
     provider.destroy();

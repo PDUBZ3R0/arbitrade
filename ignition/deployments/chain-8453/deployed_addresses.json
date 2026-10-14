@@ -2,7 +2,7 @@
   "YoModule#YoBatches": "0xB7D20552080FB51861F607A52DCc34C91F4aaB9a",
   "Yo2Module#YoBatches2": "0x77b9D93ab7F27E5f52507F3dDfb3736e3c3FB90E",
   "TokenProbeModule#TokenProbe": "0x5609B0Db47b4727f37084A59BD49eef9f478476e",
-  "Yo3Module#YoBatches3": "0x0426d7687911f81DcD7769655b995650a765a7D5",
-  "FlashArbModule#FlashArbExecutor": "0xbc04E12771de574f98401e3cC54b667e147ecA6C",
+  "Yo3Module#YoBatches3": "0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1",
+  "FlashArbModule#FlashArbExecutor": "0x2643726d696C246176db49345A0E62c3642D5085",
   "LiquidationModule#LiquidationExecutor": "0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534"
 }

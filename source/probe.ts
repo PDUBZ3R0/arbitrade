@@ -86,10 +86,10 @@ const factoryName = new Map(cfg.factories.map(f => [f.address.toLowerCase(), f.n
 const db = new ArbitradeDB(dbPath(chainArg));
 const provider = makeProvider(cfg.chain);
 
-// Where each root is borrowed from, and how much that lender can lend. Aave
-// lends from its aToken, not its own balance — its liquidity is not capped here.
+// Where each root is borrowed from, and how much that lender can lend.
 const anyLender = await probeSupportsLenders(provider, cfg.chain.probe);
 const ERC20 = new Interface(['function balanceOf(address) view returns (uint256)']);
+const AAVE = new Interface(['function getReserveData(address asset)']);
 const lenderOf = new Map<string, { via: ProbeLender | undefined; label: string; cap: bigint | null }>();
 for (const t of configured) {
     const terms = flashTermsFor(cfg, t.address);
@@ -98,13 +98,22 @@ for (const t of configured) {
         console.log(`  [!] ${t.symbol}: lender is ${terms.provider}, but the TokenProbe at ${cfg.chain.probe} only borrows from Aave — redeploy it: yarn deploy probe ${cfg.chain.label}`);
         continue;
     }
+    // What the lender can actually lend: Morpho / Balancer / a V3 pool hold
+    // the token themselves; Aave holds it in the reserve's aToken. Without the
+    // cap a probe sized from a deep pair asks for more than the lender has and
+    // dies inside the loan ("ERC20: transfer amount exceeds balance" — Sonic,
+    // 2026-10-13), which reads as an RPC error and is retried forever.
     let cap: bigint | null = null;
-    if (terms.provider !== 'aave-v3') {
-        try {
-            const raw = await provider.call({ to: t.address, data: ERC20.encodeFunctionData('balanceOf', [terms.lender]) });
-            cap = (ERC20.decodeFunctionResult('balanceOf', raw)[0] as bigint) * 9n / 10n;
-        } catch { cap = null; }
-    }
+    try {
+        let holder = terms.lender;
+        if (terms.provider === 'aave-v3') {
+            // getReserveData(asset) — aTokenAddress is word 8 of the (legacy-layout) struct.
+            const rd = await provider.call({ to: terms.lender, data: AAVE.encodeFunctionData('getReserveData', [t.address]) });
+            holder = '0x' + rd.slice(2 + 8 * 64 + 24, 2 + 9 * 64);
+        }
+        const raw = await provider.call({ to: t.address, data: ERC20.encodeFunctionData('balanceOf', [holder]) });
+        cap = (ERC20.decodeFunctionResult('balanceOf', raw)[0] as bigint) * 9n / 10n;
+    } catch { cap = null; }
     // An old probe borrows through probe(), from the Aave pool it was deployed with.
     lenderOf.set(t.address, { via: anyLender ? { source: terms.source, lender: terms.lender } : undefined, label: `${terms.provider} ${terms.lender.slice(0, 10)}`, cap });
 }

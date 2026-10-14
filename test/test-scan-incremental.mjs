@@ -10,6 +10,9 @@
 //   4. A factory never scanned, or further behind than incrementalMaxBlocks,
 //      still gets the per-factory scan; incrementalMaxBlocks = 0 turns the
 //      mode off.
+//   5. drpc's free tier (timeout at any range) gives up after bounded tries.
+//   6. An RPC that refuses heavy filters ("Request blocked" on Sonic) is met
+//      by one topic per call, then halving the address list, then the range.
 //
 //   node --experimental-strip-types test/test-scan-incremental.mjs   (anvil on PATH)
 
@@ -150,6 +153,41 @@ try {
         ok(/failures in a row/.test(err?.message ?? ''), 'gives up (so the per-factory path takes over) instead of retrying forever', err?.message?.slice(0, 90));
         ok(calls === 7 && Date.now() - t0 < 15_000, 'after a bounded number of tries', `${calls} getLogs, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
         ok(lines.some(l => /chunk 5000 -> 1250 blocks: Request timeout on the free tier/.test(l)), 'chunk shrinks are logged, with the RPC\'s own message', lines[0]);
+    }
+
+    console.log('\n6. an RPC that blocks heavy filters ("Request blocked", Sonic)');
+    {
+        const { scanIncremental } = await import('../source/scanner/pairs.ts');
+        const { ArbitradeDB: DB } = await import('../source/util/db.ts');
+        const sdb = new DB(path.join(dir, 'blocked.sqlite'));
+        const many = Array.from({ length: 63 }, (_, i) => ({
+            factory: { ...(i % 3 ? V2 : V3), address: '0x' + (i + 1).toString(16).padStart(40, '0'), name: `F${i}` }, fromBlock: 1 }));
+        // Accepts at most 8 addresses and ONE topic per call; refuses anything heavier.
+        let seen = [];
+        const stub = { getLogs: async (f) => {
+            seen.push({ a: f.address.length, t: f.topics[0].length });
+            if (f.address.length > 8 || f.topics[0].length > 1) throw new Error('server response 403 Forbidden (request={  }, response={  }, error=null, info={ "responseBody": "Request blocked" })');
+            return [];
+        } };
+        const lines = [];
+        const t0 = Date.now();
+        const got = await scanIncremental(stub, sdb, many, 4000,
+            { chunkStart: 5000, chunkMin: 10, chunkMax: 50000, chunkDelayMs: 0, incrementalMaxBlocks: 200000 }, s => lines.push(s));
+        const ok1 = seen.filter(x => x.a <= 8 && x.t === 1);
+        ok(Object.keys(got).length === 63 && ok1.length > 0 && ok1.length <= 20, 'catches up instead of giving up, in a handful of calls', `${seen.length} calls, ${ok1.length} accepted`);
+        ok(lines.some(l => /"Request blocked" — one creation topic per eth_getLogs/.test(l)) && lines.some(l => /"Request blocked" — 16 → 8 addresses/.test(l))
+            && !lines.some(l => /→ 4 addresses/.test(l)),
+            'splits by topic, then halves addresses only as far as needed — logged', lines.filter(l => l.includes('[!]')).join(' | ').slice(0, 200));
+        ok(!lines.some(l => /transient error/.test(l)) && Date.now() - t0 < 5000, 'no 5s back-offs for a refusal', `${((Date.now() - t0) / 1000).toFixed(1)}s`);
+        ok(sdb.getScanProgress(many[0].factory.address) === 4000, 'progress saved to the head');
+        ok(lines.some(l => /per call — what this RPC accepts/.test(l)), 'reports the shape that worked', lines.at(-1));
+
+        let n = 0;
+        const dead = { getLogs: async () => { n++; throw new Error('Request blocked'); } };
+        let err = null;
+        try { await scanIncremental(dead, sdb, many.slice(0, 4), 9000, { chunkStart: 5000, chunkMin: 10, chunkMax: 50000, chunkDelayMs: 0 }, () => {}); } catch (e) { err = e; }
+        ok(/refused even for one address, one topic/.test(err?.message ?? '') && n < 20, 'blocked even at the lightest shape → gives up to the per-factory path', `${n} calls`);
+        sdb.close();
     }
 } catch (e) {
     console.error(e); fails++;

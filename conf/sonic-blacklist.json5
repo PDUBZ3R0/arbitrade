@@ -213,5 +213,40 @@
             reason:  "dead (0/1 pairs with real liquidity)",
             addedAt: "2026-10-12",
         },
+        {
+            address: "0x845ee60f6bee4227814476b825589e01e947cbee",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0x2a538825ed6ae58c1cbb0226410802cf8df2f358",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0x438447c65f0b68f8e1d527abdbb2411aa2b0f252",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0x1c94e25557905484ad9ac6632605ff898e9e4246",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0x8ae70ac66f82996b98a569e2ecdb2e3e76e49cdd",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0x9c7d7284ff733489a210545ca77f8fa4a5335732",
+            reason:  "verify-fees 2026-10-13 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-13",
+        },
+        {
+            address: "0xd6ab0566e7e60b67c50ac73ddff4e3ddcb829ec2",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-10-13",
+        },
     ]
 }

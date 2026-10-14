@@ -253,7 +253,9 @@ export type FactoryEdit =
     /** Set (or add) several fields at once; the comment goes above the entry. */
     | { kind: 'setFields'; group: FactoryAddition['group']; key: string; address: string; fields: Record<string, string | number | boolean>; comment?: string }
     /** Take the entry out of `group` and add `entry` to `to` (key kept unless taken). A one-line note stays where it was. */
-    | { kind: 'move'; group: FactoryAddition['group']; key: string; address: string; to: FactoryAddition['group']; entry: FactoryEntry; comment?: string; note?: string };
+    | { kind: 'move'; group: FactoryAddition['group']; key: string; address: string; to: FactoryAddition['group']; entry: FactoryEntry; comment?: string; note?: string }
+    /** Take the entry out of `group` altogether. A one-line note stays where it was; comments above it stay too. */
+    | { kind: 'remove'; group: FactoryAddition['group']; key: string; address: string; note?: string };
 
 const sortedJson = (v: unknown): string => JSON.stringify(v, (_k, x) =>
     x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x);
@@ -328,6 +330,7 @@ export function editFactoriesInText(text: string, edits: FactoryEdit[]): { text:
             const note = e.note ? `${from === ls ? ind : ''}// ${e.note.replace(/\n/g, ' ')}\n` : '';
             t = t.slice(0, from) + note + t.slice(to);
             expected.delete(id);
+            if (e.kind === 'remove') continue;
             const ins = insertFactory(t, { group: e.to, key: e.key, entry: e.entry, comment: e.comment, moreComments: carried });
             t = ins.t;
             expected.set(`${e.to}\u0000${ins.key}`, JSON.stringify(e.entry, (_k, x) => x === undefined ? undefined : x));
@@ -349,6 +352,24 @@ export function editFactoriesInText(text: string, edits: FactoryEdit[]): { text:
         throw new Error(`expected ${expected.size} factories after the edit, found ${afterSnap.size} — nothing written`);
     }
     return { text: t, moved };
+}
+
+/**
+ * Every configured factory whose address is in `notes`, as `remove` edits
+ * (the map's value is the note left in its place). Reads the raw text, so it
+ * sees entries the blacklist filters out of loadChainConfig.
+ */
+export function removalsFor(text: string, notes: Map<string, string>): Array<Extract<FactoryEdit, { kind: 'remove' }>> {
+    const out: Array<Extract<FactoryEdit, { kind: 'remove' }>> = [];
+    for (const [id, json] of snapshot(JSON5.parse(text))) {
+        const entry = JSON.parse(json) as string | FactoryEntry;
+        const address = (typeof entry === 'string' ? entry : entry.address).toLowerCase();
+        const note = notes.get(address);
+        if (note === undefined) continue;
+        const [group, key] = id.split('\u0000');
+        out.push({ kind: 'remove', group: group as FactoryAddition['group'], key, address, note: note || undefined });
+    }
+    return out;
 }
 
 /** Apply edits to conf/<label>.json5 on disk (atomic rename). */

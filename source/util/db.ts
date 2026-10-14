@@ -662,6 +662,27 @@ export class ArbitradeDB {
      * detecting orphan pairs left behind by prior scans of factories that
      * have since been removed from the config.
      */
+    /** Every factory's scan progress, lowercase address → row. */
+    getAllScanProgress(): Map<string, { lastBlock: number; topic: string | null }> {
+        const rows = this.db.prepare('SELECT factory, lastBlock, topic FROM scan_progress').all() as Array<{ factory: string; lastBlock: number; topic: string | null }>;
+        return new Map(rows.map(r => [r.factory.toLowerCase(), { lastBlock: r.lastBlock, topic: r.topic?.toLowerCase() ?? null }]));
+    }
+
+    /** Pair counts per factory (lowercase address). Factories with none are absent. */
+    pairCountsByFactory(): Map<string, number> {
+        const rows = this.db.prepare('SELECT factory, COUNT(*) AS n FROM pairs GROUP BY factory').all() as Array<{ factory: string; n: number }>;
+        return new Map(rows.map(r => [r.factory.toLowerCase(), r.n]));
+    }
+
+    /** Forget a factory: its factories row and its scan progress (a later un-blacklist rescans it from the deploy block). */
+    forgetFactory(address: string): void {
+        const a = address.toLowerCase();
+        this.db.transaction(() => {
+            this.db.prepare('DELETE FROM scan_progress WHERE factory = ?').run(a);
+            this.db.prepare('DELETE FROM factories WHERE address = ?').run(a);
+        })();
+    }
+
     countOrphanPairs(currentFactories: string[]): Array<{ factory: string; count: number }> {
         const allowlist = currentFactories.map(a => a.toLowerCase());
         const placeholders = allowlist.map(() => '?').join(',');
@@ -936,6 +957,16 @@ export class ArbitradeDB {
     setPairProbe(pair: string, status: string, reason: string): void {
         this.db.prepare(`UPDATE pairs SET probeStatus = ?, probeReason = ?, probedAt = ? WHERE address = ?`)
             .run(status, reason.slice(0, 300), Math.floor(Date.now() / 1000), pair.toLowerCase());
+    }
+
+    /** Pairs that refuse outsiders and tokens measured unsafe — the hot loop's known-bad sets. */
+    getKnownBad(): { pairs: Array<{ address: string; reason: string | null }>; tokens: Array<{ address: string; status: string }> } {
+        const badTokens = UNSAFE_TOKEN_STATUSES.map(s => `'${s}'`).join(',');
+        const badPairs = UNSAFE_PAIR_STATUSES.map(s => `'${s}'`).join(',');
+        return {
+            pairs: this.db.prepare(`SELECT address, probeReason AS reason FROM pairs WHERE probeStatus IN (${badPairs})`).all() as Array<{ address: string; reason: string | null }>,
+            tokens: this.db.prepare(`SELECT address, probeStatus AS status FROM tokens WHERE probeStatus IN (${badTokens})`).all() as Array<{ address: string; status: string }>,
+        };
     }
 
     /** Per-factory tally of probed pairs — a factory whose probed pairs are all restricted is a honeypot/restricted DEX. */

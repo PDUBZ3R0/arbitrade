@@ -48,6 +48,8 @@ export type HotLoopStats = {
     /** Candidates not attempted because a recent attempt showed their profit
      *  does not cover gas, and it has not grown past that floor since. */
     skippedBelowGas: number;
+    /** Candidates through a pair that refuses the executor or a token measured unsafe. */
+    skippedKnownBad: number;
 };
 
 export type HotLoopDeps = {
@@ -77,6 +79,13 @@ export type HotLoopDeps = {
      * backfill missed) stays wrong forever, and the same phantom candidate is
      * re-found and re-attempted on every block. Optional: tests may omit it.
      */
+    /**
+     * Why a candidate cannot trade, known without a round trip (usually
+     * CandidateExecutor.knownBad): a pair that refuses the executor, a token
+     * measured unsafe. Unlike the per-batch failed-pair filter this does not
+     * depend on reserves, so it holds for the whole run. Optional.
+     */
+    knownBad?: (c: Candidate) => string | null;
     refresh?: (pairs: string[]) => Promise<Array<{ pair: string; reserve0: number; reserve1: number }>>;
     /**
      * Re-read V3 pools' state (YoBatches getV3States). Called for every V3
@@ -117,7 +126,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
     const stats: HotLoopStats = {
         batches: 0, pairsApplied: 0, pairsUnknown: 0, trianglesRescored: 0,
         candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
-        attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0,
+        attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0, skippedKnownBad: 0,
         v3PoolsRefreshed: 0, v3RefreshErrors: 0, skippedBelowGas: 0,
     };
 
@@ -305,6 +314,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         const live = found.filter(ic => {
             if (isMuted(ic.triangleId)) { stats.skippedMuted++; return false; }
             if (belowKnownGas(ic)) { stats.skippedBelowGas++; return false; }
+            if (deps.knownBad?.(ic as Candidate)) { stats.skippedKnownBad++; return false; }
             return true;
         });
         for (const ic of live.slice(0, deps.candidatesPerBlock)) {

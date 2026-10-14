@@ -5,13 +5,6 @@
     currency: 'POL',
     token: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
     contract: '0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1',
-    // Was 0x77b9D93a… — copied from sonic/gnosis, where that IS the executor.
-    // On Polygon YoBatches was never deployed, so the deployer's nonce sequence
-    // is shifted by one: FlashArbExecutor landed at 0xB7D2055… (see
-    // ignition/deployments/chain-137/deployed_addresses.json and
-    // log/polygon/deploy-flasharb.log). 0x77b9D93a… had NO CODE on Polygon,
-    // and eth_call to a codeless address succeeds returning 0x — which the
-    // orchestrator read as "simulated clean". It is now the TokenProbe.
     executor: '0x2643726d696C246176db49345A0E62c3642D5085',
     probe: "0x44DdF19Ab5670Fd9D797457Df3B7CB18916F0DEf",
     liquidator: '0xf69fAA48dD29E936B1A17ED5C9b4b51bb917F229',
@@ -20,7 +13,7 @@
     pagesize: 1000000,
   },
   reserves: {
-    dust: 0.005
+    dust: 0.1
   },
   evaluator: {
     minProfitTokens: 0.05,
@@ -29,10 +22,6 @@
   },
   factories: { 
     v2: {
-      abi: [
-        'event PairCreated(address indexed token0, address indexed token1, address pair, uint)',
-      ],
-      list: {
         QuickSwapV2: {
           address: '0x5757371414417b8c6caad45baef941abc7d3ab32',
           deployBlock: 4931780,
@@ -1094,13 +1083,7 @@
           deployBlock: 20623772,
           fee: 0.003,
         },
-        // find-factories --add 2026-10-13: 8 pairs in sweep, explorer "TomiFactory"; fee 0.003 (assumed)
-        TomiFactory_074581e3: {
-          address: '0x074581e3875f8e63a62f645952c207fa47c7db00',
-          deployBlock: 21279209,
-          // verify-fees 2026-10-13: fee 0.003 → 0 (empirical)
-          fee: 0,
-        },
+
         // find-factories --add 2026-10-13: 8 pairs in sweep, explorer "NasdexSwapFactory"; fee 0.003 (assumed)
         NasdexSwapFactory_a07dd2e9: {
           address: '0xa07dd2e9fa20c14c45a28978041b4c64e45f7f97',
@@ -1228,12 +1211,7 @@
           deployBlock: 59458836,
           fee: 0.003,
         },
-        // find-factories --add 2026-10-13: 8 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
-        UniswapV2Factory_7fb37e8f: {
-          address: '0x7fb37e8f30125c298d51158dc1098ee3ce17ba37',
-          deployBlock: 60221616,
-          fee: 0.003,
-        },
+
         // find-factories --add 2026-10-13: 7 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
         UniswapV2Factory_a347adf8: {
           address: '0xa347adf8c314c1051f85e5c4edb5b3d2768bed21',
@@ -1296,12 +1274,7 @@
           // verify-fees 2026-10-13: fee 0.003 → 0.0025 (empirical)
           fee: 0.0025,
         },
-        // find-factories --add 2026-10-13: 7 pairs in sweep, explorer "ConveyorV2Factory"; fee 0.003 (assumed)
-        ConveyorV2Factory_5f801762: {
-          address: '0x5f8017621825bc10d63d15c3e863f893946781f7',
-          deployBlock: 19370191,
-          fee: 0.003,
-        },
+
         // find-factories --add 2026-10-13: 7 pairs in sweep, explorer "EddaFactory"; fee 0.003 (assumed)
         EddaFactory_3ba4ac75: {
           address: '0x3ba4ac751327b4988e3b62267949610ff6d9885e',
@@ -2795,13 +2768,7 @@
           // verify-fees 2026-10-13: fee 0.003 → 0.003022 (empirical)
           fee: 0.003022,
         },
-        // find-factories --add 2026-10-13: 3 pairs in sweep, explorer "ERC1967Proxy"; fee 0.003 (assumed)
-        ERC1967Proxy_14fb5abe: {
-          address: '0x14fb5abea0578b37d9e1a831bb7e77bd3d7684a6',
-          deployBlock: 45261628,
-          // verify-fees 2026-10-13: fee 0.003 → 0 (empirical)
-          fee: 0,
-        },
+
         // find-factories --add 2026-10-13: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_81054664: {
           address: '0x810546648a14bb23b86db85ff0b8de00bb5584df',
@@ -6509,10 +6476,10 @@
           deployBlock: 94208054,
           fee: 0.003,
         },
-      },
+      
     },
     v2fee: {
-      list: {
+      
         DXSwapV2: {
           address: '0x03daa61d8007443a6584e3d8f85105096543c19c',
           deployBlock: 14599890,
@@ -6582,10 +6549,10 @@
           feeDivisor: 1000000,
           hasStableFlag: true,
         },
-      },
+      
     },
     solidly: {
-      list: {
+      
         Retro: {
           // 2026-10-05: was 0xb52B28dC… — that is the IMPLEMENTATION behind this
           // proxy (find-factories resolved EIP-1967 storage of 0x30030aa4 to it).
@@ -6628,18 +6595,7 @@
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
- /*       BaseV1Factory_ba06043a: {
-          address: '0xba06043a777652baf540ccc785edafd94ee05b37',
-          deployBlock: 39577746,
-        },
-        PairFactory_eaf188cd: {
-          address: '0xeaf188cdd22feebcb345dcb529aa18ca9fcb4fbd',
-          deployBlock: 45789047,
-        },
-        Factory_b5d0cb07: {
-          address: '0xb5d0cb074a741eaf2517313c5ce31178e0c61500',
-          deployBlock: 28374724,
-        }, */
+
         PairFactory_a2d23c7c: {
           address: '0xa2d23c7ca6d360d5b0b30caff79dbbfa242b4811',
           deployBlock: 43249722,
@@ -6661,21 +6617,7 @@
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
-  /*      PairFactory_c03c1253: {
-          address: '0xc03c125359111d188b1c4cd7e5ccd935edbb5833',
-          deployBlock: 45531135,
-        },*/
-        PairFactory_B2072E1E: {
-          address: '0xB2072E1E10D5B8CE7b90b00Fe88ac716b7a568b4',
-          deployBlock: 45753907,
-        },
-        // ---- find-factories 2026-10-05, NOT enabled: the finder's Retro-degen guess
-        // (getFee(bool stable, bool degen)) is the pattern probe-fees disproved on
-        // avalanche; a wrong fee config aborts `yarn reserves`. Probe it first.
-        // PairFactory_d541bc20: {   // 33 pairs, proxy -> PairFactory impl 0xc79c8199…
-        //   address: '0xd541bc203cc2b85810d9b8e6a534eed1615528e2',
-        //   feeTarget: 'factory', feeArgSource: 'pair-stable-degen', feeFunction: 'getFee', feeDivisor: 10000,   // finder's guess
-        // },
+
         // find-factories --add 2026-10-10: 33 pairs in sweep, explorer "PairFactory"; registered DEX pattern
         'PairFactory_d541bc20': {
           address: '0xd541bc203cc2b85810d9b8e6a534eed1615528e2',
@@ -6851,14 +6793,14 @@
           feeFunction: 'getFee',
           feeDivisor: 10000,
         },
-      },
+      
     },
     // Concentrated liquidity, imported 2026-10-05 from find-factories (all verified:
     // callback read from pool bytecode, YoBatches2 reads them). Fees per pool, read
     // at reserves time; scored by evaluate, not traded until the executor's V3 path.
     // The v3 prefilter (reserves.v3MinRootBalance) keeps Uniswap V3's ~39k pools cheap.
     v3: {
-      list: {
+      
         UniswapV3_1f98431c: {   // 38,697 pools; fees 3000/500; DexScreener uniswap
           address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
           poolEvent: 'uniswap',
@@ -7324,18 +7266,9 @@
           poolEvent: 'uniswap',
           callback: 'pancakeV3SwapCallback',
         },
-      },
+      
     },
 
-    // ---- find-factories 2026-10-05: verified and REJECTED (not configured, no blacklist needed)
-    //   Algebra, not modelled yet: 0x411b0facc3489691f28ad58c47006af5e3ab3a28 (8,061 pools — QuickSwap V3,
-    //     as far as I know the biggest CL venue on Polygon after Uniswap), 0x134c1dbe… (180)
-    //   Not slot0-shaped: 0x5f1dddbf… (424), 0xc7a59029… (340, the KyberSwap Elastic factory address)
-    //   V3 with an unrecognised swap callback: 0xec3c5db0… (26), 0xe7ae959b… (25), 0x2d5dbe49… (24), 0xc05a5aa5… (21)
-    //   V2-event, no standard swap(): 0x9a1e1681… (36), 0xf2747127… (29), 0xcf3da3e3… (18), 0xe41bd99d… (18), 0xed156d08… (18)
-    //   V2-shaped, fee constant not found: 0x684d8c18… (31), 0x595ac8cd… (20)
-    //   Already decided earlier, left as they were: 8 in polygon-blacklist.json5 (dead / restricted),
-    //     3 commented out above (BaseV1Factory_ba06043a, PairFactory_eaf188cd, Factory_b5d0cb07).
     algebra: {
       // find-factories --add 2026-10-10: 8062 pools in sweep, explorer "AlgebraFactory"; measured: fees 704/100/1550 pips, callback algebraSwapCallback
       'AlgebraFactory_411b0fac': {

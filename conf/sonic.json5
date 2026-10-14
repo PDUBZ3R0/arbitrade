@@ -4,8 +4,8 @@
     name: 'Sonic',
     currency: 'S',
     token: '0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38',
-    contract: '0xDdAA7C1c61D3daD6b1Bd4CacbAb279d675Fb55B7',
-    executor: '0x78c0B619e24d32C1793e8D77E56869E51a34b291',
+    contract: '0xd898CedAEc3fEE98eBa6786B39DD037D266D9a8E',
+    executor: '0x9B460148B8a4071B70167B101c6f2Da8F51a8fcF',
     probe: '0x7eE88BEaF3ADCf759FDbaA48D763b99F9727c5f4',
     liquidator: '0x6d098Bff56d8B51ea67170998B439850396a8e1d',
     threads: 10,
@@ -73,7 +73,9 @@
           address: '0xde26aa06fc545be2bc8c759c02bdaf72e66ac937',
           deployBlock: 15068750,
           // verify-fees 2026-10-12: fee 0.00255 → 0.002573 (empirical)
-          fee: 0.002573,
+          // verify-fees 2026-10-13: fee 0.002573 → 0.002578 (empirical)
+          // verify-fees 2026-10-13: fee 0.002578 → 0.00255 (empirical)
+          fee: 0.00255,
         },
         'SuperSonic v2': {
           address: '0x4d8ef974fad9b7e323be2c260b7c7712db090e86',
@@ -343,6 +345,7 @@
     },
     algebra: {
       list: {
+      /*
         'SwapX Algebra': {
           address: '0x8121a3F8c4176E9765deEa0B95FA2BDfD3016794',
           deployBlock: 0,
@@ -387,6 +390,61 @@
         AlgebraFactory_10906d06: {
           address: '0x10906d064b37e03f1a1c806a27134c081f82ce98',
           deployBlock: 43589906,
+          algebraVariant: 'integral',
+        },
+        */
+        // find-factories --add 2026-10-13: 24 pools in sweep, explorer "AlgebraFactory"; measured: fees 10000/1250/90/500 pips, callback algebraSwapCallback
+        AlgebraFactory_7c839669: {
+          address: '0x7c839669a12fae0bfbe2f6a16516dd2adc2f1a1b',
+          deployBlock: 33883713,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 6 pools in sweep, explorer "AlgebraFactory"; measured: fees 15000/100/111 pips, callback algebraSwapCallback
+        AlgebraFactory_5fb88cee: {
+          address: '0x5fb88ceea225109add778f83196fb57ba2fb54bc',
+          deployBlock: 896684,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 3 pools in sweep, unverified on explorer; measured: fees 100 pips, callback algebraSwapCallback
+        Factory_5a5a138e: {
+          address: '0x5a5a138ec54ac004debbbaafd86b84ee757d64cb',
+          deployBlock: 8121396,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 2 pools in sweep, explorer "AlgebraFactory"; measured: fees 100 pips, callback algebraSwapCallback
+        AlgebraFactory_af45fb95: {
+          address: '0xaf45fb95066de7589d298b28ded1c9aa89d2d5f1',
+          deployBlock: 1826454,
+          algebraVariant: 'v1',
+        },
+        // find-factories --add 2026-10-13: 2 pools in sweep, explorer "AlgebraFactory"; measured: fees 100 pips, callback algebraSwapCallback
+        AlgebraFactory_72412816: {
+          address: '0x724128161d6694010e8d05f745a0f341bfc550bc',
+          deployBlock: 42580012,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 1 pools in sweep, explorer "AlgebraFactory"; measured: fees 3000 pips, callback algebraSwapCallback
+        AlgebraFactory_10906d06: {
+          address: '0x10906d064b37e03f1a1c806a27134c081f82ce98',
+          deployBlock: 43589906,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 223 pools in sweep, explorer "AlgebraFactory"; measured: fees 2000/5000/100/3048 pips, callback algebraSwapCallback
+        AlgebraFactory_8121a3f8: {
+          address: '0x8121a3f8c4176e9765deea0b95fa2bdfd3016794',
+          deployBlock: 1440914,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 138 pools in sweep, explorer "AlgebraFactory"; measured: fees 15000/100/10000/55/3000 pips, callback algebraSwapCallback
+        AlgebraFactory_b860200b: {
+          address: '0xb860200bd68dc39ceafd6ebb82883f189f4cda76',
+          deployBlock: 186117,
+          algebraVariant: 'integral',
+        },
+        // find-factories --add 2026-10-13: 9 pools in sweep, explorer "AlgebraFactory"; measured: fees 5000/1000 pips, callback algebraSwapCallback
+        AlgebraFactory_3dfb9096: {
+          address: '0x3dfb9096c23dcbf69d62aa009d901328d83a340f',
+          deployBlock: 23314080,
           algebraVariant: 'integral',
         },
       },
@@ -653,6 +711,48 @@
           deployBlock: 444872,
           poolEvent: 'uniswap',
           callback: 'uniswapV3SwapCallback',
+        },
+        // find-factories --add 2026-10-13: 148 pools in sweep, explorer "NineMMV3Factory"; measured: fees 2500/10000/500 pips, callback 0xe0154ff0 — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        NineMMV3Factory_924aee39: {
+          address: '0x924aee3929c8a45ac9c41e9e9cdf3ea761ca75e5',
+          deployBlock: 10079213,
+          poolEvent: 'uniswap',
+          callback: '0xe0154ff0',
+        },
+        // find-factories --add 2026-10-13: 40 pools in sweep, explorer "ZFV3Factory"; measured: fees 2000 pips, callback 0xb527c5d0 — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        ZFV3Factory_6d977fcc: {
+          address: '0x6d977fcc945261b80d128a5a91cbf9a9148032a4',
+          deployBlock: 18849171,
+          poolEvent: 'uniswap',
+          callback: '0xb527c5d0',
+        },
+        // find-factories --add 2026-10-13: 6 pools in sweep, explorer "OmniV3Factory"; measured: fees 100/500/2500/10000 pips, callback 0x4b58a6e8 — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        OmniV3Factory_d6ab0566: {
+          address: '0xd6ab0566e7e60b67c50ac73ddff4e3ddcb829ec2',
+          deployBlock: 38533735,
+          poolEvent: 'uniswap',
+          callback: '0x4b58a6e8',
+        },
+        // find-factories --add 2026-10-13: 3 pools in sweep, explorer "OmniV3Factory"; measured: fees 2500/100 pips, callback 0xd857648d — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        OmniV3Factory_ce6cf171: {
+          address: '0xce6cf171931b21dd48bfffa6f1bc112b3b83b683',
+          deployBlock: 26828239,
+          poolEvent: 'uniswap',
+          callback: '0xd857648d',
+        },
+        // find-factories --add 2026-10-13: 3 pools in sweep, unverified on explorer; measured: fees 500 pips, callback 0x98451464 — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        Factory_0c77e173: {
+          address: '0x0c77e173490e9a308e92cc8e2688a7c43f503970',
+          deployBlock: 70056775,
+          poolEvent: 'uniswap',
+          callback: '0x98451464',
+        },
+        // find-factories --add 2026-10-13: 2 pools in sweep, explorer "ElkDexV3Factory"; measured: fees 3000/10000 pips, callback 0x090b93dc — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)
+        ElkDexV3Factory_c05a5aa5: {
+          address: '0xc05a5aa56df0dc97d6b9849a06627a079790014f',
+          deployBlock: 5397370,
+          poolEvent: 'uniswap',
+          callback: '0x090b93dc',
         },
       },
     },

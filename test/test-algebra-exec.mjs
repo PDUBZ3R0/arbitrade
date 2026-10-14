@@ -16,6 +16,9 @@
 //      profit equals the prediction (net of the premium) within one wei.
 //   5. An executor without algebraSwapCallback refuses the cycle off-chain,
 //      with the redeploy hint — no gas spent finding out.
+//   6. find-factories' verifier accepts the real Integral factory: its tick
+//      layout check reads the raw-keyed tick tree, and the YoBatches check
+//      compares at the reader's own block.
 //
 //   npm i -D @cryptoalgebra/integral-core@1.1.0 solc@0.8.24   (one-time)
 //   node --experimental-strip-types test/test-algebra-exec.mjs (anvil on PATH; own anvil on 8568)
@@ -203,9 +206,20 @@ try {
         const ex2 = new CandidateExecutor(cfg, provider, pricing, { ...exOpts, live: false });
         await ex2.supportsV3();
         ex2.executorHasAlgebra = false;   // as an executor deployed before the callback existed
+        ex2.executorHasAnyCallback = false;   // (which also predates the generic V3 fallback)
         const r = await ex2.attempt(cand(5_000e18), db);
         ok(/predates algebraSwapCallback — yarn deploy flasharb anvil/.test(r.simulationError ?? '') && r.gasEstimate == null,
             'refused before any gas estimate', r.simulationError?.slice(0, 120));
+    }
+
+    console.log('\n6. find-factories / verify on the real Integral factory');
+    {
+        const { verifyV3Factory } = await import('../source/util/verify-v3-factory.ts');
+        const r = await verifyV3Factory('anvil', await factory.getAddress(), undefined,
+            { provider, chain: { id: 31337, name: 'Anvil', label: 'anvil', host: RPC_URL, contract: YO } });
+        ok(r.usable && r.family === 'algebra' && r.algebraVariant === 'integral', 'verified usable as Algebra Integral', r.notes.filter(n => /✗/.test(n)).join(' | ').slice(0, 160));
+        ok(r.notes.some(n => /✓ ticks\(\) layout/.test(n)), 'tick layout check reads the raw-keyed tick tree', r.notes.find(n => /ticks\(\) layout/.test(n)));
+        ok(r.lensChecked, 'YoBatches getAlgebraState check passes', r.notes.find(n => /getAlgebraState/.test(n)));
     }
 } catch (e) {
     console.error(e); fails++;

@@ -514,7 +514,13 @@ export function patternConfirmed(pattern: DexPattern, r: Pick<VerifyResult, 'pro
         && (probed.feeArgSource ?? 'pair-address') === (pattern.feeArgSource ?? 'pair-address') && probed.feeDivisor === pattern.feeDivisor;
 }
 
-/** Swap callbacks FlashArbExecutor can pay (attempt.ts refuses others at trade time). */
+/**
+ * Swap callbacks every FlashArbExecutor since V3 hops pays by name. Anything
+ * else the verifier records is still (int256,int256,bytes)-shaped, and an
+ * executor with V3_ANY_CALLBACK pays it through its fallback — so those are
+ * added too, with a note; attempt.ts refuses them at trade time on an older
+ * executor.
+ */
 const EXECUTOR_CALLBACKS = new Set(['uniswapV3SwapCallback', 'pancakeV3SwapCallback', 'algebraSwapCallback']);
 const PROBE_CONFIDENT = new Set(['high', 'medium']);
 
@@ -524,7 +530,7 @@ const PROBE_CONFIDENT = new Set(['high', 'medium']);
  * Addable means every field the pipeline needs to price the factory's pools
  * was MEASURED or matched a registered DEX pattern — never guessed:
  *   v3 / algebra   fee tiers, event layout and callback read from real pools;
- *                  held back if the executor cannot pay that callback
+ *                  any (int256,int256,bytes) callback; an unknown name needs V3_ANY_CALLBACK
  *   pattern hit    the contract (or its implementation) is a registered DEX
  *   v2fee/solidly  the interface probe found the fee accessor (high/medium)
  *   v2             the fee was derived from swap() bytecode; an ASSUMED fee
@@ -546,7 +552,7 @@ export function proposeEntry(
         const group = r.family as 'v3' | 'algebra';   // narrowed by the if above
         const proposed = { group, key, entry, basis: `measured: fees ${r.feesSeen.join('/')} pips${r.callback ? `, callback ${r.callback}` : ''}` };
         if (r.callback && !EXECUTOR_CALLBACKS.has(r.callback)) {
-            return { proposed, addable: false, heldBack: `pools call ${r.callback}, which the executor cannot pay` };
+            return { proposed: { ...proposed, basis: `${proposed.basis} — needs an executor with V3_ANY_CALLBACK (yarn deploy flasharb)` }, addable: true };
         }
         return { proposed, addable: true };
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// Minimal Multicall3, only `aggregate3`, matching the real contract's ABI
+/// Minimal Multicall3, only `aggregate3` and `getBlockNumber`, matching the real contract's ABI
 /// bit-for-bit so source/util/multicall.ts cannot tell the difference.
 ///
 /// The real Multicall3 is predeployed at 0xcA11bde05977b3631167028862bE2a173976CA11
@@ -33,5 +33,10 @@ contract Multicall3Min {
             (result.success, result.returnData) = calli.target.call(calli.callData);
             if (!(calli.allowFailure || result.success)) revert("Multicall3: call failed");
         }
+    }
+
+    /// As the real Multicall3: build-hops asks it which block an all-V2 read was at.
+    function getBlockNumber() public view returns (uint256 blockNumber) {
+        blockNumber = block.number;
     }
 }

@@ -52,18 +52,32 @@ export type Blacklist = {
 export function loadBlacklist(chainLabel: string): Blacklist {
     const p = path.join(CONF_DIR, `${chainLabel}-blacklist.json5`);
     if (!fs.existsSync(p)) return { factories: [] };
+    let raw: any;
     try {
-        const raw = JSON5.parse(fs.readFileSync(p, 'utf8'));
-        // Normalize addresses to lowercase for consistent matching
-        const factories = (raw.factories ?? []).map((f: BlacklistEntry) => ({
-            ...f,
-            address: f.address.toLowerCase(),
-        }));
-        return { factories };
+        raw = JSON5.parse(fs.readFileSync(p, 'utf8'));
     } catch (err) {
-        console.warn(`[blacklist] Failed to parse ${p}: ${(err as Error).message}`);
+        console.warn(`[blacklist] Failed to parse ${p}: ${(err as Error).message} — NO factories are blacklisted until it is fixed`);
         return { factories: [] };
     }
+    // One bad entry must not cost the other 1,400: skip it, loudly, and keep
+    // the rest. (Polygon, 2026-10-13: a hand-added `addesss:` threw inside the
+    // map and the whole file was dropped — every blacklisted factory was back
+    // in the config.)
+    const factories: BlacklistEntry[] = [];
+    const list: unknown[] = Array.isArray(raw?.factories) ? raw.factories : [];
+    list.forEach((f: any, i: number) => {
+        const addr = typeof f === 'string' ? f : f?.address;
+        if (typeof addr !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+            const hint = f && typeof f === 'object'
+                ? Object.keys(f).filter(k => k !== 'address' && typeof f[k] === 'string' && /^0x[0-9a-fA-F]{40}$/.test(f[k])).map(k => ` — "${k}" holds an address; did you mean "address"?`).join('')
+                : '';
+            console.warn(`[blacklist] ${path.basename(p)}: entry #${i} has no valid address, skipped: ${JSON.stringify(f).slice(0, 160)}${hint}`);
+            return;
+        }
+        // Normalize addresses to lowercase for consistent matching
+        factories.push(typeof f === 'string' ? { address: addr.toLowerCase() } : { ...f, address: addr.toLowerCase() });
+    });
+    return { factories };
 }
 
 /**
