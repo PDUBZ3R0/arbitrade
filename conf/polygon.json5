@@ -160,115 +160,121 @@
           address: '0x972C77e47CffaF6017D617E0Aa09Cf51ecb43b4C',
           fee: 0.003,
         },
-        JetswapFactory_d54187ea: {
+        JetswapV2: {
           address: '0xd54187ea5a6758fc8abdfaa353aae8f16ca59ef3',
           deployBlock: 16547715,
           fee: 0.003,
         },
-        WolfFactory_3d6aa521: {
+        WolfAV2: {
           address: '0x3d6aa5217857167d30962be0f3adceb70c41b1d5',
           deployBlock: 14567967,
           fee: 0.003,
         },
-        PearzapFactory_8a0239c0: {
+        PearzapV2: {
           address: '0x8a0239c06104dc4a7a8869cf68c6d98b96ef95dd',
           deployBlock: 21432863,
           fee: 0.003,
         },
-        GalaxyFactory_d7581640: {
+        GalaxyV2: {
           address: '0xd7581640dbfc558b3f4d729b8f8c60e0122511f8',
           deployBlock: 17068437,
           fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        OboswapFactory_3a43c0bc: {
+        OboswapV2: {
           address: '0x3a43c0bccb4edc19fea8e83c80cfc688da93e7c7',
           deployBlock: 22893539,
           fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        WolfFactory_9679010b: {
+        WolfBV2: {
           address: '0x9679010bf908225f84cd030b4acf7fd4fa13c8f5',
           deployBlock: 15394465,
           fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        KwikswapV1Factory_0b29d7a9: {
+        KwikswapV2: {
           address: '0x0b29d7a989d6647e4a56ee9899daf7535ff9620c',
           deployBlock: 21510940,
           fee: 0.003,
         },
-        HawkswapFactory_ffb5c096: {
+        HawkswapV2: {
           address: '0xffb5c0964af4727b9d0e835bb53aea2c35283e4c',
           deployBlock: 34213543,
           fee: 0.003,
         },
-        ComplusV2Factory_973c9341: {
+        ComplusV2: {
           address: '0x973c934137dd687eca67bdd1c5a8b74286964ac6',
           deployBlock: 14252370,
           fee: 0.003,
         },
 
-        TwindexFactory_116997f6: {
+        TwindexV2: {
           address: '0x116997f67a26e72f036b3225476a6fe023fd8251',
           deployBlock: 15856506,
           fee: 0.003,
         },
-        ProtofiFactory_80d15e16: {
+        ProtofiV2: {
           address: '0x80d15e16eb920f1573168c91d6bce396e25df724',
           deployBlock: 16575223,
           // verify-fees 2026-10-13: fee 0.003 → 0.002578 (empirical)
-          fee: 0.002578,
+          fee: 0.0025,
         },
-        PhotonFactory_9468f600: {
+        PhotonV2: {
           address: '0x9468f600149cc9820be931ca78eda5b39b05e3f0',
           deployBlock: 17421834,
           fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        CompactFactory_3dda91f1: {
+        CompactV2: {
           address: '0x3dda91f11433892bb77f303ff99f542766e76dcf',
           deployBlock: 19849256,
           // verify-fees 2026-10-13: fee 0.00305 → 0.00315 (empirical)
-          fee: 0.00315,  // verify-fees 2026-10-02: empirical (was 0.003)
+          fee: 0.003,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        BazookaFactory_b77185fe: {
+        BazookaAV2: {
           address: '0xb77185feb2037dd4210f035e62d1193e879b849e',
           deployBlock: 30972274,
           // verify-fees 2026-10-13: fee 0.002 → 0.00205 (empirical)
-          fee: 0.00205,  // verify-fees 2026-10-02: empirical (was 0.003)
+          fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        BazookaFactory_5c69dded: {
+        BazookaBV2: {
           address: '0x5c69dded27372f3f6bd7f90ef6e9f9fd9cb983ae',
           deployBlock: 32177526,
           fee: 0.002,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        AliumFactory_3379b4a4: {
+        AliumV2: {
           address: '0x3379b4a4fc0e1614c0687c9f613024e83fe0e8b5',
           deployBlock: 16095853,
-          fee: 0.00255,  // verify-fees 2026-10-02: empirical (was 0.003)
+          fee: 0.0025,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        ProtofiFactory_d109af9e: {
+        ProtofiBV2: {
           address: '0xd109af9eea5849f1a3c7a976995a5c315534dd9c',
           deployBlock: 19168287,
           fee: 0.0015,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
-        WhiteSwapV2Factory_3f0b5743: {
+        WhiteSwapV2: {
           address: '0x3f0b5743bba8a552a3aa1e7907f4f44047e93f8f',
           deployBlock: 33015345,
           fee: 0.003,
         },
-        BestDexV2Factory_e859a768: {
+        BestDexV2: {
           address: '0xe859a7685c906dd7a53919da5891cae0cb531f6e',
           deployBlock: 43325197,
           fee: 0.003,
         },
-        FlashLiquidityFactory_6e553d5f: {
+        FlashLiquidityAV2: {
           address: '0x6e553d5f028bd747a27e138fa3109570081a23ae',
           deployBlock: 38871464,
           fee: 0.003,
         },
-        FlashLiquidityFactory_59c2997a: {
+        FlashLiquidityBV2: {
           address: '0x59c2997a3d73f32590d9d49de63b860bb1477d3c',
           deployBlock: 20648680,
           fee: 0.003,
         },
+        Lif3SwapV2: {
+          address: '0x3fb1e7d5d9c974141a5b6e5fa4edab0a7aa15c6a',
+          deployBlock: 35205249,
+          fee: 0.005,  // verify-fees 2026-10-02: empirical (was 0.003)
+        },
+
         UniswapV2Factory_8303ba56: {
           address: '0x8303ba56bddba5bcb983c896f82faf9bcfeafb9f',
           deployBlock: 36077743,
@@ -341,7 +347,8 @@
           address: '0x3ed75aff4094d2aaa38fafca64ef1c152ec1cf20',
           deployBlock: 18134755,
           // verify-fees 2026-10-13: fee 0.0035 → 0.003 (empirical)
-          fee: 0.003,  // verify-fees 2026-10-02: empirical (was 0.003)
+          // hot 2026-10-14: back to 0.0035 — six live paths through pair 0xeefe518d came up exactly 500 ppm short at their quote block with 0.003; the pair skims ~0.05% of its output, which an empirical K-check fee cannot see
+          fee: 0.0035,  // verify-fees 2026-10-02: empirical (was 0.003)
         },
         UniswapV2Factory_be087bed: {
           address: '0xbe087bed88539d28664c9998fe3f180ea7b9749c',
@@ -360,11 +367,6 @@
           fee: 0.003,
         },
 
-        UniswapV2Factory_3fb1e7d5: {
-          address: '0x3fb1e7d5d9c974141a5b6e5fa4edab0a7aa15c6a',
-          deployBlock: 35205249,
-          fee: 0.005,  // verify-fees 2026-10-02: empirical (was 0.003)
-        },
         UniswapV2Factory_b9dc833a: {
           address: '0xb9dc833a87a61ee4590f189d8fa7282031f4d7ff',
           deployBlock: 19464144,
@@ -380,6 +382,7 @@
           deployBlock: 14217975,
           fee: 0.003,
         },
+
         Polydex_0xf0681: {
           address: '0xf0681bb7088ac68a62909929554aa22ad89a21fb',
           deployBlock: 14810795,

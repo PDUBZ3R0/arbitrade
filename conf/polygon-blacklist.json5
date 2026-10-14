@@ -7001,5 +7001,20 @@
             reason:  "PairFactory_c03c1253 (solidly): no pairs after a scan to block 95487042 for event 0xc4805696 — db-clean --empty",
             addedAt: "2026-10-14",
         },
+        {
+            address: "0x8d671544b3cd24db2b68617ca7eb9852b89ff23b",
+            reason:  "restricted DEX — TokenProbe: 4 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xab7dac1daf712693539d770a967a9bc7ba47470c",
+            reason:  "restricted DEX — TokenProbe: 3 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8d82e94bd2c37e66319a65fb28d6a5e188fc16d0",
+            reason:  "restricted DEX — TokenProbe: 2 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-14",
+        },
     ]
 }

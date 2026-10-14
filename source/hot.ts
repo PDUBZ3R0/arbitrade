@@ -61,6 +61,8 @@ import { createHotLoop } from './orchestrator/hot-loop.ts';
 import { makeProvider, redactUrl } from './util/rpc.ts';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { heapMb } from './util/heap.ts';
+import path from 'node:path';
+import { acquireLock } from './util/instance-lock.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -84,6 +86,7 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --no-v3                  Leave V3 pools out even when the executor can trade them.');
     console.error('  --no-stable              Leave Solidly stable pools out even when the executor can trade them.');
     console.error('  --no-startup-refresh     Score from the DB snapshot until each pair next trades (skip the one-time read of every pair/pool).');
+    console.error('  --allow-second           Start even though another hot loop for this chain is running (log/<chain>/hot.lock).');
     console.error('  --v3-chunk N             V3 pools per getV3States eth_call (default 50). Lower it for');
     console.error('                           a rate-limited RPC that rejects or drops larger reads.');
     console.error('  --v3-refresh-sec N       Re-read V3 pools whose last state read failed, every N sec');
@@ -138,6 +141,24 @@ const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 
 const cfg = loadChainConfig(chainArg);
 const wsUrl = wsFlag ?? cfg.chain.ws;
+
+// One hot loop per chain. Two on one wallet race each other's nonces and
+// trades, and share the CPU badly enough to fall minutes behind the chain.
+{
+    const lockFile = path.join('log', cfg.chain.label, 'hot.lock');
+    const lock = acquireLock(lockFile);
+    if (!lock.ok && !hasFlag('--allow-second')) {
+        console.error(`[!] another hot loop for ${cfg.chain.name} is already running (pid ${lock.pid}` +
+            (lock.since ? `, since ${lock.since.toISOString()}` : '') + `; ${lockFile}).`);
+        console.error('    Two loops on one wallet race each other\'s nonces and trades, and split the CPU until both fall behind.');
+        console.error(`    Stop it (kill ${lock.pid}) — or pass --allow-second if this really is intended.`);
+        process.exit(1);
+    }
+    if (lock.ok) {
+        if (lock.tookOverStale) console.log(`(took over a stale ${lockFile} left by pid ${lock.tookOverStale})`);
+        process.on('exit', lock.release);
+    }
+}
 
 const provider = makeProvider(cfg.chain);
 let signer: Wallet | undefined;
@@ -648,6 +669,9 @@ let quietHeartbeats = 0;
 // stall is turned into a deliberate, logged exit(1) that the supervisor restarts
 // with a fresh connection.
 const DEAD_FEED_RESTART_MIN = 3;
+/** Sync cursor this many blocks behind the head, and not shrinking, is reported. */
+const LAG_WARN_BLOCKS = 20;
+let lastLag = 0;
 
 setInterval(() => {
     const s = hot.stats();
@@ -657,7 +681,8 @@ setInterval(() => {
     // quiet market as a dead feed.
     const head = watcher.headBlock();
     const age = ((Date.now() - lastRepriceAt) / 60_000).toFixed(0);
-    console.log(`[${new Date().toISOString()}] alive — head ${head}, sync ${watcher.lastBlock()}, ` +
+    const lag = head - watcher.lastBlock();
+    console.log(`[${new Date().toISOString()}] alive — head ${head}, sync ${watcher.lastBlock()}${lag > 2 ? ` (${lag} behind)` : ''}, ` +
         `${s.batches} batch(es), ${s.trianglesRescored} triangle re-scores, ` +
         `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
         (s.skippedBelowGas ? `, ${s.skippedBelowGas} skipped below gas` : '') +
@@ -670,6 +695,14 @@ setInterval(() => {
     // report rather than an action — but it still needs saying, because the
     // symptom of a dead feed is an absence of output and that looks exactly
     // like having no opportunities.
+    // Behind and not catching up: everything found is priced from reserves
+    // that moved minutes ago, and nearly every attempt will decay or revert.
+    // Not a dead feed (blocks still arrive), so say it rather than restart.
+    if (lag > LAG_WARN_BLOCKS && lag >= lastLag) {
+        console.error(`  [!] Sync cursor ${lag} block(s) behind the head and not catching up — candidates are priced from stale reserves. ` +
+            `Usually CPU (another hot loop? a big evaluator pass?) or a slow websocket.`);
+    }
+    lastLag = lag;
     if (head === lastHeartbeatBlock) {
         quietHeartbeats++;
         console.error(`  [!] no new block in ${quietHeartbeats} minute(s) — feed likely dead ` +

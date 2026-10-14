@@ -43,16 +43,16 @@
     name: 'Polygon',
     currency: 'POL',
     hypersyncUrl: 'https://polygon.hypersync.xyz',
-    host: 'https://polygon.gateway.tenderly.co',
-    ws: "wss://polygon.gateway.tenderly.co"
+    host: 'https://poly.api.pocket.network',
+    ws: "wss://poly.api.pocket.network"
   },
   monad: {
     id: 143,
     name: 'Monad',
     currency: 'MON',
     hypersyncUrl: 'https://monad.hypersync.xyz',
-    host: 'https://rpc3.monad.xyz',
-    ws: "wss://wss.monad-rpc.huginn.tech"
+    host: 'https://gm.monad.at.htw.tech',
+    ws: "wss://gm.monad.at.htw.tech"
   },
   sonic: {
     id: 146,

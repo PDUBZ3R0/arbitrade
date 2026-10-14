@@ -50,5 +50,15 @@
             reason:  "verify-fees 2026-10-12 UNKNOWN (1 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude: fee=null curve=unknown kind=unknown conf=low — The decompiled code is too mangled/incomplete to identify an actual swap() function with K-check math; the balance*1000 - amountIn*3 style fee pattern is not present, and the constant 1000 appears only as an isolated storage constant with no visible multiplication/fee logic.",
             addedAt: "2026-10-12",
         },
+        {
+            address: "0x3644defa41a60a8dc4dee8e317138e2446a54ccd",
+            reason:  "Factory_3644defa (v2): no pairs after a scan to block 58447857 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xeb85ead04620a95743855f6627dded4143420b02",
+            reason:  "Factory_eb85ead0 (v2): no pairs after a scan to block 58447857 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
     ]
 }

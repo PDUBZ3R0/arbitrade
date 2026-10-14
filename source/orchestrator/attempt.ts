@@ -295,6 +295,8 @@ export class CandidateExecutor {
     /** Tokens a QUOTE MISMATCH led us to probe and find unsafe (transfer tax, …). */
     private readonly unsafeTokens = new Map<string, string>();
     private readonly probedAfterMismatch = new Set<string>();
+    /** pair → the distinct paths (pair lists) through it that came up short at their own quote block. */
+    private readonly shortPaths = new Map<string, Map<string, number>>();
     /** The DB of the attempt in progress, for the diagnostics that write to it. */
     private attemptDb: ArbitradeDB | null = null;
 
@@ -314,7 +316,7 @@ export class CandidateExecutor {
     knownBad(c: Candidate): string | null {
         for (const h of c.hops) {
             const r = this.gatedPairs.get(h.pair.toLowerCase());
-            if (r) return `pair ${h.pair} refuses the executor (${r})`;
+            if (r) return `pair ${h.pair}: ${r}`;
         }
         for (const h of c.hops) {
             const r = this.unsafeTokens.get(h.tokenOut.toLowerCase());
@@ -881,8 +883,11 @@ export class CandidateExecutor {
             if (kind === 'accounting') {
                 return ` [ACCOUNTING at block ${B}: the swaps returned exactly the prediction (${got}) but the contract required ${required} — loan + fee + minProfit was underestimated; logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
             }
-            return ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`
-                + await this.probeAfterMismatch(candidate);
+            const verdict = ` [QUOTE MISMATCH at block ${B}: predicted ${want}, executor got ${got} (${ppm} ppm short) — logged to log/${this.cfg.chain.label}/quote-mismatch.jsonl]`;
+            // Follow-ups are best effort: they must never cost the verdict.
+            let extra = '';
+            try { extra = await this.probeAfterMismatch(candidate) + this.learnFromShortfall(candidate, ppm); } catch { /* keep the verdict */ }
+            return verdict + extra;
         } catch {
             return '';
         }
@@ -924,6 +929,41 @@ export class CandidateExecutor {
     }
 
     /**
+     * The same pair in several DIFFERENT paths that all came up short at their
+     * own quote block is the common factor: a transfer tax the probe missed,
+     * or a wrong fee for its factory. Polygon, 2026-10-14: QuickSwap pair
+     * 0x882df4b0 (LGNS/DAI) in three paths, each exactly 50,000 ppm short;
+     * pair 0xeefe518d (WETH/USDC, factory 0x3ed75aff) in six, each exactly
+     * 500 ppm short (verify-fees had just moved factory 0x3ed75aff from 0.35%
+     * to 0.30% "empirically"; a pair that skims 0.05% of its output passes
+     * a 0.30% K check yet delivers 0.05% less). Two
+     * distinct paths convict; one path cannot say which of its pairs it was.
+     */
+    private learnFromShortfall(candidate: Candidate, ppm: number): string {
+        if (ppm < 200) return '';   // rounding-sized: not a pattern worth acting on
+        const pathKey = candidate.hops.map(h => h.pair.toLowerCase()).join('>');
+        const convicted: string[] = [];
+        for (const h of candidate.hops as any[]) {
+            const pair = h.pair.toLowerCase();
+            if (this.gatedPairs.has(pair)) continue;
+            const paths = this.shortPaths.get(pair) ?? new Map<string, number>();
+            paths.set(pathKey, ppm);
+            this.shortPaths.set(pair, paths);
+            if (paths.size < 2) continue;
+            const ppms = [...paths.values()];
+            const lo = Math.min(...ppms), hi = Math.max(...ppms);
+            const what = `${paths.size} different paths through it came up ${lo === hi ? lo : `${lo}–${hi}`} ppm short at their quote block`;
+            const fee = typeof h.fee === 'number' ? h.fee : null;
+            const hint = h.kind === 'v3' ? '' : fee != null
+                ? ` — a transfer tax, or a fork that skims its output (factory ${h.factory}: pricing it at ~${(fee * 100 + lo / 1e4).toFixed(3)}% instead of the configured ${(fee * 100).toFixed(3)}% would match)`
+                : ' — a transfer tax or a wrong fee';
+            this.gatedPairs.set(pair, `${what}${hint}`);
+            convicted.push(`${pair}: ${what}${hint}`);
+        }
+        return convicted.length ? ` [skipped for the rest of the run — ${convicted.join('; ')}]` : '';
+    }
+
+    /**
      * A QUOTE MISMATCH that is not staleness: the executor received less than
      * exact pool math predicts, at the very block the quote was read. The
      * usual cause is a transfer tax the probe has not measured (its token was
@@ -947,7 +987,10 @@ export class CandidateExecutor {
                 const [[r0, r1], t0] = await Promise.all([pair.getReserves(), pair.token0()]);
                 const rootReserve = (t0 as string).toLowerCase() === root ? BigInt(r0) : BigInt(r1);
                 const out = await probePair(this.provider, probe, root, h.pair, rootReserve * 5n / 1000n);
-                if (!(UNSAFE_TOKEN_VERDICTS as readonly string[]).includes(out.status)) continue;
+                if (!(UNSAFE_TOKEN_VERDICTS as readonly string[]).includes(out.status)) {
+                    found.push(`${token} ${out.status}${out.status === 'clean' ? '' : ` (${out.reason.slice(0, 80)})`}`);
+                    continue;
+                }
                 const what = `${out.status}${out.buyTaxBps != null ? ` (buy ${out.buyTaxBps} bps / sell ${out.sellTaxBps} bps)` : ''}`;
                 this.unsafeTokens.set(token, what);
                 try { this.attemptDb?.setTokenProbe(token, { status: out.status, buyTaxBps: out.buyTaxBps, sellTaxBps: out.sellTaxBps, reason: `hot loop after a quote mismatch: ${out.reason}`, pair: h.pair }); }
@@ -955,7 +998,8 @@ export class CandidateExecutor {
                 found.push(`${token} ${what}`);
             } catch { /* probing is best effort */ }
         }
-        return found.length ? ` [probed: ${found.join(', ')} — excluded from now on and recorded in the DB]` : '';
+        const banned = found.filter(f => /fee-on-transfer|honeypot|nonstandard|dead/.test(f.split(' ')[1] ?? ''));
+        return found.length ? ` [probed: ${found.join(', ')}${banned.length ? ' — unsafe ones excluded from now on and recorded in the DB' : ''}]` : '';
     }
 
     /**

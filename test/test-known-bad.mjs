@@ -129,7 +129,7 @@ try {
         ok(probeOf(G.P)?.probeStatus === 'pair-restricted', 'marked pair-restricted in the DB', JSON.stringify(probeOf(G.P)));
         ok(probeOf(BC.P)?.probeStatus == null && probeOf(CR.P)?.probeStatus == null, 'the ordinary pairs of the same cycle are not marked');
         const other = cand(2, [hop(CR, R, C), hop(BC, C, B), hop(G, B, R)]);
-        ok(/refuses the executor/.test(ex.knownBad(other) ?? ''), 'knownBad: any cycle through it, either direction');
+        ok(/swap\(\) reverts "UniswapV2: caller is not verified"/.test(ex.knownBad(other) ?? ''), 'knownBad: any cycle through it, either direction');
         const b = await ex.attempt(other, db);
         ok(b.knownBad === true && b.built === null && b.gasEstimate == null, 'refused before building or estimating', b.simulationError);
     }
@@ -163,6 +163,19 @@ try {
         const n = ex3.seedKnownBad(db);
         ok(n.pairs === 1 && n.tokens === 1, 'one pair, one token', JSON.stringify(n));
         ok(ex3.knownBad(cand(5, [hop(G, R, B)])) && ex3.knownBad(cand(6, [hop(RT, R, T)])), 'both refused');
+    }
+
+    console.log('\n5b. the same pair short in two DIFFERENT paths is convicted; one path convicts nothing');
+    {
+        const ex4 = new CandidateExecutor(cfg, provider, pricing, exOpts);
+        const p1 = cand(7, [hop(RB, R, B), hop(BC, B, C), hop(CR, C, R)]);
+        const p2 = cand(8, [hop(RT, R, T), hop(TC, T, C), hop(CR, C, R)]);
+        ok(ex4.learnFromShortfall(p1, 500) === '' && ex4.knownBad(p1) === null, 'one short path: nothing convicted');
+        ok(ex4.learnFromShortfall(p1, 500) === '', 'the same path again: still one path');
+        const s = ex4.learnFromShortfall(p2, 500);
+        ok(s.includes(CR.P) && !s.includes(RB.P) && !s.includes(RT.P), 'second path: only the shared pair is convicted', s.slice(0, 200));
+        ok(/2 different paths .* 500 ppm short/.test(ex4.knownBad(cand(9, [hop(CR, R, C)])) ?? '') && /~0\.350%/.test(s), 'knownBad refuses it, with the fee that would match', ex4.knownBad(cand(9, [hop(CR, R, C)])));
+        ok(ex4.learnFromShortfall(cand(10, [hop(RB, R, B), hop(BC, B, C)]), 50) === '', 'rounding-sized shortfalls are ignored');
     }
 
     console.log('\n5. hot loop filters before attempting');

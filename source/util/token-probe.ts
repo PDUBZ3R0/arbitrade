@@ -144,7 +144,15 @@ export function classifyRevertData(data: string | null): ProbeOutcome {
                 // the destination is an ordinary pair that accepted a transfer
                 // on the buy leg moments earlier. A token that won't let us
                 // send it onward is the textbook honeypot.
-                if (r.includes('BALANCE')) return withStage('error'); // our accounting, not the token
+                // "exceeds balance": the token's balanceOf said we hold the
+                // amount (that is how buyReceived was measured) and its own
+                // transfer disagrees — a balanceOf that lies (rebasing,
+                // reflection, locked balances) is nonstandard. Polygon,
+                // 2026-10-14: this, and max-wallet messages ("Recipient's
+                // balance would exceed…") that the old BALANCE match also
+                // caught, were filed as "error (retry next run)" — retried
+                // forever, never excluded.
+                if (/EXCEEDS BALANCE|INSUFFICIENT BALANCE|BALANCE TOO LOW/.test(r)) return withStage('nonstandard');
                 return withStage('honeypot');
             case STAGE.SELL_SWAP:
                 // pair.swap() on the way back — NOT automatically a honeypot.
@@ -177,7 +185,15 @@ export function classifyRevertData(data: string | null): ProbeOutcome {
     }
     if (parsed.name === 'NoLender' || parsed.name === 'BadSource' || parsed.name === 'TokenNotInLender')
         return { status: 'error', ...none, reason: `lender config: ${parsed.name} — check flashloan in the chain conf` };
-    return { status: 'error', ...none, reason: `unexpected probe error ${parsed.name}` };
+    // An arithmetic Panic inside the probe is a balance that went DOWN across
+    // a transfer we received (received = after - before underflows): the token
+    // takes back more than it gave. That is a fact about the token, not an
+    // RPC hiccup to retry.
+    if (parsed.name === 'Panic') {
+        const code = (parsed.args[0] as bigint);
+        if (code === 0x11n) return { status: 'nonstandard', ...none, reason: 'a balance fell across a transfer to the probe (arithmetic underflow measuring it) — breaks V2 swap math' };
+    }
+    return { status: 'error', ...none, reason: `unexpected probe error ${parsed.name}${parsed.name === 'Panic' ? ` 0x${(parsed.args[0] as bigint).toString(16)}` : ''}` };
 }
 
 // -----------------------------------------------------------------------------
