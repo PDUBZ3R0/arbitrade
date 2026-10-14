@@ -29,6 +29,11 @@ const HYPERLIQUID_RPC = process.env.HYPERLIQUID_RPC || 'https://rpc.hyperliquid.
 const ARBITRUM_RPC  = process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc';
 const OPTIMISM_RPC  = process.env.OPTIMISM_RPC || 'https://mainnet.optimism.io';
 const ARC_RPC       = process.env.ARC_RPC || 'https://arc-rpc.publicnode.com';
+const CRONOS_RPC    = process.env.CRONOS_RPC || 'https://cronos-evm-rpc.publicnode.com';
+const MORPH_RPC     = process.env.MORPH_RPC || 'https://rpc-quicknode.morphl2.io';
+const TEMPO_PRESTO_RPC = process.env.TEMPO_PRESTO_RPC || 'https://tempo-mainnet.drpc.org';
+const STABLE_RPC    = process.env.STABLE_RPC || 'https://stable-mainnet.rpc.sentio.xyz';
+const PHAROS_RPC    = process.env.PHAROS_RPC || 'https://infra.originstake.com/pharos/evm';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -137,6 +142,36 @@ export default defineConfig({
         },
         arc: {
             url: ARC_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        cronos: {
+            url: CRONOS_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        morph: {
+            url: MORPH_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        'tempo-presto': {
+            url: TEMPO_PRESTO_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        stable: {
+            url: STABLE_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        pharos: {
+            url: PHAROS_RPC,
             accounts,
             type: "http",
             chainType: "generic",

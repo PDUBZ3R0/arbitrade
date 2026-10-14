@@ -44,6 +44,7 @@ export const MORPHO_BLUE: Record<number, { address: string; deployBlock: number 
     1:      { address: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb', deployBlock: 18883124 },    // ethereum
     10:     { address: '0xce95AfbB8EA029495c66020883F87aaE8864AF92', deployBlock: 130770075 },   // optimism
     56:     { address: '0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a', deployBlock: 54344680 },    // bsc
+    100:    { address: '0xB74D4dd451E250bC325AFF0556D717e4E2351c66', deployBlock: 42201689 },    // gnosis (docs/morpho-blue.json; block from gnosisscan)
     130:    { address: '0x8f5ae9CddB9f68de460C77730b018Ae7E04a140A', deployBlock: 9139027 },     // unichain
     137:    { address: '0x1bF0c2541F820E775182832f06c0B7Fc27A25f67', deployBlock: 66931042 },    // polygon
     143:    { address: '0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee', deployBlock: 31907457 },    // monad
@@ -55,6 +56,7 @@ export const MORPHO_BLUE: Record<number, { address: string; deployBlock: number 
     8453:   { address: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb', deployBlock: 13977148 },    // base
     34443:  { address: '0xd85cE6BD68487E0AaFb0858FDE1Cd18c76840564', deployBlock: 19983370 },    // mode
     42161:  { address: '0x6c247b1F6182318877311737BaC0844bAa518F5e', deployBlock: 296446593 },   // arbitrum
+    43114:  { address: '0x895383274303AA19fe978AFB4Ac55C7f094f982C', deployBlock: 75313888 },    // avalanche (docs/morpho-blue.json; block from routescan)
     57073:  { address: '0x857f3EefE8cbda3Bc49367C996cd664A880d3042', deployBlock: 4078776 },     // ink
     59144:  { address: '0x6B0D716aC0A45536172308e08fC2C40387262c9F', deployBlock: 25072608 },    // linea
     534352: { address: '0x2d012EdbAdc37eDc2BC62791B666f9193FDF5a55', deployBlock: 12842868 },    // scroll

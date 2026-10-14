@@ -512,5 +512,10 @@
             reason:  "dead (0/1 pairs with real liquidity)",
             addedAt: "2026-10-12",
         },
+        {
+            address: "0x43b2bf9f33036a02fc7a00935571c2a6b0108e66",
+            reason:  "PairFactory_43b2bf9f (solidly): no pairs after a scan to block 88237627 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
     ]
 }

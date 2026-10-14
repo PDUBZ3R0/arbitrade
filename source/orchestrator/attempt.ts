@@ -109,6 +109,8 @@ export type CandidateAttempt = {
     minProfitUsed?: bigint;
     /** True when the candidate was dropped for not covering gas, before simulating. */
     belowGasFloor?: boolean;
+    /** Why the build came back empty ("edge decayed"): buildHops' own account. */
+    decayReason?: string;
     /** Refused before any RPC: a pair that refuses the executor or a token measured unsafe (CandidateExecutor.knownBad). */
     knownBad?: boolean;
     /** How it was (or would be) funded: 'flash-swap', or the lender's provider ('aave-v3', …). */
@@ -627,6 +629,7 @@ export class CandidateExecutor {
         await this.ensureGasPrice();
 
         let built: BuiltArb | null;
+        const whyNull: { reason?: string } = {};
         try {
             built = await buildHops(
                 this.provider,
@@ -635,7 +638,7 @@ export class CandidateExecutor {
                 candidate,
                 this.minProfitWeiFor(candidate.rootToken),
                 this.cfg.chain.contract,
-                { flashSwap: useFlash, premium: useFlash ? 0 : (terms?.premium ?? 0), algebraPools },
+                { flashSwap: useFlash, premium: useFlash ? 0 : (terms?.premium ?? 0), algebraPools, whyNull },
             );
         } catch (err) {
             // Reading the path failed (an unreadable pair, an RPC error): a
@@ -644,7 +647,7 @@ export class CandidateExecutor {
             return attempt;
         }
         attempt.built = built;
-        if (!built) return attempt;   // edge decayed since evaluation
+        if (!built) { attempt.decayReason = whyNull.reason; return attempt; }   // edge decayed since evaluation
         mark('build');
 
         // 1. Measure gas for THIS candidate. estimateGas also reverts if the

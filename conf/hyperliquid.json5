@@ -626,6 +626,13 @@
       },
     },
   },
+  // HyperLend Core = Aave v3.0.2 fork (docs.hyperlend.finance/developer-documentation/contract-addresses).
+  // Morpho Blue (Felix Vanilla etc.) comes from the built-in MORPHO_BLUE table.
+  // HypurrFi Pooled (also Aave) skipped: ~$6M TVL as of 2026-10.
+  liquidation: {
+    venues: ['aave', 'morpho'],
+    pool: '0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b',   // HyperLend Pool (PoolAddressesProvider 0x72c98246a98bFe64022a3190e7710E157497170C)
+  },
   flashloan: {
     provider: 'morpho',
     morpho: '0x68e37dE8d93d3496ae143F2E900490f6280C57cD',

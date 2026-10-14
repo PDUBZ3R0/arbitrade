@@ -165,6 +165,14 @@ try {
         ok(ex3.knownBad(cand(5, [hop(G, R, B)])) && ex3.knownBad(cand(6, [hop(RT, R, T)])), 'both refused');
     }
 
+    console.log('\n5a. a decayed edge says why');
+    {
+        const exHigh = new CandidateExecutor(cfg, provider, { [R.a]: { ...pricing[R.a], minProfitInRootTokens: 1e9 } }, exOpts);
+        const a = await exHigh.attempt(cand(15, [hop(RB, R, B), hop(BC, B, C), hop(CR, C, R)]), db);
+        ok(a.built === null && /exact walk at block \d+: \d+ in → \d+ out \(profit -?\d+, floor \d+\); the index scored net .* hops \d+ → \d+\(v2 0x/.test(a.decayReason ?? ''),
+            'decayReason: amounts in/out, profit vs floor, the index\'s score, per-hop outputs', (a.decayReason ?? '').slice(0, 200));
+    }
+
     console.log('\n5b. the same pair short in two DIFFERENT paths is convicted; one path convicts nothing');
     {
         const ex4 = new CandidateExecutor(cfg, provider, pricing, exOpts);

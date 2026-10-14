@@ -223,10 +223,18 @@ export async function buildHops(
          * the wei).
          */
         premium?: number;
+        /**
+         * Filled with WHY the build returned null — "decayed" covers very
+         * different things (a pool past its tick window, a dead pair, a real
+         * price move) and the log needs to say which. Robinhood, 2026-10-14:
+         * 104 of 106 "decayed" cycles had nothing move on re-read.
+         */
+        whyNull?: { reason?: string };
         /** V3-kind hops that are Algebra pools (globalState/tickTable): read with getAlgebraStates. */
         algebraPools?: Set<string>;
     } = {},
 ): Promise<BuiltArb | null> {
+    const why = (r: string): null => { if (opts.whyNull) opts.whyNull.reason = r; return null; };
     const hops = candidate.hops;
     if (hops.length === 0) throw new Error('candidate has no hops');
     const isV3 = (h: Candidate['hops'][number]) => h.kind === 'v3';
@@ -247,7 +255,7 @@ export async function buildHops(
             if (group.length === 0) continue;
             const st = await read(provider, yobatchesAddress, group.map(h => h.pair), V3_WORDS, blockTag);
             for (let i = 0; i < group.length; i++) {
-                if (!st.pools[i]) return null;   // pool stopped answering its state reads — treat as dead
+                if (!st.pools[i]) return why(`v3 pool ${group[i].pair} returned no state`);   // pool stopped answering its state reads — treat as dead
                 v3ByPool.set(group[i].pair.toLowerCase(), st.pools[i]);
             }
             blockTag ??= st.block;
@@ -277,7 +285,7 @@ export async function buildHops(
 
     const reservesByPair = new Map<string, { reserve0: bigint; reserve1: bigint }>();
     for (let i = 0; i < v2Hops.length; i++) {
-        if (!results[i].success) return null; // pair reverted getReserves() — treat as dead
+        if (!results[i].success) return why(`pair reverted getReserves()`); // pair reverted getReserves() — treat as dead
         // A call to an address with NO CODE "succeeds" with empty return data,
         // and decoding that threw out of the hot loop (Arbitrum, 376 restarts
         // in two days). Not a decayed edge — the pair is not a V2 pair at all,
@@ -307,12 +315,13 @@ export async function buildHops(
     let rootAmountIn = amountIn;
     let inputClamped = false;
     const builtHops: Hop[] = [];
+    const hopTrace: string[] = [String(amountIn)];
 
     for (let i = 0; i < hops.length; i++) {
         const leg = hops[i];
         const pairLower = leg.pair.toLowerCase();
         const order = tokenOrder.get(pairLower);
-        if (!order) return null; // pair missing from DB — don't guess
+        if (!order) return why(`hop ${i} pair ${leg.pair} missing from the DB`); // pair missing from DB — don't guess
         const inIsToken0 = leg.tokenIn.toLowerCase() === order.token0.toLowerCase();
         const isLastHop = i === hops.length - 1;
         // Where this hop's output goes: straight into a V2 pair, but to the
@@ -323,16 +332,17 @@ export async function buildHops(
 
         if (isV3(leg)) {
             if (i === 0) rootAmountIn = amountIn;
-            if (amountIn <= 0n) return null;
+            if (amountIn <= 0n) return why(`hop ${i} gets no input`);
             const amountOut = v3_amount_out_exact(v3ByPool.get(pairLower), inIsToken0, amountIn);
-            if (amountOut <= 0n) return null; // past the fetched tick window, or no liquidity
+            if (amountOut <= 0n) return why(`v3 hop ${i} (${leg.pair}) prices ${amountIn} in to 0 out — past its ±${V3_WORDS}-word tick window, or no liquidity`); // past the fetched tick window, or no liquidity
             builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm: feeToPpm(leg.fee), recipient, kind: HOP_V3 });
+            hopTrace.push(`${amountOut}(v3 ${leg.pair.slice(0, 10)})`);
             amountIn = amountOut;
             continue;
         }
 
         const reserves = reservesByPair.get(pairLower);
-        if (!reserves) return null;
+        if (!reserves) return why(`hop ${i} pair ${leg.pair} has no reserves`);
         const reserveIn  = inIsToken0 ? reserves.reserve0 : reserves.reserve1;
         const reserveOut = inIsToken0 ? reserves.reserve1 : reserves.reserve0;
 
@@ -344,12 +354,12 @@ export async function buildHops(
                 inputClamped = true;
             }
             rootAmountIn = amountIn;
-            if (rootAmountIn <= 0n) return null; // reserveIn itself is ~0 — dead pool
+            if (rootAmountIn <= 0n) return why(`hop 0 pair ${leg.pair} has ~0 input reserve`); // reserveIn itself is ~0 — dead pool
         }
 
         // Feasibility: the pair must be able to RECEIVE amountIn. The output
         // side always decreases, so only the input side can overflow.
-        if (reserveIn + amountIn > UINT112_MAX) return null;
+        if (reserveIn + amountIn > UINT112_MAX) return why(`hop ${i} would overflow uint112`);
 
         const feePpm = feeToPpm(leg.fee);
         let amountOut: bigint;
@@ -365,7 +375,7 @@ export async function buildHops(
             } catch (e) {
                 // A revert here is the pair refusing this size (Velodrome's _get_y
                 // can fail to converge on a lopsided pool): no trade at this size.
-                if (/revert|CALL_EXCEPTION/i.test((e as Error).message)) return null;
+                if (/revert|CALL_EXCEPTION/i.test((e as Error).message)) return why(`stable hop ${i} (${leg.pair}) refused getAmountOut at this size`);
                 throw e;
             }
             if (!ret || ret === '0x') throw new UnreadablePairError(leg.pair, 'getAmountOut(uint256,address) returned nothing — not a Solidly-family stable pool');
@@ -373,10 +383,11 @@ export async function buildHops(
         } else {
             amountOut = getAmountOutExact(amountIn, reserveIn, reserveOut, feePpm);
         }
-        if (amountOut <= 0n) return null; // drained pool or dust — don't build a doomed tx
+        if (amountOut <= 0n) return why(`hop ${i} (${leg.pair}) outputs 0 — drained or dust`); // drained pool or dust — don't build a doomed tx
 
         builtHops.push({ pair: leg.pair, tokenIn: leg.tokenIn, feePpm, recipient, kind: leg.stable ? HOP_STABLE : HOP_V2 });
 
+        hopTrace.push(`${amountOut}(${leg.stable ? 'stable' : 'v2'} ${leg.pair.slice(0, 10)})`);
         amountIn = amountOut; // chain into next hop's input
     }
 
@@ -389,7 +400,10 @@ export async function buildHops(
     if (expectedProfit < minProfitWei) {
         // Edge decayed since evaluation, or was a float-precision phantom that
         // integer math doesn't confirm. Don't spend gas finding out on-chain.
-        return null;
+        return why(`exact walk at block ${blockTag ?? 'latest'}: ${rootAmountIn} in → ${expectedAmountOut} out (profit ${expectedProfit}, floor ${minProfitWei}); ` +
+            `the index scored net ${candidate.netProfit.toPrecision(6)} on input ${candidate.inputAmount.toPrecision(6)}` +
+            (inputClamped ? ' — input clamped to the hop-0 reserve cap' : '') +
+            `; hops ${hopTrace.join(' → ')}`);
     }
 
     return {

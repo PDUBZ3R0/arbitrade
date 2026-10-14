@@ -56,6 +56,7 @@ export function printAttempt(
 
     if (!a.built) {
         log(`  ${id} — edge decayed on fresh reserves, skipped`);
+        if (a.decayReason) log(`      ${a.decayReason}`);
         return;
     }
 
