@@ -23,7 +23,7 @@
 # What lives where on the box:
 #   /opt/arbitrade             the repo (build context) + .env (mode 600)
 #   /opt/arbitrade/db/         seed DBs from S3 — only used to BUILD images
-#   docker volumes arbitrade_<chain>-db / -log   the LIVE databases and logs
+#   podman volumes arbitrade_<chain>-db / -log   the LIVE databases and logs
 # -----------------------------------------------------------------------------
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
@@ -44,11 +44,11 @@ fi
 export AWS_REGION
 
 # --- packages ----------------------------------------------------------------------
-if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
-    say "installing docker, compose, git, sqlite3"
+if ! command -v podman >/dev/null || ! podman compose version >/dev/null 2>&1; then
+    say "installing podman, compose, git, sqlite3"
     apt-get update -q
-    DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose-v2 docker-buildx git sqlite3 jq
-    systemctl enable --now docker
+    DEBIAN_FRONTEND=noninteractive apt-get install -yq podman podman-compose git sqlite3 jq
+    systemctl enable --now podman
 fi
 # AWS CLI: the OFFICIAL v2 installer, NOT the snap build. snap's aws-cli renders
 # a multi-line SecureString read via `--query … --output text` as an EMPTY
@@ -112,11 +112,11 @@ done
 # --- build + run --------------------------------------------------------------------
 [ "$CLOUDWATCH" = 1 ] && say "building: $CHAINS"
 # shellcheck disable=SC2086
-docker compose -f compose.aws.yaml build $CHAINS
+podman compose -f compose.aws.yaml build $CHAINS
 say "starting: $CHAINS"
 # shellcheck disable=SC2086
-docker compose -f compose.aws.yaml up -d $CHAINS
-docker compose -f compose.aws.yaml ps
+podman compose -f compose.aws.yaml up -d $CHAINS
+podman compose -f compose.aws.yaml ps
 
 # --- log sync to S3 ------------------------------------------------------------------
 LOG_SYNC_MINUTES="${LOG_SYNC_MINUTES:-15}"
@@ -125,7 +125,7 @@ if [ -n "${BUCKET:-}" ] && [ "$LOG_SYNC_MINUTES" != 0 ]; then
     cat > /etc/systemd/system/arbitrade-logs.service <<UNIT
 [Unit]
 Description=Push arbitrade logs to s3://$BUCKET/logs/
-After=docker.service
+After=podman.service
 
 [Service]
 Type=oneshot
@@ -152,8 +152,8 @@ fi
 cat <<EOF
 
 Running. Mode per chain comes from MODE / <CHAIN>_MODE in .env (default test = simulate only).
-  logs:     cd $DIR && sudo docker compose logs -f $CHAINS$( [ "$CLOUDWATCH" = 1 ] && printf '\n            (CloudWatch: aws logs tail arbitrade/<chain> --follow)' )
-  memory:   sudo docker stats --no-stream
+  logs:     cd $DIR && sudo podman compose logs -f $CHAINS$( [ "$CLOUDWATCH" = 1 ] && printf '\n            (CloudWatch: aws logs tail arbitrade/<chain> --follow)' )
+  memory:   sudo podman stats --no-stream
   s3 logs:  sudo systemctl start arbitrade-logs   (push now; journalctl -u arbitrade-logs for its output)
-  stop:     cd $DIR && sudo docker compose stop
+  stop:     cd $DIR && sudo podman compose stop
 EOF
