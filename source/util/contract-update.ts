@@ -26,9 +26,20 @@
 //   3. neither → a new line after `token:` (or at the top of the block)
 // The result is re-parsed and every written field checked before the file is
 // replaced, so a botched edit never reaches disk.
+//
+// Downgrade guard (Ignition path only, not --set): before replacing a field
+// whose configured address differs from Ignition's, scripts/deploy-check.ts is
+// asked which one holds the current code. If the CONFIGURED one does, the field
+// is kept. This is the HyperEVM case: Ignition reports a big-block deploy as
+// "dropped", it lands anyway, deploy.sh adopts it with --set — and Ignition's
+// deployed_addresses.json still names the older contract, so an unguarded run
+// would quietly point the config back at stale code. If the check cannot tell
+// (no artifact, RPC down), the field is left alone and the run says so.
+//   --trust-ignition   skip the guard and take Ignition's record as-is
 
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import JSON5 from 'json5';
 import { resolveChain } from './config.ts';
@@ -47,6 +58,32 @@ export const FIELD_FUTURES: Record<Field, string[]> = {
 };
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+
+/** Contract name per future, for deploy-check (only futures we still compile). */
+const FUTURE_CONTRACT: Record<string, string> = {
+    'Yo3Module#YoBatches3': 'YoBatches3',
+    'FlashArbModule#FlashArbExecutor': 'FlashArbExecutor',
+    'TokenProbeModule#TokenProbe': 'TokenProbe',
+    'LiquidationModule#LiquidationExecutor': 'LiquidationExecutor',
+};
+
+/**
+ * Ask scripts/deploy-check.ts which address holds the current code. It tries
+ * chain.<field> first, then Ignition's record, and prints
+ * "<status> <address|-> <reason>". Returns null when it could not run.
+ */
+function deployCheck(label: string, field: Field, future: string): { status: string; address: string | null; line: string } | null {
+    const contract = FUTURE_CONTRACT[future];
+    if (!contract) return null;
+    const r = spawnSync(process.execPath, [
+        '--experimental-strip-types', '--disable-warning=ExperimentalWarning',
+        path.join(PROJECT_ROOT, 'scripts', 'deploy-check.ts'), label, contract, field, future,
+    ], { cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 120_000 });
+    const line = (r.stdout ?? '').trim().split('\n').pop() ?? '';
+    const m = /^(\S+) (\S+) /.exec(line);
+    if (!m) return null;
+    return { status: m[1], address: ADDRESS_RE.test(m[2]) ? m[2] : null, line };
+}
 
 export interface Change {
     field: Field;
@@ -191,6 +228,7 @@ function usage(msg?: string): never {
     console.error('Usage: yarn contract-update <chain> [--dry-run] [--deployment <id>]');
     console.error('  --deployment <id>   Ignition deployment id (default chain-<chainId>)');
     console.error('  --set <field>=<0x…> Set one field (contract|executor|probe|liquidator) to this address instead');
+    console.error('  --trust-ignition    Skip the check that refuses to replace current code with Ignition\'s record');
     process.exit(1);
 }
 
@@ -199,6 +237,7 @@ async function main() {
     const slug = args.find(a => !a.startsWith('--'));
     if (!slug) usage();
     const dryRun = args.includes('--dry-run');
+    const trustIgnition = args.includes('--trust-ignition');
     const di = args.indexOf('--deployment');
     const deploymentArg = di >= 0 ? args[di + 1] : undefined;
     if (di >= 0 && !deploymentArg) usage('--deployment needs an id');
@@ -232,9 +271,33 @@ async function main() {
     console.log(`  from ${setUpdate ? `--set ${setArg}` : path.relative(PROJECT_ROOT, addrPath)}`);
     console.log(`  into ${path.relative(PROJECT_ROOT, confPath)}${dryRun ? '  (dry run)' : ''}\n`);
 
-    const updates = setUpdate ? [setUpdate] : pickAddresses(deployed);
+    let updates = setUpdate ? [setUpdate] : pickAddresses(deployed);
+    const kept = new Set<Field>();
+
+    // Downgrade guard: never replace a configured address that holds the
+    // current code with an Ignition record that may not (see header).
+    if (!setUpdate && !trustIgnition) {
+        const current = (parsed as { chain?: Record<string, unknown> }).chain ?? {};
+        updates = updates.filter(u => {
+            const have = current[u.field];
+            if (typeof have !== 'string' || !ADDRESS_RE.test(have) || have.toLowerCase() === u.address.toLowerCase()) return true;
+            const c = deployCheck(meta.label, u.field, u.future);
+            if (c && c.status === 'current' && c.address && c.address.toLowerCase() === have.toLowerCase()) {
+                console.log(`  ${u.field.padEnd(9)} ${have}  kept: holds the current code; Ignition's ${u.address} would be a downgrade`);
+                kept.add(u.field);
+                return false;
+            }
+            if (c && c.status === 'current') return true;   // Ignition's address is the current one
+            if (!c || c.status === 'error' || c.status === 'pending') {
+                console.log(`  ${u.field.padEnd(9)} ${have}  kept: could not verify which address is current (${c?.line ?? 'deploy-check did not run'}) — --trust-ignition to override`);
+                kept.add(u.field);
+                return false;
+            }
+            return true;   // neither is current: Ignition's record is no worse than what is configured
+        });
+    }
     for (const field of Object.keys(FIELD_FUTURES) as Field[]) {
-        if (!setUpdate && !updates.some(u => u.field === field)) {
+        if (!setUpdate && !kept.has(field) && !updates.some(u => u.field === field)) {
             console.log(`  ${field.padEnd(9)} — nothing deployed (${FIELD_FUTURES[field].join(' / ')}); left as is`);
         }
     }

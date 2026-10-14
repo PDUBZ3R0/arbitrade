@@ -162,9 +162,18 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
         *) echo "[deploy] refusing: could not tell whether the deployed code is current (see above)."; exit 1 ;;
     esac
 
+    # HyperEVM (999 mainnet / 998 testnet): no Ignition. Its tracker calls every
+    # big-block deploy "dropped" (the RPC does not report the transaction while
+    # it waits for the one-minute block) and aborts, although it lands.
+    # scripts/deploy-direct.ts sends the create and waits for the receipt or the
+    # code instead. Ignition's journal for these chains is then simply not
+    # updated; contract-update's downgrade guard keeps it from undoing this.
+    DIRECT=0
+    if [ "$CHAIN_ID" = "999" ] || [ "$CHAIN_ID" = "998" ]; then DIRECT=1; fi
+
     # Ignition keys on the future id: an existing record — stale, or for code we
     # are replacing — must go, or it reports "Nothing new to deploy".
-    if [ -f "$JOURNAL" ] && grep -q "\"${FUTURE}\"" "$JOURNAL"; then
+    if [ "$DIRECT" = "0" ] && [ -f "$JOURNAL" ] && grep -q "\"${FUTURE}\"" "$JOURNAL"; then
         echo "[deploy] wiping Ignition's record of ${FUTURE} so the new code is actually deployed"
         yarn -s hardhat ignition wipe "$DEPLOYMENT_ID" "$FUTURE"
     fi
@@ -173,17 +182,44 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
     # module on this chain (HHE10411 "should be N, but the node reports N+1").
     # The check above already proved nothing is in flight, so those records
     # are dead — clear them. See scripts/ignition-stuck.mjs.
-    for STUCK in $(node scripts/ignition-stuck.mjs "$JOURNAL" "$FUTURE"); do
+    [ "$DIRECT" = "0" ] && for STUCK in $(node scripts/ignition-stuck.mjs "$JOURNAL" "$FUTURE"); do
         echo "[deploy] wiping Ignition's stale pending record of ${STUCK} (it blocks the nonce check; the config is unaffected)"
         yarn -s hardhat ignition wipe "$DEPLOYMENT_ID" "$STUCK" || exit 1
     done
 
     # HyperEVM: deployments exceed the small-block gas limit.
     BIGBLOCKS=0; BB_NET=""
+    SMALL_ARG=""
     if [ "$CHAIN_ID" = "999" ] || [ "$CHAIN_ID" = "998" ]; then
         [ "$CHAIN_ID" = "998" ] && BB_NET="--testnet"
-        node scripts/hyperevm-bigblocks.mjs on $BB_NET || exit 1
-        BIGBLOCKS=1
+        # Only when the deploy will not fit a small block (2M gas) with a 20%
+        # gasLimit margin: big blocks make it wait for the one-minute block.
+        EST=$(node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/deploy-direct.ts "$CHAIN" "$CONTRACT" --estimate)
+        if [ -n "$EST" ] && [ "$EST" != "unknown" ] && [ "$EST" -le 1666666 ] 2>/dev/null; then
+            echo "[deploy] gas estimate ${EST} fits a small block — big blocks stay off"
+            SMALL_ARG="--small"
+        else
+            echo "[deploy] gas estimate ${EST:-unknown} needs a big block"
+            node scripts/hyperevm-bigblocks.mjs on $BB_NET || exit 1
+            BIGBLOCKS=1
+        fi
+    fi
+
+    if [ "$DIRECT" = "1" ]; then
+        DEPLOYED=$(node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/deploy-direct.ts "$CHAIN" "$CONTRACT" $SMALL_ARG)
+        DRC=$?
+        if [ $DRC -ne 0 ] || [ -z "$DEPLOYED" ]; then
+            echo "[deploy] direct deploy failed (see above). If it landed late, re-running this command adopts it."
+            exit 1
+        fi
+        ADDR=$(echo "$DEPLOYED" | awk '{print $1}')
+        echo "[deploy] deployed ${CONTRACT} at ${ADDR} (nonce $(echo "$DEPLOYED" | awk '{print $2}'), tx $(echo "$DEPLOYED" | awk '{print $3}'))"
+        sh scripts/log.sh source/util contract-update "$CHAIN" --set "${FIELD}=${ADDR}" || exit 1
+        RESULT=$(check); RC=$?
+        echo "[deploy] after deploy: ${RESULT}"
+        [ $RC -eq 0 ] || { echo "[deploy] [!] the configured ${FIELD} still does not hold the current ${CONTRACT}"; exit 1; }
+        echo "[deploy] done: chain.${FIELD} in conf/${CHAIN}.json5 now points at the current ${CONTRACT}"
+        exit 0
     fi
 
     IGN_OUT=$(mktemp)
