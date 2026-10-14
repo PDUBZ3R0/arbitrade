@@ -201,5 +201,10 @@
            reason:  "dead (0/1 pairs with real liquidity)",
            addedAt: "2026-10-11",
        },
+       {
+           address: "0xfadee2fbd4035c03310807f5cfd8514ecccf19b4",
+           reason:  "PoolFactory_fadee2fb (v2): no pairs after a scan to block 113232924 for event 0x0d3648bd — db-clean --empty",
+           addedAt: "2026-10-14",
+       },
     ]
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 yarn deploy-all $1 && \
-	yarn factories $1 --add --add-assumed-fees --verify-all && \
+	yarn factories $1 --add --add-assumed-fees --verify-limit 50 && \
 	yarn scan $1 && \
 	yarn check-fee-config $1 --apply && \
 	yarn reserves $1 --blacklist-dead && \

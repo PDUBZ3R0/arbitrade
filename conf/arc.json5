@@ -5,7 +5,7 @@
     id: 5042,
     name: 'Arc',
     currency: 'USDC',
-    // token: '0x…',   // TODO wrapped native (WUSDC) — not found automatically
+    token: '0x3600000000000000000000000000000000000000',
     // contract: '0x…',  // YoBatches2 — yarn deploy-contract arc
     // executor: '0x…',  // FlashArbExecutor — yarn deploy-flasharb arc
     threads: 10,
@@ -24,14 +24,15 @@
   // yarn find-factories arc, then paste the verified snippets here.
   factories: {
   },
-  // No Aave V3 market here. Balancer V2 vault found (flash fee 0.000%).
-  // It can only lend what it holds — check before adding tokens.
-  flashloan: {
-    provider: 'balancer-v2',
-    premium: 0,
-    vault: '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+ flashloan: {
+    provider: 'morpho',
+    morpho: '0x34CD04070dD72b14E241112F6d83812Df5Af7fCD',
+    premium: 0,',
+    flashSwap: true,
+    swapRoots: { minLiquidity: 1 },
     tokens: [
-      // TODO add flash tokens the vault holds
+      { symbol: 'USDC', address: '0x3600000000000000000000000000000000000000', decimals: 6 },   // 4.96M lendable
     ],
   },
+
 }

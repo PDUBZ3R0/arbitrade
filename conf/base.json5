@@ -4759,86 +4759,26 @@
     // Not looked at: ~2,100 smaller candidates beyond --verify-limit 75 (all <20 pools).
   },
 
-  flashloan: {
-  "provider": "aave-v3",
-  "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
-  "premium": 0.0005,
-  "tokens": [
-    {
-      "symbol": "WETH",
-      "address": "0x4200000000000000000000000000000000000006",
-      "decimals": 18
-    },
-    {
-      "symbol": "cbETH",
-      "address": "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDbC",
-      "address": "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
-      "decimals": 6
-    },
-    {
-      "symbol": "wstETH",
-      "address": "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
-      "decimals": 18
-    },
-    {
-      "symbol": "USDC",
-      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "decimals": 6
-    },
-    {
-      "symbol": "weETH",
-      "address": "0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
-      "decimals": 18
-    },
-    {
-      "symbol": "cbBTC",
-      "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
-      "decimals": 8
-    },
-    {
-      "symbol": "ezETH",
-      "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
-      "decimals": 18
-    },
-    {
-      "symbol": "GHO",
-      "address": "0x6Bb7a212910682DCFdbd5BCBb3e28FB4E8da10Ee",
-      "decimals": 18
-    },
-    {
-      "symbol": "wrsETH",
-      "address": "0xEDfa23602D0EC14714057867A78d01e94176BEA0",
-      "decimals": 18
-    },
-    {
-      "symbol": "LBTC",
-      "address": "0xecAc9C5F704e954931349Da37F60E39f515c11c1",
-      "decimals": 8
-    },
-    {
-      "symbol": "EURC",
-      "address": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
-      "decimals": 6
-    },
-    {
-      "symbol": "AAVE",
-      "address": "0x63706e401c06ac8513145b7687A14804d17f814b",
-      "decimals": 18
-    },
-    {
-      "symbol": "tBTC",
-      "address": "0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
-      "decimals": 18
-    },
-    {
-      "symbol": "syrupUSDC",
-      "address": "0x660975730059246A68521a3e2FBD4740173100f5",
-      "decimals": 6
-    }
-  ]
-}
+ flashloan: {
+    provider: 'morpho',
+    morpho: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb',
+    flashSwap: true,
+    swapRoots: { minLiquidity: 1 },
+    premium: 0,
+    tokens: [
+      { symbol: 'KITE', address: '0x247e14C540A49987114Cb152C3C5ebdc7fc86662', decimals: 18 },   // 1999.73M lendable
+      { symbol: 'cbBTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8 },   // 39.5K lendable
+      { symbol: 'SENT', address: '0x80C602c2d43b201980a1A6822380b54C5ca80AA6', decimals: 18 },   // 913.2K lendable
+      { symbol: 'USDe', address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34', decimals: 18 },   // 385.99M lendable
+      { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },   // 235.68M lendable
+      { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },   // 81.6K lendable
+      { symbol: 'cbXRP', address: '0xcb585250f852C6c6bf90434AB21A00f02833a4af', decimals: 6 },   // 114.06M lendable
+      { symbol: 'cbETH', address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', decimals: 18 },   // 18.1K lendable
+      { symbol: 'JAB01', address: '0x72B6a247aF0F1640cfB4952389c2DE7D029A6C6B', decimals: 6 },   // 24.74M lendable
+      { symbol: 'SOL', address: '0x311935Cd80B76769bF2ecC9D8Ab7635b2139cf82', decimals: 9 },   // 176.1K lendable
+      { symbol: 'wstETH', address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452', decimals: 18 },   // 5.5K lendable
+      { symbol: 'cbADA', address: '0xcbADA732173e39521CDBE8bf59a6Dc85A9fc7b8c', decimals: 6 },   // 45.51M lendable
+    ],
+  },
+
 }

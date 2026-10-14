@@ -492,6 +492,8 @@
   flashloan: {
     provider: 'aave-v3',
     premium: 0.0005,
+    flashSwap: true,
+    swapRoots: { minLiquidity: 1 },
     pool: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     tokens: [
       { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1', decimals: 18 },

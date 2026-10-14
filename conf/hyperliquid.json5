@@ -4,8 +4,8 @@
     name: 'Hyperliquid',
     currency: 'WHYPE',
     token: '0x5555555555555555555555555555555555555555',
-    contract: '0xB7D20552080FB51861F607A52DCc34C91F4aaB9a',
-    executor: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
+    contract: '0xAa3Cb41c4FF2b9D19b0f4015752a14D5e21484F1',
+    executor: '0x2643726d696C246176db49345A0E62c3642D5085',
     probe: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
     liquidator: '0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534',
     threads: 10,
@@ -30,22 +30,20 @@
       UniswapV2Factory_b0d032b6: {
         address: '0xb0d032b6cc82e37488497781338f359ce8cc40e0',
         deployBlock: 10566629,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.00305 (empirical)
+        fee: 0.00305,
       },
       UniswapV2Factory_11cd396f: {
         address: '0x11cd396f814bd31eba7969c1b27a7c347785951f',
         deployBlock: 38468993,
         fee: 0.003,
       },
-      Factory_6c86ab20: {
-        address: '0x6c86ab200661512fdbd27da4bb87df15609a2806',
-        deployBlock: 21971,
-        fee: 0.003,
-      },
+      // removed Factory_6c86ab20 (0x6c86ab200661512fdbd27da4bb87df15609a2806) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (43 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=c
       UniswapV2Factory_ec4a5606: {
         address: '0xec4a56061d86955d0df883efb2e5791d99ea71f2',
         deployBlock: 18747,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.00305 (empirical)
+        fee: 0.00305,
       },
       Factory_4b6ac750: {
         address: '0x4b6ac7503d3fd79ce23d7ae463d14aaaf07f6573',
@@ -60,12 +58,14 @@
       DystoHyperianSwapFactory_f5734c4e: {
         address: '0xf5734c4ee8594cb989e96c1457723009aa41d5ac',
         deployBlock: 24671627,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.0025 (empirical)
+        fee: 0.0025,
       },
       UniswapV2Factory_4c2061c8: {
         address: '0x4c2061c80788dccab2429794ae98cb8f80d213f5',
         deployBlock: 4483093,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.0025 (empirical)
+        fee: 0.0025,
       },
       BeeponV2Factory_211d3ab7: {
         address: '0x211d3ab75cfdcf64b46765b662833b85bd3d3129',
@@ -75,18 +75,15 @@
       UniswapV2Factory_26586654: {
         address: '0x2658665492d0394e86d50d55050453127a28c09b',
         deployBlock: 10742640,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.00305 (empirical)
+        fee: 0.00305,
       },
       Factory_6e7d2137: {
         address: '0x6e7d2137570b2ab0785fe40e0fd4a9b1fe2d7436',
         deployBlock: 16055617,
         fee: 0.003,
       },
-      BrownFiV3Factory_6a4bd897: {
-        address: '0x6a4bd89709b67ec846f02cf9e95a0dd2fb515720',
-        deployBlock: 37331888,
-        fee: 0.003,
-      },
+      // removed BrownFiV3Factory_6a4bd897 (0x6a4bd89709b67ec846f02cf9e95a0dd2fb515720) — blacklisted 2026-10-14: verify-fees 2026-10-14 NO-SWAP (8 pairs): decompile=unknown, empirical=unknown (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a
       Factory_12d12b64: {
         address: '0x12d12b64740af37ac9eab08ede66396fca7d6e3d',
         deployBlock: 53467,
@@ -97,11 +94,7 @@
         deployBlock: 21941986,
         fee: 0.003,
       },
-      BrownFiV2Factory_3240853b: {
-        address: '0x3240853b71c89209ea8764cddfa3b81766553e55',
-        deployBlock: 8795300,
-        fee: 0.003,
-      },
+      // removed BrownFiV2Factory_3240853b (0x3240853b71c89209ea8764cddfa3b81766553e55) — blacklisted 2026-10-14: verify-fees 2026-10-14 NON-CP (5 pairs): curve=other; not reconfigurable (no stable/volatile flag found (verify-factory family: v2)). Fee is a per-pair storage variable (fee/PR
       SwapV2Factory_4afc2e4c: {
         address: '0x4afc2e4ca0844ad153b090dc32e207c1dd74a8e4',
         deployBlock: 8635846,
@@ -110,13 +103,10 @@
       PancakeFactory_91dc3c1a: {
         address: '0x91dc3c1a01a5cc9dba1e42209a76c1b991994ad2',
         deployBlock: 9980854,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.0025 (empirical)
+        fee: 0.0025,
       },
-      Factory_12b473a5: {
-        address: '0x12b473a5ebad7147e3739c9c6eb98a9a1cd83e9f',
-        deployBlock: 35134083,
-        fee: 0.003,
-      },
+      // removed Factory_12b473a5 (0x12b473a5ebad7147e3739c9c6eb98a9a1cd83e9f) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (4 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap-l
       UniswapV2Factory_89e5db8b: {
         address: '0x89e5db8b5aa49aa85ac63f691524311aeb649eba',
         deployBlock: 45997512,
@@ -125,7 +115,8 @@
       Factory_160bc766: {
         address: '0x160bc7667a12bfb0215be3dda07f3a9fac8c7296',
         deployBlock: 6161,
-        fee: 0.003,
+        // verify-fees 2026-10-14: fee 0.003 → 0.00305 (empirical)
+        fee: 0.00305,
       },
       UniswapV2Factory_9012d161: {
         address: '0x9012d16174732b6b0acb152f0b961674ba340b77',
@@ -137,9 +128,95 @@
         deployBlock: 23051549,
         fee: 0.003,
       },
-      Factory_069fb16f: {
-        address: '0x069fb16fc32d3ab8ad6a208c729f9ba2b15853c2',
-        deployBlock: 26456100,
+      // removed Factory_069fb16f (0x069fb16fc32d3ab8ad6a208c729f9ba2b15853c2) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (3 pairs): decompile=ambiguous, empirical=ambiguous (1 samples). empirical: only 1 usable swap found — need 2+ agreeing samples to confirm claude
+      // find-factories --add 2026-10-14: 6 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_46bc787b (0x46bc787bf21d9178f2debad939e76c7e9dd0a392) — blacklisted 2026-10-14: Factory_46bc787b (v2): no pairs after a scan to block 48498345 for event 0x0d3648bd — db-clean --empty
+      // find-factories --add 2026-10-14: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_1b177731 (0x1b1777319393714c08de583c3f6674f0cc23debb) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (3 pairs): decompile=unknown, empirical=ambiguous (1 samples). no plausible fee-constant pair found in swap() body; empirical: only 1 usable swap
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_1f74a78c (0x1f74a78c0c695fe311da2087a50e778dbe8d0604) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=unknown, empirical=ambiguous (2 samples). no plausible fee-constant pair found in swap() body; empirical: only 0/2 samples a
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_c42a7ca0: {
+        address: '0xc42a7ca0d875ec9234d74be8f5af84be7b974392',
+        deployBlock: 6632833,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_8c58b2d2: {
+        address: '0x8c58b2d2b55e5e6e70be52338a50c80a5d2af85b',
+        deployBlock: 6642593,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_25d41a83: {
+        address: '0x25d41a83a0f4f57379b5c8abddc7b38e7e7c8ba9',
+        deployBlock: 6823213,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_98e19a53: {
+        address: '0x98e19a533fadb2c9853983772e4e7aa09a1478e0',
+        deployBlock: 9332844,
+        // verify-fees 2026-10-14: fee 0.003 → 0.00205 (empirical)
+        fee: 0.00205,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+      UniswapV2Factory_c072d525: {
+        address: '0xc072d525422ac4f9133780ab99181cd422f1042b',
+        deployBlock: 8576554,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_c2f20d9f: {
+        address: '0xc2f20d9f0c1c09f76516b422cdccbb13f6be8ffb',
+        deployBlock: 24555544,
+        // verify-fees 2026-10-14: fee 0.003 → 0.002 (empirical)
+        fee: 0.002,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_2555006c (0x2555006c97b1b831bbc66ddb00edd507ac12c32b) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude analysis failed: Claude API HTTP 400: {"type":"error","error":{"type"
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_fa3f5866 (0xfa3f5866460a01dd2570d1df4baa571573c2f774) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude analysis failed: Claude API HTTP 400: {"type":"error","error":{"type"
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_928a2454: {
+        address: '0x928a2454b467d9fb5747082402958a5df7aff6d4',
+        deployBlock: 41136107,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_585ab67b (0x585ab67bbea9a525c3803bdca031fd8a49e406b0) — blacklisted 2026-10-14: verify-fees 2026-10-14 NO-SWAP (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f —
+      // find-factories --add 2026-10-14: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      // removed Factory_e065161d (0xe065161dd6280c8a0f5413d245793d42a6d655fc) — blacklisted 2026-10-14: verify-fees 2026-10-14 NO-SWAP (2 pairs): decompile=unknown, empirical=unknown (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a
+      // find-factories --add 2026-10-14: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+      // removed UniswapV2Factory_d2a3f103 (0xd2a3f103c4c768c94773b265e48eafa44c6f7112) — blacklisted 2026-10-14: verify-fees 2026-10-14 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Cl
+      // find-factories --add 2026-10-14: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_e979258a: {
+        address: '0xe979258aacb2d13b3d4110dcd4847d8f187cc34e',
+        deployBlock: 6654488,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_1d9986b6: {
+        address: '0x1d9986b61dfbca7f01009efa1afc30eb24b404f9',
+        deployBlock: 6825470,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_8080ccf2: {
+        address: '0x8080ccf2681be84121874cec2c0403cf9af48a58',
+        deployBlock: 6942282,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
+      Factory_593439d7: {
+        address: '0x593439d79a3930f56e45c27b880a974133ff32b9',
+        deployBlock: 6956922,
+        fee: 0.003,
+      },
+      // find-factories --add 2026-10-14: 1 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+      UniswapV2Factory_44936436: {
+        address: '0x4493643641ee9eb9cc391902cd23ae3599dc52d3',
+        deployBlock: 7506908,
         fee: 0.003,
       },
     },
@@ -352,6 +429,55 @@
         poolEvent: 'tickspacing',
         callback: 'uniswapV3SwapCallback',
       },
+      // find-factories --add 2026-10-14: 3 pools in sweep, explorer "VitDEXFactory"; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      VitDEXFactory_1c629f7d: {
+        address: '0x1c629f7db154b1141728a06edb6a00b77c9c226b',
+        deployBlock: 4213358,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 3 pools in sweep, explorer "UniswapV3Factory"; measured: fees 500/3000/10000 pips, callback uniswapV3SwapCallback
+      UniswapV3Factory_b8e3760c: {
+        address: '0xb8e3760cf27e601ca8a4e5f32e7f6711b9c6a4b1',
+        deployBlock: 6318007,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 3 pools in sweep, explorer "UniswapV3Factory"; measured: fees 500 pips, callback uniswapV3SwapCallback
+      UniswapV3Factory_cfe21b91: {
+        address: '0xcfe21b9196adea812fae7df0ee3da9db2ec6129e',
+        deployBlock: 16292708,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 3 pools in sweep, explorer "UniswapV3Factory"; measured: fees 10000/3000 pips, callback uniswapV3SwapCallback
+      UniswapV3Factory_f0db7b58: {
+        address: '0xf0db7b58379503491d857db50ac9ece64c653918',
+        deployBlock: 45997634,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 3 pools in sweep, explorer "CLFactory"; measured: fees 2500 pips, callback uniswapV3SwapCallback
+      CLFactory_36cf030d: {
+        address: '0x36cf030d28a81c282479d831036e0a57b85176d0',
+        deployBlock: 23745220,
+        poolEvent: 'tickspacing',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 2 pools in sweep, unverified on explorer; measured: fees 500 pips, callback uniswapV3SwapCallback
+      Factory_ba46b7a2: {
+        address: '0xba46b7a2f792dd763c46606aa01901e97f67eb3d',
+        deployBlock: 13241320,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
+      // find-factories --add 2026-10-14: 2 pools in sweep, explorer "DHSV3Factory"; measured: fees 3000 pips, callback uniswapV3SwapCallback
+      DHSV3Factory_a1aff66a: {
+        address: '0xa1aff66a9e5b39f3124652d6b9f7d26775f1a6e9',
+        deployBlock: 27023914,
+        poolEvent: 'uniswap',
+        callback: 'uniswapV3SwapCallback',
+      },
     },
     solidly: {
       TransparentUpgradeableProxy_890a1a36: {
@@ -362,10 +488,7 @@
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
-      TransparentUpgradeableProxy_0a457c6a: {
-        address: '0x0a457c6a3dd33bc372edebcc4d063d80bddf104a',
-        deployBlock: 7400524,
-      },
+      // removed TransparentUpgradeableProxy_0a457c6a (0x0a457c6a3dd33bc372edebcc4d063d80bddf104a) — blacklisted 2026-10-14: check-fee-config 2026-10-14 UNREADABLE (601 pairs, solidly): configured factory.getRealFee(pair-address) / 1000000000000000000 returned nothing plausible on 3/3 pairs; no regis
       HyperpieFactory_a12c2dc4: {
         address: '0xa12c2dc4f967752314e8de1a1cc532bd4a75b932',
         deployBlock: 9694093,
@@ -382,11 +505,12 @@
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
+      // check-fee-config 2026-10-14: factory.getFee(pair-stable-degen) / 10000 did not answer; PairFactoryUpgradeable does (factory.getFee(pair-stable) / 10000)
       PairFactory_9c7397c9: {
         address: '0x9c7397c9c5ecc400992843408d3a283fe9108009',
         deployBlock: 4157961,
         feeTarget: 'factory',
-        feeArgSource: 'pair-stable-degen',
+        feeArgSource: 'pair-stable',
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
@@ -414,14 +538,7 @@
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
-      PairFactory_83341f89: {
-        address: '0x83341f891f898cb5e0cacc8a70501bba83d9cecf',
-        deployBlock: 6947040,
-        feeTarget: 'factory',
-        feeArgSource: 'pair-stable-degen',
-        feeFunction: 'getFee',
-        feeDivisor: 10000,
-      },
+      // removed PairFactory_83341f89 (0x83341f891f898cb5e0cacc8a70501bba83d9cecf) — blacklisted 2026-10-14: PairFactory_83341f89 (solidly): no pairs after a scan to block 48491004 for event 0xc4805696 — db-clean --empty
       TransparentUpgradeableProxy_282cd298: {
         address: '0x282cd2989d114c1ee950bde03e53f6fb1faea3e9',
         deployBlock: 6003003,
@@ -430,11 +547,12 @@
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
+      // check-fee-config 2026-10-14: factory.getFee(pair-stable-degen) / 10000 did not answer; PairFactoryUpgradeable does (factory.getFee(pair-stable) / 10000)
       PairFactory_2fd54310: {
         address: '0x2fd54310ce91919c2f328e7c9028a854de40673e',
         deployBlock: 37857439,
         feeTarget: 'factory',
-        feeArgSource: 'pair-stable-degen',
+        feeArgSource: 'pair-stable',
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
@@ -443,6 +561,33 @@
         deployBlock: 3088660,
         feeTarget: 'factory',
         feeArgSource: 'pair-address-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-14: 3 pairs in sweep, unverified on explorer; probed PoolFactory [high]
+      Factory_708aafa4: {
+        address: '0x708aafa413cad4eaf28f96896ddd657dce81f2d2',
+        deployBlock: 3810638,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-address-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, explorer "TransparentUpgradeableProxy"; probed PoolFactory [high]
+      TransparentUpgradeableProxy_b710e077: {
+        address: '0xb710e0778d78cbe5637af38879777a40d82f4721',
+        deployBlock: 2644465,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-address-stable',
+        feeFunction: 'getFee',
+        feeDivisor: 10000,
+      },
+      // find-factories --add 2026-10-14: 2 pairs in sweep, explorer "PairFactory"; probed PairFactoryUpgradeable [high] (name matches a registered pattern whose fee call did not answer on-chain; probe found PairFactoryUpgradeable)
+      PairFactory_08de618a: {
+        address: '0x08de618a2ac9183bde6430475bed175ae97d6eeb',
+        deployBlock: 9587649,
+        feeTarget: 'factory',
+        feeArgSource: 'pair-stable',
         feeFunction: 'getFee',
         feeDivisor: 10000,
       },
@@ -471,6 +616,12 @@
       AlgebraFactory_1838bed0: {
         address: '0x1838bed0675bfdd565a8ef4fe6a8d7f277fe3a7c',
         deployBlock: 13321108,
+        algebraVariant: 'integral',
+      },
+      // find-factories --add 2026-10-14: 2 pools in sweep, unverified on explorer; measured: fees 500 pips, callback algebraSwapCallback
+      Factory_00a9d54b: {
+        address: '0x00a9d54b76163419e1af54eb75424e7bca81ebbb',
+        deployBlock: 8805853,
         algebraVariant: 'integral',
       },
     },

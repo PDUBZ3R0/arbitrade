@@ -51,8 +51,8 @@
     name: 'Monad',
     currency: 'MON',
     hypersyncUrl: 'https://monad.hypersync.xyz',
-    host: 'https://gm.monad.at.htw.tech',
-    ws: "wss://gm.monad.at.htw.tech"
+    host: 'https://monad-rpc.huginn.tech',
+    ws: "wss://wss.monad-rpc.huginn.tech"
   },
   sonic: {
     id: 146,
@@ -86,7 +86,7 @@
     name: 'Hyperliquid',
     currency: 'HYPE',
     hypersyncUrl: 'https://hyperliquid.hypersync.xyz',
-    host: 'https://rpc.hyperlend.finance',
+    host: 'https://rpc.hypurrscan.io',
     ws: 'wss://hyperliquid.drpc.org'
   },
   metis: {

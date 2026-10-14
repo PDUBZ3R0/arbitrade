@@ -297,6 +297,8 @@ export class CandidateExecutor {
     private readonly probedAfterMismatch = new Set<string>();
     /** pair → the distinct paths (pair lists) through it that came up short at their own quote block. */
     private readonly shortPaths = new Map<string, Map<string, number>>();
+    /** `${token}|${reason}` → the distinct paths through the token that reverted with that reason. */
+    private readonly revertPaths = new Map<string, Set<string>>();
     /** The DB of the attempt in progress, for the diagnostics that write to it. */
     private attemptDb: ArbitradeDB | null = null;
 
@@ -903,29 +905,72 @@ export class CandidateExecutor {
      */
     private async diagnoseGated(err: unknown, candidate: Candidate): Promise<string> {
         try {
-            const data = extractRevertData(err);
-            if (!data || !data.toLowerCase().startsWith('0x08c379a0')) return '';
-            const reason = decodeRevertReason(data);
-            if (!reason) return '';
+            if ((err as any)?.code !== 'CALL_EXCEPTION') return '';   // an RPC failure says nothing about the path
+            const data = (extractRevertData(err) ?? '0x').toLowerCase();
+            if (data.startsWith(INSUFFICIENT_REPAY)) return '';           // the shortfall logic's case
+            const reason = data === '0x' ? 'no revert data' : decodeRevertReason(data);
             const exec = this.cfg.chain.executor!;
-            const swapData = V2_SWAP_IFACE.encodeFunctionData('swap', [1n, 0n, exec, '0x']);
+            // Both directions: a pair whose token refuses the executor fails
+            // only when that token is the one sent out.
+            const asks = [[1n, 0n], [0n, 1n]].map(([a, b]) => V2_SWAP_IFACE.encodeFunctionData('swap', [a, b, exec, '0x']));
             for (const h of candidate.hops as any[]) {
                 if (h.kind === 'v3') continue;
                 const pair = h.pair.toLowerCase();
-                let got = '';
-                try { await this.provider.call({ from: exec, to: pair, data: swapData }); continue; }
-                catch (e) { got = decodeRevertReason(extractRevertData(e)); }
-                if (got !== reason) continue;
-                this.gatedPairs.set(pair, `swap() reverts "${reason}" for any caller but its router`);
-                let saved = '';
-                try { this.attemptDb?.setPairProbe(pair, 'pair-restricted', `hot loop: swap() from the executor reverts "${reason}"`); saved = '; marked pair-restricted in the DB — `yarn triangles` drops it'; }
-                catch { /* read-only DB: the in-memory ban still holds for this run */ }
-                return ` [permissioned pair ${pair} (factory ${h.factory}): its swap() refuses the executor — skipped for the rest of the run${saved}]`;
+                if (this.gatedPairs.has(pair)) continue;
+                for (const ask of asks) {
+                    let got: string;
+                    try { await this.provider.call({ from: exec, to: pair, data: ask }); continue; }
+                    catch (e) {
+                        if ((e as any)?.code !== 'CALL_EXCEPTION') continue;   // rate limit, timeout: no evidence
+                        got = (extractRevertData(e) ?? '0x').toLowerCase();
+                    }
+                    // Same bytes, or the same decoded reason. An ordinary pair answers
+                    // with its own input check (INSUFFICIENT_INPUT_AMOUNT), never this.
+                    if (got !== data && decodeRevertReason(got) !== reason) continue;
+                    const why = `swap() fails with "${reason}" when the executor asks it directly — permissioned, or a token that refuses the executor`;
+                    this.gatedPairs.set(pair, why);
+                    let saved = '';
+                    try { this.attemptDb?.setPairProbe(pair, 'pair-restricted', `hot loop: ${why}`); saved = '; marked pair-restricted in the DB — `yarn triangles` drops it'; }
+                    catch { /* read-only DB: the in-memory ban still holds for this run */ }
+                    return ` [unusable pair ${pair} (factory ${h.factory}): ${why} — skipped for the rest of the run${saved}]`;
+                }
             }
-            return '';
+            return this.learnFromRevert(candidate, reason);
         } catch {
             return '';
         }
+    }
+
+    /**
+     * A deterministic revert no pair reproduces on its own ("TF", "IIA",
+     * "UniswapV2: TRANSFER_FAILED" from a V3 pool's TransferHelper, a bare
+     * require): usually a token that misbehaves when it actually moves —
+     * anti-bot limits, transfer hooks, taxes into a V3 pool. Polygon,
+     * 2026-10-14: 300 such reverts in an hour, each reason traced to one or
+     * two tokens. A non-root token that sits in two DIFFERENT paths failing
+     * with the same reason is convicted for the run. Roots are never
+     * convicted — they are in every path.
+     */
+    private learnFromRevert(candidate: Candidate, reason: string): string {
+        const roots = new Set([
+            ...(this.cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()),
+            ...Object.keys(this.rootPricing),
+        ]);
+        const pathKey = candidate.hops.map(h => h.pair.toLowerCase()).join('>');
+        const tokens = new Set(candidate.hops.flatMap(h => [h.tokenIn.toLowerCase(), h.tokenOut.toLowerCase()]));
+        const convicted: string[] = [];
+        for (const t of tokens) {
+            if (roots.has(t) || this.unsafeTokens.has(t)) continue;
+            const k = `${t}|${reason}`;
+            const paths = this.revertPaths.get(k) ?? new Set<string>();
+            paths.add(pathKey);
+            this.revertPaths.set(k, paths);
+            if (paths.size < 2) continue;
+            const why = `in ${paths.size} different paths that all reverted "${reason}"`;
+            this.unsafeTokens.set(t, why);
+            convicted.push(`${t} (${why})`);
+        }
+        return convicted.length ? ` [skipped for the rest of the run: token ${convicted.join(', ')}]` : '';
     }
 
     /**

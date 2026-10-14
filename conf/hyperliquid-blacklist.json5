@@ -10,6 +10,136 @@
       { address:'0x1d9dcf8238daf2e078ff639a5ded6b518bf3e585' },
       { address:'0xb62ac162c4231bad117689805dbf8fbd4c5dc820' },
       { address:'0x5c9b66a92670f0be63bf1d8f23878e85ccf8f451' },
-      { address:'0x6f6fd31838cea254b032a5a24d350e0683382357' }
+      { address:'0x6f6fd31838cea254b032a5a24d350e0683382357' },
+      {
+          address: "0x0a457c6a3dd33bc372edebcc4d063d80bddf104a",
+          reason:  "check-fee-config 2026-10-14 UNREADABLE (601 pairs, solidly): configured factory.getRealFee(pair-address) / 1000000000000000000 returned nothing plausible on 3/3 pairs; no registered pattern answers either",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x83341f891f898cb5e0cacc8a70501bba83d9cecf",
+          reason:  "PairFactory_83341f89 (solidly): no pairs after a scan to block 48491004 for event 0xc4805696 — db-clean --empty",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x6c86ab200661512fdbd27da4bb87df15609a2806",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (43 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude: fee=0.003 curve=constant-product kind=constant conf=medium — Swap function (Unresolved_022c0d9f) shows classic Uniswap-V2-style structure (reserve reads via 0902f1ac, balanceOf calls, INSUFFICIENT_INPUT_AMOUNT check) with fee constants 0x1e/0x2710 (30/10000=0.003) matching the standard 0.3% fee scaled by 1000, though decompilation heavily obscures the exact K",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x6a4bd89709b67ec846f02cf9e95a0dd2fb515720",
+          reason:  "verify-fees 2026-10-14 NO-SWAP (8 pairs): decompile=unknown, empirical=unknown (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape; empirical: 0 Swap events (hypersync searched blocks 0–48498883) claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x3240853b71c89209ea8764cddfa3b81766553e55",
+          reason:  "verify-fees 2026-10-14 NON-CP (5 pairs): curve=other; not reconfigurable (no stable/volatile flag found (verify-factory family: v2)). Fee is a per-pair storage variable (fee/PRECISION = 300000/1e8 = 0.003) used to compute amountOutWithoutFee before the inventory check; the invariant enforced is a custom oracle-price/inventory formula (computeInventoryLeft/Right with k and skewness), not x*y=k or stable-solidly math.",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x12b473a5ebad7147e3739c9c6eb98a9a1cd83e9f",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (4 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude: fee=null curve=unknown kind=unknown conf=low — The decompiled swap-like function (Unresolved_022c0d9f) is too mangled to recover the actual K-check or fee arithmetic; no balance*1000 - amountIn*3 style pattern or product comparison is visible, so curve and fee cannot be determined.",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x069fb16fc32d3ab8ad6a208c729f9ba2b15853c2",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (3 pairs): decompile=ambiguous, empirical=ambiguous (1 samples). empirical: only 1 usable swap found — need 2+ agreeing samples to confirm claude: fee=null curve=unknown kind=unknown conf=low — The decompiled code shown does not contain a recognizable swap() function with balance adjustments or a K invariant check; the 1000 constant is present but not tied to any visible fee-subtraction or curve math in this excerpt.",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x1b1777319393714c08de583c3f6674f0cc23debb",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (3 pairs): decompile=unknown, empirical=ambiguous (1 samples). no plausible fee-constant pair found in swap() body; empirical: only 1 usable swap found — need 2+ agreeing samples to confirm claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x1f74a78c0c695fe311da2087a50e778dbe8d0604",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=unknown, empirical=ambiguous (2 samples). no plausible fee-constant pair found in swap() body; empirical: only 0/2 samples agree with the median — possible dynamic fee or fee-on-transfer token claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x2555006c97b1b831bbc66ddb00edd507ac12c32b",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xfa3f5866460a01dd2570d1df4baa571573c2f774",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (2 pairs): decompile=ambiguous, empirical=not attempted (0 samples). claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x585ab67bbea9a525c3803bdca031fd8a49e406b0",
+          reason:  "verify-fees 2026-10-14 NO-SWAP (2 pairs): decompile=unknown, empirical=not attempted (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xe065161dd6280c8a0f5413d245793d42a6d655fc",
+          reason:  "verify-fees 2026-10-14 NO-SWAP (2 pairs): decompile=unknown, empirical=unknown (0 samples). no swap(uint256,uint256,address,bytes) function found at selector 0x022c0d9f — not a standard V2 pair shape; empirical: 0 Swap events (hypersync searched blocks 0–48499306) claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xd2a3f103c4c768c94773b265e48eafa44c6f7112",
+          reason:  "verify-fees 2026-10-14 UNKNOWN (1 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x46bc787bf21d9178f2debad939e76c7e9dd0a392",
+          reason:  "Factory_46bc787b (v2): no pairs after a scan to block 48498345 for event 0x0d3648bd — db-clean --empty",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x00a9d54b76163419e1af54eb75424e7bca81ebbb",
+          reason:  "dead (0/2 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x1838bed0675bfdd565a8ef4fe6a8d7f277fe3a7c",
+          reason:  "dead (0/4 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x1c629f7db154b1141728a06edb6a00b77c9c226b",
+          reason:  "dead (0/3 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x40730ec6b87b0a06839962bee669513fe6f20ecf",
+          reason:  "dead (0/3 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x5f1339f9d930ad1529113d36fc1d3b8e08e1d9fc",
+          reason:  "dead (0/1 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xa1aff66a9e5b39f3124652d6b9f7d26775f1a6e9",
+          reason:  "dead (0/2 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xb8e3760cf27e601ca8a4e5f32e7f6711b9c6a4b1",
+          reason:  "dead (0/3 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xba46b7a2f792dd763c46606aa01901e97f67eb3d",
+          reason:  "dead (0/2 pairs with real liquidity)",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xa12c2dc4f967752314e8de1a1cc532bd4a75b932",
+          reason:  "restricted DEX — TokenProbe: 142 probed pair(s) rejected swap() from outsiders, 0 accepted",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0xeaf40318453a81993569b14b898aac31df6133fa",
+          reason:  "restricted DEX — TokenProbe: 10 probed pair(s) rejected swap() from outsiders, 0 accepted",
+          addedAt: "2026-10-14",
+      },
+      {
+          address: "0x282cd2989d114c1ee950bde03e53f6fb1faea3e9",
+          reason:  "restricted DEX — TokenProbe: 5 probed pair(s) rejected swap() from outsiders, 0 accepted",
+          addedAt: "2026-10-14",
+      },
   ]
 }

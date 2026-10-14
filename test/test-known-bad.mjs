@@ -125,11 +125,11 @@ try {
     {
         const c = cand(1, [hop(G, R, B), hop(BC, B, C), hop(CR, C, R)]);
         const a = await ex.attempt(c, db);
-        ok(/permissioned pair .*refuses the executor/.test(a.simulationError ?? '') && a.simulationError.includes(G.P), 'the attempt names the gated pair', (a.simulationError ?? '').slice(-200));
+        ok(/unusable pair .*permissioned/.test(a.simulationError ?? '') && a.simulationError.includes(G.P), 'the attempt names the gated pair', (a.simulationError ?? '').slice(-200));
         ok(probeOf(G.P)?.probeStatus === 'pair-restricted', 'marked pair-restricted in the DB', JSON.stringify(probeOf(G.P)));
         ok(probeOf(BC.P)?.probeStatus == null && probeOf(CR.P)?.probeStatus == null, 'the ordinary pairs of the same cycle are not marked');
         const other = cand(2, [hop(CR, R, C), hop(BC, C, B), hop(G, B, R)]);
-        ok(/swap\(\) reverts "UniswapV2: caller is not verified"/.test(ex.knownBad(other) ?? ''), 'knownBad: any cycle through it, either direction');
+        ok(/fails with "UniswapV2: caller is not verified"/.test(ex.knownBad(other) ?? ''), 'knownBad: any cycle through it, either direction', ex.knownBad(other));
         const b = await ex.attempt(other, db);
         ok(b.knownBad === true && b.built === null && b.gasEstimate == null, 'refused before building or estimating', b.simulationError);
     }
@@ -176,6 +176,19 @@ try {
         ok(s.includes(CR.P) && !s.includes(RB.P) && !s.includes(RT.P), 'second path: only the shared pair is convicted', s.slice(0, 200));
         ok(/2 different paths .* 500 ppm short/.test(ex4.knownBad(cand(9, [hop(CR, R, C)])) ?? '') && /~0\.350%/.test(s), 'knownBad refuses it, with the fee that would match', ex4.knownBad(cand(9, [hop(CR, R, C)])));
         ok(ex4.learnFromShortfall(cand(10, [hop(RB, R, B), hop(BC, B, C)]), 50) === '', 'rounding-sized shortfalls are ignored');
+    }
+
+    console.log('\n5c. a non-root token in two DIFFERENT paths failing the same way is convicted; roots never');
+    {
+        const ex5 = new CandidateExecutor(cfg, provider, pricing, exOpts);
+        const p1 = cand(11, [hop(RB, R, B), hop(BC, B, C), hop(CR, C, R)]);
+        const p2 = cand(12, [hop(RT, R, T), hop(TC, T, C), hop(CR, C, R)]);
+        ok(ex5.learnFromRevert(p1, 'TF') === '', 'first path: nothing');
+        ok(ex5.learnFromRevert(p2, 'IIA') === '', 'a different reason does not combine');
+        const s = ex5.learnFromRevert(p2, 'TF');
+        ok(s.includes(C.a) && !s.includes(R.a) && !s.includes(B.a) && !s.includes(T.a), 'second TF path: only the shared non-root token C', s);
+        ok(/in 2 different paths that all reverted "TF"/.test(ex5.knownBad(cand(13, [hop(BC, B, C)])) ?? ''), 'knownBad refuses cycles through C');
+        ok(ex5.knownBad(cand(14, [hop(RB, R, B)])) === null, 'the root is never convicted');
     }
 
     console.log('\n5. hot loop filters before attempting');

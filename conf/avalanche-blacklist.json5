@@ -118,5 +118,105 @@
             reason:  "dead (0/10 pairs with real liquidity)",
             addedAt: "2026-10-04",
         },
+        {
+            address: "0x896e0923db24acee647f02ad0d5e603884615b8f",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x197f4d712d0544e6ae1417867e1f066fc54dcff8",
+            reason:  "dead (0/5 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x3bca0b7431f46050a99ec3b1b7bb710b3efd30dd",
+            reason:  "dead (0/4 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa22fff80baef689976c55dabb193becdf023b6b9",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xa2e0215146460315b9c51af82f4a50fe4492b102",
+            reason:  "dead (0/4 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xaaa91e283126774b3bb513fd5922976d5212dc49",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xb8cfa0e3016ed655f72fe9a9a5850c90c372fe99",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xccb4a1e7fddf1201565a8b802a39aed0e6458622",
+            reason:  "dead (0/1 pairs with real liquidity)",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x231df4d421f1f9e0aae9ba3634a87ebc87a09c39",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (13 pairs): decompile=unknown, empirical=ambiguous (1 samples). no plausible fee-constant pair found in swap() body; empirical: only 1 usable swap found — need 2+ agreeing samples to confirm claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0c5f0d90b4058973a7351a546188e58e635546ed",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (12 pairs): decompile=unknown, empirical=ambiguous (10 samples). no plausible fee-constant pair found in swap() body; empirical: only 5/10 samples agree with the median — possible dynamic fee or fee-on-transfer token claude: fee=0.003 curve=constant-product kind=constant conf=low — The swap function (Unresolved_022c0d9f) is heavily mangled by decompilation, but reserve reads, balance checks, and literal 0x03e8 (1000) alongside the constant 1000 suggest a standard Uniswap-V2 style 0.3% fee constant-product check, though the actual K-check multiplication is not cle",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xe322eec390902ebd5ec624bc3b0c3f5d73f5a82b",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (8 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x014b335dc90e3ee45a67334e7436c71f419d1f1a",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (7 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x510ce88d9ecf39e3acc6f43e8d979eba61ac765c",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (7 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x0d8bb748624c83d9940c34e397274e4af896075f",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (7 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xedfe5425c85798a452283376cffcab51ed450d19",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (7 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x9afa968d2a46bf52ffb46b53f2720d04c40e5313",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (6 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0xccb4a1e7fddf1201565a8b802a39aed0e6458622",
+            reason:  "verify-fees 2026-10-14 UNKNOWN (6 pairs): decompile=unknown, empirical=not attempted (0 samples). no plausible fee-constant pair found in swap() body claude analysis failed: Claude API HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x2131bdb0e0b451bc1c5a53f2cbc80b16d43634fa",
+            reason:  "ForwardFactory_2131bdb0 (v2): no pairs after a scan to block 97510575 for event 0x0d3648bd — db-clean --empty",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x7009b3619d5ee60d0665ba27cf85edf95fd8ad01",
+            reason:  "restricted DEX — TokenProbe: 25 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-14",
+        },
+        {
+            address: "0x8e6f4af0b6c26d16febdd6f28fa7c694bd49c6bf",
+            reason:  "restricted DEX — TokenProbe: 8 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-10-14",
+        },
     ]
 }
