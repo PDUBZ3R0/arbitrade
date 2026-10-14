@@ -9,7 +9,7 @@
 #
 # What goes up, per compose service (running or stopped):
 #   s3://<bucket>/logs/<chain>/*.log          the yarn stage logs (/app/log in
-#                                             the container, a podman volume)
+#                                             the container, a docker volume)
 #   s3://<bucket>/logs/<chain>/container.log  the container's stdout — the
 #                                             [entry]/[arbitrage]/[liquidate]
 #                                             lines — last 48h; only with the
@@ -24,7 +24,7 @@ DIR="${DIR:-/opt/arbitrade}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.aws.yaml}"
 SINCE="${SINCE:-48h}"
 cd "$DIR"
-dc() { podman compose -f "$COMPOSE_FILE" "$@"; }
+dc() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
@@ -34,7 +34,7 @@ services=$(dc ps -a --services 2>/dev/null || true)
 
 for c in $services; do
     mkdir -p "$STAGE/$c"
-    # The stage logs live in the container's /app/log volume; podman cp reads it
+    # The stage logs live in the container's /app/log volume; docker cp reads it
     # from stopped containers too.
     dc cp "$c:/app/log/." "$STAGE/$c/" >/dev/null 2>&1 || echo "  ($c: no /app/log to copy)"
     # The image keeps per-chain logs under log/<chain>/ — flatten that level.
