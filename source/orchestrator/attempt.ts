@@ -30,6 +30,7 @@ import { TradeLedger } from '../util/ledger.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 import { redactUrl } from '../util/rpc.ts';
 import { extractRevertData, decodeRevertReason, probePair, UNSAFE_TOKEN_VERDICTS } from '../util/token-probe.ts';
+import { hasSelector, selectorOf } from '../util/bytecode.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -350,7 +351,7 @@ export class CandidateExecutor {
             console.warn(`  [!] ${this.executorVersionError}`);
             return this.executorVersionError;
         }
-        const has = (sig: string) => code!.includes('63' + id(sig).slice(2, 10));
+        const has = (sig: string) => hasSelector(code!, selectorOf(sig));
         if (!has('SOURCE_MORPHO()')) {
             this.executorVersionError =
                 `executor at ${addr} predates multi-provider flash loans (no executeArbFrom) — ` +

@@ -33,6 +33,7 @@ import { ArbitradeDB } from './util/db.ts';
 import { multicall3 } from './util/multicall.ts';
 import { makeProvider } from './util/rpc.ts';
 import { buildPriceGraph } from './util/numeraire-price.ts';
+import { hasSelector, selectorOf } from './util/bytecode.ts';
 
 const args = process.argv.slice(2);
 const [chainArg, morphoArg] = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
@@ -60,7 +61,7 @@ console.log(`${cfg.chain.name}: checking Morpho Blue at ${morpho}\n`);
 // 1. identity, from the bytecode (PUSH4 <selector>), not from calls that could fail for other reasons
 const code = (await provider.getCode(morpho)).toLowerCase();
 if (code === '0x') fail(`no contract at ${morpho} — wrong address, or wrong chain`);
-const has = (sig: string) => code.includes('63' + id(sig).slice(2, 10));
+const has = (sig: string) => hasSelector(code, selectorOf(sig));
 // An OUTGOING call's selector is not in the dispatcher, and compilers encode it
 // several ways — PUSH4 then SHL, or (via-IR, as Morpho Blue is built) a
 // left-aligned PUSH32 constant. Any byte-aligned occurrence counts.

@@ -95,6 +95,7 @@ import type { Venue } from './liquidation/venue.ts';
 import { dbPath } from './util/config.ts';
 import { Contract, Interface, NonceManager, Wallet, formatUnits, id } from 'ethers';
 import { heapMb } from './util/heap.ts';
+import { hasSelector, selectorOf } from './util/bytecode.ts';
 
 type LiquidationConf = {
     venues?: string[];
@@ -291,7 +292,7 @@ if (liquidate) {
     // Stable pools as exit routes need a liquidator that has HOP_STABLE (read
     // from its bytecode, as the hot loop reads the arb executor's).
     const liqCode = (await provider.getCode(executor).catch(() => '0x')).toLowerCase();
-    const liqStable = liqCode.includes('63' + id('HOP_STABLE()').slice(2, 10));
+    const liqStable = hasSelector(liqCode, selectorOf('HOP_STABLE()'));
     routeFinder = new RouteFinder(cfg, dbPath(chainArg), hubs, { stable: liqStable });
     console.log(liqStable ? `  exits    V2, V3/Algebra and Solidly stable pools`
         : `  exits    V2 and V3/Algebra pools — the liquidator predates HOP_STABLE, so stable pools are not exit routes (yarn deploy liquidator ${cfg.chain.label})`);
@@ -301,14 +302,14 @@ if (liquidate) {
     if (morphoVenue || cometVenue || cv2Venue || eulerVenue || (wantFluid && liquidate)) {
         // The deployed executor must carry the entry points for the venues in play.
         const code = (await provider.getCode(executor)).toLowerCase();
-        const sel = (f: string) => new Interface(VENUE_LIQUIDATOR_ABI).getFunction(f)!.selector.slice(2);
+        const sel = (f: string) => new Interface(VENUE_LIQUIDATOR_ABI).getFunction(f)!.selector;
         const need: string[] = [];
         if (morphoVenue) need.push('liquidateMorpho');
         if (cometVenue) need.push('liquidateComet');
         if (cv2Venue) need.push('liquidateCompoundV2');
         if (eulerVenue) need.push('liquidateEuler');
         if (wantFluid) need.push('liquidateFluid');
-        const missing = need.filter(f => !code.includes(sel(f)));
+        const missing = need.filter(f => !hasSelector(code, sel(f)));
         if (missing.length) {
             console.log(`  [!] the LiquidationExecutor at ${executor} is missing ${missing.join(', ')} — those venues watch only.`);
             console.log(`      Redeploy: yarn deploy-liquidator ${cfg.chain.label} --redeploy && yarn contract-update ${cfg.chain.label}`);

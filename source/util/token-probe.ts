@@ -26,6 +26,7 @@
 // -----------------------------------------------------------------------------
 
 import { Contract, Interface, id, type JsonRpcProvider } from 'ethers';
+import { hasSelector } from './bytecode.ts';
 
 export const PROBE_ABI = [
     'function probe(address root, uint256 amount, address pair, uint16 feeBpsCap)',
@@ -209,7 +210,7 @@ const PROBE_FROM_SELECTOR = id('probeFrom(uint8,address,address,uint256,address,
  */
 export async function probeSupportsLenders(provider: JsonRpcProvider, address: string): Promise<boolean> {
     const code = (await provider.getCode(address)).toLowerCase();
-    return code.includes('63' + PROBE_FROM_SELECTOR);
+    return hasSelector(code, PROBE_FROM_SELECTOR);
 }
 
 // -----------------------------------------------------------------------------

@@ -24,6 +24,7 @@
 
 import { JsonRpcProvider, Interface } from 'ethers';
 import type { V3Pool } from './calculus-v3.js';
+import { hasSelector } from './bytecode.ts';
 
 const iface = new Interface([
     'function getReserves(address[3][] args) view returns (uint256[])',
@@ -61,7 +62,7 @@ function codeOf(provider: JsonRpcProvider, address: string): Promise<string> {
 async function hasFns(provider: JsonRpcProvider, address: string, fns: string[]): Promise<boolean> {
     const c = await codeOf(provider, address);
     if (c === '0x') return false;
-    return fns.every(fn => c.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
+    return fns.every(fn => hasSelector(c, iface.getFunction(fn)!.selector));
 }
 
 /** Whether `address` exposes the packed reads (checked once per address per process). */
@@ -117,7 +118,7 @@ export async function assertYoBatches2(provider: JsonRpcProvider, address: strin
     const fix = `Deploy it with \`yarn deploy-contract <chain>\` (or look up Yo3Module#YoBatches3 / Yo2Module#YoBatches2 in ` +
         `ignition/deployments/chain-${chainId ?? '<id>'}/deployed_addresses.json) and set chain.contract to that address.`;
     if (code === '0x') throw new Error(`${where} has no code on this chain. ${fix}`);
-    const missing = ['getReserves', 'getV3State'].filter(fn => !code.includes('63' + iface.getFunction(fn)!.selector.slice(2)));
+    const missing = ['getReserves', 'getV3State'].filter(fn => !hasSelector(code, iface.getFunction(fn)!.selector));
     if (missing.length) {
         throw new Error(`${where} is not a YoBatches2 (no ${missing.join('/')} in its bytecode) — probably the ` +
             `retired YoBatches. ${fix}`);

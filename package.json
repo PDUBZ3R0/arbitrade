@@ -12,7 +12,6 @@
     "aws-push-env": "bash scripts/aws/push-env.sh",
     "aws-push-db": "bash scripts/aws/push-db.sh",
     "preinstall": "npm install -g json5",
-    "aws": "aws ssm start-session --target i-0883e3a47cc9fc6c1",
     "deploy": "HYPERLIQUID_RPC='https://rpc.hyperliquid.xyz/evm' bash scripts/deploy.sh",
     "deploy-all": "HYPERLIQUID_RPC='https://rpc.hyperliquid.xyz/evm' bash scripts/deploy.sh all",
     "deploy-contract": "HYPERLIQUID_RPC='https://rpc.hyperliquid.xyz/evm' bash scripts/deploy.sh contract",
@@ -60,7 +59,15 @@
     "@nomicfoundation/hardhat-ignition": "^3.0.0",
     "@nomicfoundation/hardhat-ignition-viem": "^3.0.0",
     "@nomicfoundation/hardhat-viem": "^3.0.0",
+    "anvil": "^0.0.6",
+    "anvil-cli": "^0.1.2",
+    "formidable": "^3.5.4",
+    "glob": "^13.0.6",
+    "graceful-fs": "^4.2.11",
     "hardhat": "^3.0.0",
+    "minimatch": "^10.2.6",
+    "solc": "^0.8.37",
+    "superagent": "^10.4.1",
     "viem": "^2.0.0"
   }
 }
