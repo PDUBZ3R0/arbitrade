@@ -564,6 +564,13 @@ export class CandidateExecutor {
         const t0 = Date.now();
         const marks: Array<[string, number]> = [];
         const mark = (label: string) => marks.push([label, Date.now()]);
+        // Live: fetch what the send needs (pending nonce, fees) NOW, while the
+        // path is built, estimated and simulated, so the send itself is a single
+        // round trip. Left to ethers it is three in a row (nonce, fee data, send) —
+        // through the rated pool, 0.3–1.2 s on Sonic (2026-10-15) where a single
+        // socket had taken 0.2 s. Not a local nonce cache: the liquidator may be
+        // sending from the same wallet.
+        const sendPrep = this.opts.live && this.opts.signer ? prepareSend(this.opts.signer, this.provider) : null;
         const versionError = await this.checkExecutorVersion();
         if (versionError) {
             attempt.simulationError = versionError;
@@ -751,6 +758,7 @@ export class CandidateExecutor {
             const req = await (this.executor.connect(signer) as Contract)
                 .getFunction(call.name).populateTransaction(...call.args(effectiveMinProfit));
             req.gasLimit = (gasUnits * 13n) / 10n;
+            Object.assign(req, await sendPrep);   // nonce + fees fetched during the simulation
             const prepared = await signer.populateTransaction(req);
             const raw = await signer.signTransaction(prepared);
             let txHash: string;
@@ -793,7 +801,7 @@ export class CandidateExecutor {
         const signed = this.executor.connect(signer) as Contract;
         let tx: any;
         try {
-            tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit), { gasLimit: (gasUnits * 13n) / 10n });
+            tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit), { gasLimit: (gasUnits * 13n) / 10n, ...(await sendPrep) });
         } catch (err) {
             // Refused before it was sent (nonce, funds, a node-side check):
             // nothing went on-chain, so it is a failed attempt, not a crash.
@@ -816,7 +824,9 @@ export class CandidateExecutor {
         // (Sonic hot run, 2026-10-12, #13814).
         let receipt: any;
         try {
-            receipt = await tx.wait();
+            // Bounded: a tx that is dropped (or whose nonce another tx took) never
+            // mines, and an unbounded wait would stall the loop for good.
+            receipt = await tx.wait(1, 60_000);
         } catch (err: any) {
             if (err?.receipt) receipt = err.receipt;
             else {
@@ -1157,4 +1167,16 @@ function latencyNote(quoteBlock: number | undefined, landedBlock: number | undef
         ? `quoted @${quoteBlock}, landed @${landedBlock} (+${landedBlock - quoteBlock} block${landedBlock - quoteBlock === 1 ? '' : 's'}); `
         : landedBlock != null ? `landed @${landedBlock}; ` : '';
     return blocks + parts.join(', ');
+}
+
+/**
+ * Nonce and fee fields for a send, fetched in parallel ahead of time. Resolves
+ * to {} on any failure, so the send falls back to ethers filling them itself.
+ */
+function prepareSend(signer: { getNonce(t?: string): Promise<number> }, provider: { getFeeData(): Promise<{ gasPrice: bigint | null; maxFeePerGas: bigint | null; maxPriorityFeePerGas: bigint | null }> }): Promise<Record<string, unknown>> {
+    return Promise.all([signer.getNonce('pending'), provider.getFeeData()]).then(([nonce, fee]) => {
+        if (fee.maxFeePerGas != null && fee.maxPriorityFeePerGas != null) return { nonce, maxFeePerGas: fee.maxFeePerGas, maxPriorityFeePerGas: fee.maxPriorityFeePerGas };
+        if (fee.gasPrice != null) return { nonce, gasPrice: fee.gasPrice };
+        return { nonce };
+    }, () => ({}));
 }

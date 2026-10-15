@@ -1,0 +1,523 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 2818,
+  "name": "Morph",
+  "testedAt": "2026-10-15T14:41:34.488Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x5300000000000000000000000000000000000011",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+      "block": 28324365
+    }
+  },
+  "endpoints": [
+    {
+      "url": "wss://rpc-quicknode.morphl2.io",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 72386,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "head": 28324407,
+      "client": "Geth/v2.2.6-mainnet-5744b8f6/linux-amd64/go1.24.13",
+      "latency": {
+        "p50": 45,
+        "p95": 414,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32614: eth_getLogs is limited to a 10,000 range"
+      },
+      "history": {
+        "stateDepth": 28324365,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 8,
+        "logs": 3,
+        "lastHeadAgeSec": 1,
+        "died": false
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 81
+        },
+        "trader": {
+          "pass": true,
+          "score": 86
+        },
+        "reader": {
+          "pass": true,
+          "score": 57
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 92
+        }
+      }
+    },
+    {
+      "url": "https://morph.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 21105,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "head": 28324407,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 69,
+        "p95": 89,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 28324374,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-quicknode.morphl2.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 36259,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "head": 28324407,
+      "client": "Geth/v2.2.6-mainnet-5744b8f6/linux-amd64/go1.24.13",
+      "latency": {
+        "p50": 46,
+        "p95": 72,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32614: eth_getLogs is limited to a 10,000 range"
+      },
+      "history": {
+        "stateDepth": 28324365,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32007: 20/second request limit reached",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 8,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 81
+        },
+        "trader": {
+          "pass": true,
+          "score": 88
+        },
+        "reader": {
+          "pass": true,
+          "score": 63
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.morphl2.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 28362,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "head": 28324407,
+      "client": "Geth/v2.2.6-mainnet-5744b8f6/linux-amd64/go1.24.0",
+      "latency": {
+        "p50": 203,
+        "p95": 245,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: block range is larger than max block range, block range = 10000, max block range = 5000"
+      },
+      "history": {
+        "stateDepth": 28324365,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 81
+        },
+        "trader": {
+          "pass": true,
+          "score": 77
+        },
+        "reader": {
+          "pass": true,
+          "score": 74
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://2818.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34935,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "head": 28324407,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 148,
+        "p95": 294,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 28324381,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 67
+        },
+        "reader": {
+          "pass": true,
+          "score": 51
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.morphl2.io:8443",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 495,
+      "error": "connect failed: Unexpected server response: 521",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 521",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 521"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 521"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 521"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 521"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/2818",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14827,
+      "chainId": 2818,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 28324407,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

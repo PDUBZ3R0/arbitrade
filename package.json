@@ -29,6 +29,7 @@
     "market": "bash scripts/market.sh",
     "pretty": "bash scripts/pretty.sh",
     "probe": "bash scripts/log.sh source probe",
+    "provider": "bash scripts/vet.sh",
     "reserves": "bash scripts/log.sh source reserves",
     "scan": "bash scripts/log.sh source scan",
     "tokens": "bash scripts/log.sh source tokens",
@@ -43,7 +44,7 @@
     "ethers": "^6.17.0",
     "json5": "^2.2.3",
     "sevm": "^0.7.4",
-    "vetted-provider": "^0.0.0-stage"
+    "vetted-provider": "^0.1.2"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.0",

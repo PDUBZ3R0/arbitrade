@@ -1,0 +1,198 @@
+{
+  "Ethereum": {
+    "id": 1,
+    "address": "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+  },
+  "Abstract": {
+    "id": 2741,
+    "address": "0xc85CE8ffdA27b646D269516B8d0Fa6ec2E958B55"
+  },
+  "0G": {
+    "id": 16661,
+    "address": "0x9CDD13a2212D94C4f12190cA30783B743E83C89e"
+  },
+  "Arbitrum": {
+    "id": 42161,
+    "address": "0x6c247b1F6182318877311737BaC0844bAa518F5e"
+  },
+  "Arc": {
+    "id": 5042,
+    "address": "0x34CD04070dD72b14E241112F6d83812Df5Af7fCD"
+  },
+  "Avalanche": {
+    "id": 43114,
+    "address": "0x895383274303AA19fe978AFB4Ac55C7f094f982C"
+  },
+  "Base": {
+    "id": 8453,
+    "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"
+  },
+  "Bitlayer": {
+    "id": 200901,
+    "address": "0xAeA7eFF1bD3c875c18ef50F0387892dF181431C6"
+  },
+  "BNB Smart Chain": {
+    "id": 56,
+    "address": "0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a"
+  },
+  "Camp": {
+    "id": 484,
+    "address": "0xea4f2979D7A99B40404b447Cf71c008e3805760F"
+  },
+  "Celo": {
+    "id": 42220,
+    "address": "0xd24ECdD8C1e0E57a4E26B1a7bbeAa3e95466A569"
+  },
+  "Citrea": {
+    "id": 4114,
+    "address": "0x99D31FEcc885204b4136ea5D2ef2a37F36E3AeB8"
+  },
+  "Cronos": {
+    "id": 25,
+    "address": "0xDF9a1DC07e5dEe5ccCCaBeC35e446C70fAF7434e"
+  },
+  "Eden": {
+    "id": 246,
+    "address": "0xF050a2BB0468FF23cF2964AC182196C94D6815C3"
+  },
+  "Etherlink": {
+    "id": 42793,
+    "address": "0xbCE7364E63C3B13C73E9977a83c9704E2aCa876e"
+  },
+  "Fraxtal": {
+    "id": 252,
+    "address": "0xa6030627d724bA78a59aCf43Be7550b4C5a0653b"
+  },
+  "Flare": {
+    "id": 14,
+    "address": "0xF4346F5132e810f80a28487a79c7559d9797E8B0"
+  },
+  "Gensyn": {
+    "id": 685685,
+    "address": "0x8c45B34999883FF4B47cD3be095D585682cd9227"
+  },
+  "Gnosis": {
+    "id": 100,
+    "address": "0xB74D4dd451E250bC325AFF0556D717e4E2351c66"
+  },
+  "Hemi": {
+    "id": 43111,
+    "address": "0xa4Ca2c2e25b97DA19879201bA49422bc6f181f42"
+  },
+  "HyperEVM": {
+    "id": 999,
+    "address": "0x68e37dE8d93d3496ae143F2E900490f6280C57cD"
+  },
+  "Ink": {
+    "id": 57073,
+    "address": "0x857f3EefE8cbda3Bc49367C996cd664A880d3042"
+  },
+  "Injective": {
+    "id": 2525,
+    "address": "0x2D41C6118e4D3e30Fdf859Da043c5ec7F22dD5dc"
+  },
+  "Kaia": {
+    "id": 8217,
+    "address": "0xA8BEebdca34d83C697c302A0594f3c41f3994cd2"
+  },
+  "Katana": {
+    "id": 747474,
+    "address": "0xD50F2DffFd62f94Ee4AEd9ca05C61d0753268aBc"
+  },
+  "Linea": {
+    "id": 59144,
+    "address": "0x6B0D716aC0A45536172308e08fC2C40387262c9F"
+  },
+  "Lisk": {
+    "id": 1135,
+    "address": "0x00cD58DEEbd7A2F1C55dAec715faF8aed5b27BF8"
+  },
+  "MegaETH": {
+    "id": 4326,
+    "address": "0x18120312A7cf44DcfEc6dCe5632a431579ED9100"
+  },
+  "Mode": {
+    "id": 34443,
+    "address": "0xd85cE6BD68487E0AaFb0858FDE1Cd18c76840564"
+  },
+  "Monad": {
+    "id": 10143,
+    "address": "0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee"
+  },
+  "Morph": {
+    "id": 2818,
+    "address": "0xAd10d07901Dc3195c3cb5e78E061F4EA8D9B4905"
+  },
+  "OP Mainnet": {
+    "id": 10,
+    "address": "0xce95AfbB8EA029495c66020883F87aaE8864AF92"
+  },
+  "Pharos": {
+    "id": 1672,
+    "address": "0x18573fA18fd17dDfD790B4a5B5b2977aad3b4Efb"
+  },
+  "Plasma": {
+    "id": 9745,
+    "address": "0x2fF74A46536f5c67ef5A42FD5B4e2Ed8A2cee249"
+  },
+  "Plume": {
+    "id": 98866,
+    "address": "0x42b18785CE0Aed7BF7Ca43a39471ED4C0A3e0bB5"
+  },
+  "PolygonPOS": {
+    "id": 137,
+    "address": "0x1bF0c2541F820E775182832f06c0B7Fc27A25f67"
+  },
+  "Rise": {
+    "id": 4153,
+    "address": "0x363D2Ba422Db2552752f2EB10b419f0Eb5defD31"
+  },
+  "Robinhood ": {
+    "id": 4663,
+    "address": "0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010"
+  },
+  "Scroll": {
+    "id": 534352,
+    "address": "0x2d012EdbAdc37eDc2BC62791B666f9193FDF5a55"
+  },
+  "Sei": {
+    "id": 1329,
+    "address": "0xc9cDAc20FCeAAF616f7EB0bb6Cd2c69dcfa9094c"
+  },
+  "Soneium": {
+    "id": 1868,
+    "address": "0xE75Fc5eA6e74B824954349Ca351eb4e671ADA53a"
+  },
+  "Sonic": {
+    "id": 146,
+    "address": "0xd6c916eB7542D0Ad3f18AEd0FCBD50C582cfa95f"
+  },
+  "Stable": {
+    "id": 988,
+    "address": "0xa40103088A899514E3fe474cD3cc5bf811b1102e"
+  },
+  "TAC": {
+    "id": 239,
+    "address": "0x918B9F2E4B44E20c6423105BB6cCEB71473aD35c"
+  },
+  "Tempo": {
+    "id": 4217,
+    "address": "0x10EE9AAC980A180dd4DcFc96C746d60B0EA88f97"
+  },
+  "Unichain": {
+    "id": 130,
+    "address": "0x8f5ae9CddB9f68de460C77730b018Ae7E04a140A"
+  },
+  "WorldChain": {
+    "id": 480,
+    "address": "0xE741BC7c34758b4caE05062794E8Ae24978AF432"
+  },
+  "XDC": {
+    "id": 50,
+    "address": "0xEa49B0fE898aF913A3826F9f462eE2cDcb854fD9"
+  },
+  "Zircuit": {
+    "id": 48900,
+    "address": "0xA902A365Fe10B4a94339B5A2Dc64F60c1486a5c8"
+  }
+}

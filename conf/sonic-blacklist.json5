@@ -248,5 +248,15 @@
             reason:  "dead (0/3 pairs with real liquidity)",
             addedAt: "2026-10-13",
         },
+        {
+            address: "0x8121a3f8c4176e9765deea0b95fa2bdfd3016794",
+            reason:  "AlgebraFactory_8121a3f8 (algebra): no pairs after a scan to block 81055335 for event 0x91ccaa7a — db-clean --empty",
+            addedAt: "2026-10-15",
+        },
+        {
+            address: "0xcb3e3ce89c6dad2b8ec0e5a56074539a232be924",
+            reason:  "PairFactory_cb3e3ce8 (solidly): no pairs after a scan to block 81055335 for event 0xc4805696 — db-clean --empty",
+            addedAt: "2026-10-15",
+        },
     ]
 }

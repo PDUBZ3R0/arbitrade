@@ -19,12 +19,9 @@
 // add websockets to the chains you already have:  yarn add-chain 146
 //
 // Where the data comes from:
-//   chain metadata + RPC list   chainid.network/chains.json (ethereum-lists),
+//   chain metadata              chainid.network/chains.json (ethereum-lists),
 //                               falling back to the same data on GitHub;
-//                               chainlist.org/rpcs.json for more RPCs
-//   HyperSync support           source/data/hypersync-chains.json, parsed from
-//                               Envio's supported-chains page (docs/)
-//   Aave V3 markets             docs/AAVE/*.json, confirmed on-chain, token
+//   Aave V3 markets             docs/aave.json, confirmed on-chain, token
 //                               list read live from Pool.getReservesList()
 //   Balancer V2 / Morpho Blue   probed at their canonical addresses
 //
@@ -32,8 +29,6 @@
 // is written anywhere; a dead or wrong-chain endpoint is never recorded.
 //
 // Options:
-//   --rpc URL      use this https RPC instead of probing chainlist's
-//   --ws URL       use this wss endpoint instead of probing
 //   --force        overwrite existing registry fields / regenerate conf/<slug>.json5
 //   --dry-run      print what would be written, write nothing
 // -----------------------------------------------------------------------------

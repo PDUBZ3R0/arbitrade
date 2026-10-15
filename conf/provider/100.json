@@ -1,0 +1,1719 @@
+{
+  "tool": "vetted-rpc 0.1.0",
+  "chainId": 100,
+  "name": "Gnosis",
+  "testedAt": "2026-10-15T05:00:38.673Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xaf204776c7245bf4147c2612bf6e5972ee483701",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0xb648d3644f584ed1c2232d53c46d87e693586486ad0d1175f8656013110b714e",
+      "block": 48763935
+    }
+  },
+  "endpoints": [
+    {
+      "url": "wss://rpc.gnosischain.com/wss",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 81742,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 161,
+        "p95": 176,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32602: invalid params Query returned more than 50000 results. Try with this block range [0x2e7ed25, 0x2e80028]."
+      },
+      "history": {
+        "stateDepth": 48763960,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 3,
+        "logs": 110,
+        "lastHeadAgeSec": 1.6,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 82
+        },
+        "reader": {
+          "pass": true,
+          "score": 71
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 88
+        }
+      }
+    },
+    {
+      "url": "https://rpc.gnosischain.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 33992,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 180,
+        "p95": 529,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32602: invalid params Query returned more than 50000 results. Try with this block range [0x2e7ed0c, 0x2e8000e]."
+      },
+      "history": {
+        "stateDepth": 48763935,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": true,
+          "score": 86
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ap-southeast-1.gateway.fm/v4/gnosis/non-archival/mainnet",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 33310,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 199,
+        "p95": 484,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32602: invalid params Query returned more than 50000 results. Try with this block range [0x2e7ed0c, 0x2e8000e]."
+      },
+      "history": {
+        "stateDepth": 48763935,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 71
+        },
+        "reader": {
+          "pass": true,
+          "score": 85
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.gnosis.gateway.fm",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34870,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 189,
+        "p95": 475,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32602: invalid params Query returned more than 50000 results. Try with this block range [0x2e7ed0c, 0x2e8000e]."
+      },
+      "history": {
+        "stateDepth": 48763935,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": true,
+          "score": 86
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis-rpc.publicnode.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 53620,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Nethermind/v1.39.3+28cbe2a0/linux-x64/dotnet10.0.10",
+      "latency": {
+        "p50": 60,
+        "p95": 138,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: Block range 50000 exceeds the maximum of 10000 blocks per logs request. Use a narrower fromBlock/toBlock range or increase Receipt.MaxBlockDepth.",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/gno/host"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762942 (0x8947cd6f85c29f33687ef19080663384c871e5da2da42e419179da5afa55db42)"
+      },
+      "batch": {
+        "max": 500,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32600: The method 'trace_call' is found but the namespace 'Trace' is disabled for http://0.0.0.0:85…"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 85
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.oat.farm",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 19694,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Nethermind/v1.39.3+28cbe2a0/linux-x64/dotnet10.0.10",
+      "latency": {
+        "p50": 56,
+        "p95": 99,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 14946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 57,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: Block range 50000 exceeds the maximum of 10000 blocks per logs request. Use a narrower fromBlock/toBlock range or increase Receipt.MaxBlockDepth.",
+        "resultCapError": "-32005: Too many logs requested. Max logs per response is 5000.",
+        "combinedError": "-32005: Too many logs requested. Max logs per response is 5000."
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762958 (0xb128443ffcf045d623f9ff70b69592ba56691c14ef3021db0c188d72d6b66202)"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32005: Batch size limit exceeded",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": false,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32601: The method 'eth_feeHistory' is not supported.",
+        "eth_getBlockReceipts": "-32601: The method 'eth_getBlockReceipts' is not supported.",
+        "eth_createAccessList": "-32601: The method 'eth_createAccessList' is not supported.",
+        "eth_getProof": "-32601: The method 'eth_getProof' is not supported.",
+        "debug_traceCall": "-32601: The method 'debug_traceCall' is not supported.",
+        "trace_call": "-32601: The method 'trace_call' is not supported.",
+        "txpool_status": "-32601: The method 'txpool_status' is not supported.",
+        "eth_blobBaseFee": "-32601: The method 'eth_blobBaseFee' is not supported."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 80
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 58
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22454,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 61,
+        "p95": 165,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762940 (0x315a3fc60550ee98416eeedf28f1824f384d56e0d3992da1fe6689f3ed8ae954)"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://gnosis.api.pocket.network",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 87407,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "erigon/3.7.1/linux-amd64/go1.27.1",
+      "latency": {
+        "p50": 177,
+        "p95": 210,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 632,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32602: query block range exceeds server limit, narrow your filter: 1000",
+        "addressError": "-32602: request is too complex/large, try lesser input",
+        "resultCapError": "-32602: query returns too many logs, narrow your filter: 20000",
+        "oldLogsError": "-32000: old data not available due to pruning: requested block 1, blocks are available from block 48501815"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32000: old data not available due to pruning: requested block 47763954, history is available from block 48501815"
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 3,
+        "logs": 78,
+        "lastHeadAgeSec": 1,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 55
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 86
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/gnosis",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 76809,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Nethermind/v1.39.3+28cbe2a0/linux-x64/dotnet10.0.10",
+      "latency": {
+        "p50": 185,
+        "p95": 516,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32602: invalid params Query returned more than 50000 results. Try with this block range [0x2e7ed1d, 0x2e80022]."
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762953 (0x66572d17348d30e4e7b3bcdace597bb456b03f02396449654aa82c7b6525022c)"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32600: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 29,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 85
+        },
+        "trader": {
+          "pass": true,
+          "score": 62
+        },
+        "reader": {
+          "pass": true,
+          "score": 68
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis-rpc.blockreq.com/v1/rpc/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 78045,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Nethermind/v2.1.0+b3e7e84c-hA/linux-x64/dotnet10.0.12",
+      "latency": {
+        "p50": 110,
+        "p95": 284,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access.",
+        "oldLogsError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "debug_traceCall": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "trace_call": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "txpool_status": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "eth_newFilter": "-32000: RPC Endpoint Key access denied"
+      },
+      "throttledDuringProbes": 11,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150,
+        "retryAfter": "2"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 59
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 73
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 38514,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "erigon/3.7.1/linux-amd64/go1.27.1",
+      "latency": {
+        "p50": 265,
+        "p95": 280,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 632,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: invalid argument 0: block range exceeds maximum 50000",
+        "addressError": "-32602: request is too complex/large, try lesser input",
+        "resultCapError": "-32602: invalid argument 0: missing required field 'address' for log filter",
+        "combinedError": "-32602: request is too complex/large, try lesser input"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762945 (0x3e2936e8e7d749e644d197b60c0264ce23e8512d382a880ae4d00f43e08ecd31)"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32600: The method 'debug_traceCall' is found but the namespace 'Debug' is disabled for http://0.0.0…",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 79
+        },
+        "trader": {
+          "pass": true,
+          "score": 71
+        },
+        "reader": {
+          "pass": true,
+          "score": 76
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://gnosis-rpc.publicnode.com",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 74719,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Nethermind/v1.39.3+28cbe2a0/linux-x64/dotnet10.0.10",
+      "latency": {
+        "p50": 54,
+        "p95": 99,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: Block range 50000 exceeds the maximum of 10000 blocks per logs request. Use a narrower fromBlock/toBlock range or increase Receipt.MaxBlockDepth.",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/gno/host"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32002: No state available for block 48762942 (0x8947cd6f85c29f33687ef19080663384c871e5da2da42e419179da5afa55db42)"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "timeout 15000ms",
+        "eth_maxPriorityFeePerGas": "timeout 15000ms",
+        "eth_getBlockReceipts": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_createAccessList": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_getProof": "socket closed (code 1013 Connection timeout exceeded)",
+        "debug_traceCall": "socket closed (code 1013 Connection timeout exceeded)",
+        "trace_call": "socket closed (code 1013 Connection timeout exceeded)",
+        "txpool_status": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_blobBaseFee": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_newFilter": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1013 Connection timeout exceeded))"
+        }
+      }
+    },
+    {
+      "url": "wss://gnosis.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9553,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 60,
+        "p95": 159,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 77
+        },
+        "reader": {
+          "pass": true,
+          "score": 49
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://100.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 73541,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763985,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 131,
+        "p95": 325,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 562,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "resultCapError": "HTTP 413: Request Too Large "
+      },
+      "history": {
+        "stateDepth": 48763970,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 2,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 67
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis-public.nodies.app",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 198,
+      "error": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access.",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        }
+      }
+    },
+    {
+      "url": "https://xdai-archive.blockscout.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 571,
+      "error": "HTTP 404: default backend - 404",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: default backend - 404"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: default backend - 404"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: default backend - 404"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: default backend - 404"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis-mainnet.public.blastapi.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 124,
+      "error": "-32000: Blast API is no longer available. Please update your integration to use Alchemy's API instead: https://alchemy.com",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Blast API is no longer available. Please update your integration to use Alchemy's API instead: https://alchemy.com"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Blast API is no longer available. Please update your integration to use Alchemy's API instead: https://alchemy.com"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Blast API is no longer available. Please update your integration to use Alchemy's API instead: https://alchemy.com"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Blast API is no longer available. Please update your integration to use Alchemy's API instead: https://alchemy.com"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/100",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7290,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 15034,
+      "chainId": 100,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 48763985,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://endpoints.omniatech.io/v1/gnosis/mainnet/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 240,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/gnosis",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 199,
+      "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.therpc.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 55,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://public-gno-mainnet.fastnode.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 71,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/gnosis",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 215,
+      "error": "-32000: Unauthorized: You must authenticate your request with an API key. Create an account on https://www.ankr.com/rpc/ and generate your personal API key for …",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Unauthorized: You must authenticate your request with an API key. Create an account on https://www.ankr.com/rpc/ and generate your personal API key for …"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Unauthorized: You must authenticate your request with an API key. Create an account on https://www.ankr.com/rpc/ and generate your personal API key for …"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Unauthorized: You must authenticate your request with an API key. Create an account on https://www.ankr.com/rpc/ and generate your personal API key for …"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Unauthorized: You must authenticate your request with an API key. Create an account on https://www.ankr.com/rpc/ and generate your personal API key for …"
+        }
+      }
+    },
+    {
+      "url": "https://gnosis.blockpi.network/v1/rpc/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 245,
+      "error": "100021: Apikey not found",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        }
+      }
+    },
+    {
+      "url": "https://gno-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 198007,
+      "chainId": 100,
+      "chainIdOk": true,
+      "head": 48763942,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 174,
+        "p95": 226,
+        "n": 4,
+        "failures": 8
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 72,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

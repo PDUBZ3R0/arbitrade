@@ -61,6 +61,28 @@ import { getV3States, getAlgebraStates } from '../util/yobatches.ts';
 import { v3_amount_out_exact } from '../util/calculus-v3.js';
 import type { Candidate } from '../evaluator/evaluator.ts';
 
+/**
+ * Arbitrum-family chains (Arbitrum One, Robinhood and other Orbit chains):
+ * `block.number` inside a contract is the L1 block, NOT this chain's. YoBatches
+ * and Multicall3 report `block.number`, so pinning later reads to it read this
+ * chain at a block months old — on Robinhood (2026-10-15) the V2 legs of mixed
+ * paths were priced at block ~26.2M while the chain was at ~89.2M, and almost
+ * every such candidate "decayed". Detected once per provider through the ArbSys
+ * precompile (0x64), which answers only on these chains.
+ */
+const ARBSYS = '0x0000000000000000000000000000000000000064';
+const ARB_BLOCK = new Interface(['function arbBlockNumber() view returns (uint256)']);
+const l1Clock = new WeakMap<object, Promise<boolean>>();
+export function blockNumberIsL1(provider: JsonRpcProvider): Promise<boolean> {
+    let known = l1Clock.get(provider);
+    if (!known) {
+        known = provider.call({ to: ARBSYS, data: ARB_BLOCK.encodeFunctionData('arbBlockNumber', []) })
+            .then(r => r.length === 66 && BigInt(r) > 0n, () => false);
+        l1Clock.set(provider, known);
+    }
+    return known;
+}
+
 /** FlashArbExecutor's hop kinds. */
 export const HOP_V2 = 0;
 export const HOP_V3 = 1;
@@ -245,6 +267,8 @@ export async function buildHops(
     const v3Hops = hops.filter(isV3);
     const v3ByPool = new Map<string, any>();
     let blockTag: number | undefined;
+    // This chain's own block, asked up front where the contracts can't report it.
+    if (await blockNumberIsL1(provider)) blockTag = await provider.getBlockNumber();
     if (v3Hops.length > 0) {
         if (!yobatchesAddress) throw new Error('cycle has a V3 hop but no YoBatches address (chain.contract) was given');
         // Uniswap-style pools via slot0/tickBitmap; Algebra pools via

@@ -1,8 +1,8 @@
 {
-  "tool": "vetted-rpc 0.1.0",
+  "tool": "vetted-provider 0.1.0",
   "chainId": 143,
   "name": "Monad",
-  "testedAt": "2026-10-14T22:13:27.096Z",
+  "testedAt": "2026-10-15T14:33:33.850Z",
   "from": "B3T4M4X",
   "options": {
     "maxRps": 40,
@@ -14,126 +14,30 @@
       "address": "0x06ab4f89b4abaee213a8cf64188dea47e4ab11eb",
       "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
       "topic2": "0xb585865280072cb0f2cb5cf0f49f0e0224c09fa012c92c5f33eabf10287b8beb",
-      "block": 113442250
+      "block": 113636738
     }
   },
   "endpoints": [
-    {
-      "url": "wss://wss.monad-rpc.huginn.tech",
-      "kind": "ws",
-      "tracking": "none",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 62550,
-      "chainId": 143,
-      "chainIdOk": true,
-      "head": 113443267,
-      "client": "Monad/0.16.1",
-      "latency": {
-        "p50": 51,
-        "p95": 90,
-        "n": 12,
-        "failures": 0
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": 24946876,
-        "stateOverride": true,
-        "gasCapError": "-32603: user-specified gas exceeds provider limit"
-      },
-      "logs": {
-        "maxRange": 1000,
-        "maxAddresses": 1000,
-        "topicOnly": true,
-        "topicOnlyMaxRange": 1000,
-        "orTopics": true,
-        "combined": true,
-        "oldLogs": false,
-        "rangeError": "-32602: block range too large",
-        "oldLogsError": "-32603: Internal error: error getting block header from triedb and archive"
-      },
-      "history": {
-        "stateDepth": 1000000,
-        "archive": false,
-        "error": "-32602: Block requested not found. Request might be querying historical state that is not available. If possible, reformulate query to point to more recent bloc…"
-      },
-      "batch": {
-        "max": 0,
-        "error": "timeout 30000ms",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": true,
-        "eth_createAccessList": true,
-        "eth_getProof": false,
-        "debug_traceCall": true,
-        "trace_call": false,
-        "txpool_status": false,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": false
-      },
-      "methodErrors": {
-        "eth_getProof": "-32601: Method not found",
-        "trace_call": "-32601: Method not found",
-        "txpool_status": "-32601: Method not found",
-        "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "-32601: Method not found"
-      },
-      "ws": {
-        "connected": true,
-        "heads": 50,
-        "logs": 127,
-        "lastHeadAgeSec": 0.2,
-        "died": false
-      },
-      "throttledDuringProbes": 0,
-      "rate": {
-        "cleanRps": 40,
-        "limitedAt": null,
-        "sent": 150
-      },
-      "headLag": 1,
-      "ratings": {
-        "scanner": {
-          "pass": true,
-          "score": 63
-        },
-        "trader": {
-          "pass": true,
-          "score": 80
-        },
-        "reader": {
-          "pass": true,
-          "score": 56
-        },
-        "subscriber": {
-          "pass": true,
-          "score": 88
-        }
-      }
-    },
     {
       "url": "https://infra.originstake.com/monad/evm",
       "kind": "http",
       "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 128906,
+      "ms": 192680,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443268,
-      "client": "Monad/0.16.1",
+      "head": 113638033,
+      "client": "Monad/0.16.4",
       "latency": {
-        "p50": 301,
-        "p95": 311,
+        "p50": 322,
+        "p95": 441,
         "n": 12,
         "failures": 0
       },
       "call": {
         "revertData": true,
-        "gasCap": 24946876,
+        "gasCap": 99946876,
         "stateOverride": true,
         "gasCapError": "timeout 15000ms"
       },
@@ -141,16 +45,14 @@
         "maxRange": 19719,
         "maxAddresses": 1000,
         "topicOnly": true,
-        "topicOnlyMaxRange": 1778,
+        "topicOnlyMaxRange": 10000,
         "orTopics": true,
-        "combined": false,
+        "combined": true,
         "oldLogs": true,
-        "rangeError": "-32012: getLogs request exceeded max allowed range {\"code\":\"ErrGetLogsExceededMaxAllowedRange\",\"message\":\"getLogs request exceeded max allowed range\",\"details\":…",
-        "resultCapError": "-32012: request exceeded max allowed range: block range too large {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-level after 605.4604…",
-        "combinedError": "-32012: request exceeded max allowed range: block range too large {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-level after 810.2476…"
+        "rangeError": "-32012: getLogs request exceeded max allowed range {\"code\":\"ErrGetLogsExceededMaxAllowedRange\",\"message\":\"getLogs request exceeded max allowed range\",\"details\":…"
       },
       "history": {
-        "stateDepth": 113442277,
+        "stateDepth": 113636776,
         "archive": true
       },
       "batch": {
@@ -162,21 +64,21 @@
         "eth_maxPriorityFeePerGas": true,
         "eth_getBlockReceipts": true,
         "eth_createAccessList": true,
-        "eth_getProof": false,
+        "eth_getProof": null,
         "debug_traceCall": true,
         "trace_call": false,
-        "txpool_status": null,
+        "txpool_status": false,
         "eth_blobBaseFee": false,
         "eth_newFilter": null
       },
       "methodErrors": {
-        "eth_getProof": "-32601: Method not found {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-l…",
+        "eth_getProof": "-32005: rate-limit exceeded {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on networ…",
         "trace_call": "-32601: Method not found {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-l…",
-        "txpool_status": "-32005: rate-limit exceeded {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on networ…",
+        "txpool_status": "-32601: Method not found {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-l…",
         "eth_blobBaseFee": "-32601: Method not found {\"code\":\"ErrFailsafeRetryExceeded\",\"message\":\"gave up retrying on network-l…",
         "eth_newFilter": "-32603: stateful method requires a single targeted upstream; either configure only 1 upstream or set…"
       },
-      "throttledDuringProbes": 13,
+      "throttledDuringProbes": 12,
       "rate": {
         "cleanRps": 40,
         "limitedAt": null,
@@ -186,15 +88,15 @@
       "ratings": {
         "scanner": {
           "pass": true,
-          "score": 83
+          "score": 88
         },
         "trader": {
           "pass": true,
-          "score": 67
+          "score": 65
         },
         "reader": {
           "pass": true,
-          "score": 65
+          "score": 73
         },
         "subscriber": {
           "pass": false,
@@ -204,25 +106,24 @@
       }
     },
     {
-      "url": "https://gm.monad.at.htw.tech",
+      "url": "https://rpc3.monad.xyz",
       "kind": "http",
-      "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 30725,
+      "ms": 31921,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638033,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 46,
-        "p95": 70,
+        "p50": 55,
+        "p95": 63,
         "n": 12,
         "failures": 0
       },
       "call": {
         "revertData": true,
-        "gasCap": 24946876,
+        "gasCap": 99946876,
         "stateOverride": true,
         "gasCapError": "-32000: user-specified gas exceeds provider limit"
       },
@@ -233,18 +134,17 @@
         "topicOnlyMaxRange": 1000,
         "orTopics": true,
         "combined": true,
-        "oldLogs": false,
-        "rangeError": "-32602: block range too large",
-        "oldLogsError": "-32603: Internal error: error getting block header from triedb and archive"
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
       },
       "history": {
-        "stateDepth": 1000000,
+        "stateDepth": 100000,
         "archive": false,
         "error": "-32602: Block requested not found. Request might be querying historical state that is not available. If possible, reformulate query to point to more recent bloc…"
       },
       "batch": {
-        "max": 50,
-        "error": "-32005: Rate limit exceeded for eth_chainId",
+        "max": 10,
+        "error": "-32062: Batch size too large",
         "nullIdErrors": false
       },
       "methods": {
@@ -253,38 +153,130 @@
         "eth_getBlockReceipts": true,
         "eth_createAccessList": true,
         "eth_getProof": false,
-        "debug_traceCall": true,
-        "trace_call": false,
+        "debug_traceCall": null,
+        "trace_call": null,
         "txpool_status": false,
         "eth_blobBaseFee": false,
         "eth_newFilter": false
       },
       "methodErrors": {
         "eth_getProof": "-32601: Method not found",
-        "trace_call": "-32601: Method not found",
-        "txpool_status": "-32601: Method not found",
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32075: Method disabled, reason: restricted by blockchain schema",
         "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "-32601: Method not found"
+        "eth_newFilter": "-32075: Method disabled"
       },
-      "throttledDuringProbes": 4,
+      "throttledDuringProbes": 2,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 69
+        },
+        "trader": {
+          "pass": true,
+          "score": 88
+        },
+        "reader": {
+          "pass": true,
+          "score": 67
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc2.monad.xyz",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 77874,
+      "chainId": 143,
+      "chainIdOk": true,
+      "head": 113638031,
+      "client": "Monad/0.16.4",
+      "latency": {
+        "p50": 64,
+        "p95": 102,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: user-specified gas exceeds provider limit"
+      },
+      "logs": {
+        "maxRange": 19719,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32012: getLogs request exceeded max allowed range"
+      },
+      "history": {
+        "stateDepth": 113637507,
+        "archive": true
+      },
+      "batch": {
+        "max": 500,
+        "error": "HTTP 429",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "HTTP 429",
+        "eth_createAccessList": "HTTP 429",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "HTTP 429",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "HTTP 429",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "HTTP 429"
+      },
+      "throttledDuringProbes": 18,
       "rate": {
         "cleanRps": 40,
         "limitedAt": null,
         "sent": 150
       },
-      "headLag": 1,
+      "headLag": 2,
       "ratings": {
         "scanner": {
           "pass": true,
-          "score": 63
+          "score": 88
         },
         "trader": {
-          "pass": true,
-          "score": 81
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
         },
         "reader": {
           "pass": true,
-          "score": 68
+          "score": 85
         },
         "subscriber": {
           "pass": false,
@@ -298,14 +290,14 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 30312,
+      "ms": 30554,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638032,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 45,
-        "p95": 60,
+        "p50": 46,
+        "p95": 61,
         "n": 12,
         "failures": 0
       },
@@ -387,14 +379,14 @@
       "tracking": "limited",
       "source": "chainlist",
       "reachable": true,
-      "ms": 22078,
+      "ms": 21916,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443266,
+      "head": 113638028,
       "client": "sentio-super-node/v2.583.0-b678fb8db9a28646ecb79254a9df67350bdff5a4/linux-amd64/",
       "latency": {
-        "p50": 98,
-        "p95": 159,
+        "p50": 100,
+        "p95": 138,
         "n": 12,
         "failures": 0
       },
@@ -408,16 +400,16 @@
         "maxRange": 10000,
         "maxAddresses": 1000,
         "topicOnly": true,
-        "topicOnlyMaxRange": 1000,
+        "topicOnlyMaxRange": 316,
         "orTopics": true,
         "combined": false,
         "oldLogs": true,
-        "rangeError": "-32000: block span 49999 of range [113392328, 113442327] exceeds the limit 10000",
+        "rangeError": "-32000: block span 49999 of range [113586821, 113636820] exceeds the limit 10000",
         "resultCapError": "-32000: too many results: the result count exceeds the limit, please narrow the query block range",
         "combinedError": "-32000: too many results: the result count exceeds the limit, please narrow the query block range"
       },
       "history": {
-        "stateDepth": 113442331,
+        "stateDepth": 113636824,
         "archive": true
       },
       "batch": {
@@ -450,7 +442,7 @@
         "limitedAt": null,
         "sent": 150
       },
-      "headLag": 2,
+      "headLag": 5,
       "ratings": {
         "scanner": {
           "pass": true,
@@ -459,7 +451,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "head 2 blocks behind"
+          "why": "head 5 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -473,19 +465,116 @@
       }
     },
     {
+      "url": "wss://wss.monad-rpc.huginn.tech",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 63539,
+      "chainId": 143,
+      "chainIdOk": true,
+      "head": 113638031,
+      "client": "Monad/0.16.1",
+      "latency": {
+        "p50": 60,
+        "p95": 65,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true,
+        "gasCapError": "-32603: user-specified gas exceeds provider limit"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32602: block range too large",
+        "oldLogsError": "-32603: Internal error: error getting block header from triedb and archive"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32602: Block requested not found. Request might be querying historical state that is not available. If possible, reformulate query to point to more recent bloc…"
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 50,
+        "logs": 366,
+        "lastHeadAgeSec": 0.1,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 63
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 56
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 80
+        }
+      }
+    },
+    {
       "url": "https://monad-rpc.huginn.tech",
       "kind": "http",
       "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 18780,
+      "ms": 19529,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638032,
       "client": "Monad/0.16.1",
       "latency": {
-        "p50": 55,
-        "p95": 121,
+        "p50": 65,
+        "p95": 75,
         "n": 12,
         "failures": 0
       },
@@ -548,7 +637,7 @@
         },
         "trader": {
           "pass": true,
-          "score": 80
+          "score": 79
         },
         "reader": {
           "pass": true,
@@ -562,114 +651,25 @@
       }
     },
     {
-      "url": "https://rpc2.monad.xyz",
+      "url": "https://gm.monad.at.htw.tech",
       "kind": "http",
+      "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 68143,
+      "ms": 30806,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443264,
+      "head": 113638032,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 65,
-        "p95": 101,
+        "p50": 61,
+        "p95": 87,
         "n": 12,
         "failures": 0
       },
       "call": {
         "revertData": true,
-        "gasCap": 99946876,
-        "stateOverride": true,
-        "gasCapError": "-32000: user-specified gas exceeds provider limit"
-      },
-      "logs": {
-        "maxRange": 19719,
-        "maxAddresses": 1000,
-        "topicOnly": true,
-        "topicOnlyMaxRange": 10000,
-        "orTopics": true,
-        "combined": true,
-        "oldLogs": true,
-        "rangeError": "-32012: getLogs request exceeded max allowed range"
-      },
-      "history": {
-        "stateDepth": 113442930,
-        "archive": true
-      },
-      "batch": {
-        "max": 1000,
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": null,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": null,
-        "eth_createAccessList": true,
-        "eth_getProof": null,
-        "debug_traceCall": true,
-        "trace_call": null,
-        "txpool_status": null,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": null
-      },
-      "methodErrors": {
-        "eth_feeHistory": "HTTP 429",
-        "eth_getBlockReceipts": "HTTP 429",
-        "eth_getProof": "HTTP 429",
-        "trace_call": "HTTP 429",
-        "txpool_status": "HTTP 429",
-        "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "HTTP 429"
-      },
-      "throttledDuringProbes": 19,
-      "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10,
-        "retryAfter": "16"
-      },
-      "headLag": 4,
-      "ratings": {
-        "scanner": {
-          "pass": true,
-          "score": 77
-        },
-        "trader": {
-          "pass": false,
-          "score": 0,
-          "why": "head 4 blocks behind"
-        },
-        "reader": {
-          "pass": true,
-          "score": 73
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://rpc3.monad.xyz",
-      "kind": "http",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 25943,
-      "chainId": 143,
-      "chainIdOk": true,
-      "head": 113443267,
-      "client": "Monad/0.16.4",
-      "latency": {
-        "p50": 50,
-        "p95": 71,
-        "n": 12,
-        "failures": 0
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": 99946876,
+        "gasCap": 24946876,
         "stateOverride": true,
         "gasCapError": "-32000: user-specified gas exceeds provider limit"
       },
@@ -680,17 +680,18 @@
         "topicOnlyMaxRange": 1000,
         "orTopics": true,
         "combined": true,
-        "oldLogs": true,
-        "rangeError": "-32062: Block range is too large"
+        "oldLogs": false,
+        "rangeError": "-32602: block range too large",
+        "oldLogsError": "-32603: Internal error: error getting block header from triedb and archive"
       },
       "history": {
-        "stateDepth": 100000,
+        "stateDepth": 1000000,
         "archive": false,
         "error": "-32602: Block requested not found. Request might be querying historical state that is not available. If possible, reformulate query to point to more recent bloc…"
       },
       "batch": {
-        "max": 10,
-        "error": "-32062: Batch size too large",
+        "max": 50,
+        "error": "-32005: Rate limit exceeded for eth_chainId",
         "nullIdErrors": false
       },
       "methods": {
@@ -699,35 +700,34 @@
         "eth_getBlockReceipts": true,
         "eth_createAccessList": true,
         "eth_getProof": false,
-        "debug_traceCall": null,
-        "trace_call": null,
+        "debug_traceCall": true,
+        "trace_call": false,
         "txpool_status": false,
         "eth_blobBaseFee": false,
         "eth_newFilter": false
       },
       "methodErrors": {
         "eth_getProof": "-32601: Method not found",
-        "debug_traceCall": "-32053: API key is not allowed to access method",
-        "trace_call": "-32053: API key is not allowed to access method",
-        "txpool_status": "-32075: Method disabled, reason: restricted by blockchain schema",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
         "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "-32075: Method disabled"
+        "eth_newFilter": "-32601: Method not found"
       },
-      "throttledDuringProbes": 0,
+      "throttledDuringProbes": 3,
       "rate": {
-        "cleanRps": 20,
-        "limitedAt": 40,
+        "cleanRps": 40,
+        "limitedAt": null,
         "sent": 150
       },
       "headLag": 1,
       "ratings": {
         "scanner": {
           "pass": true,
-          "score": 69
+          "score": 63
         },
         "trader": {
           "pass": true,
-          "score": 76
+          "score": 79
         },
         "reader": {
           "pass": true,
@@ -741,18 +741,18 @@
       }
     },
     {
-      "url": "https://rpc1.monad.xyz",
+      "url": "https://rpc-mainnet.monadinfra.com",
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 20568,
+      "ms": 21104,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638032,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 75,
-        "p95": 107,
+        "p50": 77,
+        "p95": 95,
         "n": 12,
         "failures": 0
       },
@@ -773,7 +773,7 @@
         "rangeError": "-32602: block range too large"
       },
       "history": {
-        "stateDepth": 113442881,
+        "stateDepth": 113637597,
         "archive": true
       },
       "batch": {
@@ -828,18 +828,18 @@
       }
     },
     {
-      "url": "https://rpc-mainnet.monadinfra.com",
+      "url": "https://rpc1.monad.xyz",
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 21347,
+      "ms": 21683,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638032,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 96,
-        "p95": 117,
+        "p50": 94,
+        "p95": 107,
         "n": 12,
         "failures": 0
       },
@@ -860,7 +860,7 @@
         "rangeError": "-32602: block range too large"
       },
       "history": {
-        "stateDepth": 113443002,
+        "stateDepth": 113637440,
         "archive": true
       },
       "batch": {
@@ -919,41 +919,39 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 15986,
+      "ms": 16546,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638032,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 65,
-        "p95": 75,
+        "p50": 64,
+        "p95": 84,
         "n": 12,
         "failures": 0
       },
       "call": {
         "revertData": true,
-        "gasCap": null,
+        "gasCap": 99946876,
         "stateOverride": false,
         "gasCapError": "-32603: Internal error",
         "stateOverrideError": "-32603: Internal error"
       },
       "logs": {
-        "maxRange": 46,
-        "maxAddresses": 3,
+        "maxRange": 48,
+        "maxAddresses": null,
         "topicOnly": true,
         "topicOnlyMaxRange": null,
         "orTopics": true,
-        "combined": false,
+        "combined": null,
         "oldLogs": true,
         "rangeError": "-32603: Internal error",
         "addressError": "-32603: Internal error",
-        "resultCapError": "-32603: Internal error",
-        "combinedError": "-32603: Internal error"
+        "resultCapError": "-32603: Internal error"
       },
       "history": {
-        "stateDepth": null,
-        "archive": false,
-        "error": "-32603: Internal error"
+        "stateDepth": 113637542,
+        "archive": true
       },
       "batch": {
         "max": 0,
@@ -962,23 +960,25 @@
       },
       "methods": {
         "eth_feeHistory": null,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": true,
-        "eth_createAccessList": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
         "eth_getProof": null,
-        "debug_traceCall": null,
+        "debug_traceCall": true,
         "trace_call": false,
         "txpool_status": false,
-        "eth_blobBaseFee": null,
+        "eth_blobBaseFee": false,
         "eth_newFilter": true
       },
       "methodErrors": {
         "eth_feeHistory": "-32603: Internal error",
-        "eth_getProof": "-32600: eth_getProof is not available on the MONAD_MAINNET. For more information see our docs: https…",
-        "debug_traceCall": "-32603: Internal error",
+        "eth_maxPriorityFeePerGas": "-32603: Internal error",
+        "eth_getBlockReceipts": "-32603: Internal error",
+        "eth_createAccessList": "-32603: Internal error",
+        "eth_getProof": "-32603: Internal error",
         "trace_call": "-32601: Method not found",
         "txpool_status": "-32600: Unsupported method: txpool_status on MONAD_MAINNET",
-        "eth_blobBaseFee": "-32603: Internal error"
+        "eth_blobBaseFee": "-32601: Method not found"
       },
       "throttledDuringProbes": 0,
       "rate": {
@@ -992,295 +992,15 @@
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "getLogs range 46"
+          "why": "getLogs range 48"
         },
         "trader": {
           "pass": true,
           "score": 69
         },
         "reader": {
-          "pass": false,
-          "score": 0,
-          "why": "eth_call unusable (-32603: Internal error)"
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://monad-mainnet.drpc.org",
-      "kind": "http",
-      "tracking": "none",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 25553,
-      "chainId": 143,
-      "chainIdOk": true,
-      "head": 113443267,
-      "client": "Geth/v10.0.0/drpc",
-      "latency": {
-        "p50": 195,
-        "p95": 219,
-        "n": 12,
-        "failures": 0
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": 24946876,
-        "stateOverride": false,
-        "gasCapError": "-32000: user-specified gas exceeds provider limit",
-        "stateOverrideError": "-32000: user-specified gas exceeds provider limit"
-      },
-      "logs": {
-        "maxRange": 100,
-        "maxAddresses": 1000,
-        "topicOnly": true,
-        "topicOnlyMaxRange": 100,
-        "orTopics": true,
-        "combined": true,
-        "oldLogs": false,
-        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
-        "oldLogsError": "27: Unknown state. First available state is 1"
-      },
-      "history": {
-        "stateDepth": 1000000,
-        "archive": false,
-        "error": "27: Unknown state. First available state is 110023806"
-      },
-      "batch": {
-        "max": 100,
-        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": true,
-        "eth_createAccessList": true,
-        "eth_getProof": false,
-        "debug_traceCall": null,
-        "trace_call": false,
-        "txpool_status": false,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": false
-      },
-      "methodErrors": {
-        "eth_getProof": "-32601: Method not found",
-        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
-        "trace_call": "35: method is not available on free plan, please upgrade to paid plan",
-        "txpool_status": "35: method is not available on free plan, please upgrade to paid plan",
-        "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "-32601: Method not found"
-      },
-      "throttledDuringProbes": 0,
-      "rate": {
-        "cleanRps": 40,
-        "limitedAt": null,
-        "sent": 150
-      },
-      "headLag": 1,
-      "ratings": {
-        "scanner": {
           "pass": true,
-          "score": 51
-        },
-        "trader": {
-          "pass": true,
-          "score": 66
-        },
-        "reader": {
-          "pass": true,
-          "score": 54
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://monad-mainnet-rpc.spidernode.net",
-      "kind": "http",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 9677,
-      "chainId": 143,
-      "chainIdOk": true,
-      "head": 113443267,
-      "client": "Monad/0.16.4",
-      "latency": {
-        "p50": 59,
-        "p95": 65,
-        "n": 12,
-        "failures": 0
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": 24946876,
-        "stateOverride": true,
-        "gasCapError": "-32000: user-specified gas exceeds provider limit"
-      },
-      "logs": {
-        "maxRange": 1000,
-        "maxAddresses": null,
-        "topicOnly": true,
-        "topicOnlyMaxRange": null,
-        "orTopics": false,
-        "combined": null,
-        "oldLogs": false,
-        "rangeError": "-32602: block range too large",
-        "addressError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
-        "resultCapError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
-        "oldLogsError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
-      },
-      "history": {
-        "stateDepth": null,
-        "archive": false,
-        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
-      },
-      "batch": {
-        "max": 0,
-        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": null,
-        "eth_getBlockReceipts": null,
-        "eth_createAccessList": null,
-        "eth_getProof": null,
-        "debug_traceCall": null,
-        "trace_call": null,
-        "txpool_status": false,
-        "eth_blobBaseFee": null,
-        "eth_newFilter": null
-      },
-      "methodErrors": {
-        "eth_maxPriorityFeePerGas": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "eth_getBlockReceipts": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "eth_createAccessList": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "eth_getProof": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "debug_traceCall": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "trace_call": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "txpool_status": "-32601: Method not found",
-        "eth_blobBaseFee": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
-        "eth_newFilter": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…"
-      },
-      "throttledDuringProbes": 0,
-      "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10,
-        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
-      },
-      "headLag": 1,
-      "ratings": {
-        "scanner": {
-          "pass": true,
-          "score": 27
-        },
-        "trader": {
-          "pass": true,
-          "score": 65
-        },
-        "reader": {
-          "pass": true,
-          "score": 45
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://rpc.swiftnodes.io/rpc/monad",
-      "kind": "http",
-      "tracking": "limited",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 74034,
-      "chainId": 143,
-      "chainIdOk": true,
-      "head": 113443268,
-      "client": "Monad/0.16.4",
-      "latency": {
-        "p50": 201,
-        "p95": 334,
-        "n": 12,
-        "failures": 0
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": 49946876,
-        "stateOverride": true,
-        "gasCapError": "-32603: user-specified gas exceeds provider limit"
-      },
-      "logs": {
-        "maxRange": 1387,
-        "maxAddresses": 1000,
-        "topicOnly": true,
-        "topicOnlyMaxRange": 1000,
-        "orTopics": true,
-        "combined": false,
-        "oldLogs": false,
-        "rangeError": "35: ranges over 10000 blocks are not supported",
-        "combinedError": "-32614: eth_getLogs is limited to a 100 range",
-        "oldLogsError": "27: Unknown state. First available state is 1"
-      },
-      "history": {
-        "stateDepth": 113442702,
-        "archive": true
-      },
-      "batch": {
-        "max": 50,
-        "error": "-32007: 50/second request limit reached",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": true,
-        "eth_createAccessList": true,
-        "eth_getProof": false,
-        "debug_traceCall": true,
-        "trace_call": false,
-        "txpool_status": false,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": false
-      },
-      "methodErrors": {
-        "eth_getProof": "-32601: Method not found",
-        "trace_call": "-32601: Method not found",
-        "txpool_status": "-32601: Method not found",
-        "eth_blobBaseFee": "-32601: Method not found",
-        "eth_newFilter": "-32601: Method not found"
-      },
-      "throttledDuringProbes": 33,
-      "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10,
-        "retryAfter": "1"
-      },
-      "headLag": 0,
-      "ratings": {
-        "scanner": {
-          "pass": true,
-          "score": 48
-        },
-        "trader": {
-          "pass": true,
-          "score": 62
-        },
-        "reader": {
-          "pass": true,
-          "score": 54
+          "score": 47
         },
         "subscriber": {
           "pass": false,
@@ -1295,14 +1015,14 @@
       "tracking": "yes",
       "source": "chainlist",
       "reachable": true,
-      "ms": 34517,
+      "ms": 40966,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443267,
+      "head": 113638033,
       "client": "thirdweb/1.0",
       "latency": {
-        "p50": 149,
-        "p95": 159,
+        "p50": 141,
+        "p95": 166,
         "n": 12,
         "failures": 0
       },
@@ -1359,7 +1079,7 @@
         "sent": 30,
         "retryAfter": "0"
       },
-      "headLag": 1,
+      "headLag": 0,
       "ratings": {
         "scanner": {
           "pass": true,
@@ -1367,11 +1087,291 @@
         },
         "trader": {
           "pass": true,
-          "score": 56
+          "score": 69
         },
         "reader": {
           "pass": true,
-          "score": 55
+          "score": 56
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://monad-mainnet.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 26847,
+      "chainId": 143,
+      "chainIdOk": true,
+      "head": 113638032,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 196,
+        "p95": 205,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": false,
+        "gasCapError": "-32000: user-specified gas exceeds provider limit",
+        "stateOverrideError": "-32000: user-specified gas exceeds provider limit"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "oldLogsError": "27: Unknown state. First available state is 1"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "27: Unknown state. First available state is 110310710"
+      },
+      "batch": {
+        "max": 100,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "35: method is not available on free plan, please upgrade to paid plan",
+        "txpool_status": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 51
+        },
+        "trader": {
+          "pass": true,
+          "score": 66
+        },
+        "reader": {
+          "pass": true,
+          "score": 54
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/monad",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 78775,
+      "chainId": 143,
+      "chainIdOk": true,
+      "head": 113638033,
+      "client": "sentio-super-node/v2.583.0-b678fb8db9a28646ecb79254a9df67350bdff5a4/linux-amd64/",
+      "latency": {
+        "p50": 195,
+        "p95": 280,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: user-specified gas exceeds provider limit"
+      },
+      "logs": {
+        "maxRange": 107,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32614: eth_getLogs is limited to a 100 range"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32602: Block requested not found. Request might be querying historical state that is not available. If possible, reformulate query to point to more recent bloc…"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32007: 50/second request limit reached",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: Method not found",
+        "trace_call": "35: method is not available",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 34,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 50
+        },
+        "trader": {
+          "pass": true,
+          "score": 63
+        },
+        "reader": {
+          "pass": true,
+          "score": 62
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://monad-mainnet-rpc.spidernode.net",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9626,
+      "chainId": 143,
+      "chainIdOk": true,
+      "head": 113638031,
+      "client": "Monad/0.16.4",
+      "latency": {
+        "p50": 59,
+        "p95": 73,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: user-specified gas exceeds provider limit"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": null,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32602: block range too large",
+        "addressError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
+        "resultCapError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
+        "oldLogsError": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "eth_maxPriorityFeePerGas": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "eth_getBlockReceipts": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "eth_createAccessList": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "eth_getProof": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "debug_traceCall": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "trace_call": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "txpool_status": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>…"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "HTTP 503: <html> <head><title>503 Service Temporarily Unavailable</title></head> <body> <center><h1>503 Service Temporarily Una"
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 27
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 45
         },
         "subscriber": {
           "pass": false,
@@ -1385,29 +1385,31 @@
       "kind": "http",
       "tracking": "limited",
       "source": "chainlist",
-      "reachable": false,
-      "ms": 7277,
-      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "reachable": true,
+      "ms": 14797,
+      "chainId": 143,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
       "ratings": {
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+          "why": "head unknown"
         },
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+          "why": "head unknown"
         },
         "reader": {
           "pass": false,
           "score": 0,
-          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+          "why": "head unknown"
         },
         "subscriber": {
           "pass": false,
           "score": 0,
-          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+          "why": "head unknown"
         }
       }
     },
@@ -1417,7 +1419,7 @@
       "tracking": "none",
       "source": "chainlist",
       "reachable": false,
-      "ms": 85,
+      "ms": 244,
       "error": "-32601: Method not found",
       "ratings": {
         "scanner": {
@@ -1448,14 +1450,14 @@
       "tracking": "yes",
       "source": "chainlist",
       "reachable": true,
-      "ms": 195489,
+      "ms": 195838,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113443265,
+      "head": 113638027,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 186,
-        "p95": 233,
+        "p50": 156,
+        "p95": 246,
         "n": 4,
         "failures": 8
       },
@@ -1496,7 +1498,7 @@
         "eth_createAccessList": null,
         "eth_getProof": null,
         "debug_traceCall": null,
-        "trace_call": null,
+        "trace_call": false,
         "txpool_status": false,
         "eth_blobBaseFee": false,
         "eth_newFilter": false
@@ -1508,8 +1510,8 @@
         "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
-        "trace_call": "-32053: API key is not allowed to access method",
-        "txpool_status": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32600: Unsupported method: txpool_status on MONAD_MAINNET",
         "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
         "eth_newFilter": "-32601: Method not found: eth_newFilter"
       },
@@ -1520,27 +1522,27 @@
         "sent": 10,
         "retryAfter": "60"
       },
-      "headLag": 3,
+      "headLag": 6,
       "ratings": {
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "most requests fail"
+          "why": "head 6 blocks behind"
         },
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "most requests fail"
+          "why": "head 6 blocks behind"
         },
         "reader": {
           "pass": false,
           "score": 0,
-          "why": "most requests fail"
+          "why": "head 6 blocks behind"
         },
         "subscriber": {
           "pass": false,
           "score": 0,
-          "why": "most requests fail"
+          "why": "head 6 blocks behind"
         }
       }
     },
@@ -1549,7 +1551,7 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": false,
-      "ms": 47,
+      "ms": 60,
       "error": "ENOTFOUND",
       "ratings": {
         "scanner": {
@@ -1580,37 +1582,39 @@
       "tracking": "limited",
       "source": "chainlist",
       "reachable": true,
-      "ms": 306390,
+      "ms": 389194,
       "chainId": 143,
       "chainIdOk": true,
-      "head": 113442265,
+      "head": 113636746,
       "client": "Monad/0.16.4",
       "latency": {
-        "p50": 55,
-        "p95": 70,
-        "n": 5,
-        "failures": 7
+        "p50": 67,
+        "p95": 1516,
+        "n": 6,
+        "failures": 6
       },
       "call": {
-        "revertData": true,
+        "revertData": false,
         "gasCap": 4946876,
         "stateOverride": true,
+        "revertError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
         "gasCapError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
       },
       "logs": {
-        "maxRange": null,
+        "maxRange": 10000,
         "maxAddresses": 1000,
         "topicOnly": false,
         "topicOnlyMaxRange": null,
         "orTopics": true,
-        "combined": null,
+        "combined": false,
         "oldLogs": false,
         "rangeError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
         "topicOnlyError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "combinedError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
         "oldLogsError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
       },
       "history": {
-        "stateDepth": 64,
+        "stateDepth": null,
         "archive": false,
         "error": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
       },
@@ -1621,27 +1625,27 @@
       },
       "methods": {
         "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": true,
         "eth_createAccessList": null,
         "eth_getProof": false,
         "debug_traceCall": null,
         "trace_call": null,
-        "txpool_status": false,
+        "txpool_status": null,
         "eth_blobBaseFee": false,
         "eth_newFilter": null
       },
       "methodErrors": {
-        "eth_getBlockReceipts": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_maxPriorityFeePerGas": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
         "eth_createAccessList": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
         "eth_getProof": "-32601: Method not found",
         "debug_traceCall": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
         "trace_call": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
-        "txpool_status": "-32601: Method not found",
+        "txpool_status": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
         "eth_blobBaseFee": "-32601: Method not found",
         "eth_newFilter": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…"
       },
-      "throttledDuringProbes": 121,
+      "throttledDuringProbes": 150,
       "rate": {
         "cleanRps": 0,
         "limitedAt": 5,

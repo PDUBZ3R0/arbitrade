@@ -209,6 +209,8 @@ export class WsFirstProvider extends RetryingJsonRpcProvider {
     /** Rejects every request in flight on the current socket when it drops. */
     private failInflight: ((e: Error) => void) | null = null;
     private downSignal: Promise<never> | null = null;
+    /** One rejecter per request in flight on the socket; markDown fails them all. */
+    private readonly waiters = new Set<(e: Error) => void>();
     /** Last time the current socket delivered anything (a reply or a pong). */
     private lastRxAt = 0;
     private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -248,6 +250,8 @@ export class WsFirstProvider extends RetryingJsonRpcProvider {
         if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
         this.failInflight?.(new Error('websocket down'));
         this.failInflight = null;
+        for (const fail of this.waiters) fail(new Error('websocket down'));
+        this.waiters.clear();
         if (ws) { try { ws.destroy(); } catch { /* already gone */ } }
         this.retryAt = Date.now() + this.backoffMs;
         this.backoffMs = Math.min(this.backoffMs * 2, 60_000);
@@ -326,8 +330,16 @@ export class WsFirstProvider extends RetryingJsonRpcProvider {
     private async viaSocket(p: JsonRpcPayload): Promise<Result | typeof TRANSPORT_FAIL> {
         const ws = await this.socket();
         if (!ws) return TRANSPORT_FAIL;
-        const down = this.downSignal!;
         this.hold(+1);
+        // Each request gets its own "socket down" rejecter, cleared when it
+        // settles. Racing every request against ONE per-socket promise attached
+        // a handler to it per request — each holding that request's whole
+        // response — freed only when the socket dropped: a socket that stayed up
+        // for 15 h grew the heap to 4 GB (Robinhood liq-watch, 2026-10-14).
+        let failNow!: (e: Error) => void;
+        const down = new Promise<never>((_, reject) => { failNow = reject; });
+        down.catch(() => {});
+        this.waiters.add(failNow);
         try {
             // NOT a plain per-request timeout. A heavy eth_call (getV3State
             // on 100 pools) can take longer than 20s on a perfectly healthy
@@ -343,6 +355,7 @@ export class WsFirstProvider extends RetryingJsonRpcProvider {
                 return res[0];
             } finally {
                 live.cancel();
+                this.waiters.delete(failNow);
             }
         } catch {
             if (this.ws === ws) this.markDown();
