@@ -1,81 +1,154 @@
 {
-  "ethereum": {
-    "id": 1,
-    "comet_markets": [
-      "0xc3d688b66703497daa19211eedff47f25384cdc3",
-      "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-      "0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840",
-      "0x3D0bb1ccaB520A66e607822fC55BC921738fAFE3",
-      "0x5D409e56D886231aDAf00c8775665AD0f9897b56",
-      "0xe85dc543813b8c2cfeaac371517b925a166a9293",
-      "0x207158a267CBD2598BB3d611D8CBdEE2709F2F8C"
+  "_doc": "Compound III Comets by chain id; each Comet is one base-asset market. name is optional (the venue falls back to the base token's symbol). Everything else (base, feeds, collateral) is read on-chain.",
+  "1": {
+    "chain": "ethereum",
+    "markets": [
+      {
+        "address": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+      },
+      {
+        "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94"
+      },
+      {
+        "address": "0x3Afdc9BCA9213A35503b077a6072F3D0d5AB0840"
+      },
+      {
+        "address": "0x3D0bb1ccaB520A66e607822fC55BC921738fAFE3"
+      },
+      {
+        "address": "0x5D409e56D886231aDAf00c8775665AD0f9897b56"
+      },
+      {
+        "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293"
+      },
+      {
+        "address": "0x207158a267CBD2598BB3d611D8CBdEE2709F2F8C"
+      }
     ]
   },
-  "arbitrum": {
-    "id": 42161,
-    "comet_markets": [
-      "0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA",
-      "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
-      "0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486",
-      "0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07"
+  "10": {
+    "chain": "optimism",
+    "markets": [
+      {
+        "name": "usdc",
+        "address": "0x2e44e174f7D53F0212823acC11C01A11d58c5bCB"
+      },
+      {
+        "name": "usdt",
+        "address": "0x995E394b8B2437aC8Ce61Ee0bC610D617962B214"
+      },
+      {
+        "name": "weth",
+        "address": "0xE36A30D249f7761327fd973001A32010b521b6Fd"
+      }
     ]
   },
-  "base": {
-    "id": 8453,
-    "comet_markets": [
-      "0x46e6b214b524310239732D51387075E0e70970bf",
-      "0xb125E6687d4313864e53df431d5425969c15Eb2F",
-      "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
-      "0x784efeB622244d2348d4F2522f8860B96fbEcE89",
-      "0x2c776041ccfe903071af44aa147368a9c8eea518"
+  "130": {
+    "chain": "unichain",
+    "markets": [
+      {
+        "address": "0x2c7118c4C88B9841FCF839074c26Ae8f035f2921"
+      },
+      {
+        "address": "0x6C987dDE50dB1dcDd32Cd4175778C2a291978E2a"
+      }
     ]
   },
-  "op-mainnet": {
-    "id": 10,
-    "comet_markets": [
-      "0x2e44e174f7D53F0212823acC11C01A11d58c5bCB",
-      "0x995E394b8B2437aC8Ce61Ee0bC610D617962B214",
-      "0xE36A30D249f7761327fd973001A32010b521b6Fd"
+  "137": {
+    "chain": "polygon",
+    "markets": [
+      {
+        "name": "usdc.e",
+        "address": "0xF25212E676D1F7F89Cd72fFEe66158f541246445"
+      },
+      {
+        "name": "usdt",
+        "address": "0xaeB318360f27748Acb200CE616E389A6C9409a07"
+      }
     ]
   },
-  "polygon": {
-    "id": 137,
-    "comet_markets": [
-      "0xF25212E676D1F7F89Cd72fFEe66158f541246445",
-      "0xaeB318360f27748Acb200CE616E389A6C9409a07"
+  "2020": {
+    "chain": "ronin",
+    "markets": [
+      {
+        "address": "0x4006eD4097Ee51c09A04c3B0951D28CCf19e6DFE"
+      },
+      {
+        "address": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0"
+      }
     ]
   },
-  "mantle": {
-    "id": 5000,
-    "comet_markets": [
-      "0x606174f62cd968d8e684c645080fa694c1D7786E"
+  "5000": {
+    "chain": "mantle",
+    "markets": [
+      {
+        "address": "0x606174f62cd968d8e684c645080fa694c1D7786E"
+      }
     ]
   },
-  "unichain": {
-    "id": 130,
-    "comet_markets": [
-      "0x2c7118c4C88B9841FCF839074c26Ae8f035f2921",
-      "0x6C987dDE50dB1dcDd32Cd4175778C2a291978E2a"
+  "8453": {
+    "chain": "base",
+    "markets": [
+      {
+        "name": "weth",
+        "address": "0x46e6b214b524310239732D51387075E0e70970bf"
+      },
+      {
+        "name": "usdc",
+        "address": "0xb125E6687d4313864e53df431d5425969c15Eb2F"
+      },
+      {
+        "name": "usdbc",
+        "address": "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf"
+      },
+      {
+        "name": "aero",
+        "address": "0x784efeB622244d2348d4F2522f8860B96fbEcE89"
+      },
+      {
+        "name": "usds",
+        "address": "0x2c776041ccfe903071af44aa147368a9c8eea518"
+      }
     ]
   },
-  "linea": {
-    "id": 59144,
-    "comet_markets": [
-      "0x8D38A3d6B3c3B7d96D6536DA7Eef94A9d7dbC991",
-      "0x60F2058379716A64a7A5d29219397e79bC552194"
+  "42161": {
+    "chain": "arbitrum",
+    "markets": [
+      {
+        "name": "usdc.e",
+        "address": "0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA"
+      },
+      {
+        "name": "usdc",
+        "address": "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf"
+      },
+      {
+        "name": "weth",
+        "address": "0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486"
+      },
+      {
+        "name": "usdt",
+        "address": "0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07"
+      }
     ]
   },
-  "ronin": {
-    "id": 2020,
-    "comet_markets": [
-      "0x4006eD4097Ee51c09A04c3B0951D28CCf19e6DFE",
-      "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0"
+  "59144": {
+    "chain": "linea",
+    "markets": [
+      {
+        "address": "0x8D38A3d6B3c3B7d96D6536DA7Eef94A9d7dbC991"
+      },
+      {
+        "address": "0x60F2058379716A64a7A5d29219397e79bC552194"
+      }
     ]
   },
-  "scroll": {
-    "id": 534352,
-    "comet_markets": [
-      "0xB2f97c1Bd3bf02f5e74d13f02E3e26F93D77CE44"
+  "534352": {
+    "chain": "scroll",
+    "markets": [
+      {
+        "address": "0xB2f97c1Bd3bf02f5e74d13f02E3e26F93D77CE44"
+      }
     ]
   }
 }

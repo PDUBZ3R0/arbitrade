@@ -71,6 +71,9 @@ COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
 # RPC ratings from `vetrpc vet <chainId>` — the provider pool reads conf/provider/<chainId>.json.
 COPY --chown=node:node conf/provider ./conf/provider/
+# Lending-market address book (Aave / Morpho / Comet by chain id) — liq-watch and the
+# flash-lender book read it; without it Morpho and Compound have no addresses.
+COPY --chown=node:node conf/markets ./conf/markets/
 # The seed DB is NOT copied in — it is mounted read-only from the host at
 # /opt/seed/db at run time (see compose.yaml / the run example above), and the
 # entry script copies it into the /app/db volume only on first boot. This keeps

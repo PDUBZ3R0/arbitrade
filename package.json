@@ -35,7 +35,8 @@
     "tokens": "bash scripts/log.sh source tokens",
     "triangles": "bash scripts/log.sh source triangles",
     "verify-factory": "bash scripts/log.sh source/util verify-factory",
-    "verify-fees": "bash scripts/log.sh source verify-fees"
+    "verify-fees": "bash scripts/log.sh source verify-fees",
+    "verify-markets": "bash scripts/log.sh source verify-markets"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",

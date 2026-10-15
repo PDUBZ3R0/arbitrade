@@ -26,42 +26,25 @@
 // e.g. lltv 86% -> LIF 1.0438 (4.4%), 94.5% -> 1.0168, 77% -> 1.074.
 // There is no protocol fee on liquidation.
 //
-// Addresses and deploy blocks: @morpho-org/morpho-ts addresses.ts.
+// Addresses and deploy blocks: conf/markets/morpho-blue.json.
 // -----------------------------------------------------------------------------
 
 import { Interface, AbiCoder, keccak256, getAddress, type JsonRpcProvider } from 'ethers';
 import { multicall3 } from '../util/multicall.ts';
 import { readBatched } from './batch.ts';
 import type { UsdOracle } from './usd.ts';
+import { loadMarkets } from '../util/markets.ts';
 import {
     accountKey, splitAccount, topicAddr,
     type Venue, type VenueAccount, type VenueEvent, type ReadResult, type ReadOptions, type RawLog,
 } from './venue.ts';
 
-/** Morpho Blue singletons for every chain in conf/@chains.json5 that has one
- *  (morpho-org/sdks packages/morpho-ts addresses.ts: `blue` and its deploy block). */
-export const MORPHO_BLUE: Record<number, { address: string; deployBlock: number }> = {
-    1:      { address: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb', deployBlock: 18883124 },    // ethereum
-    10:     { address: '0xce95AfbB8EA029495c66020883F87aaE8864AF92', deployBlock: 130770075 },   // optimism
-    56:     { address: '0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a', deployBlock: 54344680 },    // bsc
-    100:    { address: '0xB74D4dd451E250bC325AFF0556D717e4E2351c66', deployBlock: 42201689 },    // gnosis (docs/morpho-blue.json; block from gnosisscan)
-    130:    { address: '0x8f5ae9CddB9f68de460C77730b018Ae7E04a140A', deployBlock: 9139027 },     // unichain
-    137:    { address: '0x1bF0c2541F820E775182832f06c0B7Fc27A25f67', deployBlock: 66931042 },    // polygon
-    143:    { address: '0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee', deployBlock: 31907457 },    // monad
-    146:    { address: '0xd6c916eB7542D0Ad3f18AEd0FCBD50C582cfa95f', deployBlock: 9100931 },     // sonic
-    999:    { address: '0x68e37dE8d93d3496ae143F2E900490f6280C57cD', deployBlock: 1988429 },     // hyperliquid
-    1868:   { address: '0xE75Fc5eA6e74B824954349Ca351eb4e671ADA53a', deployBlock: 6440817 },     // soneium
-    4326:   { address: '0x18120312A7cf44DcfEc6dCe5632a431579ED9100', deployBlock: 16408957 },    // megaeth
-    4663:   { address: '0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010', deployBlock: 286 },         // robinhood
-    8453:   { address: '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb', deployBlock: 13977148 },    // base
-    34443:  { address: '0xd85cE6BD68487E0AaFb0858FDE1Cd18c76840564', deployBlock: 19983370 },    // mode
-    42161:  { address: '0x6c247b1F6182318877311737BaC0844bAa518F5e', deployBlock: 296446593 },   // arbitrum
-    43114:  { address: '0x895383274303AA19fe978AFB4Ac55C7f094f982C', deployBlock: 75313888 },    // avalanche (docs/morpho-blue.json; block from routescan)
-    57073:  { address: '0x857f3EefE8cbda3Bc49367C996cd664A880d3042', deployBlock: 4078776 },     // ink
-    59144:  { address: '0x6B0D716aC0A45536172308e08fC2C40387262c9F', deployBlock: 25072608 },    // linea
-    534352: { address: '0x2d012EdbAdc37eDc2BC62791B666f9193FDF5a55', deployBlock: 12842868 },    // scroll
-    747474: { address: '0xD50F2DffFd62f94Ee4AEd9ca05C61d0753268aBc', deployBlock: 2741069 },     // katana
-};
+/** Morpho Blue singletons by chain id, from conf/markets/morpho-blue.json
+ *  (yarn verify-markets checks them; --write fills in deploy blocks). */
+export const MORPHO_BLUE: Record<number, { address: string; deployBlock?: number }> = Object.fromEntries(
+    [...loadMarkets('morpho-blue')].filter(([, cm]) => cm.markets.length)
+        .map(([id, cm]) => [id, { address: cm.markets[0].address, deployBlock: cm.markets[0].deployBlock }]),
+);
 
 export const MORPHO_IFACE = new Interface([
     'function position(bytes32 id, address user) view returns (uint256 supplyShares, uint128 borrowShares, uint128 collateral)',

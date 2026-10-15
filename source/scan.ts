@@ -19,7 +19,7 @@
 
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { scanChain } from './scanner/pairs.ts';
-import { redactUrl } from './util/rpc.ts';
+import { redactUrl, usesPool } from './util/rpc.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -60,7 +60,7 @@ if (rIdx >= 0) {
 }
 
 console.log(`Scanning ${cfg.chain.currency} (chain id ${cfg.chain.id})`);
-console.log(`RPC: ${redactUrl(cfg.chain.host)}`);
+console.log(`RPC: ${usesPool(cfg.chain) ? `rated pool for chain ${cfg.chain.id}` : redactUrl(cfg.chain.host)}`);
 console.log(`DB:  ${dbFile}`);
 const byGroup = new Map<string, number>();
 for (const f of cfg.factories) byGroup.set(f.group, (byGroup.get(f.group) ?? 0) + 1);

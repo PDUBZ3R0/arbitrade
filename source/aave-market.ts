@@ -10,6 +10,7 @@
 //
 //   1. The Pool has code, and the AddressesProvider it names says it IS its
 //      pool (getPool() round-trips) — a wrong or stale address fails here.
+//      (util/market-checks.ts — the same checks yarn verify-markets runs.)
 //      --expect-provider cross-checks against a provider address you already
 //      have from another source (two independent readings agreeing).
 //   2. FLASHLOAN_PREMIUM_TOTAL — the fork's real flash fee, not Aave's 0.05%.
@@ -35,6 +36,7 @@ import { loadChainConfig, type ChainConfig } from './util/config.ts';
 import { fetchAaveReserves } from './util/aave-reserves.ts';
 import { multicall3 } from './util/multicall.ts';
 import { makeProvider } from './util/rpc.ts';
+import { checkAavePool } from './util/market-checks.ts';
 
 const args = process.argv.slice(2);
 const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--') && args[i - 1] !== '--json'));
@@ -57,45 +59,21 @@ const cfg = loadChainConfig(chainArg);
 const provider = makeProvider(cfg.chain);
 const pool = getAddress(poolArg);
 
-const POOL = new Interface([
-    'function ADDRESSES_PROVIDER() view returns (address)',
-    'function getReservesList() view returns (address[])',
-    'function FLASHLOAN_PREMIUM_TOTAL() view returns (uint128)',
-]);
-const PROVIDER = new Interface(['function getPool() view returns (address)', 'function getMarketId() view returns (string)']);
 const ERC20 = new Interface(['function symbol() view returns (string)', 'function decimals() view returns (uint8)']);
-
 const fail = (msg: string): never => { console.error(`\n[✗] ${msg}`); process.exit(1); };
-const call = async (target: string, iface: Interface, fn: string, a: unknown[] = []) => {
-    const [r] = await multicall3(provider, [{ target, allowFailure: true, callData: iface.encodeFunctionData(fn, a) }]);
-    if (!r?.success || r.returnData === '0x') return null;
-    try { return iface.decodeFunctionResult(fn, r.returnData); } catch { return null; }
-};
 
 console.log(`${cfg.chain.name}: checking Aave V3 Pool ${pool}\n`);
 
-// 1. identity
-if ((await provider.getCode(pool)) === '0x') fail(`no contract at ${pool} — wrong address (or wrong chain)`);
-const ap = (await call(pool, POOL, 'ADDRESSES_PROVIDER'))?.[0] as string | undefined;
-if (!ap) fail(`${pool} has code but no ADDRESSES_PROVIDER() — not an Aave V3 Pool`);
-const back = (await call(ap!, PROVIDER, 'getPool'))?.[0] as string | undefined;
-if (!back || getAddress(back) !== pool) fail(`AddressesProvider ${ap} says its pool is ${back ?? '(nothing)'}, not ${pool} — stale or wrong address`);
-const marketId = (await call(ap!, PROVIDER, 'getMarketId'))?.[0] as string | undefined;
-console.log(`  [✓] Pool has code; AddressesProvider ${ap} confirms it${marketId ? ` (market "${marketId}")` : ''}`);
-if (expectProvider) {
-    if (getAddress(expectProvider) !== getAddress(ap!)) fail(`AddressesProvider is ${ap}, not the expected ${expectProvider}`);
-    console.log(`  [✓] matches --expect-provider`);
-}
-
-// 2. flash fee
-const premiumRaw = (await call(pool, POOL, 'FLASHLOAN_PREMIUM_TOTAL'))?.[0] as bigint | undefined;
-const premium = premiumRaw != null ? Number(premiumRaw) / 10_000 : null;
-console.log(premium != null
-    ? `  [✓] flash-loan premium ${(premium * 100).toFixed(4)}%  (FLASHLOAN_PREMIUM_TOTAL = ${premiumRaw})`
-    : `  [!] FLASHLOAN_PREMIUM_TOTAL unreadable — set premium by hand`);
+// 1–2. identity and flash fee (shared with yarn verify-markets)
+const id = await checkAavePool(provider, pool, { addressesProvider: expectProvider });
+for (const f of id.findings) console.log(`  [${!f.ok ? '✗' : f.warn ? '!' : '✓'}] ${f.msg}`);
+if (!id.ok) fail(`${pool} did not verify as an Aave V3 Pool on ${cfg.chain.name}`);
+const ap = id.addressesProvider!;
+const marketId = id.marketId;
+const premium = id.premium ?? null;
+const list = id.reserves ?? fail('getReservesList() failed');
 
 // 3. reserves
-const list = ((await call(pool, POOL, 'getReservesList'))?.[0] as string[] | undefined) ?? fail('getReservesList() failed');
 const metaRes = await multicall3(provider, list.flatMap(a => [
     { target: a, allowFailure: true, callData: ERC20.encodeFunctionData('symbol') },
     { target: a, allowFailure: true, callData: ERC20.encodeFunctionData('decimals') },
@@ -104,7 +82,6 @@ const tokens = list.map((a, i) => {
     const dec = (r: any, fn: string) => { try { return r?.success ? ERC20.decodeFunctionResult(fn, r.returnData)[0] : null; } catch { return null; } };
     return { symbol: String(dec(metaRes[2 * i], 'symbol') ?? a.slice(0, 10)), address: getAddress(a), decimals: Number(dec(metaRes[2 * i + 1], 'decimals') ?? NaN) };
 });
-console.log(`  [✓] ${list.length} reserves`);
 
 const probeCfg = { ...cfg, flashloan: { provider: 'aave-v3', pool, addressesProvider: ap, premium: premium ?? 0.0005, tokens: tokens.filter(t => Number.isFinite(t.decimals)) } } as ChainConfig;
 const snap = await fetchAaveReserves(provider, probeCfg);

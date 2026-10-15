@@ -29,43 +29,33 @@
 // base. Collateral sitting in reserves (absorbed by someone else, not yet
 // bought) can be bought with no account at all.
 //
-// Addresses: compound-finance/comet deployments/<network>/<market>/roots.json.
+// Addresses: conf/markets/compound-v3.json (compound-finance/comet deployments).
 // -----------------------------------------------------------------------------
 
 import { Interface, type JsonRpcProvider } from 'ethers';
 import { multicall3 } from '../util/multicall.ts';
 import { readBatched } from './batch.ts';
 import type { UsdOracle } from './usd.ts';
+import { loadMarkets } from '../util/markets.ts';
 import {
     accountKey, splitAccount, topicAddr,
     type Venue, type VenueAccount, type VenueEvent, type ReadResult, type ReadOptions, type RawLog,
 } from './venue.ts';
 
-/** Comets per chain (compound-finance/comet deployments, roots.json). */
-export const COMETS: Record<number, Record<string, string>> = {
-    8453: {
-        usdc: '0xb125E6687d4313864e53df431d5425969c15Eb2F',
-        usdbc: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
-        weth: '0x46e6b214b524310239732D51387075E0e70970bf',
-        aero: '0x784efeB622244d2348d4F2522f8860B96fbEcE89',
-        usds: '0x2c776041CCFe903071AF44aa147368a9c8EEA518',
-    },
-    42161: {
-        usdc: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
-        'usdc.e': '0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA',
-        usdt: '0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07',
-        weth: '0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486',
-    },
-    137: {
-        'usdc.e': '0xF25212E676D1F7F89Cd72fFEe66158f541246445',
-        usdt: '0xaeB318360f27748Acb200CE616E389A6C9409a07',
-    },
-    10: {
-        usdc: '0x2e44e174f7D53F0212823acC11C01A11d58c5bCB',
-        usdt: '0x995E394b8B2437aC8Ce61Ee0bC610D617962B214',
-        weth: '0xE36A30D249f7761327fd973001A32010b521b6Fd',
-    },
-};
+/**
+ * Comets per chain, from conf/markets/compound-v3.json: { name -> address }.
+ * A Comet listed without a name is keyed by its address; the venue then names
+ * it after its base token.
+ */
+export const COMETS: Record<number, Record<string, string>> = Object.fromEntries(
+    [...loadMarkets('compound-v3')].filter(([, cm]) => cm.markets.length)
+        .map(([id, cm]) => [id, Object.fromEntries(cm.markets.map(m => [m.name ?? m.address.toLowerCase(), m.address]))]),
+);
+/** Earliest deploy block of a chain's Comets — only when every one of them has one. */
+export function cometsDeployBlock(chainId: number): number | undefined {
+    const ms = loadMarkets('compound-v3').get(chainId)?.markets ?? [];
+    return ms.length && ms.every(m => m.deployBlock != null) ? Math.min(...ms.map(m => m.deployBlock!)) : undefined;
+}
 
 export const COMET_IFACE = new Interface([
     'function baseToken() view returns (address)',
@@ -151,7 +141,7 @@ export class CompoundVenue implements Venue {
 
     constructor(provider: JsonRpcProvider, comets: Record<string, string>, usd: UsdOracle, chainLabel = '', deployBlock?: number) {
         this.provider = provider;
-        this.names = Object.fromEntries(Object.entries(comets).map(([n, a]) => [a.toLowerCase(), n]));
+        this.names = Object.fromEntries(Object.entries(comets).filter(([n]) => !/^0x[0-9a-f]{40}$/i.test(n)).map(([n, a]) => [a.toLowerCase(), n]));
         this.eventAddresses = Object.values(comets).map(a => a.toLowerCase());
         this.key = `compound-v3${chainLabel ? ':' + chainLabel : ''}`;
         this.usd = usd;
@@ -193,6 +183,7 @@ export class CompoundVenue implements Venue {
         await this.usd.tokenMeta(infos.flatMap(i => [i.base, ...i.assets.map(a => a.asset)]));
         for (const i of infos) {
             i.baseSymbol = this.usd.symbol(i.base); i.baseDecimals = this.usd.decimals(i.base);
+            if (!this.names[i.comet] && i.baseSymbol && i.baseSymbol !== '?') i.name = i.baseSymbol.toLowerCase();
             for (const a of i.assets) a.symbol = this.usd.symbol(a.asset);
             this.comets.set(i.comet, i);
         }

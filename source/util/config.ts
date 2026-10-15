@@ -35,7 +35,7 @@ export type ChainMeta = {
     label: string;             // CLI/filesystem slug (e.g. "sonic"); also the conf/<label>.json5 filename
     currency: string;
     token?: string;            // native wrapped (WETH, WMATIC, wS...)
-    host: string;              // RPC URL
+    host: string;              // private / fallback RPC URL; '' when the rated pool serves the chain
     /**
      * Websocket RPC (wss://…). Used by `yarn arbitrage` for push delivery of Sync
      * logs instead of HTTP polling; `--ws` on the command line overrides it,
@@ -589,14 +589,16 @@ export function loadChainRegistry(): Record<string, ChainMeta> {
     for (const [label, entry] of Object.entries(raw)) {
         if (entry.id == null)   throw new Error(`Chain "${label}" in @chains.json5 is missing "id"`);
         if (!entry.name)        throw new Error(`Chain "${label}" in @chains.json5 is missing "name"`);
-        if (!entry.host)        throw new Error(`Chain "${label}" in @chains.json5 is missing "host"`);
+        // No host needed: real chains get their RPCs from the rated pool
+        // (util/rpc.ts makeProvider). <LABEL>_RPC in .env, or host here, is the
+        // private endpoint / the one ARB_NO_POOL=1 uses.
         const meta: ChainMeta = {
             id:            entry.id,
             name:          entry.name,
             label,
             currency:      entry.currency ?? '',
             token:         entry.token,
-            host:          entry.host,
+            host:          entry.host ?? '',
             hypersyncUrl:  entry.hypersyncUrl,
             // `wss` accepted as an alias: it is the natural thing to type for a
             // wss:// URL, and a silently ignored key means silent HTTP polling.

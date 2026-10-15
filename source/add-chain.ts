@@ -1,12 +1,14 @@
 // -----------------------------------------------------------------------------
 // CLI: yarn add-chain <chainId> [slug] [options]
 //
-// Registers a chain end to end, from public data plus a few on-chain probes —
-// no hand-copying from chainlist:
+// Registers a chain end to end, from public data plus a few on-chain probes:
 //
-//   conf/@chains.json5          registry entry: id, name, currency, host (a
-//                               probed, working https RPC), ws (a probed wss
-//                               endpoint), hypersyncUrl, explorer
+//   conf/@chains.json5          registry entry: id, name, currency, explorer.
+//                               No RPCs: makeProvider serves every real chain
+//                               from vetted-provider's rated pool
+//                               (conf/provider/<id>.json — yarn provider <slug>),
+//                               with <SLUG>_RPC / _WS in .env as your private
+//                               endpoints.
 //   conf/<slug>.json5           chain config skeleton: wrapped native token,
 //                               default thresholds, empty factories, and a
 //                               flashloan block for whatever lender the chain has
@@ -15,20 +17,20 @@
 //                               when the chain has no Aave)
 //
 // Re-running on a chain that is already registered fills in what is MISSING
-// (e.g. a ws endpoint) and changes nothing else — so it is also the way to
-// add websockets to the chains you already have:  yarn add-chain 146
+// and changes nothing else.
 //
 // Where the data comes from:
 //   chain metadata              chainid.network/chains.json (ethereum-lists),
-//                               falling back to the same data on GitHub;
-//   Aave V3 markets             docs/aave.json, confirmed on-chain, token
-//                               list read live from Pool.getReservesList()
-//   Balancer V2 / Morpho Blue   probed at their canonical addresses
-//
-// Every RPC is tested (eth_chainId must answer with this chain's id) before it
-// is written anywhere; a dead or wrong-chain endpoint is never recorded.
+//                               falling back to the same data on GitHub
+//   Aave V3 / Morpho Blue       conf/markets/aave-v3.json, morpho-blue.json
+//                               (yarn verify-markets checks them), confirmed
+//                               on-chain here; Aave's token list read live from
+//                               Pool.getReservesList()
+//   Balancer V2                 probed at its canonical address
+//   on-chain probes             the rated pool for this chain id, or --rpc URL
 //
 // Options:
+//   --rpc URL      run the on-chain probes against this endpoint instead of the pool
 //   --force        overwrite existing registry fields / regenerate conf/<slug>.json5
 //   --dry-run      print what would be written, write nothing
 // -----------------------------------------------------------------------------
@@ -39,30 +41,30 @@ import { fileURLToPath } from 'node:url';
 import JSON5 from 'json5';
 import { JsonRpcProvider, Interface, getAddress } from 'ethers';
 import { BALANCER_V2_VAULT } from './util/config.ts';
+import { makeProvider, ratingsFile } from './util/rpc.ts';
+import { marketsFor } from './util/markets.ts';
+import { discover } from 'vetted-provider';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONF = path.join(ROOT, 'conf');
 const REGISTRY = path.join(CONF, '@chains.json5');
 const HARDHAT = path.join(ROOT, 'hardhat.config.ts');
 const IGNITION_PARAMS = path.join(ROOT, 'ignition', 'parameters');
-const AAVE_DOCS = path.join(ROOT, 'docs', 'AAVE');
-const HYPERSYNC_TABLE = path.join(ROOT, 'source', 'data', 'hypersync-chains.json');
 
-const MORPHO_BLUE = '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb';  // Ethereum, Base; elsewhere set by hand
 const OP_STACK_WETH = '0x4200000000000000000000000000000000000006';
 const ZERO = '0x0000000000000000000000000000000000000000';
 
 // ---- args ----------------------------------------------------------------------
 
 const args = process.argv.slice(2);
-const positional = args.filter((a, i) => !a.startsWith('--') && !['--rpc', '--ws'].includes(args[i - 1]));
+const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--rpc');
 const flag = (f: string) => args.includes(f);
 const opt = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const chainId = Number(positional[0]);
 if (!Number.isInteger(chainId) || chainId <= 0) {
-    console.error('Usage: yarn add-chain <chainId> [slug] [--rpc URL] [--ws URL] [--force] [--dry-run]');
+    console.error('Usage: yarn add-chain <chainId> [slug] [--rpc URL] [--force] [--dry-run]');
     console.error('  e.g. yarn add-chain 4663 robinhood');
-    console.error('       yarn add-chain 146            (existing chain: fills in missing fields such as ws)');
+    console.error('       yarn add-chain 146            (existing chain: fills in whatever is missing)');
     process.exit(1);
 }
 const force = flag('--force');
@@ -79,7 +81,7 @@ async function fetchJson(url: string, ms = 20_000): Promise<any> {
     return res.json();
 }
 
-type ChainMeta = { name: string; currency: string; rpc: string[]; explorer?: string; shortName?: string };
+type ChainMeta = { name: string; currency: string; explorer?: string; shortName?: string };
 
 async function loadChainMeta(id: number): Promise<ChainMeta> {
     let entry: any = null;
@@ -95,83 +97,29 @@ async function loadChainMeta(id: number): Promise<ChainMeta> {
     }
     if (!entry) throw new Error(`chain ${id} not found in ethereum-lists (chainid.network / GitHub)`);
 
-    const rpc = new Set<string>(entry.rpc ?? []);
-    try {
-        const extra = await fetchJson('https://chainlist.org/rpcs.json', 30_000);
-        const c = extra.find((x: any) => x.chainId === id);
-        for (const r of c?.rpc ?? []) {
-            const url = typeof r === 'string' ? r : r?.url;
-            // chainlist marks endpoints that log/track users; skip those.
-            if (url && (typeof r === 'string' || r.tracking !== 'yes')) rpc.add(url);
-        }
-    } catch { /* optional source */ }
-
     return {
         name: String(entry.name).replace(/\s+mainnet$/i, '').trim(),
         currency: entry.nativeCurrency?.symbol ?? 'ETH',
-        rpc: [...rpc],
         explorer: entry.explorers?.[0]?.url,
         shortName: entry.shortName,
     };
 }
 
-async function rpcCall(url: string, method: string, params: any[] = [], ms = 6000): Promise<any> {
-    const res = await withTimeout(fetch(url, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-    }), ms);
-    const j: any = await res.json();
-    if (j.error) throw new Error(j.error.message ?? 'rpc error');
-    return j.result;
-}
-
-/** Working https endpoints for this chain, fastest first; publicnode preferred. */
-async function probeHttp(urls: string[], id: number): Promise<Array<{ url: string; ms: number }>> {
-    const usable = urls.filter(u => /^https:\/\//.test(u) && !/\$\{|API_KEY|YOUR_|<|>/i.test(u));
-    const results = await Promise.all(usable.map(async url => {
-        const t = Date.now();
-        try {
-            const cid = await rpcCall(url, 'eth_chainId');
-            if (parseInt(cid, 16) !== id) return null;
-            await rpcCall(url, 'eth_blockNumber');
-            return { url, ms: Date.now() - t };
-        } catch { return null; }
-    }));
-    const ok = results.filter((r): r is { url: string; ms: number } => r !== null);
-    return ok.sort((a, b) => (Number(/publicnode/.test(b.url)) - Number(/publicnode/.test(a.url))) || a.ms - b.ms);
-}
-
-/** First wss endpoint that answers eth_chainId with this chain's id. */
-async function probeWs(urls: string[], id: number): Promise<string | undefined> {
-    const WS: any = (globalThis as any).WebSocket;
-    if (!WS) { console.log('  (this Node has no global WebSocket — skipping ws probe; pass --ws)'); return undefined; }
-    const usable = urls.filter(u => /^wss:\/\//.test(u) && !/\$\{|API_KEY|YOUR_/i.test(u))
-        .sort((a, b) => Number(/publicnode/.test(b)) - Number(/publicnode/.test(a)));
-    for (const url of usable) {
-        const ok = await new Promise<boolean>(resolve => {
-            let done = false;
-            const finish = (v: boolean) => { if (!done) { done = true; try { ws.close(); } catch {} resolve(v); } };
-            let ws: any;
-            try { ws = new WS(url); } catch { return resolve(false); }
-            const timer = setTimeout(() => finish(false), 6000);
-            ws.onopen = () => ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }));
-            ws.onmessage = (ev: any) => {
-                clearTimeout(timer);
-                try { finish(parseInt(JSON.parse(String(ev.data)).result, 16) === id); } catch { finish(false); }
-            };
-            ws.onerror = () => { clearTimeout(timer); finish(false); };
-        });
-        if (ok) return url;
-    }
-    return undefined;
-}
-
-function hypersyncFor(id: number): string | undefined {
+/**
+ * A public https URL for hardhat.config.ts's fallback (<SLUG>_RPC overrides
+ * it): the best-rated trader endpoint when the chain has ratings, else the
+ * first one chainlist lists. Hardhat only uses it to deploy, so it is not
+ * probed here — run yarn provider <slug> to rate the chain's endpoints.
+ */
+async function hardhatFallbackUrl(id: number): Promise<string | undefined> {
     try {
-        const t = JSON.parse(fs.readFileSync(HYPERSYNC_TABLE, 'utf8'));
-        const row = t.chains?.[String(id)];
-        return row?.hypersync ? `https://${id}.hypersync.xyz` : undefined;
-    } catch { return undefined; }
+        const r = JSON.parse(fs.readFileSync(ratingsFile(id), 'utf8')) as { endpoints?: Array<{ url: string; kind?: string; ratings?: { trader?: { pass?: boolean; score?: number } } }> };
+        const best = (r.endpoints ?? []).filter(e => e.kind !== 'ws' && /^https:/.test(e.url) && e.ratings?.trader?.pass)
+            .sort((a, b) => (b.ratings!.trader!.score ?? 0) - (a.ratings!.trader!.score ?? 0))[0];
+        if (best) return best.url;
+    } catch { /* no ratings yet */ }
+    try { return (await discover(id)).endpoints.find(e => e.kind === 'http' && /^https:/.test(e.url) && e.tracking !== 'yes')?.url; }
+    catch { return undefined; }
 }
 
 function deriveSlug(name: string): string {
@@ -180,7 +128,6 @@ function deriveSlug(name: string): string {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 }
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/(mainnet|network|chain)$/g, '');
 
 // ---- on-chain probes ---------------------------------------------------------------
 
@@ -206,40 +153,24 @@ async function tokenInfo(p: JsonRpcProvider, a: string): Promise<{ symbol: strin
 type FlashToken = { symbol: string; address: string; decimals: number };
 type AaveFound = { pool: string; premium: number; tokens: FlashToken[]; doc: string; live: boolean };
 
-async function findAave(p: JsonRpcProvider | null, meta: ChainMeta, slug: string): Promise<AaveFound | null> {
-    if (!fs.existsSync(AAVE_DOCS)) return null;
-    const docs = fs.readdirSync(AAVE_DOCS).filter(f => f.endsWith('.json')).map(f => {
-        try { return { file: f, j: JSON5.parse(fs.readFileSync(path.join(AAVE_DOCS, f), 'utf8')) }; }
-        catch { return null; }
-    }).filter((d): d is { file: string; j: any } => !!d && !!d.j.pool);
-
-    // Name match first ("Avalanche V3 Market.json" ~ "Avalanche C-Chain"), then
-    // any doc whose pool actually answers on this chain — several Aave pools
-    // share one address across chains, and if it answers here it IS a pool here.
-    const names = [meta.name, slug, meta.shortName ?? ''].map(norm).filter(Boolean);
-    const docName = (f: string) => norm(f.replace(/\s+V3.*$/i, ''));
-    const similar = (n: string, d: string) => n === d || (Math.min(n.length, d.length) >= 3 && (n.startsWith(d) || d.startsWith(n)));
-    const byName = docs.filter(d => names.some(n => similar(n, docName(d.file))))
-        .sort((a, b) => Number(/core/i.test(b.file)) - Number(/core/i.test(a.file)));
-    const ordered = [...byName, ...docs.filter(d => !byName.includes(d))];
-
-    for (const d of ordered) {
-        const isNameMatch = byName.includes(d);
-        if (!p) {
-            if (!isNameMatch) continue;
-            return { pool: d.j.pool, premium: d.j.premium, tokens: d.j.tokens, doc: d.file, live: false };
-        }
-        if (!(await hasCode(p, d.j.pool))) continue;
+async function findAave(p: JsonRpcProvider | null, chainId: number): Promise<AaveFound | null> {
+    // Aave's own market first, then forks, in file order.
+    const listed = marketsFor('aave-v3', chainId);
+    const ordered = [...listed.filter(m => m.name === 'aave'), ...listed.filter(m => m.name !== 'aave')];
+    for (const m of ordered) {
+        const doc = `conf/markets/aave-v3.json: ${m.name ?? 'aave'}${m.aka ? ` (${m.aka})` : ''}`;
+        if (!p) return { pool: getAddress(m.address), premium: 0.0005, tokens: [], doc, live: false };
+        if (!(await hasCode(p, m.address))) { console.log(`  [!] ${doc} — no code at ${m.address} (yarn verify-markets aave-v3 --chain ${chainId})`); continue; }
         let list: string[];
-        try { [list] = await call(p, d.j.pool, AAVE, 'getReservesList'); } catch { continue; }
-        let premium = d.j.premium ?? 0.0005;
-        try { const [bps] = await call(p, d.j.pool, AAVE, 'FLASHLOAN_PREMIUM_TOTAL'); premium = Number(bps) / 10_000; } catch {}
+        try { [list] = await call(p, m.address, AAVE, 'getReservesList'); } catch { continue; }
+        let premium = 0.0005;
+        try { const [bps] = await call(p, m.address, AAVE, 'FLASHLOAN_PREMIUM_TOTAL'); premium = Number(bps) / 10_000; } catch {}
         const tokens: FlashToken[] = [];
         for (const a of list) {
             const t = await tokenInfo(p, a);
             if (t) tokens.push({ symbol: t.symbol, address: getAddress(a), decimals: t.decimals });
         }
-        return { pool: getAddress(d.j.pool), premium, tokens, doc: d.file, live: true };
+        return { pool: getAddress(m.address), premium, tokens, doc, live: true };
     }
     return null;
 }
@@ -260,13 +191,10 @@ async function findWrappedNative(p: JsonRpcProvider | null, currency: string, aa
 const q = (s: string) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const keyOf = (slug: string) => /^[a-z_$][a-z0-9_$]*$/i.test(slug) ? slug : q(slug);
 
-type RegEntry = { id: number; name: string; currency: string; hypersyncUrl?: string; host: string; ws?: string; explorer?: string };
+type RegEntry = { id: number; name: string; currency: string; explorer?: string };
 
 function renderRegEntry(slug: string, e: RegEntry): string {
     const lines = [`  ${keyOf(slug)}: {`, `    id: ${e.id},`, `    name: ${q(e.name)},`, `    currency: ${q(e.currency)},`];
-    if (e.hypersyncUrl) lines.push(`    hypersyncUrl: ${q(e.hypersyncUrl)},`);
-    lines.push(`    host: ${q(e.host)},`);
-    if (e.ws) lines.push(`    ws: ${q(e.ws)},`);
     if (e.explorer) lines.push(`    explorer: ${q(e.explorer)},`);
     lines.push('  },');
     return lines.join('\n');
@@ -282,11 +210,10 @@ function upsertRegistry(text: string, slug: string, e: RegEntry, existing: Recor
         const start = m.index;
         const end = text.indexOf('\n  },', start);
         let block = text.slice(start, end);
-        for (const field of ['hypersyncUrl', 'host', 'ws', 'explorer'] as const) {
+        for (const field of ['explorer'] as const) {
             const v = e[field];
             if (!v) continue;
-            // `wss:` is accepted by the loader as an alias for `ws:`; treat it as present.
-            const keyPat = field === 'ws' ? '(?:ws|wss)' : field;
+            const keyPat = field;
             const has = new RegExp(`^    ${keyPat}:`, 'm').test(block);
             if (has && !force) continue;
             if (has) block = block.replace(new RegExp(`^    ${keyPat}:.*$`, 'm'), `    ${field}: ${q(v)},`);
@@ -310,8 +237,8 @@ function upsertRegistry(text: string, slug: string, e: RegEntry, existing: Recor
 
 function renderChainConf(slug: string, id: number, name: string, currency: string, token: FlashToken | null, flash: string): string {
     return `{
-  // Generated by \`yarn add-chain ${id}${slug ? ' ' + slug : ''}\`. Registry fields (host, ws,
-  // hypersyncUrl) live in @chains.json5; anything set here overrides them.
+  // Generated by \`yarn add-chain ${id}${slug ? ' ' + slug : ''}\`. RPCs come from the rated pool
+  // (yarn provider ${slug}); <SLUG>_RPC / _WS in .env are your private endpoints.
   chain: {
     id: ${id},
     name: ${q(name)},
@@ -340,14 +267,14 @@ ${flash}
 `;
 }
 
-function renderFlash(aave: AaveFound | null, balancer: { fee: number } | null, morpho: boolean, wrapped: FlashToken | null,
+function renderFlash(aave: AaveFound | null, balancer: { fee: number } | null, morpho: string | null, wrapped: FlashToken | null,
                      balancerHeld: string[]): string {
     const tok = (t: FlashToken) => `      { symbol: ${q(t.symbol)}, address: ${q(t.address)}, decimals: ${t.decimals} },`;
     const alt: string[] = [];
     if (aave && balancer) alt.push(`  // Also here: Balancer V2 vault (flash fee ${(balancer.fee * 100).toFixed(3)}%)` +
         (balancerHeld.length ? ` holding ${balancerHeld.join(', ')}. A token can borrow from it instead:` : '.') +
         `\n  //   { symbol: …, address: …, decimals: …, provider: 'balancer-v2' }`);
-    if ((aave || balancer) && morpho) alt.push(`  // Also here: Morpho Blue at ${MORPHO_BLUE} (free) — provider: 'morpho', lender: '${MORPHO_BLUE}'.`);
+    if ((aave || balancer) && morpho) alt.push(`  // Also here: Morpho Blue at ${morpho} (free) — provider: 'morpho', morpho: '${morpho}'.`);
     const altText = alt.length ? alt.join('\n') + '\n' : '';
     if (aave) {
         return `${altText}  // Aave V3 (${aave.doc}${aave.live ? ', reserves read live from the pool' : ', from docs — not confirmed on-chain'}).
@@ -378,13 +305,13 @@ ${wrapped ? tok(wrapped) : '      // TODO add flash tokens the vault holds'}
   flashloan: {
     provider: 'morpho',
     premium: 0,
-    morpho: ${q(MORPHO_BLUE)},
+    morpho: ${q(morpho)},
     tokens: [
 ${wrapped ? tok(wrapped) : '      // TODO add flash tokens'}
     ],
   },`;
     }
-    return `  // No Aave V3, Balancer V2 or Morpho Blue found. Options:
+    return `  // No Aave V3, Balancer V2 or Morpho Blue found (conf/markets/ + the Balancer vault). Options:
   //   * a Uniswap V3-style pool's flash(): per token, set provider 'uniswap-v3', lender = the pool
   //     (deep, holds the token, never traded by the cycle) and premium = its fee tier (0.0005 …)
   //   * a Morpho/Balancer deployment at a non-canonical address: provider + morpho/vault here
@@ -397,11 +324,11 @@ ${wrapped ? `      // { symbol: ${q(wrapped.symbol)}, address: ${q(wrapped.addre
   },`;
 }
 
-function upsertHardhat(text: string, slug: string, host: string): { text: string; changed: boolean } {
+function upsertHardhat(text: string, slug: string, host: string | undefined): { text: string; changed: boolean } {
     const netKey = keyOf(slug);
     if (new RegExp(`^\\s{8}${netKey.replace(/[-']/g, m => '\\' + m)}:\\s*\\{`, 'm').test(text)) return { text, changed: false };
     const envName = `${slug.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_RPC`;
-    const constLine = `const ${envName.padEnd(13)} = process.env.${envName} || ${q(host)};`;
+    const constLine = `const ${envName.padEnd(13)} = process.env.${envName} || ${host ? q(host) : `''`};${host ? '' : `   // set ${envName} in .env to deploy`}`;
     const consts = [...text.matchAll(/^const \w+_RPC\s*=.*$/gm)];
     if (consts.length) {
         const last = consts[consts.length - 1];
@@ -425,7 +352,7 @@ const registryText = fs.readFileSync(REGISTRY, 'utf8');
 const registry = JSON5.parse(registryText) as Record<string, any>;
 const existingLabel = Object.entries(registry).find(([, v]) => Number(v.id) === chainId)?.[0];
 
-console.log('Chain metadata (ethereum-lists / chainlist)...');
+console.log('Chain metadata (ethereum-lists)...');
 const meta = await loadChainMeta(chainId);
 const slug = positional[1]?.toLowerCase() ?? existingLabel ?? deriveSlug(meta.name);
 if (existingLabel && existingLabel !== slug) {
@@ -437,36 +364,18 @@ if (!existingLabel && registry[slug]) {
     process.exit(1);
 }
 const displayName = existingLabel ? registry[existingLabel].name : meta.name;
-console.log(`  ${displayName} (${meta.currency}), slug "${slug}", ${meta.rpc.length} RPC endpoints listed`);
+console.log(`  ${displayName} (${meta.currency}), slug "${slug}"`);
 
-console.log('Probing RPCs...');
-const hostOpt = opt('--rpc');
-let host = hostOpt;
-if (!host) {
-    const working = await probeHttp(meta.rpc, chainId);
-    if (working.length) {
-        host = working[0].url;
-        console.log(`  https: ${working.length} working — using ${host} (${working[0].ms}ms)`);
-    } else if (existingLabel) {
-        host = registry[existingLabel].host;
-        console.log(`  https: none of chainlist's answered; keeping ${host}`);
-    } else {
-        console.error('  No working https RPC found. Pass one with --rpc URL.');
-        process.exit(1);
-    }
-}
-const ws = opt('--ws') ?? await probeWs(meta.rpc, chainId);
-console.log(`  wss:   ${ws ?? 'none answered (pass --ws URL to set one)'}`);
-const hypersyncUrl = hypersyncFor(chainId);
-console.log(`  HyperSync: ${hypersyncUrl ?? 'not listed for this chain'}`);
-
-const provider = new JsonRpcProvider(host, chainId, { staticNetwork: true });
+console.log('On-chain probes...');
+const rpcOpt = opt('--rpc');
+const provider: JsonRpcProvider = rpcOpt ? new JsonRpcProvider(rpcOpt, chainId, { staticNetwork: true }) : makeProvider({ id: chainId, label: slug, host: '' });
 let reachable = true;
-try { await withTimeout(provider.getBlockNumber(), 10_000); } catch { reachable = false; console.log('  [!] host did not answer — skipping on-chain probes'); }
+try { await withTimeout(provider.getBlockNumber(), 30_000); } catch { reachable = false; console.log('  [!] no RPC answered — skipping on-chain probes (pass --rpc URL, or yarn provider ' + slug + ' first)'); }
 const p = reachable ? provider : null;
+console.log(`  ${rpcOpt ? 'using --rpc' : 'rated pool'}${reachable ? '' : ' (unreachable)'}`);
 
 console.log('Flash-loan sources...');
-const aave = await findAave(p, meta, slug);
+const aave = await findAave(p, chainId);
 console.log(`  Aave V3:     ${aave ? `${aave.pool} (${aave.doc}, ${aave.tokens.length} reserves, premium ${(aave.premium * 100).toFixed(3)}%${aave.live ? '' : ', unconfirmed'})` : 'none'}`);
 let balancer: { fee: number } | null = null;
 if (p && await hasCode(p, BALANCER_V2_VAULT)) {
@@ -479,8 +388,9 @@ if (p && await hasCode(p, BALANCER_V2_VAULT)) {
     balancer = { fee };
 }
 console.log(`  Balancer V2: ${balancer ? `vault present, flash fee ${(balancer.fee * 100).toFixed(3)}%` : 'none'}`);
-const morpho = !!p && await hasCode(p, MORPHO_BLUE);
-console.log(`  Morpho Blue: ${morpho ? 'present (canonical address)' : 'not at the canonical address'}`);
+const morphoListed = marketsFor('morpho-blue', chainId)[0]?.address;
+const morpho = morphoListed && p && await hasCode(p, morphoListed) ? getAddress(morphoListed) : null;
+console.log(`  Morpho Blue: ${morpho ? `${morpho} (conf/markets/morpho-blue.json)` : morphoListed ? `${morphoListed} listed but no code answered` : 'not listed in conf/markets/morpho-blue.json'}`);
 
 const wrapped = await findWrappedNative(p, meta.currency, aave?.tokens ?? []);
 console.log(`  wrapped native: ${wrapped ? `${wrapped.symbol} ${wrapped.address}` : 'not found — set chain.token by hand'}`);
@@ -498,7 +408,7 @@ const writes: Array<{ file: string; text: string; note: string }> = [];
 
 const reg = upsertRegistry(registryText, slug, {
     id: chainId, name: displayName, currency: existingLabel ? registry[existingLabel].currency : meta.currency,
-    hypersyncUrl, host: host!, ws, explorer: meta.explorer,
+    explorer: meta.explorer,
 }, registry);
 if (reg.changes.length && reg.text !== registryText) writes.push({ file: REGISTRY, text: reg.text, note: reg.changes.join(', ') });
 
@@ -512,7 +422,9 @@ if (!fs.existsSync(confPath) || force) {
 }
 
 const hh = fs.readFileSync(HARDHAT, 'utf8');
-const hhNew = upsertHardhat(hh, slug, host!);
+const hhNew = new RegExp(`^\\s{8}${keyOf(slug).replace(/[-']/g, m => '\\' + m)}:\\s*\\{`, 'm').test(hh)
+    ? { text: hh, changed: false }
+    : upsertHardhat(hh, slug, rpcOpt ?? await hardhatFallbackUrl(chainId));
 if (hhNew.changed) writes.push({ file: HARDHAT, text: hhNew.text, note: `network "${slug}"` });
 
 const paramsPath = path.join(IGNITION_PARAMS, `${slug}.json`);
@@ -533,6 +445,7 @@ if (!writes.length) console.log('Nothing to change.');
 
 console.log(`
 Next:
+  yarn provider ${slug}               rate the chain's public RPCs (conf/provider/${chainId}.json)
   yarn deploy-contract ${slug}        then set chain.contract (YoBatches2)
   yarn deploy-flasharb ${slug}        then set chain.executor
   yarn find-factories ${slug}         paste verified factories into conf/${slug}.json5

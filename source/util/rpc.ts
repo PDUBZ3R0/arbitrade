@@ -187,6 +187,10 @@ export function makeProvider(chain: RpcEndpoints, opts: ProviderOptions = {}): J
             timeoutMs: opts.maxRequestMs ?? 60_000,
         });
     }
+    if (!chain.host) {
+        const k = (chain.label ?? 'CHAIN').toUpperCase().replace(/-/g, '_');
+        throw new Error(`no RPC for ${chain.label ?? `chain ${chain.id}`}: off the rated pool (ARB_NO_POOL=1, or no label/id) it needs ${k}_RPC in .env or chain.host in conf`);
+    }
     if (!chain.ws || noWs) return new RetryingJsonRpcProvider(chain.host);
     return new WsFirstProvider(chain.host, chain.ws, chain.id, opts.timeoutMs, opts.maxRequestMs);
 }

@@ -1,138 +1,231 @@
 {
-  "official": {
-    "arbitrum": {
-      "id": 42161,
-      "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-    },
-    "avalanche": {
-      "id": 43114,
-      "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-    },
-    "bsc": {
-      "id": 56,
-      "pool": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
-    },
-    "base": {
-      "id": 8453,
-      "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
-    },
-    "celo": {
-      "id": 42220,
-      "pool": "0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402"
-    },
-    "ethereum": {
-      "id": 1,
-      "pool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
-    },
-    "gnosis": {
-      "id": 100,
-      "pool": "0xb50201558B00496A145fE76f7424749556E326D8"
-    },
-    "ink": {
-      "id": 57073,
-      "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA"
-    },
-    "linea": {
-      "id": 59144,
-      "pool": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac"
-    },
-    "mantle": {
-      "id": 5000,
-      "pool": "0x458F293454fE0d67EC0655f3672301301DD51422"
-    },
-    "megaeth": {
-      "id": 4326,
-      "pool": "0x7e324AbC5De01d112AfC03a584966ff199741C28"
-    },
-    "metis": {
-      "id": 1088,
-      "pool": "0x90df02551bB792286e8D4f13E0e357b4Bf1D6a57"
-    },
-    "monad": {
-      "id": 143,
-      "pool": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef"
-    },
-    "optimism": {
-      "id": 10,
-      "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-    },
-    "plasma": {
-      "id": 9745,
-      "pool": "0x925a2A7214Ed92428B5b1B090F80b25700095e12"
-    },
-    "polygon": {
-      "id": 137,
-      "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-    },
-    "scroll": {
-      "id": 534352,
-      "pool": "0x11fCfe756c05AD438e312a7fd934381537D3cFfe"
-    },
-    "soneium": {
-      "id": 1868,
-      "pool": "0xDd3d7A7d03D9fD9ef45f3E587287922eF65CA38B"
-    },
-    "sonic": {
-      "id": 146,
-      "pool": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3"
-    },
-    "xlayer": {
-      "id": 196,
-      "pool": "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116"
-    },
-    "zksync": {
-      "id": 324,
-      "pool": "0x78e30497a3c7527d953c6B1E3541b021A98Ac43c"
-    }
-  },
-  "clones": {
-    "hypurrfi": {
-      "hyperliquid": {
-        "id": 999,
-        "pool": "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b"
-      }
-    },
-    "hyperlend": {
-      "hyperliquid":{
-        "id": 999,
-        "pool": "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"
-      }
-    },
-    "tydro": {
-      "ink": {
-        "id": 57073,
-        "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA"
-      }
-    },
-    "mystic":{
-      "plume": {
-        "id": 98866,
-        "pool": "0xCE192A6E105cD8dd97b8Dedc5B5b263B52bb6AE0"
-      }
-    },
-    "neverland": {
-      "monad": {
-        "id": 143,
-        "pool": "0x80F00661b13CC5F6ccd3885bE7b4C9c67545D585"
-      }
-    },
-    "sparklend": {
-      "ethereum": {
-        "id": 1,
-        "pool": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987",
-        "data": "0xFc21d6d146E6086B8359705C8b28512a983db0cb",
-        "addresses": "0x03cFa0C4622FF84E50E75062683F44c9587e6Cc1",
-        "tvl": 5104641048.96,
-        "borrowed": 2759072672.85
+  "_doc": "Aave V3 Pools by chain id. name 'aave' = Aave's own market; anything else is a fork (same Pool interface). address = the Pool (proxy). Optional: addressesProvider / dataProvider (cross-checked by yarn verify-markets), deployBlock (filled by yarn verify-markets all --blocks). aka = another brand for the same Pool.",
+  "1": {
+    "chain": "ethereum",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
       },
-      "gnosis": {
-        "id": 100,
-        "pool": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0",
-        "data": "0x2a002054A06546bB5a264D57A81347e23Af91D18",
-        "addresses": "0x49d24798d3b84965F0d1fc8684EF6565115e70c1",
-        "tvl": 204984.77,
-        "borrowed": 2.26
+      {
+        "name": "sparklend",
+        "address": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987",
+        "addressesProvider": "0x03cFa0C4622FF84E50E75062683F44c9587e6Cc1",
+        "dataProvider": "0xFc21d6d146E6086B8359705C8b28512a983db0cb"
       }
-    }
+    ]
+  },
+  "10": {
+    "chain": "optimism",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      }
+    ]
+  },
+  "56": {
+    "chain": "bsc",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
+      }
+    ]
+  },
+  "100": {
+    "chain": "gnosis",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0xb50201558B00496A145fE76f7424749556E326D8"
+      },
+      {
+        "name": "sparklend",
+        "address": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0",
+        "addressesProvider": "0x49d24798d3b84965F0d1fc8684EF6565115e70c1",
+        "dataProvider": "0x2a002054A06546bB5a264D57A81347e23Af91D18"
+      }
+    ]
+  },
+  "137": {
+    "chain": "polygon",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      }
+    ]
+  },
+  "143": {
+    "chain": "monad",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef"
+      },
+      {
+        "name": "neverland",
+        "address": "0x80F00661b13CC5F6ccd3885bE7b4C9c67545D585"
+      }
+    ]
+  },
+  "146": {
+    "chain": "sonic",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3"
+      }
+    ]
+  },
+  "196": {
+    "chain": "xlayer",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116"
+      }
+    ]
+  },
+  "324": {
+    "chain": "zksync",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x78e30497a3c7527d953c6B1E3541b021A98Ac43c"
+      }
+    ]
+  },
+  "999": {
+    "chain": "hyperliquid",
+    "markets": [
+      {
+        "name": "hypurrfi",
+        "address": "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b"
+      },
+      {
+        "name": "hyperlend",
+        "address": "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"
+      }
+    ]
+  },
+  "1088": {
+    "chain": "metis",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x90df02551bB792286e8D4f13E0e357b4Bf1D6a57"
+      }
+    ]
+  },
+  "1868": {
+    "chain": "soneium",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0xDd3d7A7d03D9fD9ef45f3E587287922eF65CA38B"
+      }
+    ]
+  },
+  "4326": {
+    "chain": "megaeth",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x7e324AbC5De01d112AfC03a584966ff199741C28"
+      }
+    ]
+  },
+  "5000": {
+    "chain": "mantle",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x458F293454fE0d67EC0655f3672301301DD51422"
+      }
+    ]
+  },
+  "8453": {
+    "chain": "base",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
+      }
+    ]
+  },
+  "9745": {
+    "chain": "plasma",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x925a2A7214Ed92428B5b1B090F80b25700095e12"
+      }
+    ]
+  },
+  "42161": {
+    "chain": "arbitrum",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      }
+    ]
+  },
+  "42220": {
+    "chain": "celo",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402"
+      }
+    ]
+  },
+  "43114": {
+    "chain": "avalanche",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      }
+    ]
+  },
+  "57073": {
+    "chain": "ink",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",
+        "aka": "tydro"
+      }
+    ]
+  },
+  "59144": {
+    "chain": "linea",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac"
+      }
+    ]
+  },
+  "98866": {
+    "chain": "plume",
+    "markets": [
+      {
+        "name": "mystic",
+        "address": "0xCE192A6E105cD8dd97b8Dedc5B5b263B52bb6AE0"
+      }
+    ]
+  },
+  "534352": {
+    "chain": "scroll",
+    "markets": [
+      {
+        "name": "aave",
+        "address": "0x11fCfe756c05AD438e312a7fd934381537D3cFfe"
+      }
+    ]
   }
 }

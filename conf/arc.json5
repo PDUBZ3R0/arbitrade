@@ -26,7 +26,7 @@
  flashloan: {
     provider: 'morpho',
     morpho: '0x34CD04070dD72b14E241112F6d83812Df5Af7fCD',
-    premium: 0,',
+    premium: 0,
     flashSwap: true,
     swapRoots: { minLiquidity: 1 },
     tokens: [

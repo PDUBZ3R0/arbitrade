@@ -78,7 +78,8 @@ import { makeProvider, poolLogRange } from './util/rpc.ts';
 import { discoverDeployBlock } from './util/discover-block.ts';
 import { loadAaveMarket, AaveVenue, type AaveMarket } from './liquidation/aave-v3.ts';
 import { MorphoVenue, MORPHO_BLUE } from './liquidation/morpho.ts';
-import { CompoundVenue, COMETS } from './liquidation/compound.ts';
+import { CompoundVenue, COMETS, cometsDeployBlock } from './liquidation/compound.ts';
+import { defaultAavePool, marketsFor } from './util/markets.ts';
 import { CompoundV2Venue, COMPTROLLERS } from './liquidation/compound-v2.ts';
 import { EulerVenue, EULER } from './liquidation/euler.ts';
 import { FluidScanner, FLUID_LIQ_RESOLVER } from './liquidation/fluid.ts';
@@ -144,7 +145,9 @@ const num = (name: string): number | undefined => {
 const cfg = loadChainConfig(chainArg);
 const chainId = Number(cfg.chain.id);
 const liq: LiquidationConf = (cfg.raw as RawChainConfig & { liquidation?: LiquidationConf }).liquidation ?? {};
-const pool = opt('--pool') ?? liq.pool ?? cfg.flashloan?.pool;
+// Aave: --pool, liquidation.pool, the Aave flashloan Pool, else conf/markets/aave-v3.json (Aave's own market first).
+const pool = opt('--pool') ?? liq.pool ?? cfg.flashloan?.pool ?? defaultAavePool(chainId)?.address;
+const poolDeployBlock = pool ? marketsFor('aave-v3', chainId).find(m => m.address.toLowerCase() === pool.toLowerCase())?.deployBlock : undefined;
 const morphoAddr = liq.morpho ?? MORPHO_BLUE[chainId]?.address;
 const comets = liq.comets ?? COMETS[chainId];
 const comptrollers = liq.comptrollers ?? COMPTROLLERS[chainId];
@@ -230,9 +233,9 @@ const tracks: Track[] = [];
 let morphoVenue: MorphoVenue | null = null, cometVenue: CompoundVenue | null = null, cv2Venue: CompoundV2Venue | null = null, eulerVenue: EulerVenue | null = null;
 for (const name of wanted) {
     let venue: Venue, deployBlock: number | undefined, deployHint: string | undefined;
-    if (name === 'aave') { venue = new AaveVenue(provider, market!); deployBlock = liq.fromBlock; deployHint = market!.pool; }
+    if (name === 'aave') { venue = new AaveVenue(provider, market!); deployBlock = liq.fromBlock ?? poolDeployBlock; deployHint = market!.pool; }
     else if (name === 'morpho') { venue = morphoVenue = new MorphoVenue(provider, morphoAddr!, usd, liq.morpho ? undefined : MORPHO_BLUE[chainId]?.deployBlock); deployBlock = venue.deployBlock; deployHint = morphoAddr; }
-    else if (name === 'compound') { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label); deployHint = Object.values(comets!)[0]; }
+    else if (name === 'compound') { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label, liq.comets ? undefined : cometsDeployBlock(chainId)); deployBlock = venue.deployBlock; deployHint = Object.values(comets!)[0]; }
     else if (name === 'compound-v2') { venue = cv2Venue = new CompoundV2Venue(provider, comptrollers!, usd, cfg.chain.label); deployHint = Object.values(comptrollers!)[0]; }
     else { venue = eulerVenue = new EulerVenue(provider, euler!.evc, euler!.factory, usd, euler!.deployBlock); deployBlock = venue.deployBlock; deployHint = euler!.factory; }
     // init() reads venue config in one big Multicall3. On a flaky public RPC
