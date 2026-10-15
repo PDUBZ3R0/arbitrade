@@ -58,7 +58,8 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
-import { makeProvider, redactUrl } from './util/rpc.ts';
+import { makeProvider, redactUrl, usesPool, privateEndpoints } from './util/rpc.ts';
+import { VettedProvider } from 'vetted-provider';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { heapMb } from './util/heap.ts';
 import path from 'node:path';
@@ -71,8 +72,9 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('');
     console.error('  --live                   Broadcast candidates that simulate clean. Without this');
     console.error('                           flag nothing is ever sent. Requires PRIVATE_KEY.');
-    console.error('  --ws URL                 Websocket endpoint for real push (default: chain.ws / <LABEL>_WS). Without one, the loop');
-    console.error('                           polls the HTTP host, which costs one block of latency.');
+    console.error('  --ws URL                 Websocket endpoint for real push. Default: <LABEL>_WS, else the best-rated');
+    console.error('                           public websocket (conf/provider). Without one the loop polls, one block of latency.');
+    console.error('  --no-ws                  Do not pick a public websocket: poll unless --ws / <LABEL>_WS is given.');
     console.error('  --candidates N           Candidates to attempt per block (default 3). Each costs');
     console.error('                           an estimateGas + staticCall round trip.');
     console.error('  --min-profit-tokens N    Minimum profit as fraction of root token.');
@@ -140,7 +142,11 @@ const v3ChunkSize = num('--v3-chunk', 50, v => v >= 1, 'at least 1');
 const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 
 const cfg = loadChainConfig(chainArg);
-const wsUrl = wsFlag ?? cfg.chain.ws;
+// Push feed: --ws, else your own websocket (<LABEL>_WS — the feed is what the
+// loop trades on, so a paid socket is worth it here), else the best-rated public
+// websocket for subscriptions, else HTTP polling through the pool. Resolved once
+// the provider exists, below.
+let wsUrl: string | undefined = wsFlag ?? (usesPool(cfg.chain) ? privateEndpoints(cfg.chain.label).ws : cfg.chain.ws);
 
 // One hot loop per chain. Two on one wallet race each other's nonces and
 // trades, and share the CPU badly enough to fall minutes behind the chain.
@@ -161,6 +167,7 @@ const wsUrl = wsFlag ?? cfg.chain.ws;
 }
 
 const provider = makeProvider(cfg.chain);
+if (!wsUrl && !hasFlag('--no-ws') && provider instanceof VettedProvider) wsUrl = (await provider.bestUrl('subscriber', 'ws')) ?? undefined;
 let signer: Wallet | undefined;
 let ownerAddress: string;
 if (process.env.PRIVATE_KEY) {
@@ -451,7 +458,7 @@ let lastFeedError = '';
 /** Pairs the feed updated while the startup refresh was reading; null once it is done. */
 let touchedDuringRefresh: Set<string> | null = new Set();
 
-const watcher = await watchSync(cfg.chain.host, wsUrl, {
+const watcher = await watchSync(usesPool(cfg.chain) ? provider : cfg.chain.host, wsUrl, {
     isInteresting: (pair) => ix.pairIdx.has(pair),
     // Needed only if the RPC refuses address-less eth_getLogs (publicnode
     // answers -32701). The index already holds every pair we care about, so

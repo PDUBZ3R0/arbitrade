@@ -33,10 +33,10 @@
 
 ARG NODE_VERSION=24
 
-# --- dependencies (native modules built here: better-sqlite3, hypersync) -------
+# --- dependencies (native modules built here: better-sqlite3; git fetches vetted-provider) -------
 FROM docker.io/library/node:${NODE_VERSION}-bookworm-slim AS deps
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+ && apt-get install -y --no-install-recommends python3 make g++ git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json yarn.lock ./
@@ -69,6 +69,8 @@ COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
 # The registry, the chain's config and its blacklist (<chain>-blacklist.json5) if any.
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
+# RPC ratings from `vetrpc vet <chainId>` — the provider pool reads conf/provider/<chainId>.json.
+COPY --chown=node:node conf/provider ./conf/provider/
 # The seed DB is NOT copied in — it is mounted read-only from the host at
 # /opt/seed/db at run time (see compose.yaml / the run example above), and the
 # entry script copies it into the /app/db volume only on first boot. This keeps

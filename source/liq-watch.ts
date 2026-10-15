@@ -15,8 +15,9 @@
 //      eth_getLogs from the last stored block. Seed sources, best first (--seed):
 //        subgraph   Aave only: Aave's V3 subgraph, every account with open debt
 //                   in ~1 query per 1000 borrowers. Free (GRAPH_API_KEY).
-//        hypersync  every venue event since deploy (ENVIO_API_TOKEN).
-//        rpc        chunked eth_getLogs from the venue's deploy block.
+//        rpc        chunked eth_getLogs from the venue's deploy block, through
+//                   the rated RPC pool (chunks ramp up to the widest range a
+//                   rated endpoint accepts).
 //      Whatever seeds it, no account is tiered on the seed's word — only on an
 //      on-chain health read.
 //   2. Health. Reads every borrower's health via Multicall3 with each venue's
@@ -41,10 +42,9 @@
 //   --venue <list>        aave,morpho,compound or all (default: all the chain has)
 //   --follow              keep watching after the initial sweep
 //   --pool <addr>         Aave V3 Pool (default: liquidation.pool, else flashloan.pool)
-//   --seed <source>       subgraph | hypersync | rpc. Default on an empty DB:
-//                         the first one available, in that order (subgraph is
-//                         Aave-only). Passing it on an existing DB re-seeds.
-//   --from <block>        rpc/hypersync seed start (default: the venue's deploy block)
+//   --seed <source>       subgraph | rpc. Default on an empty DB: subgraph for Aave
+//                         when one is known, else rpc. Passing it on an existing DB re-seeds.
+//   --from <block>        rpc seed start (default: the venue's deploy block)
 //   --rpc-only            same as --seed rpc
 //   --top <n>             rows in the lowest-HF table (default 20)
 //   --min-profit-usd <n>  dust floor (default 1): accounts whose liquidation could
@@ -74,7 +74,7 @@
 // -----------------------------------------------------------------------------
 
 import { loadChainConfig, type RawChainConfig } from './util/config.ts';
-import { makeProvider } from './util/rpc.ts';
+import { makeProvider, poolLogRange } from './util/rpc.ts';
 import { discoverDeployBlock } from './util/discover-block.ts';
 import { loadAaveMarket, AaveVenue, type AaveMarket } from './liquidation/aave-v3.ts';
 import { MorphoVenue, MORPHO_BLUE } from './liquidation/morpho.ts';
@@ -86,7 +86,7 @@ import { UsdOracle } from './liquidation/usd.ts';
 import { DexUsd } from './liquidation/dex-usd.ts';
 import { LenderBook } from './liquidation/lenders.ts';
 import { LiqDB, liqDbPath, type Tier } from './liquidation/watchlist-db.ts';
-import { backfillHyperSync, tailRpc } from './liquidation/events.ts';
+import { tailRpc } from './liquidation/events.ts';
 import { resolveSubgraphUrl, seedFromSubgraph, redactUrl } from './liquidation/subgraph.ts';
 import { HealthMonitor, WAD, type AccountState, type Transition } from './liquidation/health.ts';
 import { Liquidator, RouteFinder, type LiquidationAttempt } from './liquidation/plan.ts';
@@ -124,7 +124,7 @@ type LiquidationConf = {
 const args = process.argv.slice(2);
 const chainArg = args[0];
 if (!chainArg || chainArg.startsWith('--')) {
-    console.error('Usage: yarn liq-watch <chain> [--venue aave,morpho,compound|all] [--follow] [--pool <addr>] [--seed subgraph|hypersync|rpc]');
+    console.error('Usage: yarn liq-watch <chain> [--venue aave,morpho,compound|all] [--follow] [--pool <addr>] [--seed subgraph|rpc]');
     console.error('                              [--from <block>] [--top <n>] [--min-profit-usd <n>] [--poll-ms <n>] [--liquidate|--live]');
     process.exit(1);
 }
@@ -352,27 +352,25 @@ const fmtAcct = (k: string): string => {
 
 let head = await provider.getBlockNumber();
 
-type Seed = 'subgraph' | 'hypersync' | 'rpc';
+type Seed = 'subgraph' | 'rpc';
 const subgraphUrl = resolveSubgraphUrl(cfg.chain.label, liq.subgraph, process.env.GRAPH_API_KEY);
-const hypersyncOk = !!(cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN);
 const seedArg = flag('--rpc-only') ? 'rpc' : opt('--seed');
-if (seedArg != null && !['subgraph', 'hypersync', 'rpc'].includes(seedArg)) {
-    console.error(`--seed must be subgraph, hypersync or rpc (got ${seedArg})`);
+if (seedArg != null && !['subgraph', 'rpc'].includes(seedArg)) {
+    console.error(`--seed must be subgraph or rpc (got ${seedArg})${seedArg === 'hypersync' ? ' — HyperSync was removed; rpc replays through the rated pool' : ''}`);
     process.exit(1);
 }
 if (seedArg === 'subgraph' && !wanted.includes('aave')) { console.error('--seed subgraph is Aave-only.'); process.exit(1); }
-if (seedArg === 'hypersync' && !hypersyncOk) {
-    console.error(`HyperSync needs hypersyncUrl for ${cfg.chain.name} in @chains.json5 and ENVIO_API_TOKEN in .env.`);
-    process.exit(1);
-}
-const tailOpts = { chunk: cfg.scan.chunkStart, chunkMin: cfg.scan.chunkMin, chunkMax: cfg.scan.chunkMax, log: console.log };
+// Replays go through the rated pool: let chunks grow to the widest range a rated
+// endpoint accepts (the pool routes each one to an endpoint that takes it).
+const poolRange = poolLogRange(cfg.chain);
+const tailOpts = { chunk: cfg.scan.chunkStart, chunkMin: cfg.scan.chunkMin, chunkMax: Math.max(cfg.scan.chunkMax, poolRange ?? 0), log: console.log };
 
 const t0 = Date.now();
 const seedFailed = new Set<Track>();
 for (const t of tracks) {
   try {
     let seed: Seed | null = (seedArg === 'subgraph' && t.name !== 'aave' ? null : seedArg as Seed | undefined)
-        ?? (t.db.lastBlock() != null ? null : t.name === 'aave' && subgraphUrl ? 'subgraph' : hypersyncOk ? 'hypersync' : 'rpc');
+        ?? (t.db.lastBlock() != null ? null : t.name === 'aave' && subgraphUrl ? 'subgraph' : 'rpc');
     if (seed === 'subgraph') {
         if (!subgraphUrl) {
             console.error(process.env.GRAPH_API_KEY
@@ -389,28 +387,22 @@ for (const t of tracks) {
         } catch (e) {
             // A deprecated / unallocated subgraph ("subgraph not found: no allocations", as on
             // Ink's Tydro) must not kill the process — fall back to the next available source.
-            seed = hypersyncOk ? 'hypersync' : 'rpc';
+            seed = 'rpc';
             console.log(`  [!] subgraph seed failed (${(e as Error).message.slice(0, 120)}); falling back to ${seed}`);
         }
     }
-    if (seed === 'hypersync' || seed === 'rpc') {
-        // rpc / hypersync replay from a start block. On a re-seed of an existing
-        // DB, --from (or the config/deploy block) says where to replay from.
+    if (seed === 'rpc') {
+        // Replay from a start block. On a re-seed of an existing DB, --from
+        // (or the config/deploy block) says where to replay from.
         let from = num('--from') ?? t.deployBlock;
-        if (from == null && seed === 'rpc' && t.deployHint) {
+        if (from == null && t.deployHint) {
             console.log(`  [${t.venue.label}] finding the deploy block…`);
             from = await discoverDeployBlock(provider, t.deployHint, { chainId: cfg.chain.id, explorerApiKey: process.env.ETHERSCAN_API_KEY });
         }
         from ??= 0;
-        if (seed === 'hypersync') {
-            console.log(`\n[${t.venue.label}] backfilling ${(head - from + 1).toLocaleString()} blocks via HyperSync…`);
-            const r = await backfillHyperSync(cfg.chain.hypersyncUrl!, process.env.ENVIO_API_TOKEN!, t.db, from, head, s => process.stdout.write(s), t.venue);
-            console.log(`  ${r.logs.toLocaleString()} events in ${r.calls} request(s), through block ${r.throughBlock}`);
-        } else {
-            console.log(`\n[${t.venue.label}] backfilling ${(head - from + 1).toLocaleString()} blocks via eth_getLogs…`);
-            const r = await tailRpc(provider, t.db, from, head, { ...tailOpts, source: t.venue });
-            console.log(`  ${r.logs.toLocaleString()} events in ${r.calls} getLogs call(s)`);
-        }
+        console.log(`\n[${t.venue.label}] backfilling ${(head - from + 1).toLocaleString()} blocks via eth_getLogs${poolRange ? ` (chunks up to ${poolRange.toLocaleString()} blocks)` : ''}…`);
+        const r = await tailRpc(provider, t.db, from, head, { ...tailOpts, source: t.venue });
+        console.log(`  ${r.logs.toLocaleString()} events in ${r.calls} getLogs call(s)`);
     }
     // Catch up from wherever the seed (or the last run) left off.
     const after = t.db.lastBlock() ?? head;

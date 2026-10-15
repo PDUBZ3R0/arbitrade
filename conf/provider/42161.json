@@ -1,0 +1,2262 @@
+{
+  "tool": "vetted-rpc 0.1.0",
+  "chainId": 42161,
+  "name": "Arbitrum One",
+  "testedAt": "2026-10-14T23:47:56.220Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x137a44067c8961cd7e1d876f4754a5a3a75989b4552f1843fc69c3b372def160",
+      "block": 514889872
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://arb-one.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 44935,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891324,
+      "client": "nitro/v3.12.1+70fa99a-20260929T140226Z/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 164,
+        "p95": 194,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: missing trie node 0000000000000000000000000000000000000000000000000000000000000000 (path ) <nil>"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32603: method handler crashed"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 76
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one.public.blastapi.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 18003,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "nitro/vlocal+unknown-unknown/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 60,
+        "p95": 71,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 999946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32600: You can make eth_getLogs requests with up to a 10 block range. Based on your parameters, this block range should work: [0x1eb09863, 0x1eb0986c]"
+      },
+      "history": {
+        "stateDepth": 514889930,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "HTTP 401: Only core evm requests are allowed.",
+        "eth_createAccessList": "HTTP 401: Only core evm requests are allowed.",
+        "debug_traceCall": "HTTP 401: Only core evm requests are allowed.",
+        "trace_call": "HTTP 401: Only core evm requests are allowed.",
+        "txpool_status": "HTTP 401: Only core evm requests are allowed.",
+        "eth_blobBaseFee": "HTTP 401: Only core evm requests are allowed.",
+        "eth_newFilter": "HTTP 401: Only core evm requests are allowed."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 10"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 95
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum.gateway.tenderly.co",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 50527,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891323,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 66,
+        "p95": 80,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "3: missing trie node 0000000000000000000000000000000000000000000000000000000000000000 (path ) <nil>"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32005: rate limit exceeded",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32005: rate limit exceeded",
+        "trace_call": "-32005: rate limit exceeded",
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 11,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 62
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arb1.arbitrum.io/rpc",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 28758,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891320,
+      "client": "nitro/v3.12.1-rc.2+70fa99a-20260929T140226Z/linux-arm64/go1.25.12",
+      "latency": {
+        "p50": 63,
+        "p95": 73,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "resultCapError": "-32000: logs matched by query exceeds limit of 10000",
+        "combinedError": "-32000: logs matched by query exceeds limit of 10000"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32000: historical state 663a5e17b0b0461d6777c82b07bdef234177f52649c7c21250a3c10bed4712e6 is not available"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_newFilter": "-32601: the method eth_newFilter does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 5,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 5 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one-rpc.publicnode.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 47490,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "nitro/v3599aca-modified/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 62,
+        "p95": 81,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 90,
+        "maxAddresses": null,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode",
+        "addressError": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/arb/host",
+        "oldLogsError": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+      },
+      "batch": {
+        "max": 500,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode",
+        "txpool_status": "-32603: method handler crashed"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 90"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one-public.nodies.app",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16939,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "nitro/v3.11.3-beb2108/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 61,
+        "p95": 80,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 999946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 50,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32001: Block range too large: maximum allowed is 50 blocks on your current plan. Upgrade your subscription at https://nodies.app/pricing for larger ranges."
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32014: missing trie node 0000000000000000000000000000000000000000000000000000000000000000 (path ) <nil> {\"code\":\"ErrUpstreamsExhausted\",\"message\":\"all upstream…"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: Batch too large: maximum allowed is 10 requests per batch on your current plan. Split the batch, or upgrade your subscription at https://nodies.app/pric…",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32601: Method not available on this plan: eth_getBlockReceipts. Upgrade your subscription at https:…",
+        "eth_createAccessList": "-32601: Method not available on this plan: eth_createAccessList. Upgrade your subscription at https:…",
+        "eth_getProof": "-32601: Method not available on this plan: eth_getProof. Upgrade your subscription at https://nodies…",
+        "debug_traceCall": "-32601: Method not available on this plan: debug_traceCall. Upgrade your subscription at https://nod…",
+        "trace_call": "-32601: Method not available on this plan: trace_call. Upgrade your subscription at https://nodies.a…",
+        "txpool_status": "-32601: Method not available on this plan: txpool_status. Upgrade your subscription at https://nodie…",
+        "eth_newFilter": "-32601: Method not available on this plan: eth_newFilter. Upgrade your subscription at https://nodie…"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "retryAfter": "60"
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 50"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 74
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://public-arb-mainnet.fastnode.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 24178,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891323,
+      "client": "nitro/v3.12.1+70fa99a-20260929T140226Z/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 155,
+        "p95": 162,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 33,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "addressError": "HTTP 413: Payload Too Large",
+        "resultCapError": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+        "combinedError": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: historical state 05d8d48548980e890d11ee8697590516907ec2cc1cd4b4e1a81490addf631343 is not available"
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 400",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 49
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://42161.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 41474,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891323,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 139,
+        "p95": 168,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 599946649,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 514890999,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://arbitrum-one-rpc.publicnode.com",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 74299,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "nitro/v3599aca-modified/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 46,
+        "p95": 260,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32701: exceed maximum block range: 10000",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/arb/host"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: historical state 3d50b40d762d341a3b6899db93c1d541be1a78b365b57c9b93b9827205de48c4 is not available"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "timeout 15000ms",
+        "eth_maxPriorityFeePerGas": "timeout 15000ms",
+        "eth_getBlockReceipts": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_createAccessList": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_getProof": "socket closed (code 1013 Connection timeout exceeded)",
+        "debug_traceCall": "socket closed (code 1013 Connection timeout exceeded)",
+        "trace_call": "socket closed (code 1013 Connection timeout exceeded)",
+        "txpool_status": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_blobBaseFee": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_newFilter": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 61
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1013 Connection timeout exceeded))"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22827,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 61,
+        "p95": 265,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "27: Unknown state. First available state is 1"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: method is not available",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://arbitrum.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9887,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891322,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 56,
+        "p95": 198,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 49
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.nodeflare.app/arb/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 64,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "https://xrpc.cl/arbitrum",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 5330,
+      "error": "-32000: XRPC Cluster: Backend arbitrum node currently syncing and fallbacks busy",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend arbitrum node currently syncing and fallbacks busy"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend arbitrum node currently syncing and fallbacks busy"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend arbitrum node currently syncing and fallbacks busy"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend arbitrum node currently syncing and fallbacks busy"
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/arb",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 170,
+      "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/42161",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7289,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    },
+    {
+      "url": "https://arb-mainnet.g.alchemy.com/v2/demo",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7365,
+      "error": "HTTP 429",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.hostdefi.com/api/rpc/arbitrum",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 17847,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 514891323,
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum.meowrpc.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 57253,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891323,
+      "latency": {
+        "p50": 165,
+        "p95": 313,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32000: The method eth_call is not supported.",
+        "gasCapError": "-32000: The method eth_call is not supported.",
+        "stateOverrideError": "-32000: The method eth_call is not supported."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32000: The method eth_getLogs is not supported.",
+        "addressError": "-32000: The method eth_getLogs is not supported.",
+        "topicOnlyError": "-32000: The method eth_getLogs is not supported.",
+        "oldLogsError": "-32000: The method eth_getLogs is not supported."
+      },
+      "history": {
+        "stateDepth": 514889969,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "HTTP 400: Bad Request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: The method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: The method trace_call does not exist/is not available",
+        "txpool_status": "-32601: The method txpool_status does not exist/is not available",
+        "eth_newFilter": "-32000: The method eth_newFilter is not supported."
+      },
+      "throttledDuringProbes": 34,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32000: The method eth_call is not supported.)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32000: The method eth_call is not supported.)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://api.stateless.solutions/arbitrum-one/v1/demo",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 194,
+      "error": "ERR_TLS_CERT_ALTNAME_INVALID",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ERR_TLS_CERT_ALTNAME_INVALID"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ERR_TLS_CERT_ALTNAME_INVALID"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ERR_TLS_CERT_ALTNAME_INVALID"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ERR_TLS_CERT_ALTNAME_INVALID"
+        }
+      }
+    },
+    {
+      "url": "wss://arbitrum.callstaticrpc.com",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 57,
+      "error": "connect failed",
+      "ws": {
+        "connected": false,
+        "error": "connect failed",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.owlracle.info/arb/70d38ce1826c4a60bb2a8e05a6c8b20f",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 206,
+      "error": "0: true",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14700,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 514891322,
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 21796,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891313,
+      "client": "sentio-super-node/v2.583.0-b678fb8db9a28646ecb79254a9df67350bdff5a4/linux-amd64/",
+      "latency": {
+        "p50": 103,
+        "p95": 137,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 562,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32000: block span 49999 of range [514840461, 514890460] exceeds the limit 10000",
+        "resultCapError": "-32000: too many results: the result count exceeds the limit, please narrow the query block range",
+        "combinedError": "-32000: too many results: the result count exceeds the limit, please narrow the query block range"
+      },
+      "history": {
+        "stateDepth": 514890464,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}",
+        "txpool_status": "-32603: method handler crashed"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 12,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 12 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 12 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 12 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 12 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://api.zan.top/arb-one",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 183911,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514891325,
+      "client": "nitro/v3.12.1+70fa99a-20260929T140226Z/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 255,
+        "p95": 1266,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "gasCapError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "stateOverrideError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "addressError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "topicOnlyError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "oldLogsError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: missing trie node 0000000000000000000000000000000000000000000000000000000000000000 (path ) <nil>"
+      },
+      "batch": {
+        "max": 500,
+        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a13ccd35439d7ed\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32011: cu limit exceeded; Request too fast per second. Please visit https://zan.top/ and register t…",
+        "debug_traceCall": "-32012: cu limit exceeded; Method \"debug_traceCall\" is not available for unregistered accounts. Plea…",
+        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a13ccd807231f39\"}",
+        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a13ccd816a3d34d\"}",
+        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a13ccd82661d4c1\"}"
+      },
+      "throttledDuringProbes": 57,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpcfree.com/arbitrum-rpc",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 861,
+      "error": "HTTP 200: <!doctype html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-wid",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!doctype html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-wid"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!doctype html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-wid"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!doctype html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-wid"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!doctype html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-wid"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/arbitrum",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 77866,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890547,
+      "client": "nitro/v3.11.5-7d41882/linux-amd64/go1.25.14",
+      "latency": {
+        "p50": 164,
+        "p95": 184,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946642,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 514890546,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32602: historical state for this block is not available on this endpoint (archive data required)",
+        "txpool_status": "-32603: method handler crashed"
+      },
+      "throttledDuringProbes": 31,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://arb-one-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 195016,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890211,
+      "client": "nitro/v3.12.1+70fa99a-20260929T140226Z/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 173,
+        "p95": 220,
+        "n": 4,
+        "failures": 8
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32603: method handler crashed",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 72,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.satelink.network/rpc/arbitrum",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 241,
+      "error": "0: \"Payment required\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"Payment required\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"Payment required\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"Payment required\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"Payment required\""
+        }
+      }
+    },
+    {
+      "url": "https://api-arbitrum-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 173234,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890427,
+      "latency": {
+        "p50": 168,
+        "p95": 499,
+        "n": 6,
+        "failures": 6
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946649,
+        "stateOverride": true,
+        "gasCapError": "HTTP 429: Too Many Requests "
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "addressError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "topicOnlyError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "oldLogsError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. "
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "HTTP 429: Too Many Requests "
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 429: Too Many Requests ",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "HTTP 429: Too Many Requests ",
+        "eth_createAccessList": "HTTP 429: Too Many Requests ",
+        "eth_getProof": "HTTP 429: Too Many Requests ",
+        "debug_traceCall": "HTTP 403: Your current plan does not support the debug_traceCall method. Please upgrade to a paid pl…",
+        "trace_call": "HTTP 403: Your current plan does not support the trace_call method. Please upgrade to a paid plan at…",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_newFilter": "HTTP 429: Too Many Requests "
+      },
+      "throttledDuringProbes": 65,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one-rpc.blockreq.com/v1/rpc/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 50259,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890900,
+      "client": "nitro/v3.11.2-3599aca/linux-amd64/go1.25.11",
+      "latency": {
+        "p50": 114,
+        "p95": 125,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946649,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access.",
+        "oldLogsError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "batch": {
+        "max": 50,
+        "error": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "debug_traceCall": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "trace_call": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "txpool_status": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "eth_newFilter": "-32000: RPC Endpoint Key access denied"
+      },
+      "throttledDuringProbes": 10,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150,
+        "retryAfter": "4"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-arbitrum.blockmachine.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 102097,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890825,
+      "client": "blockmachine-gateway/v0.1.0",
+      "latency": {
+        "p50": 141,
+        "p95": 155,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946650,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: block range exceeds maximum allowed (max=10000, requested=50000) — the range is INCLUSIVE, so page with to = from + 9999 (a 10000-block span means to - …",
+        "combinedError": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":48000,\"unit\":\"cu_per_minute\"}"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":39000,\"unit\":\"cu_per_minute\"}"
+      },
+      "batch": {
+        "max": 0,
+        "error": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":31000,\"unit\":\"cu_per_minute\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":23000,\"uni…",
+        "eth_maxPriorityFeePerGas": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":16000,\"uni…",
+        "eth_getBlockReceipts": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792021620,\"retry_after_ms\":8000,\"unit…",
+        "trace_call": "1: no available upstreams to process a request",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 32,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "53"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://arbitrum-one-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 194565,
+      "chainId": 42161,
+      "chainIdOk": true,
+      "head": 514890636,
+      "client": "nitro/v3.12.1+70fa99a-20260929T140226Z/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 43,
+        "p95": 53,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "oldLogsError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 514890635,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "trace_call": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "txpool_status": "-32603: method handler crashed",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 73,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

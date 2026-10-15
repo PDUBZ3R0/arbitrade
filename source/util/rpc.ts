@@ -1,5 +1,25 @@
 // -----------------------------------------------------------------------------
-// RPC provider factory: websocket first, HTTP as the safety net.
+// RPC provider factory.
+//
+// REAL CHAINS: a pool of rated public RPCs (vetted-provider's VettedProvider).
+// makeProvider(cfg.chain) routes every request to a public endpoint rated for
+// that job (getLogs range, revert data, gas cap, history, head freshness), with
+// your own endpoints used only when no public one can do it:
+//
+//   ratings     conf/provider/<chainId>.json  (vetrpc vet <chainId>). Without a
+//               file the pool uses chainlist's unrated list and learns as it goes.
+//   private     <LABEL>_RPC / <LABEL>_WS from .env, when set
+//   sends       chain.sequencer (conf, or <LABEL>_SEQUENCER): transactions go
+//               ONLY there; without one, to the private endpoint; without
+//               either, to the best-rated public trader endpoint
+//
+// The conf files' host / ws entries are not used for real chains any more.
+//
+// LOCAL / TEST endpoints — a chain object without a label, an RPC on 127.0.0.1
+// or localhost (anvil), or ARB_NO_POOL=1 — keep the single-endpoint providers
+// below: websocket first, HTTP as the safety net.
+//
+// --- the single-endpoint providers --------------------------------------------
 //
 // Every place that used to do `new JsonRpcProvider(cfg.chain.host)` calls
 // makeProvider(cfg.chain) instead. When the chain has a websocket endpoint
@@ -41,10 +61,45 @@
 // whose websocket misbehaves).
 // -----------------------------------------------------------------------------
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { JsonRpcProvider, WebSocketProvider, Network, keccak256 } from 'ethers';
 import type { JsonRpcPayload, JsonRpcResult, JsonRpcError } from 'ethers';
+import { VettedProvider } from 'vetted-provider';
 
-export type RpcEndpoints = { host: string; ws?: string; id?: number };
+export type RpcEndpoints = { host: string; ws?: string; id?: number; label?: string; sequencer?: string };
+
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const LOCAL_RE = /^(?:https?|wss?):\/\/(?:127\.|localhost\b|\[::1\]|0\.0\.0\.0)/i;
+
+/** <LABEL>_RPC / <LABEL>_WS from .env — the private endpoints. */
+export function privateEndpoints(label: string): { rpc?: string; ws?: string } {
+    const k = label.toUpperCase().replace(/-/g, '_');
+    return { rpc: process.env[`${k}_RPC`] || undefined, ws: process.env[`${k}_WS`] || undefined };
+}
+
+/** Where a chain's RPC ratings live. */
+export const ratingsFile = (chainId: number | string) => path.join(PROJECT_ROOT, 'conf', 'provider', `${chainId}.json`);
+
+/**
+ * The widest eth_getLogs block range any rated endpoint passing `scanner`
+ * accepts — a chunk ceiling for log replays that go through the pool. Null
+ * without ratings (or off the pool), so callers keep their own tuning.
+ */
+export function poolLogRange(chain: RpcEndpoints): number | null {
+    if (!usesPool(chain)) return null;
+    try {
+        const res = JSON.parse(fs.readFileSync(ratingsFile(chain.id!), 'utf8')) as { endpoints?: Array<{ ratings?: { scanner?: { pass?: boolean } }; logs?: { maxRange?: number | null } }> };
+        const ranges = (res.endpoints ?? []).filter(e => e.ratings?.scanner?.pass).map(e => e.logs?.maxRange ?? 0).filter(n => n > 0);
+        return ranges.length ? Math.max(...ranges) : null;
+    } catch { return null; }
+}
+
+/** True when makeProvider(chain) gives the rated public pool rather than one endpoint. */
+export function usesPool(chain: RpcEndpoints): boolean {
+    return !!chain.label && !!chain.id && process.env.ARB_NO_POOL !== '1' && !LOCAL_RE.test(chain.host ?? '');
+}
 
 export type ProviderOptions = {
     /** Force HTTP even when a websocket is configured. */
@@ -107,9 +162,28 @@ export class RetryingJsonRpcProvider extends JsonRpcProvider {
     }
 }
 
-/** The provider every CLI and loop should use for chain.host / chain.ws. */
+/** The provider every CLI and loop should use: the rated pool for a real chain (see the header). */
 export function makeProvider(chain: RpcEndpoints, opts: ProviderOptions = {}): JsonRpcProvider {
-    if (!chain.ws || opts.http || process.env.ARB_NO_WS === '1') return new RetryingJsonRpcProvider(chain.host);
+    const noWs = !!opts.http || process.env.ARB_NO_WS === '1';
+    if (usesPool(chain)) {
+        const own = privateEndpoints(chain.label!);
+        const ratings = ratingsFile(chain.id!);
+        if (!fs.existsSync(ratings) && !warnedUnrated.has(chain.id!)) {
+            warnedUnrated.add(chain.id!);
+            console.warn(`[rpc] no ratings at ${path.relative(process.cwd(), ratings)} — using chainlist's unrated endpoints (rate them: vetrpc vet ${chain.id})`);
+        }
+        return new VettedProvider(Number(chain.id), {
+            privateRpc: own.rpc ?? null,
+            privateWs: noWs ? null : own.ws ?? null,
+            sendRpc: chain.sequencer || undefined,
+            ratings,
+            useWs: !noWs,
+            // Some reads are heavy (getV3State over 100 pools); a timeout is a
+            // transport failure that sends the request elsewhere, so be patient.
+            timeoutMs: opts.maxRequestMs ?? 60_000,
+        });
+    }
+    if (!chain.ws || noWs) return new RetryingJsonRpcProvider(chain.host);
     return new WsFirstProvider(chain.host, chain.ws, chain.id, opts.timeoutMs, opts.maxRequestMs);
 }
 
@@ -349,8 +423,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  * own socket. Callers must NOT destroy() the shared instance.
  */
 const shared = new Map<string, JsonRpcProvider>();
+const warnedUnrated = new Set<number | string>();
 export function sharedProvider(chain: RpcEndpoints): JsonRpcProvider {
-    const key = `${chain.host}|${process.env.ARB_NO_WS === '1' ? '' : chain.ws ?? ''}`;
+    const key = usesPool(chain) ? `pool|${chain.id}` : `${chain.host}|${process.env.ARB_NO_WS === '1' ? '' : chain.ws ?? ''}`;
     let p = shared.get(key);
     if (!p) { p = makeProvider(chain); shared.set(key, p); }
     return p;

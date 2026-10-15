@@ -1,17 +1,16 @@
 // -----------------------------------------------------------------------------
-// Feeding Aave V3 Pool events into the watchlist.
+// Feeding venue events into the watchlist.
 //
-//   backfill   HyperSync, pool address + WATCH_TOPICS, from the start block to
-//              the head. One filtered stream; a Pool's whole history is a few
-//              requests. Falls back to chunked eth_getLogs when the chain has
-//              no hypersyncUrl or no ENVIO_API_TOKEN.
-//   tail       chunked eth_getLogs on the chain's own RPC from lastBlock+1.
-//              Used every tick by --follow and to close the gap between a
-//              HyperSync archive height and the RPC head.
+//   tail       chunked eth_getLogs from lastBlock+1, through the rated RPC pool
+//              (which sends each chunk to an endpoint that accepts its range).
+//              Seeds an empty watchlist from the venue's deploy block, then runs
+//              every tick under --follow.
 //
-// Both transports normalise to RawLog and go through the same decode +
-// LiqDB.applyEvents, so the backfill path and the tail path cannot disagree
-// about what an event means.
+// (A HyperSync backfill lived here too. It was removed: every container on the
+// free key shared one slow rate limit. The subgraph seed covers Aave; the rest
+// replays over getLogs.)
+//
+// Logs normalise to RawLog and go through the same decode + LiqDB.applyEvents.
 //
 // REORGS are not handled, deliberately: an event can only ADD an account or
 // mark one for re-checking. A reorged-out Borrow leaves a harmless extra
@@ -123,72 +122,4 @@ export async function tailRpc(
         if (chunk < chunkMax && logs.length < 1000) chunk = Math.min(chunkMax, Math.floor(chunk * 1.25));
     }
     return { logs: total, touched, throughBlock: to, calls };
-}
-
-/**
- * HyperSync log -> RawLog. The NAPI client returns `topics` with null for
- * absent slots and camelCase fields; tolerate the snake_case spellings too.
- */
-export function fromHyperSyncLog(l: any): RawLog {
-    return {
-        address: (l.address ?? l.Address ?? '').toLowerCase() || undefined,
-        topics: (l.topics ?? []).filter((t: unknown) => t != null),
-        data: l.data ?? l.Data ?? '0x',
-        blockNumber: Number(l.blockNumber ?? l.block_number),
-    };
-}
-
-/**
- * HyperSync backfill over [from, to]. Returns the block it actually reached,
- * which is min(to, archive height) — HyperSync can trail the RPC head by a few
- * blocks, so the caller tails the remainder over RPC.
- */
-export async function backfillHyperSync(
-    hypersyncUrl: string,
-    apiToken: string,
-    db: LiqDB,
-    from: number,
-    to: number,
-    log: (s: string) => void = () => {},
-    source?: EventSource,
-): Promise<FeedResult> {
-    const src = source ?? aaveSource(db);
-    const mod: any = await import('@envio-dev/hypersync-client');
-    const HypersyncClient = mod.HypersyncClient;
-    if (!HypersyncClient) throw new Error('HypersyncClient not exported by @envio-dev/hypersync-client');
-    // Static factory first: `new` throws "Class contains no constructor" on the
-    // installed NAPI bindings (see util/hypersync.ts).
-    const clientConfig = { url: hypersyncUrl, apiToken, bearerToken: apiToken };
-    const client: any = typeof HypersyncClient.new === 'function' ? HypersyncClient.new(clientConfig) : new HypersyncClient(clientConfig);
-
-    let query: any = {
-        fromBlock: from,
-        toBlock: to + 1,   // exclusive
-        logs: [{ address: src.eventAddresses.map(a => a.toLowerCase()), topics: [src.eventTopics] }],
-        fieldSelection: { log: ['Address', 'BlockNumber', 'Data', 'Topic0', 'Topic1', 'Topic2', 'Topic3'] },
-        joinMode: mod.JoinMode?.JoinNothing ?? 2,
-    };
-    const touched = new Set<string>();
-    let total = 0, calls = 0, through = from - 1;
-    while (true) {
-        let res: any;
-        try { res = await client.get(query); }
-        catch (err) {
-            const msg = (err as Error).message ?? String(err);
-            if (/token|auth|401|403/i.test(msg)) throw new Error(`HyperSync auth failed. Check ENVIO_API_TOKEN. (${msg})`);
-            throw new Error(`HyperSync query failed at block ${query.fromBlock}: ${msg}`);
-        }
-        calls++;
-        const logs: RawLog[] = (res?.data?.logs ?? []).map(fromHyperSyncLog);
-        const nextBlock: number | undefined = res?.nextBlock;
-        through = nextBlock != null ? Math.min(to, nextBlock - 1) : to;
-        apply(db, src, logs, through, touched);
-        total += logs.length;
-        log(`\r  [hypersync] block ${through}/${to} — ${total} events, ${db.count()} borrowers`);
-        if (nextBlock == null || nextBlock >= query.toBlock) break;
-        if (nextBlock <= query.fromBlock) { log(`\n  [hypersync] nextBlock did not advance at ${nextBlock} — stopping`); break; }
-        query = { ...query, fromBlock: nextBlock };
-    }
-    log('\n');
-    return { logs: total, touched, throughBlock: through, calls };
 }

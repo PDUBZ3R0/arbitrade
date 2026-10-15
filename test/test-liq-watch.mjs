@@ -12,7 +12,7 @@
 //      getReserveData (not list position) after a reserve is dropped.
 //   2. Events -> watchlist: Borrow adds the DEBTOR (onBehalfOf, not the
 //      caller); supply-only accounts are not tracked; progress is durable and
-//      a re-tail adds nothing. HyperSync-shaped logs decode identically.
+//      a re-tail adds nothing.
 //   3. Sweep: tiers match the HF Aave reports; idle after full repay; rows
 //      persist across a reopen.
 //   4. Price trigger: an oracle drop makes an exposed account liquidatable
@@ -212,7 +212,7 @@ process.env.ARB_LIQ_DB = path.join(tmp, 'liq.sqlite');
 
 const { loadAaveMarket, readAccounts, positionAssets, decodePoolEvent, TOPIC } = await import('../source/liquidation/aave-v3.ts');
 const { LiqDB, liqDbPath } = await import('../source/liquidation/watchlist-db.ts');
-const { tailRpc, fromHyperSyncLog } = await import('../source/liquidation/events.ts');
+const { tailRpc } = await import('../source/liquidation/events.ts');
 const { HealthMonitor, wad, MAX_UINT } = await import('../source/liquidation/health.ts');
 const { MULTICALL3_ADDRESS } = await import('../source/util/multicall.ts');
 const { seedFromSubgraph, resolveSubgraphUrl, redactUrl, AAVE_V3_SUBGRAPHS } = await import('../source/liquidation/subgraph.ts');
@@ -292,11 +292,6 @@ try {
     const r1b = await tailRpc(provider, db, h1 + 1, h1);
     ok(r1b.logs === 0 && db.count() === 3, 're-tail from lastBlock+1 adds nothing');
 
-    // HyperSync log shape: null topic slots, camelCase.
-    const rawBorrow = (await provider.getLogs({ address: POOL, topics: [TOPIC.Borrow], fromBlock: fromBlock + 1, toBlock: h1 }))[0];
-    const hsShape = { topics: [...rawBorrow.topics, null], data: rawBorrow.data, blockNumber: rawBorrow.blockNumber };
-    const e1 = decodePoolEvent(rawBorrow), e2 = decodePoolEvent(fromHyperSyncLog(hsShape));
-    ok(e1 && e2 && e1.account === e2.account && e2.isBorrow && e1.account === A, 'HyperSync-shaped log decodes identically');
 
     console.log('3. sweep + tiers');
     let clock = 0;

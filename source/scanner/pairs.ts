@@ -111,12 +111,8 @@ export type ScanOptions = {
     chainId?: number;
     /** Etherscan V2 API key (unified across chains), for deploy-block discovery */
     explorerApiKey?: string;
-    /** Force a specific transport for log fetching. Default: try HyperSync first (if configured), then RPC, then Etherscan on pruning. */
-    forceTransport?: 'hypersync' | 'rpc' | 'etherscan';
-    /** HyperSync URL for fast-path scanning (from cfg.chain.hypersyncUrl). */
-    hypersyncUrl?: string;
-    /** ENVIO API token (from process.env.ENVIO_API_TOKEN). */
-    envioApiToken?: string;
+    /** Force a specific transport for log fetching. Default: RPC (the rated pool), then Etherscan on pruning. */
+    forceTransport?: 'rpc' | 'etherscan';
     /** Called after each successful chunk. */
     onProgress?: (info: { factory: string; block: number; head: number; found: number }) => void;
 };
@@ -167,9 +163,9 @@ export function layoutOf(factory: NormalizedFactory): EventLayout {
  *
  * Rows written before topics were recorded (topic null) are trusted, except a
  * concentrated-liquidity factory with no pools at all: that is the exact
- * signature of the bug above, and re-scanning one (HyperSync: one indexed
- * query) costs little. `allowLegacyRescan` gates that on HyperSync, where a
- * history scan is cheap; on chunked RPC it is only reported.
+ * signature of the bug above. `allowLegacyRescan` rescans it from the deploy
+ * block; otherwise (the scanner's default, since a history scan over chunked
+ * RPC is not cheap) it is only reported, with the --rescan command.
  */
 export function resumeFor(
     db: ArbitradeDB, factory: NormalizedFactory, topic: string, allowLegacyRescan: boolean,
@@ -214,13 +210,12 @@ function pairRow(factory: NormalizedFactory, p: { pair: string; token0: string; 
  * Catch up many factories at once over the chain's RPC.
  *
  * WHY. After the first scan, a re-run only has to cover the blocks since the
- * last one — on Sonic, a few thousand. Doing that factory by factory through
- * HyperSync costs one HyperSync request per factory (33 on Sonic) for what is
- * usually zero new pairs, and the free tier allows ~15 requests per window:
- * the scan spent most of its time waiting out rate limits. Here every
- * factory in the set shares ONE eth_getLogs per chunk — address list plus
- * every creation topic — on the configured RPC, which makeProvider makes
- * websocket-first. Logs are routed back to their factory by address.
+ * last one — on Sonic, a few thousand. Doing that factory by factory costs one
+ * scan per factory (33 on Sonic) for what is usually zero new pairs. Here
+ * every factory in the set shares ONE eth_getLogs per chunk — address list
+ * plus every creation topic — through the rated pool, which sends it to an
+ * endpoint that accepts that many addresses over that range. Logs are routed
+ * back to their factory by address.
  *
  * Each factory keeps its own resume point: a log below it (already scanned)
  * is ignored, and a factory's progress is only advanced over blocks it was
@@ -386,28 +381,12 @@ export async function scanFactory(
 
     const head = opts.toBlock ?? await provider.getBlockNumber();
 
-    // Whether the HyperSync fast path is available. Computed up here rather
-    // than immediately before the fast path, because it decides whether we
-    // need a deploy block at all — see the next block.
-    const canUseHyperSync = Boolean(
-        opts.hypersyncUrl && opts.envioApiToken &&
-        (!opts.forceTransport || opts.forceTransport === 'hypersync')
-    );
-
-    // Deploy-block discovery is ONLY an optimization for the chunked-RPC path,
-    // where the number of eth_getLogs calls scales with (head - fromBlock).
-    // HyperSync serves an indexed address+topic query, so starting it at block 0
-    // costs essentially the same as starting it at the deploy block.
-    //
-    // Discovering a deploy block we then don't use is pure waste — and not cheap
-    // waste: the binary search is ~26 archive eth_getCode calls per factory, which
-    // is enough to exhaust a modest RPC compute-unit budget before the scan has
-    // fetched a single log. So skip discovery when HyperSync is on. If HyperSync
-    // later fails and we fall through to RPC, we discover lazily at that point.
-    const { resume: resumeBlock, note: resumeNote } = resumeFor(db, factory, eventTopic, canUseHyperSync);
+    const { resume: resumeBlock, note: resumeNote } = resumeFor(db, factory, eventTopic, false);
     if (resumeNote) console.log(`  [i] ${factory.name}: ${resumeNote}`);
     let startBlock = factory.deployBlock;
-    if (!startBlock && resumeBlock === null && !canUseHyperSync) {
+    // Deploy-block discovery saves the chunked scan everything before the
+    // factory existed; it is only needed when nothing says where to start.
+    if (!startBlock && resumeBlock === null && opts.fromBlock === undefined) {
         startBlock = await discoverAndCacheDeployBlock(provider, db, factory, opts);
     }
 
@@ -419,84 +398,14 @@ export async function scanFactory(
         return 0;
     }
 
-    // Declared here so the HyperSync fast path (below) and the RPC/Etherscan
-    // slow path (further below) share the same running counter.
     let totalFound = 0;
-
-    // -----------------------------------------------------------------------
-    // HyperSync fast path.
-    //
-    // If a HyperSync URL is configured for this chain and ENVIO_API_TOKEN is
-    // set, use HyperSync for the entire scan. This bypasses the chunked-RPC
-    // dance entirely — no window sizing, no rate-limit backoff, no
-    // adaptive fallback to Etherscan. HyperSync handles pagination natively
-    // and streams parsed pair events in batches. We persist scan progress
-    // per batch, so a killed scan resumes from the last completed batch.
-    //
-    // On any HyperSync error, we fall through to the RPC/Etherscan path below
-    // and continue from the last block HyperSync did complete (thanks to the
-    // per-batch progress writes).
-    // -----------------------------------------------------------------------
-    // Starting block for the RPC path. Usually identical to fromBlock, but if
-    // HyperSync fails we may have no deploy block yet (discovery was skipped
-    // above), leaving fromBlock at 0 — and a chunked RPC scan from genesis is
-    // not something we want to start by accident. The catch block below fixes
-    // this up before the RPC path reads it.
-    let rpcFromBlock = fromBlock;
-
-    if (canUseHyperSync) {
-        try {
-            const { scanFactoryHyperSync } = await import('../util/hypersync.ts');
-            const result = await scanFactoryHyperSync(
-                opts.hypersyncUrl!,
-                opts.envioApiToken!,
-                factory.address,
-                fromBlock,
-                head,
-                eventTopic,
-                layout,
-                async (batchPairs, progressBlock) => {
-                    if (batchPairs.length > 0) {
-                        const rows = batchPairs.map(toRow);
-                        const inserted = db.insertPairs(rows);
-                        totalFound += inserted;
-                    }
-                    db.setScanProgress(factory.address, progressBlock, eventTopic);
-                    opts.onProgress?.({
-                        factory: factory.name,
-                        block:   progressBlock,
-                        head,
-                        found:   totalFound,
-                    });
-                },
-            );
-            // Success — return immediately without touching RPC.
-            return totalFound;
-        } catch (err) {
-            if (opts.forceTransport === 'hypersync') {
-                throw new Error(`HyperSync scan failed and forceTransport='hypersync': ${(err as Error).message}`);
-            }
-            console.log(`\n  [!] HyperSync scan failed at block ${db.getScanProgress(factory.address) ?? fromBlock}, ` +
-                        `falling back to RPC: ${(err as Error).message.slice(0, 100)}`);
-            // Fall through to the RPC path below. Work out where it should
-            // start: prefer whatever HyperSync managed to persist, otherwise
-            // discover the deploy block now (we skipped it above precisely
-            // because we expected HyperSync to handle this factory).
-            const progressed = db.getScanProgress(factory.address);
-            if (progressed !== null) {
-                rpcFromBlock = progressed + 1;
-            } else if (opts.fromBlock === undefined && !startBlock) {
-                rpcFromBlock = await discoverAndCacheDeployBlock(provider, db, factory, opts);
-            }
-        }
-    }
+    const rpcFromBlock = fromBlock;
 
     let chunk = opts.chunkSize ?? opts.tuning?.chunkStart ?? CHUNK_DEFAULT;
     const chunkMin = opts.tuning?.chunkMin ?? CHUNK_MIN;
     const chunkMax = opts.tuning?.chunkMax ?? CHUNK_MAX;
     const chunkDelay = opts.tuning?.chunkDelayMs ?? 0;
     let cursor = rpcFromBlock;
-    // totalFound already declared above the HyperSync fast path
 
     // Once the RPC has told us a specific hard cap (either via a "suggested
     // range" hint like Alchemy's "[from, to] should work" or by rejecting
@@ -707,19 +616,18 @@ export async function scanChain(
     const failures: { factory: string; error: string }[] = [];
 
     // Incremental catch-up: factories already scanned to within
-    // incrementalMaxBlocks of the head share eth_getLogs calls on the RPC
-    // instead of one HyperSync request each. See scanIncremental. Skipped
-    // when a transport is forced or a starting block is given.
+    // incrementalMaxBlocks of the head share eth_getLogs calls instead of one
+    // scan each. See scanIncremental. Skipped when a transport is forced or a
+    // starting block is given.
     const maxGap = cfg.scan.incrementalMaxBlocks ?? cfg.scan.chunkStart * 40;
     const handled = new Set<string>();
     if (maxGap > 0 && !opts.forceTransport && opts.fromBlock === undefined) {
         const head = opts.toBlock ?? await provider.getBlockNumber();
         const near: Array<{ factory: NormalizedFactory; fromBlock: number }> = [];
-        const hyper = Boolean(cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN);
         for (const f of cfg.factories) {
             // A factory whose progress is not valid for its current event goes
             // to the full per-factory scan below, which says why.
-            const { resume } = resumeFor(db, f, TOPIC_BY_LAYOUT[layoutOf(f)], hyper);
+            const { resume } = resumeFor(db, f, TOPIC_BY_LAYOUT[layoutOf(f)], false);
             if (resume !== null && head - resume <= maxGap) near.push({ factory: f, fromBlock: resume + 1 });
         }
         if (near.length > 0) {
@@ -769,8 +677,6 @@ export async function scanChain(
                     tuning: cfg.scan,
                     chainId: cfg.chain.id,
                     explorerApiKey,
-                    hypersyncUrl:   cfg.chain.hypersyncUrl,
-                    envioApiToken:  process.env.ENVIO_API_TOKEN,
                     ...opts,
                     onProgress: (info) => {
                         const denom = Math.max(1, info.head - effectiveFactory.deployBlock);

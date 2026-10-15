@@ -265,7 +265,8 @@ export async function openWebSocket(url: string, timeoutMs: number, onError: (e:
 }
 
 export async function watchSync(
-    httpUrl: string,
+    /** HTTP side: a URL, or a provider to share (the rated pool) — a shared one is never destroyed here. */
+    http: string | JsonRpcProvider,
     wsUrl: string | undefined,
     opts: SyncWatcherOptions,
 ): Promise<SyncWatcher> {
@@ -289,10 +290,11 @@ export async function watchSync(
             ws = null;
         }
     }
+    const ownsHttp = typeof http === 'string';
     if (!ws) {
-        const http = new JsonRpcProvider(httpUrl, undefined, { staticNetwork: true });
-        http.pollingInterval = pollMs;
-        provider = http;
+        const hp = typeof http === 'string' ? new JsonRpcProvider(http, undefined, { staticNetwork: true }) : http;
+        hp.pollingInterval = pollMs;
+        provider = hp;
     }
 
     const stats = { batches: 0, updatesSeen: 0, updatesKept: 0, errors: 0, blocksDrained: 0, logsPushed: 0, reconnects: 0 };
@@ -630,7 +632,7 @@ export async function watchSync(
             // anyway, which is all stop() actually needs.
             // Observed as a crash in `await watcher.stop()` — i.e. on Ctrl+C.
             if (ws) { try { await ws.destroy(); } catch { /* ignore */ } }
-            else { try { (provider as JsonRpcProvider).destroy(); } catch { /* ignore */ } }
+            else if (ownsHttp) { try { (provider as JsonRpcProvider).destroy(); } catch { /* ignore */ } }
         },
         lastBlock: () => last,
         headBlock: () => headBlock,
