@@ -87,29 +87,52 @@
   },
   "clones": {
     "hypurrfi": {
-      "chain": "hyperliquid",
-      "id": 999,
-      "pool":  "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b"
+      "hyperliquid": {
+        "id": 999,
+        "pool": "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b"
+      }
     },
     "hyperlend": {
-      "chain": "hyperliquid",
-      "id": 999,
-      "pool": "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"
+      "hyperliquid":{
+        "id": 999,
+        "pool": "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"
+      }
     },
     "tydro": {
-      "chain": "ink",
-      "id": 57073,
-      "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA"
+      "ink": {
+        "id": 57073,
+        "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA"
+      }
     },
     "mystic":{
-      "chain": "plume",
-      "id": 98866,
-      "pool": "0xCE192A6E105cD8dd97b8Dedc5B5b263B52bb6AE0"
+      "plume": {
+        "id": 98866,
+        "pool": "0xCE192A6E105cD8dd97b8Dedc5B5b263B52bb6AE0"
+      }
     },
     "neverland": {
-      "chain": "monad",
-      "id": 143,
-      "pool": "0x80F00661b13CC5F6ccd3885bE7b4C9c67545D585"
+      "monad": {
+        "id": 143,
+        "pool": "0x80F00661b13CC5F6ccd3885bE7b4C9c67545D585"
+      }
+    },
+    "sparklend": {
+      "ethereum": {
+        "id": 1,
+        "pool": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987",
+        "data": "0xFc21d6d146E6086B8359705C8b28512a983db0cb",
+        "addresses": "0x03cFa0C4622FF84E50E75062683F44c9587e6Cc1",
+        "tvl": 5104641048.96,
+        "borrowed": 2759072672.85
+      },
+      "gnosis": {
+        "id": 100,
+        "pool": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0",
+        "data": "0x2a002054A06546bB5a264D57A81347e23Af91D18",
+        "addresses": "0x49d24798d3b84965F0d1fc8684EF6565115e70c1",
+        "tvl": 204984.77,
+        "borrowed": 2.26
+      }
     }
   }
 }
