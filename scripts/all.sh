@@ -14,4 +14,4 @@ if [ -z "$HOTS" ]; then
 fi
 
 yarn manual $CHAIN
-yarn hot $CHAIN "${HOTS[@]}"
+yarn arbitrage $CHAIN "${HOTS[@]}"

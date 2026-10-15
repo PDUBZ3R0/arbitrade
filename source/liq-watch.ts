@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// CLI: yarn liq-watch <chain> [options]
+// CLI: yarn liquidator <chain> [options]
 //
 // Liquidation watcher and executor for every lending venue on the chain:
 //
@@ -124,7 +124,7 @@ type LiquidationConf = {
 const args = process.argv.slice(2);
 const chainArg = args[0];
 if (!chainArg || chainArg.startsWith('--')) {
-    console.error('Usage: yarn liq-watch <chain> [--venue aave,morpho,compound|all] [--follow] [--pool <addr>] [--seed subgraph|rpc]');
+    console.error('Usage: yarn liquidator <chain> [--venue aave,morpho,compound|all] [--follow] [--pool <addr>] [--seed subgraph|rpc]');
     console.error('                              [--from <block>] [--top <n>] [--min-profit-usd <n>] [--poll-ms <n>] [--liquidate|--live]');
     process.exit(1);
 }

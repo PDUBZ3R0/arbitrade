@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // Human-readable rendering of a CandidateAttempt.
 //
-// Shared by `yarn orchestrator` and `yarn hot` for the same reason the
+// Shared by `yarn orchestrator` and `yarn arbitrage` for the same reason the
 // execution path itself is shared (see ./attempt.ts): both need to print the
 // identical six outcomes, and a second copy drifts. The specific hazard here is
 // not a crash but a lie — the realised-vs-estimated distinction below took

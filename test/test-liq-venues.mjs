@@ -487,7 +487,7 @@ try {
         ok(e === 'NotPool', 'onMorphoLiquidate from Morpho itself, outside our call -> NotPool', e);
     }
 
-    console.log('13. CLI: yarn liq-watch, Morpho + Compound, --live');
+    console.log('13. CLI: yarn liquidator, Morpho + Compound, --live');
     {
         // A scratch project root: a copy of source/ (config.ts finds conf/ and db/
         // relative to itself), node_modules linked, and conf/optimism.json5 = the

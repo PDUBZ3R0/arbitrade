@@ -152,7 +152,7 @@ export type EvaluateOptions = {
     /**
      * Drop any cycle with a v3 hop. Set by callers that attempt candidates
      * with something that cannot trade them: the orchestrator loop and the hot
-     * loop when the deployed executor predates HOP_V3 (or `yarn hot --no-v3`).
+     * loop when the deployed executor predates HOP_V3 (or `yarn arbitrage --no-v3`).
      * Counted under skipReasons.v3NotExecutable.
      */
     executableOnly?: boolean;

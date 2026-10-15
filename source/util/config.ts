@@ -37,7 +37,7 @@ export type ChainMeta = {
     token?: string;            // native wrapped (WETH, WMATIC, wS...)
     host: string;              // RPC URL
     /**
-     * Websocket RPC (wss://…). Used by `yarn hot` for push delivery of Sync
+     * Websocket RPC (wss://…). Used by `yarn arbitrage` for push delivery of Sync
      * logs instead of HTTP polling; `--ws` on the command line overrides it,
      * and so does `<LABEL>_WS` in .env (same pattern as `<LABEL>_RPC`).
      * Filled in by `yarn add-chain` when chainlist lists a working one.

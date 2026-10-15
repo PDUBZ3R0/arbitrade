@@ -1,4 +1,4 @@
-// `yarn hot` start-up, end to end (the real source/hot.ts as a process): the
+// `yarn arbitrage` start-up, end to end (the real source/hot.ts as a process): the
 // index is built from the DB snapshot, and a pair that moved after the last
 // `yarn reserves` and then went quiet must not stay stale until it trades.
 //

@@ -114,7 +114,7 @@ PRIVATE_KEY=0x...
 ENVIO_API_TOKEN=...   # HyperSync seed; paid tier speeds the one-time backfill
 ```
 
-On startup, `yarn hot <chain> --live` prints `Broadcasting via sequencer …`
+On startup, `yarn arbitrage <chain> --live` prints `Broadcasting via sequencer …`
 when the direct path is active — confirm it took.
 
 ---

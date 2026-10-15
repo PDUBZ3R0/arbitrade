@@ -111,7 +111,7 @@ async function runPass(): Promise<void> {
 
     console.log(`[${new Date().toISOString()}] Pass done in ${result.elapsedMs}ms — tried ${result.candidatesTried} candidate(s)`);
 
-    // Rendering lives in ./orchestrator/report.ts so `yarn hot` prints the
+    // Rendering lives in ./orchestrator/report.ts so `yarn arbitrage` prints the
     // identical six outcomes from the identical code. The realised-vs-estimated
     // distinction in particular is too easy to get wrong twice.
     for (const a of result.attempts) printAttempt(cfg, a);

@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// CLI: yarn hot <chain> [options]
+// CLI: yarn arbitrage <chain> [options]
 //
 // The Sync-event-driven hot loop. Where `yarn orchestrator` re-evaluates every
 // triangle on a timer, this subscribes to Sync (V2 uint112 and Solidly uint256 forms) across every
@@ -58,8 +58,7 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
-import { makeProvider, redactUrl, usesPool, privateEndpoints } from './util/rpc.ts';
-import { VettedProvider } from 'vetted-provider';
+import { makeProvider, redactUrl, usesPool } from './util/rpc.ts';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { heapMb } from './util/heap.ts';
 import path from 'node:path';
@@ -68,13 +67,13 @@ import { acquireLock } from './util/instance-lock.ts';
 const args = process.argv.slice(2);
 const chainArg = args[0];
 if (!chainArg || chainArg.startsWith('--')) {
-    console.error('Usage: yarn hot <chain> [options]');
+    console.error('Usage: yarn arbitrage <chain> [options]');
     console.error('');
     console.error('  --live                   Broadcast candidates that simulate clean. Without this');
     console.error('                           flag nothing is ever sent. Requires PRIVATE_KEY.');
     console.error('  --ws URL                 Websocket endpoint for real push. Default: <LABEL>_WS, else the best-rated');
     console.error('                           public websocket (conf/provider). Without one the loop polls, one block of latency.');
-    console.error('  --no-ws                  Do not pick a public websocket: poll unless --ws / <LABEL>_WS is given.');
+    console.error('  --no-ws                  Poll for the feed instead of subscribing through the rated pool (--ws still pins a socket).');
     console.error('  --candidates N           Candidates to attempt per block (default 3). Each costs');
     console.error('                           an estimateGas + staticCall round trip.');
     console.error('  --min-profit-tokens N    Minimum profit as fraction of root token.');
@@ -142,11 +141,14 @@ const v3ChunkSize = num('--v3-chunk', 50, v => v >= 1, 'at least 1');
 const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 
 const cfg = loadChainConfig(chainArg);
-// Push feed: --ws, else your own websocket (<LABEL>_WS — the feed is what the
-// loop trades on, so a paid socket is worth it here), else the best-rated public
-// websocket for subscriptions, else HTTP polling through the pool. Resolved once
-// the provider exists, below.
-let wsUrl: string | undefined = wsFlag ?? (usesPool(cfg.chain) ? privateEndpoints(cfg.chain.label).ws : cfg.chain.ws);
+// Push feed: --ws pins one websocket. Otherwise, on the rated pool, the
+// provider subscribes itself — on <LABEL>_WS first when set (the feed is what the
+// loop trades on, so a paid socket is worth it here), then the best public
+// subscribers — with failover and gap backfill; --no-ws polls instead. Off the
+// pool, the chain's conf `ws`.
+const pooled = usesPool(cfg.chain);
+const wsUrl: string | undefined = wsFlag ?? (pooled ? undefined : cfg.chain.ws);
+const poolPush = pooled && !wsFlag && !hasFlag('--no-ws');
 
 // One hot loop per chain. Two on one wallet race each other's nonces and
 // trades, and share the CPU badly enough to fall minutes behind the chain.
@@ -167,7 +169,6 @@ let wsUrl: string | undefined = wsFlag ?? (usesPool(cfg.chain) ? privateEndpoint
 }
 
 const provider = makeProvider(cfg.chain);
-if (!wsUrl && !hasFlag('--no-ws') && provider instanceof VettedProvider) wsUrl = (await provider.bestUrl('subscriber', 'ws')) ?? undefined;
 let signer: Wallet | undefined;
 let ownerAddress: string;
 if (process.env.PRIVATE_KEY) {
@@ -197,7 +198,7 @@ const minInputTokens = cfg.evaluator?.minInputTokens ?? 0;
 console.log(`Hot loop for ${cfg.chain.name} (chain id ${cfg.chain.id})`);
 console.log(`Executor:  ${cfg.chain.executor}`);
 console.log(`Mode:      ${live ? 'LIVE — will broadcast clean simulations' : 'DRY RUN — simulate only, no broadcast'}`);
-console.log(`Feed:      ${wsUrl ? `websocket ${redactUrl(wsUrl)}` : `HTTP polling every ${pollMs}ms (one block of latency — pass --ws for push)`}`);
+console.log(`Feed:      ${wsUrl ? `websocket ${redactUrl(wsUrl)}` : poolPush ? 'push through the rated pool (failover + backfill)' : `HTTP polling every ${pollMs}ms (one block of latency — pass --ws for push)`}`);
 console.log(`Owner:     ${ownerAddress}`);
 console.log(`Per block: up to ${candidatesPerBlock} candidate(s), ${gasMarginMultiple}x gas margin, ${maxRoiPct}% ROI cap`);
 console.log('');
@@ -458,7 +459,8 @@ let lastFeedError = '';
 /** Pairs the feed updated while the startup refresh was reading; null once it is done. */
 let touchedDuringRefresh: Set<string> | null = new Set();
 
-const watcher = await watchSync(usesPool(cfg.chain) ? provider : cfg.chain.host, wsUrl, {
+const watcher = await watchSync(pooled ? provider : cfg.chain.host, wsUrl, {
+    push: poolPush,
     isInteresting: (pair) => ix.pairIdx.has(pair),
     // Needed only if the RPC refuses address-less eth_getLogs (publicnode
     // answers -32701). The index already holds every pair we care about, so

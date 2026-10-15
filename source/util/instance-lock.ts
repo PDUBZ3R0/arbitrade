@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
-// One process per lock file — `yarn hot <chain>` runs once per chain.
+// One process per lock file — `yarn arbitrage <chain>` runs once per chain.
 //
-// Polygon, 2026-10-14: a second `yarn hot polygon --live` was started while the
+// Polygon, 2026-10-14: a second `yarn arbitrage polygon --live` was started while the
 // first was still running. Both appended to the same hot.log, both signed from
 // the same wallet (racing each other's nonces and each other's trades), both
 // held a 170 MB index, and the CPU contention left the new one's Sync cursor

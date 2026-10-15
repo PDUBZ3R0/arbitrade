@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // The per-block handler for the Sync-driven hot loop.
 //
-// Separated from the `yarn hot` CLI for one reason: this is the part that can
+// Separated from the `yarn arbitrage` CLI for one reason: this is the part that can
 // be wrong in ways a type checker cannot see — the dirty-set plumbing, the
 // cross-root ranking, the cooldown, the stop-at-first-clean rule — and a
 // closure inside a top-level script cannot be driven by a test. Everything

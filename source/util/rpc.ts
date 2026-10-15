@@ -178,6 +178,10 @@ export function makeProvider(chain: RpcEndpoints, opts: ProviderOptions = {}): J
             sendRpc: chain.sequencer || undefined,
             ratings,
             useWs: !noWs,
+            // Subscriptions (the hot loop's feed) go to your own websocket first
+            // when you have one; public subscribers are the fallback.
+            subscriptions: noWs ? 'poll' : 'push',
+            subscribePrivate: !!own.ws && !noWs,
             // Some reads are heavy (getV3State over 100 pools); a timeout is a
             // transport failure that sends the request elsewhere, so be patient.
             timeoutMs: opts.maxRequestMs ?? 60_000,

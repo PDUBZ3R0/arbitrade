@@ -1,4 +1,4 @@
-// One `yarn hot <chain>` at a time (source/util/instance-lock.ts).
+// One `yarn arbitrage <chain>` at a time (source/util/instance-lock.ts).
 //
 // Polygon, 2026-10-14: a second hot loop was started on the same chain and
 // wallet while the first still ran — both wrote one hot.log, raced each

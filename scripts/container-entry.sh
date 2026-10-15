@@ -14,8 +14,8 @@
 #   CHAIN           baked in at build time
 #   MODE            test (simulate only) | live (broadcast; needs PRIVATE_KEY)
 #   MANUAL_ON_BOOT  1 | 0
-#   HOT_ARGS        extra args for yarn hot      (default: as scripts/all.sh)
-#   LIQ_ARGS        extra args for yarn liq-watch (default: --follow)
+#   HOT_ARGS        extra args for yarn arbitrage      (default: as scripts/all.sh)
+#   LIQ_ARGS        extra args for yarn liquidator (default: --follow)
 #   LIQUIDATE       auto | 1 | 0 — run liquidations (dry run in test mode).
 #                   auto = only if conf/<chain>.json5 has chain.liquidator.
 #   RUN_HOT, RUN_LIQ  1 | 0 — turn either loop off

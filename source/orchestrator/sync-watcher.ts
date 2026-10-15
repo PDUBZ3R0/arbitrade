@@ -31,6 +31,16 @@
 //              ~8.6k pairs (18 calls), NOT viable for Polygon's ~100k (200),
 //              where a websocket or a dedicated node is the real answer.
 //
+// THE RATED POOL. Given a VettedProvider and no explicit wsUrl, `subscribe`
+// mode runs through the provider itself: it subscribes on its best websocket,
+// detects a silent or dead socket, fails over to the next one and backfills the
+// gap with getLogs before releasing newer logs. This watcher then has no socket
+// of its own and no staleness timer; it only steps in when the pool reports a
+// backfill it could not do (address-less getLogs refused everywhere), and fills
+// that gap with its own address-chunked fetch. Updates older than one already
+// delivered for the same pair are dropped, so a late gap-fill can never roll
+// reserves back.
+//
 // Client-side filtering still happens in every mode — most logs in a block are
 // not ours, and the discard is one Map lookup.
 //
@@ -174,7 +184,17 @@ export type SyncWatcherOptions = {
      * only throw away.
      */
     watchV3?: boolean;
+    /**
+     * With a pooled provider (VettedProvider) and no wsUrl: subscribe through
+     * the pool's websockets (default true). false = poll over HTTP.
+     */
+    push?: boolean;
 };
+
+/** The part of VettedProvider the watcher uses: its subscription feed events. */
+type PoolFeedEvent = { type: string; url?: string; reason?: string; from?: number; to?: number; error?: string };
+const isPooled = (p: unknown): p is JsonRpcProvider & { onFeed(l: (e: PoolFeedEvent) => void): () => void } =>
+    typeof (p as { onFeed?: unknown })?.onFeed === 'function';
 
 export type SyncTransport = 'subscribe' | 'topic' | 'chunked';
 
@@ -291,6 +311,9 @@ export async function watchSync(
         }
     }
     const ownsHttp = typeof http === 'string';
+    // Push through the rated pool: the provider owns the sockets, failover and backfill.
+    const pooledPush = !ws && !liveWsUrl && opts.push !== false && isPooled(http);
+    let unFeed: (() => void) | null = null;
     if (!ws) {
         const hp = typeof http === 'string' ? new JsonRpcProvider(http, undefined, { staticNetwork: true }) : http;
         hp.pollingInterval = pollMs;
@@ -304,7 +327,7 @@ export async function watchSync(
     let reconnecting = false;
     let staleTimer: ReturnType<typeof setInterval> | null = null;
     const chunkSize = opts.addressChunkSize ?? 400;
-    let transport: SyncTransport = liveWsUrl ? 'subscribe' : 'topic';
+    let transport: SyncTransport = liveWsUrl || pooledPush ? 'subscribe' : 'topic';
     let ready = false;
     let last = 0;
     let stopped = false;
@@ -491,6 +514,9 @@ export async function watchSync(
         schedule();
     }
 
+    /** Pooled push: newest (block, logIndex) delivered per pair, packed as block * 1e6 + logIndex. */
+    const newest = new Map<string, number>();
+
     /** One pushed log: merged into the pending batch, latest per pair wins. */
     const onPushedLog = (lg: any) => {
         if (stopped) return;
@@ -505,6 +531,12 @@ export async function watchSync(
             const bn = lg.blockNumber ?? 0;
             const u = toUpdate(lg, pair, bn, li);
             if (!u) return;
+            if (pooledPush) {
+                // Never older than what this pair already delivered (a gap-fill can arrive late).
+                const pos = bn * 1_000_000 + li, seen = newest.get(pair);
+                if (seen != null && seen >= pos) return;
+                newest.set(pair, pos);
+            }
             if (bn > last) last = bn;
             const prev = pending.get(pair);
             if (prev && (prev.blockNumber > bn || (prev.blockNumber === bn && prev.logIndex >= li))) return;
@@ -575,6 +607,34 @@ export async function watchSync(
         }
     }
 
+    /** Pooled push: the pool could not backfill [from, to] — fetch it here (address-chunked if need be). */
+    async function fillGap(from: number, to: number): Promise<void> {
+        for (let a = from; a <= to && !stopped; a += maxSpan) {
+            const b = Math.min(to, a + maxSpan - 1);
+            try {
+                for (const lg of await fetchRange(a, b)) onPushedLog(lg);
+            } catch (e) {
+                fail(e, `gap-fill ${a}-${b}`);
+                return;
+            }
+        }
+    }
+
+    if (pooledPush) {
+        unFeed = (http as any).onFeed((e: PoolFeedEvent) => {
+            if (stopped) return;
+            if (e.type === 'failover') {
+                stats.reconnects++;
+                opts.onError?.(new Error(`subscription socket ${e.url} failed (${e.reason}); moving to the next endpoint and backfilling`), 'feed');
+            } else if (e.type === 'polling') {
+                opts.onError?.(new Error(`no websocket would take the subscriptions — polling through the pool (${e.reason})`), 'feed');
+            } else if (e.type === 'backfill-failed' && e.from != null && e.to != null) {
+                opts.onError?.(new Error(`pool backfill ${e.from}-${e.to} failed (${e.error}); filling it here`), 'feed');
+                void fillGap(e.from, e.to);
+            }
+        });
+    }
+
     if (transport === 'subscribe') {
         // eth_subscribe('logs'). No getLogs, so a provider that refuses the
         // address-less form is irrelevant here.
@@ -586,7 +646,7 @@ export async function watchSync(
             await attachSubscriptions();
             ready = true;
             try { headBlock = await provider.getBlockNumber(); } catch { /* liveness only */ }
-            if (staleAfterMs > 0) {
+            if (staleAfterMs > 0 && !pooledPush) {
                 staleTimer = setInterval(() => {
                     if (stopped || reconnecting) return;
                     const idle = Date.now() - lastActivityAt;
@@ -631,7 +691,12 @@ export async function watchSync(
             // takes the process down. Closing the socket ends the subscription
             // anyway, which is all stop() actually needs.
             // Observed as a crash in `await watcher.stop()` — i.e. on Ctrl+C.
-            if (ws) { try { await ws.destroy(); } catch { /* ignore */ } }
+            if (pooledPush) {
+                // Shared provider: drop our listeners (its feed closes the socket
+                // once nothing is subscribed); never destroy it.
+                unFeed?.();
+                try { await provider.off({ topics: [topic0] } as any, onPushedLog); } catch { /* ignore */ }
+            } else if (ws) { try { await ws.destroy(); } catch { /* ignore */ } }
             else if (ownsHttp) { try { (provider as JsonRpcProvider).destroy(); } catch { /* ignore */ } }
         },
         lastBlock: () => last,

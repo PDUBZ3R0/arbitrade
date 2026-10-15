@@ -3,7 +3,7 @@
 //
 // A separate file from db/<chain>.sqlite on purpose. The arb DB is rewritten
 // wholesale by reserves/triangles runs and is 8GB on Polygon; the watchlist is
-// small, written every block by `yarn liq-watch --follow`, and should not
+// small, written every block by `yarn liquidator --follow`, and should not
 // contend with (or be stuck behind) a triangles rebuild. Both are regenerable
 // caches — deleting this file costs one backfill.
 //

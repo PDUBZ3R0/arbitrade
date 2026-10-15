@@ -1,24 +1,86 @@
 {
-  "Arbitrum": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
-  "Avalanche": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
-  "BSC": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB",
-  "Base": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
-  "Celo": "0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402",
-  "Ethereum": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
-  "EtherFi": "0x0AA97c284e98396202b6A04024F5E2c65026F3c0",
-  "Gnosis": "0xb50201558B00496A145fE76f7424749556E326D8",
-  "Ink": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA",
-  "Linea": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac",
-  "Mantle": "0x458F293454fE0d67EC0655f3672301301DD51422",
-  "MegaETH": "0x7e324AbC5De01d112AfC03a584966ff199741C28",
-  "Metis": "0x90df02551bB792286e8D4f13E0e357b4Bf1D6a57",
-  "Monad": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef",
-  "Optimism": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
-  "Plasma": "0x925a2A7214Ed92428B5b1B090F80b25700095e12",
-  "Polygon": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
-  "Scroll": "0x11fCfe756c05AD438e312a7fd934381537D3cFfe",
-  "Soneium": "0xDd3d7A7d03D9fD9ef45f3E587287922eF65CA38B",
-  "Sonic": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3",
-  "XLayer": "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116",
-  "ZKsync": "0x78e30497a3c7527d953c6B1E3541b021A98Ac43c"
+  "arbitrum": {
+    "id": 42161,
+    "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+  },
+  "avalanche": {
+    "id": 43114,
+    "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+  },
+  "bsc": {
+    "id": 56,
+    "pool": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
+  },
+  "base": {
+    "id": 8453,
+    "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
+  },
+  "celo": {
+    "id": 42220,
+    "pool": "0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402"
+  },
+  "ethereum": {
+    "id": 1,
+    "pool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
+  },
+  "gnosis": {
+    "id": 100,
+    "pool": "0xb50201558B00496A145fE76f7424749556E326D8"
+  },
+  "ink": {
+    "id": 57073,
+    "pool": "0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA"
+  },
+  "linea": {
+    "id": 59144,
+    "pool": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac"
+  },
+  "mantle": {
+    "id": 5000,
+    "pool": "0x458F293454fE0d67EC0655f3672301301DD51422"
+  },
+  "megaeth": {
+    "id": 4326,
+    "pool": "0x7e324AbC5De01d112AfC03a584966ff199741C28"
+  },
+  "metis": {
+    "id": 1088,
+    "pool": "0x90df02551bB792286e8D4f13E0e357b4Bf1D6a57"
+  },
+  "monad": {
+    "id": 143,
+    "pool": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef"
+  },
+  "optimism": {
+    "id": 10,
+    "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+  },
+  "plasma": {
+    "id": 9745,
+    "pool": "0x925a2A7214Ed92428B5b1B090F80b25700095e12"
+  },
+  "polygon": {
+    "id": 137,
+    "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+  },
+  "scroll": {
+    "id": 534352,
+    "pool": "0x11fCfe756c05AD438e312a7fd934381537D3cFfe"
+  },
+  "soneium": {
+    "id": 1868,
+    "pool": "0xDd3d7A7d03D9fD9ef45f3E587287922eF65CA38B"
+  },
+  "sonic": {
+    "id": 146,
+    "pool": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3"
+  },
+  "xlayer": {
+    "id": 196,
+    "pool": "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116"
+  },
+  "zksync": {
+    "id": 324,
+    "pool": "0x78e30497a3c7527d953c6B1E3541b021A98Ac43c"
+  }
 }

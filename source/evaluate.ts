@@ -128,7 +128,7 @@ const result = await evaluateTriangles(cfg, dbFile, {
     minProfitTokens, minInputTokens,
     debug, debugLimit, includeStable,
     // Report as the current executor would trade: stable hops included, and a
-    // stable or V3 first hop flash-swapped. yarn hot checks the deployed executor.
+    // stable or V3 first hop flash-swapped. yarn arbitrage checks the deployed executor.
     stableHops: true,
     v3FlashSwap: true,
 });
