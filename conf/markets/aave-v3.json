@@ -136,9 +136,7 @@
       },
       {
         "name": "sparklend",
-        "address": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0",
-        "addressesProvider": "0xA98DaCB3fC964A6A0d2ce3B77294241585EAbA6d",
-        "dataProvider": "0x2a002054A06546bB5a264D57A81347e23Af91D18"
+        "address": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0"
       }
     ]
   },

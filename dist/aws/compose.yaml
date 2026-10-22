@@ -1,0 +1,82 @@
+# -----------------------------------------------------------------------------
+# AWS override: container logs to CloudWatch Logs instead of local json files.
+#
+#   docker compose -f compose.aws.yaml up -d
+#
+# The EC2 instance role needs logs:CreateLogGroup, logs:CreateLogStream and
+# logs:PutLogEvents. AWS_REGION defaults to us-east-1. Set a retention period
+# on the arbitrade/* log groups (CloudWatch keeps logs forever by default).
+#
+# With awslogs, `docker compose logs` no longer works — read them in the
+# CloudWatch console or with `aws logs tail arbitrade/base --follow`.
+# -----------------------------------------------------------------------------
+
+x-cloudwatch: &cloudwatch
+  driver: awslogs
+  options: &cw
+    awslogs-region: "us-east-1"
+    awslogs-create-group: "true"
+    mode: non-blocking          # a CloudWatch hiccup must never stall a trade
+    max-buffer-size: 8m
+
+x-arb: &arb
+  env_file: [.env]
+  restart: unless-stopped
+  # Both loops stop between ticks on SIGTERM; give a slow tick time to finish.
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: 50m
+      max-file: "5"
+
+services:
+  base:
+    <<: *arb
+    image: arbitrade:base
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: base } }
+    environment:
+      MODE: "live"
+      RUNS: "liquidate"
+    logging:
+      <<: *cloudwatch
+      options: { <<: *cw, awslogs-group: arbitrade/base }
+    volumes:
+      - base-db:/app/db
+      - base-log:/app/log
+
+  optimism:
+    <<: *arb
+    image: arbitrade:optimism
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
+    environment:
+      MODE: "live"
+      RUNS: "liquidate"
+    logging:
+      <<: *cloudwatch
+      options: { <<: *cw, awslogs-group: arbitrade/optimism }
+    volumes:
+      - optimism-db:/app/db
+      - optimism-log:/app/log
+
+  arbitrum:
+    <<: *arb
+    image: arbitrade:arbitrum
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: arbitrum } }
+    environment:
+      MODE: "live"
+      RUNS: "liquidate"
+    logging:
+      <<: *cloudwatch
+      options: { <<: *cw, awslogs-group: arbitrade/arbitrum }
+    volumes:
+      - arbitrum-db:/app/db
+      - arbitrum-log:/app/log
+
+volumes:
+  base-db:
+  base-log:
+  optimism-db:
+  optimism-log:
+  arbitrum-db:
+  arbitrum-log:
