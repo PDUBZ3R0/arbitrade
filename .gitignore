@@ -1,6 +1,5 @@
 # Secrets
 .env
-.env.aws
 .env.local
 .env.*.local
 
@@ -26,6 +25,11 @@ db/*.sqlite
 db/*.sqlite-shm
 db/*.sqlite-wal
 
+# Dist
+dist/*/db
+dist/*/db/*
+dist/*/.env
+
 # Autosave dumps from find-factories
 *-sweep.json
 
@@ -45,3 +49,7 @@ build/
 *.swp
 .vscode/
 .idea/
+
+# Versions copied to the project root
+./Containerfile
+./compose.yaml
