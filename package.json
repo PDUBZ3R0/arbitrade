@@ -36,7 +36,9 @@
     "market": "bash scripts/market.sh",
     "pretty": "bash scripts/pretty.sh",
     "provider": "bash scripts/vet.sh",
-    "bigblocks": "node scripts/hyperevm-bigblocks.mjs"
+    "bigblocks": "node scripts/hyperevm-bigblocks.mjs",
+    "build-vps": "git pull && cp dist/vps/* . && docker compose build && docker compose up -d",
+    "deploy-vps": "ssh arb -c 'cd /opt/arbitrade && yarn build-vps'"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",

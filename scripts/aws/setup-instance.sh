@@ -110,13 +110,13 @@ for c in $CHAINS; do
 done
 
 # --- build + run --------------------------------------------------------------------
-[ "$CLOUDWATCH" = 1 ] && say "building: $CHAINS"
+[ "$CLOUDWATCH" = 1 ] && echo "Prepare AWS Build"
+cp dist/aws/* .
 # shellcheck disable=SC2086
-docker compose -f compose.aws.yaml build $CHAINS
-say "starting: $CHAINS"
+docker compose build
 # shellcheck disable=SC2086
-docker compose -f compose.aws.yaml up -d $CHAINS
-docker compose -f compose.aws.yaml ps
+docker compose up -d
+docker compose ps
 
 # --- log sync to S3 ------------------------------------------------------------------
 LOG_SYNC_MINUTES="${LOG_SYNC_MINUTES:-15}"
