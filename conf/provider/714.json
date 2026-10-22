@@ -1,0 +1,106 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 714,
+  "name": "Eden",
+  "testedAt": "2026-10-17T20:58:51.887Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.eden.gateway.fm",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 36839,
+      "chainId": 714,
+      "chainIdOk": true,
+      "head": 224939898,
+      "client": "reth/v2.5.0-189c0df/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 133,
+        "p95": 168,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 100000"
+      },
+      "history": {
+        "stateDepth": 224939556,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "HTTP 429",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: The method eth_createAccessList does not exist/is not available",
+        "debug_traceCall": "-32601: The method debug_traceCall does not exist/is not available",
+        "txpool_status": "-32601: The method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: The method eth_blobBaseFee does not exist/is not available",
+        "eth_newFilter": "-32601: The method eth_newFilter does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 59
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

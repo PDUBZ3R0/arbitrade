@@ -41,7 +41,8 @@
 // Options:
 //   --venue <list>        aave,morpho,compound or all (default: all the chain has)
 //   --follow              keep watching after the initial sweep
-//   --pool <addr>         Aave V3 Pool (default: liquidation.pool, else flashloan.pool)
+//   --pool <addr>         watch only this Aave V3 Pool (default: every Aave V3 Pool and fork
+//                         in conf/markets/aave-v3.json for the chain, plus liquidation.pool)
 //   --seed <source>       subgraph | rpc. Default on an empty DB: subgraph for Aave
 //                         when one is known, else rpc. Passing it on an existing DB re-seeds.
 //   --from <block>        rpc seed start (default: the venue's deploy block)
@@ -60,7 +61,8 @@
 // Config (conf/<chain>.json5, all optional):
 //   liquidation: {
 //     venues: ["aave", "morpho", "compound"],
-//     pool: "0x…",           // Aave Pool, when it differs from flashloan.pool
+//     pool: "0x…",           // primary Aave Pool (USD oracle, subgraph), when it differs from flashloan.pool
+//     pools: ["0x…"],        // watch only these Aave Pools (default: all in conf/markets/aave-v3.json)
 //     subgraph: "<id>",       // Aave V3 subgraph id or full URL
 //     fromBlock: 123,         // Aave Pool deploy block
 //     morpho: "0x…",          // Morpho Blue singleton (default: built-in per chain)
@@ -101,6 +103,7 @@ import { hasSelector, selectorOf } from './util/bytecode.ts';
 type LiquidationConf = {
     venues?: string[];
     pool?: string;
+    pools?: string[];
     subgraph?: string;
     fromBlock?: number;
     morpho?: string;
@@ -145,9 +148,33 @@ const num = (name: string): number | undefined => {
 const cfg = loadChainConfig(chainArg);
 const chainId = Number(cfg.chain.id);
 const liq: LiquidationConf = (cfg.raw as RawChainConfig & { liquidation?: LiquidationConf }).liquidation ?? {};
-// Aave: --pool, liquidation.pool, the Aave flashloan Pool, else conf/markets/aave-v3.json (Aave's own market first).
+// Aave: the PRIMARY pool is --pool, liquidation.pool, the Aave flashloan Pool, else
+// conf/markets/aave-v3.json (Aave's own market first). Its oracle prices every venue
+// in USD and it lends flash loans to the others. Every Aave V3 Pool and fork the chain
+// lists is watched, each as its own venue: only the primary used to be, so a chain
+// with Aave plus forks (Sonic: Aave, Avalon x3, dTrinity, Vicuna x4) watched one of
+// nine. --pool narrows to one, liquidation.pools to a list.
 const pool = opt('--pool') ?? liq.pool ?? cfg.flashloan?.pool ?? defaultAavePool(chainId)?.address;
-const poolDeployBlock = pool ? marketsFor('aave-v3', chainId).find(m => m.address.toLowerCase() === pool.toLowerCase())?.deployBlock : undefined;
+type AavePool = { address: string; name?: string; deployBlock?: number; subgraph: boolean };
+const aavePools: AavePool[] = (() => {
+    const entries = marketsFor('aave-v3', chainId);
+    const list = opt('--pool') ? [opt('--pool')!] : liq.pools ?? [...(pool ? [pool] : []), ...entries.map(m => m.address)];
+    // Aave's subgraph indexes Aave's own market: an explicit liquidation.subgraph
+    // goes with the primary pool, Aave's listed market otherwise. Forks seed over rpc.
+    const sgPool = (liq.subgraph ? pool : entries.find(m => m.name === 'aave')?.address ?? pool)?.toLowerCase();
+    const seen = new Set<string>(), out: AavePool[] = [];
+    for (const a of list) {
+        const lc = a.toLowerCase();
+        if (seen.has(lc)) continue;
+        seen.add(lc);
+        const e = entries.find(m => m.address.toLowerCase() === lc);
+        const primary = lc === pool?.toLowerCase();
+        out.push({ address: a, name: e?.name, deployBlock: (primary ? liq.fromBlock : undefined) ?? e?.deployBlock, subgraph: lc === sgPool });
+    }
+    return out;
+})();
+const aaveLabel = (p: AavePool) => p.name === 'aave' || (!p.name && p.address.toLowerCase() === pool?.toLowerCase()) ? 'Aave V3'
+    : `${p.name ?? p.address.slice(0, 10)} (Aave V3)`;
 const morphoAddr = liq.morpho ?? MORPHO_BLUE[chainId]?.address;
 const comets = liq.comets ?? COMETS[chainId];
 const comptrollers = liq.comptrollers ?? COMPTROLLERS[chainId];
@@ -156,7 +183,7 @@ const fluidResolver = liq.fluid ?? FLUID_LIQ_RESOLVER[chainId];
 
 type VenueName = 'aave' | 'morpho' | 'compound' | 'compound-v2' | 'euler';
 const ALL: VenueName[] = ['aave', 'morpho', 'compound', 'compound-v2', 'euler'];
-const has: Record<VenueName, boolean> = { aave: !!pool, morpho: !!morphoAddr, compound: !!comets && Object.keys(comets).length > 0, 'compound-v2': !!comptrollers && Object.keys(comptrollers).length > 0, euler: !!euler };
+const has: Record<VenueName, boolean> = { aave: aavePools.length > 0, morpho: !!morphoAddr, compound: !!comets && Object.keys(comets).length > 0, 'compound-v2': !!comptrollers && Object.keys(comptrollers).length > 0, euler: !!euler };
 const venueArg = opt('--venue');
 const wanted: VenueName[] = (() => {
     const list = venueArg ?? (liq.venues ? liq.venues.join(',') : 'all');
@@ -199,13 +226,25 @@ const provider = makeProvider(cfg.chain);
 const dbFile = liqDbPath(chainArg);
 // The Aave market is loaded whenever the chain has one: its oracle prices every
 // venue in USD (reports, dust floor, gas floor), even when Aave is not watched.
+// One-shot startup reads (a venue's init, an Aave market) on a flaky public RPC
+// (Polygon's especially) can come back "missing revert data" — the node refusing
+// the call, not a real revert. Retry a transient failure a few times with a
+// backoff that outlasts a rate-limit window; the caller skips just that venue
+// if it still fails, rather than taking the others down with it.
+const TRANSIENT = /missing revert data|could not coalesce|CALL_EXCEPTION|SERVER_ERROR|timeout|rate limit|too many request|ECONNRESET|ETIMEDOUT|socket hang up|-3200[0-9]|\b429\b|\b503\b/i;
+async function retryTransient<T>(fn: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+        try { return await fn(); }
+        catch (e) {
+            if (attempt >= 2 || !TRANSIENT.test((e as Error).message)) throw e;
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        }
+    }
+}
 let market: AaveMarket | null = null;
 if (pool) {
-    try { market = await loadAaveMarket(provider, pool); }
-    catch (e) {
-        if (wanted.includes('aave')) throw e;
-        console.log(`  [!] Aave Pool ${pool} did not load (${(e as Error).message.slice(0, 80)}) — no Aave oracle for USD values`);
-    }
+    try { market = await retryTransient(() => loadAaveMarket(provider, pool)); }
+    catch (e) { console.log(`  [!] Aave Pool ${pool} did not load (${(e as Error).message.slice(0, 80)}) — no Aave oracle for USD values`); }
 }
 const usdOracleAddr = liq.usdOracle ?? market?.oracle ?? null;
 // Second source for USD: the scanner's pool DB (deepest pool against a stablecoin).
@@ -222,6 +261,10 @@ type Track = {
     /** Event-seed start when nothing else says. */
     deployBlock?: number;
     deployHint?: string;
+    /** Aave only: seed from Aave's subgraph (Aave's own market, not forks). */
+    subgraph?: boolean;
+    /** Aave only: this pool's planner (--liquidate). */
+    aaveLiq?: Liquidator;
 };
 const healthOpts = {
     nearHF: liq.nearHF, watchHF: liq.watchHF, priceRecheckMaxHF: liq.priceRecheckMaxHF,
@@ -230,44 +273,41 @@ const healthOpts = {
     batchSize: liq.batchSize, concurrency: liq.concurrency, minProfitUsd,
 };
 const tracks: Track[] = [];
+/** Every Aave market being watched (the primary's too when it is not), for exit-route hubs. */
+const aaveMarkets = (): AaveMarket[] => [...new Map([...(market ? [market] : []), ...tracks.flatMap(t => t.venue instanceof AaveVenue ? [t.venue.market] : [])].map(m => [m.pool.toLowerCase(), m])).values()];
 let morphoVenue: MorphoVenue | null = null, cometVenue: CompoundVenue | null = null, cv2Venue: CompoundV2Venue | null = null, eulerVenue: EulerVenue | null = null;
-for (const name of wanted) {
+const specs: { name: VenueName; aave?: AavePool }[] = wanted.flatMap(name => name === 'aave' ? aavePools.map(aave => ({ name, aave })) : [{ name }]);
+for (const { name, aave } of specs) {
     let venue: Venue, deployBlock: number | undefined, deployHint: string | undefined;
-    if (name === 'aave') { venue = new AaveVenue(provider, market!); deployBlock = liq.fromBlock ?? poolDeployBlock; deployHint = market!.pool; }
+    if (aave) {
+        let m = market && market.pool.toLowerCase() === aave.address.toLowerCase() ? market : null;
+        if (!m) {
+            try { m = await retryTransient(() => loadAaveMarket(provider, aave.address)); }
+            catch (e) { console.log(`  [!] ${aaveLabel(aave)} ${aave.address} did not load (${(e as Error).message.slice(0, 100)}) — skipping this pool`); continue; }
+        }
+        venue = new AaveVenue(provider, m, aaveLabel(aave)); deployBlock = aave.deployBlock; deployHint = m.pool;
+    }
     else if (name === 'morpho') { venue = morphoVenue = new MorphoVenue(provider, morphoAddr!, usd, liq.morpho ? undefined : MORPHO_BLUE[chainId]?.deployBlock); deployBlock = venue.deployBlock; deployHint = morphoAddr; }
     else if (name === 'compound') { venue = cometVenue = new CompoundVenue(provider, comets!, usd, cfg.chain.label, liq.comets ? undefined : cometsDeployBlock(chainId)); deployBlock = venue.deployBlock; deployHint = Object.values(comets!)[0]; }
     else if (name === 'compound-v2') { venue = cv2Venue = new CompoundV2Venue(provider, comptrollers!, usd, cfg.chain.label); deployHint = Object.values(comptrollers!)[0]; }
     else { venue = eulerVenue = new EulerVenue(provider, euler!.evc, euler!.factory, usd, euler!.deployBlock); deployBlock = venue.deployBlock; deployHint = euler!.factory; }
-    // init() reads venue config in one big Multicall3. On a flaky public RPC
-    // (Polygon's especially) that read can come back "missing revert data" — the
-    // node refusing the call, not a real revert — and an uncaught one here used
-    // to crash the whole watcher at startup before it could watch anything.
-    // Retry a transient failure a few times (init is one-shot, so a longer
-    // backoff that outlasts a rate-limit window is fine), then, if the venue
-    // still can't initialize, skip JUST that venue rather than taking the others
-    // down with it.
-    let initOk = false;
-    for (let attempt = 0; attempt < 3 && !initOk; attempt++) {
-        try { await venue.init(); initOk = true; }
-        catch (e) {
-            const msg = (e as Error).message;
-            const transient = /missing revert data|could not coalesce|CALL_EXCEPTION|SERVER_ERROR|timeout|rate limit|too many request|ECONNRESET|ETIMEDOUT|socket hang up|-3200[0-9]|\b429\b|\b503\b/i.test(msg);
-            if (transient && attempt < 2) { await new Promise(r => setTimeout(r, 500 * (attempt + 1))); continue; }
-            console.log(`  [!] ${venue.label} init failed (${msg.slice(0, 100)}) — skipping this venue`);
-            if (name === 'morpho') morphoVenue = null;
-            else if (name === 'compound') cometVenue = null;
-            else if (name === 'compound-v2') cv2Venue = null;
-            else if (name === 'euler') eulerVenue = null;
-        }
+    // init() reads venue config in one big Multicall3. An uncaught transient
+    // failure here used to crash the whole watcher at startup (see retryTransient).
+    try { await retryTransient(() => venue.init()); }
+    catch (e) {
+        console.log(`  [!] ${venue.label} init failed (${(e as Error).message.slice(0, 100)}) — skipping this venue`);
+        if (name === 'morpho') morphoVenue = null;
+        else if (name === 'compound') cometVenue = null;
+        else if (name === 'compound-v2') cv2Venue = null;
+        else if (name === 'euler') eulerVenue = null;
+        continue;
     }
-    if (!initOk) continue;
     const db = new LiqDB(dbFile, venue.key);
-    tracks.push({ name, venue, db, deployBlock, deployHint, monitor: new HealthMonitor(provider, venue, db, healthOpts) });
+    tracks.push({ name, venue, db, deployBlock, deployHint, subgraph: aave?.subgraph, monitor: new HealthMonitor(provider, venue, db, healthOpts) });
 }
 if (tracks.length === 0) { console.error('No venues initialized — every venue failed to load. Check the RPC and conf.'); process.exit(1); }
 
 // --- liquidation (optional) ------------------------------------------------------
-let aaveLiq: Liquidator | null = null;
 let fluidScanner: FluidScanner | null = null;
 let venueLiq: VenueLiquidator | null = null;
 let routeFinder: RouteFinder | null = null;
@@ -289,7 +329,7 @@ if (liquidate) {
     // Exit-route hubs: the wrapped native token and the big stables, wherever a venue lists them.
     const HUB = new RegExp(`^(${[cfg.chain.token ?? 'WETH', 'WETH', 'USDC', 'USDC\\.e', 'USDT', 'USD₮0', 'DAI'].join('|')})$`, 'i');
     const hubs = [
-        ...(market?.reserves.filter(r => HUB.test(r.symbol)).map(r => r.asset) ?? []),
+        ...new Set(aaveMarkets().flatMap(m => m.reserves.filter(r => HUB.test(r.symbol)).map(r => r.asset.toLowerCase()))),
         ...[...(cometVenue?.comets.values() ?? [])].filter(c => HUB.test(c.baseSymbol)).map(c => c.base),
     ];
     // Stable pools as exit routes need a liquidator that has HOP_STABLE (read
@@ -301,7 +341,7 @@ if (liquidate) {
         : `  exits    V2 and V3/Algebra pools — the liquidator predates HOP_STABLE, so stable pools are not exit routes (yarn deploy liquidator ${cfg.chain.label})`);
     if (!routeFinder.available) console.log(`  [!] no ${dbPath(chainArg)} — only same-asset positions can be exited (run yarn scan ${cfg.chain.label})`);
     const plannerOpts = { executor, owner, signer, live, gasMarginMultiple: num('--gas-margin') ?? 3, minProfitUsd };
-    if (market && wanted.includes('aave')) aaveLiq = new Liquidator(cfg, provider, market, routeFinder, plannerOpts);
+    for (const t of tracks) if (t.venue instanceof AaveVenue) t.aaveLiq = new Liquidator(cfg, provider, t.venue.market, routeFinder, plannerOpts);
     if (morphoVenue || cometVenue || cv2Venue || eulerVenue || (wantFluid && liquidate)) {
         // The deployed executor must carry the entry points for the venues in play.
         const code = (await provider.getCode(executor)).toLowerCase();
@@ -328,7 +368,7 @@ if (liquidate) {
 
 console.log(`Liquidation watch on ${cfg.chain.name}: ${[...tracks.map(t => t.venue.label), ...(wantFluid ? ['Fluid (poll)'] : [])].join(', ')}`);
 for (const t of tracks) {
-    if (t.name === 'aave') console.log(`  aave     pool ${market!.pool}, oracle ${market!.oracle}, reserves ${market!.reserves.map(r => r.symbol).join(', ')}`);
+    if (t.venue instanceof AaveVenue) { const m = t.venue.market; console.log(`  aave     ${t.venue.label}: pool ${m.pool}, oracle ${m.oracle}, reserves ${m.reserves.map(r => r.symbol).join(', ')}`); }
     if (t.name === 'morpho') console.log(`  morpho   ${morphoVenue!.morpho} (markets load as borrowers are seen)`);
     if (t.name === 'compound') console.log(`  compound ${[...cometVenue!.comets.values()].map(c => `c${c.name.toUpperCase()}v3 ${c.assets.map(a => a.symbol).join('/')}→${c.baseSymbol}`).join(' · ')}`);
     if (t.name === 'compound-v2') console.log(`  compound-v2 ${[...cv2Venue!.comptrollers.values()].map(c => `${c.name} (${c.markets.size} markets)`).join(' · ')}`);
@@ -372,8 +412,8 @@ const t0 = Date.now();
 const seedFailed = new Set<Track>();
 for (const t of tracks) {
   try {
-    let seed: Seed | null = (seedArg === 'subgraph' && t.name !== 'aave' ? null : seedArg as Seed | undefined)
-        ?? (t.db.lastBlock() != null ? null : t.name === 'aave' && subgraphUrl ? 'subgraph' : 'rpc');
+    let seed: Seed | null = (seedArg === 'subgraph' && !t.subgraph ? null : seedArg as Seed | undefined)
+        ?? (t.db.lastBlock() != null ? null : t.subgraph && subgraphUrl ? 'subgraph' : 'rpc');
     if (seed === 'subgraph') {
         if (!subgraphUrl) {
             console.error(process.env.GRAPH_API_KEY
@@ -554,9 +594,9 @@ const attemptOnce = async (id: string, label: string, run: () => Promise<Liquida
     if (print) console.log(`  [${head}] ${label} ${line}${note}`);
 };
 
-const canLiquidate = (t: Track): boolean => t.name === 'aave' ? !!aaveLiq : !!venueLiq;
+const canLiquidate = (t: Track): boolean => t.name === 'aave' ? !!t.aaveLiq : !!venueLiq;
 const attemptFor = (t: Track, a: AccountState): Promise<LiquidationAttempt> =>
-    t.name === 'aave' ? aaveLiq!.attempt(a.user, a.hf!, a.eMode)
+    t.name === 'aave' ? t.aaveLiq!.attempt(a.user, a.hf!, a.eMode)
         : t.name === 'morpho' ? venueLiq!.attemptMorpho(morphoVenue!, a.user)
         : t.name === 'compound' ? venueLiq!.attemptComet(cometVenue!, a.user)
         : t.name === 'compound-v2' ? venueLiq!.attemptCompoundV2(cv2Venue!, a.user)
@@ -566,9 +606,13 @@ const attemptFor = (t: Track, a: AccountState): Promise<LiquidationAttempt> =>
 const tryLiquidations = async (t: Track, force: Set<string> = new Set(), max = 3) => {
     if (!canLiquidate(t)) return;
     const now = Date.now();
-    const due = t.monitor.inTier('liquidatable').filter(a => worthIt(t, a) && (force.has(a.user) || now >= (tries.get(a.user)?.nextAt ?? 0)))
+    // Aave accounts are bare addresses, and one borrower can be on several Aave
+    // pools: key the retry state by pool too, or one pool's backoff blocks the other's.
+    const id = (a: AccountState) => t.venue instanceof AaveVenue ? `${a.user}@${t.venue.key}` : a.user;
+    const due = t.monitor.inTier('liquidatable').filter(a => worthIt(t, a) && (force.has(a.user) || now >= (tries.get(id(a))?.nextAt ?? 0)))
         .sort((x, y) => profitUsd(t, y) - profitUsd(t, x)).slice(0, max);
-    for (const a of due) await attemptOnce(a.user, `${fmtAcct(a.user).slice(0, 12)}…${t.name === 'aave' ? '' : ` [${t.name}]`}`, () => attemptFor(t, a), now);
+    const tag = t.venue.label === 'Aave V3' ? '' : ` [${t.name === 'aave' ? t.venue.label : t.name}]`;
+    for (const a of due) await attemptOnce(id(a), `${fmtAcct(a.user).slice(0, 12)}…${tag}`, () => attemptFor(t, a), now);
 };
 
 /** Comet collateral already in reserves (someone else absorbed it): a standing buy, no borrower needed. */
@@ -682,7 +726,7 @@ while (!stopping) {
         console.log(`  [${head}] ${ticksSince} ticks / ${head - beatStartBlock} blocks, slowest ${(slowestMs / 1000).toFixed(1)}s, ` +
             `${readSince} reads/min${cycles ? ` (${cycles} sweep cycle${cycles > 1 ? 's' : ''} done)` : ''} · ` +
             `liquidatable ${n('liquidatable')} · near ${n('near')} · watch ${n('watch')} (worth ≥$${minProfitUsd}) · ` +
-            `${tracks.map(t => `${t.db.count()} ${t.name}`).join(' / ')} tracked · heap ${heapMb()}`);
+            `${tracks.map(t => `${t.db.count()} ${t.name === 'aave' ? t.venue.label : t.name}`).join(' / ')} tracked · heap ${heapMb()}`);
         lastBeat = Date.now(); readSince = 0; ticksSince = 0; beatStartBlock = head; slowestMs = 0; cycles = 0;
     }
 }

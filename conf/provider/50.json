@@ -1,0 +1,955 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 50,
+  "name": "XDC Network",
+  "testedAt": "2026-10-15T23:24:50.870Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xec2136843a983885aebf2feb3931f73a8ebee50c",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x89ed24731df6b066e4c5186901fffdba18cd9a10f07494aff900bdee260d1304",
+      "block": 108385627
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.xdc.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 31292,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385729,
+      "client": "XDC/v2.7.0-stable-b1566012/linux-amd64/go1.23.7",
+      "latency": {
+        "p50": 62,
+        "p95": 87,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946512,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 108385634,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/xdc",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 20814,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385729,
+      "client": "XDC/v2.7.1-stable/linux-amd64/go1.26.2",
+      "latency": {
+        "p50": 64,
+        "p95": 80,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946512,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 108385650,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://erpc.xdcrpc.com/ws",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 87771,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385729,
+      "client": "XDC/v2.6.8-stable/linux-amd64/go1.23.12",
+      "latency": {
+        "p50": 160,
+        "p95": 177,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946512,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0)"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie Node 9b60b033010723a0a2d8644ad9ee09b5e582545175056a1bc3b8a07c4d154ba4 (path )"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 1,
+        "logs": 0,
+        "lastHeadAgeSec": 5.2,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "error": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 84
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": true,
+          "score": 68
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 50
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.xdcrpc.com/ws",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 102655,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385729,
+      "client": "XDC/v2.6.8-stable/linux-amd64/go1.23.12",
+      "latency": {
+        "p50": 163,
+        "p95": 1224,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": 49946512,
+        "stateOverride": true,
+        "revertError": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0)"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 33,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "addressError": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0)"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie Node 4c242360f99d9cdc559efcc7f92795aa4eeea2104cad20f5a5023fb39cabaae9 (path )"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 -…",
+        "eth_getProof": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 -…",
+        "debug_traceCall": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 -…",
+        "trace_call": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 -…"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 1,
+        "logs": 0,
+        "lastHeadAgeSec": 13,
+        "died": true
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "error": "-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 78
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32603: request to http://65.108.0.32:8989/ failed, reason: connect EADDRNOTAVAIL 65.108.0.32:8989 - Local (0.0.0.0:0))"
+        },
+        "reader": {
+          "pass": true,
+          "score": 65
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "subscription went silent"
+        }
+      }
+    },
+    {
+      "url": "https://50.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 36857,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385729,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 312,
+        "p95": 462,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946512,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32000: missing trie Node 675b68bc8525e2e1fd12e5f7aea8d1da1e746caa6b8cdde347887a2f15278aa7 (path )"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 50
+        },
+        "reader": {
+          "pass": true,
+          "score": 44
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc1.xinfin.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 42,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "https://erpc.xinfin.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 46,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "https://erpc.xdcrpc.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14784,
+      "chainId": 50,
+      "chainIdOk": true,
+      "client": "XDC/v2.6.8-stable/linux-amd64/go1.23.12",
+      "error": "eth_blockNumber failed",
+      "head": 108385729,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.xdcrpc.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14922,
+      "chainId": 50,
+      "chainIdOk": true,
+      "client": "XDC/v2.6.8-stable/linux-amd64/go1.23.12",
+      "error": "eth_blockNumber failed",
+      "head": 108385729,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.xdc.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 280,
+      "error": "HTTP 502: <html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> </body> </html>",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 502: <html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> </body> </html>"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 502: <html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> </body> </html>"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 502: <html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> </body> </html>"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 502: <html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> </body> </html>"
+        }
+      }
+    },
+    {
+      "url": "https://earpc.xinfin.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 181,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "wss://ews.xinfin.network/ws",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 172,
+      "error": "connect failed: Unexpected server response: 403",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 403",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 403"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 403"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 403"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 403"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.xinfin.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 123,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "https://api-xdc-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9614,
+      "chainId": 50,
+      "chainIdOk": true,
+      "client": "XDC/v2.7.1-stable/linux-amd64/go1.23.12",
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://xdc-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 196017,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385652,
+      "client": "XDC/v2.7.1-stable/linux-amd64/go1.26.2",
+      "latency": {
+        "p50": 65,
+        "p95": 81,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "oldLogsError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 108385651,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 73,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/50",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 267853,
+      "chainId": 50,
+      "chainIdOk": true,
+      "head": 108385631,
+      "latency": {
+        "p50": 112,
+        "p95": 174,
+        "n": 6,
+        "failures": 6
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": 24946512,
+        "stateOverride": false,
+        "revertError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "gasCapError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "stateOverrideError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "logs": {
+        "maxRange": 37,
+        "maxAddresses": 3,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": false,
+        "rangeError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "addressError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "topicOnlyError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "combinedError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "oldLogsError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_getBlockReceipts": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_getProof": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "debug_traceCall": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32002: method not supported",
+        "eth_newFilter": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…"
+      },
+      "throttledDuringProbes": 109,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

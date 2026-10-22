@@ -1594,11 +1594,11 @@
         "failures": 6
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 4946876,
         "stateOverride": true,
-        "revertError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
-        "gasCapError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
+        "gasCapError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 10000,

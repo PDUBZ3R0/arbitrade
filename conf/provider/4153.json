@@ -1,0 +1,196 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 4153,
+  "name": "RISE",
+  "testedAt": "2026-10-17T20:41:41.307Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xacc0a0cf13571d30b4b8637996f5d6d774d4fd62",
+      "topic": "0xe24720f45cb74f2d55f1deebb6098f50f10b511dab8a7d47c4819a08dcd0b895",
+      "topic2": "0x3759aff4b5fc48c335164f748f8e8e494f1344a670e93bef9323f6adf7776566",
+      "block": 24663898
+    }
+  },
+  "endpoints": [
+    {
+      "url": "wss://rpc.risechain.com/ws",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 43064,
+      "chainId": 4153,
+      "chainIdOk": true,
+      "head": 24663943,
+      "client": "rise-replica/sha-02db987.arm64/linux",
+      "latency": {
+        "p50": 179,
+        "p95": 182,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 11946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 18,
+        "orTopics": false,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 5000",
+        "resultCapError": "-32602: query exceeds max results 5000, retry with the range 24663795-24663823",
+        "combinedError": "-32602: query exceeds max results 5000, retry with the range 24658895-24658923"
+      },
+      "history": {
+        "stateDepth": 24663898,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 15,
+        "logs": 2580,
+        "lastHeadAgeSec": 0.8,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 71
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 86
+        }
+      }
+    },
+    {
+      "url": "https://rpc.risechain.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 28877,
+      "chainId": 4153,
+      "chainIdOk": true,
+      "head": 24663942,
+      "client": "rise-replica/sha-02db987.arm64/linux",
+      "latency": {
+        "p50": 215,
+        "p95": 612,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 11946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 18,
+        "orTopics": false,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 5000",
+        "resultCapError": "-32602: query exceeds max results 5000, retry with the range 24663795-24663823",
+        "combinedError": "-32602: query exceeds max results 5000, retry with the range 24658895-24658923"
+      },
+      "history": {
+        "stateDepth": 24663898,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 71
+        },
+        "trader": {
+          "pass": true,
+          "score": 61
+        },
+        "reader": {
+          "pass": true,
+          "score": 64
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

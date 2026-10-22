@@ -1,0 +1,188 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 25363,
+  "name": "Fluent",
+  "testedAt": "2026-10-17T20:21:22.843Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xc93dd12974e0df7af91bd28a6b4b34786ea3b905",
+      "topic": "0x3a3c5d3b916feb3722312f1a2eab0089d36f571a121a59f03e4464ddae6290d5",
+      "topic2": "0x07c2d08d6d8343d6bdfaa8bce6e630a9f682a1e90f7117adb1bbb5ba1577e519",
+      "block": 18498610
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.fluent.xyz",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25698,
+      "chainId": 25363,
+      "chainIdOk": true,
+      "head": 18498650,
+      "latency": {
+        "p50": 161,
+        "p95": 230,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 100000"
+      },
+      "history": {
+        "stateDepth": 18498610,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 76
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://25363.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 39372,
+      "chainId": 25363,
+      "chainIdOk": true,
+      "head": 18498650,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 178,
+        "p95": 231,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 18498611,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call"
+      },
+      "throttledDuringProbes": 13,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 65
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

@@ -16,6 +16,7 @@
 // (our transaction was replaced or reverted) or the timeout passes.
 //
 // Constructor arguments, mirroring ignition/modules:
+//   SniperExecutor                [SNIPER_OWNER] (deploy.sh: env or SniperModule.owner)
 //   FlashArbExecutor, TokenProbe  [aavePool] from ignition/parameters/<chain>.json
 //                                 (FlashArbModule.aavePool; 0x0…0 where there is no Aave)
 //   LiquidationExecutor, YoBatches3  none
@@ -68,11 +69,17 @@ if (contract === 'FlashArbExecutor' || contract === 'TokenProbe') {
     const pool = JSON.parse(fs.readFileSync(p, 'utf8'))?.FlashArbModule?.aavePool;
     if (!/^0x[0-9a-fA-F]{40}$/.test(pool ?? '')) fail(`no FlashArbModule.aavePool in ${path.relative(ROOT, p)}`);
     args = [pool];
+} else if (contract === 'SniperExecutor') {
+    // Its owner is sniper's hot wallet (deploy.sh exports SNIPER_OWNER), never this deployer.
+    if (!/^0x[0-9a-fA-F]{40}$/.test(process.env.SNIPER_OWNER ?? '')) fail('SNIPER_OWNER (sniper\'s hot wallet address) is not set');
+    args = [process.env.SNIPER_OWNER];
 } else if (contract !== 'LiquidationExecutor' && contract !== 'YoBatches3') {
     fail(`don't know the constructor arguments for ${contract} — add it here (mirror its ignition module)`);
 }
 
-const provider = new RetryingJsonRpcProvider(cfg.chain.host, Number(cfg.chain.id), { staticNetwork: true });
+// batchMaxCount 1: one node, one request at a time, as deploy-check.ts (rpc3.monad.xyz answers
+// a batch over 10 with HTTP 413).
+const provider = new RetryingJsonRpcProvider(cfg.chain.host, Number(cfg.chain.id), { staticNetwork: true, batchMaxCount: 1 });
 const wallet = new Wallet(process.env.PRIVATE_KEY!, provider);
 const me = wallet.address;
 

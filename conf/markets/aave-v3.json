@@ -4,14 +4,60 @@
     "chain": "ethereum",
     "markets": [
       {
-        "name": "aave",
+        "name": "aave-core",
         "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
       },
       {
+        "name": "aave-prime",
+        "address": "0x4e033931ad43597d96D6bcc25c280717730B58B1"
+      },
+      {
+        "name": "aave-horizon-rwa",
+        "address": "0xAe05Cd22df81871bc7cC2a04BeCfb516bFe332C8"
+      },
+      {
+        "name": "aave-etherfi",
+        "address": "0x0AA97c284e98396202b6A04024F5E2c65026F3c0"
+      },
+      {
+        "name": "avalon",
+        "address": "0xe0e468687703dd02beffb0be13cfb109529f38e0"
+      },
+      {
+        "name": "avalon-pumpbtc",
+        "address": "0x1c8091b280650afc454939450699ecaa67c902d9"
+      },
+      {
+        "name": "avalon-solvbtc",
+        "address": "0x35b3f1bfe7cbe1e95a3dc2ad054eb6f0d4c879b6"
+      },
+      {
+        "name": "dtrinity-dlend",
+        "address": "0x6598dad18bda89a0e58a1f427c8cebc0de90f153"
+      },
+      {
+        "name": "edel",
+        "address": "0x3eeeb3cd20f844a578807fc457388ceb9a67faa6"
+      },
+      {
+        "name": "ploutos-money",
+        "address": "0x7398e7e3603119d9241e45f688734436fd7b1540"
+      },
+      {
         "name": "sparklend",
-        "address": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987",
-        "addressesProvider": "0x03cFa0C4622FF84E50E75062683F44c9587e6Cc1",
-        "dataProvider": "0xFc21d6d146E6086B8359705C8b28512a983db0cb"
+        "address": "0xC13e21B648A5Ee794902342038FF3aDAB66BE987"
+      },
+      {
+        "name": "zerolend-0x3bc3d34c",
+        "address": "0x3bc3d34c32cc98bf098d832364df8a222bbab4c0"
+      },
+      {
+        "name": "zerolend-0xcd2b3107",
+        "address": "0xcd2b31071119d7ea449a9d211ac8ebf7ee97f987"
+      },
+      {
+        "name": "zerolend-0xd3a4da66",
+        "address": "0xd3a4da66ec15a001466f324fa08037f3272bdbe8"
       }
     ]
   },
@@ -21,6 +67,10 @@
       {
         "name": "aave",
         "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      },
+      {
+        "name": "extra-finance-xlend",
+        "address": "0x345d2827f36621b02b783f7d5004b4a2fec00186"
       }
     ]
   },
@@ -30,6 +80,50 @@
       {
         "name": "aave",
         "address": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB"
+      },
+      {
+        "name": "kinza",
+        "address": "0xcB0620b181140e57D1C0D8b724cde623cA963c8C"
+      },
+      {
+        "name": "avalon",
+        "address": "0x6935b1196426586b527c8d13ce42ff12eec2a5fc"
+      },
+			{
+				"name": "avalon-lbtc",
+				"address": "0x390166389f5d30281b9bde086805eb3c9a10f46f"
+			},
+			{
+				"name": "avalon-lista",
+				"address": "0x54925c6ddeb73a962b3c3a21b10732ed5548e43a"
+			},
+			{
+				"name": "avalon-pumpbtc",
+				"address": "0xecac6332e2de19e8c8e6cd905cb134e980f18cc4"
+			},
+			{
+				"name": "avalon-solv",
+				"address": "0xf9278c7c4aefac4ddfd0d496f7a1c39ca6bca6d4"
+			},
+			{
+				"name": "avalon-stbtc",
+				"address": "0x05c194ee95370ed803b1526f26efd98c79078ab5"
+			},
+			{
+				"name": "avalon-unibtc",
+				"address": "0x795ae4bd3b63aa8657a7cc2b3e45fb0f7c9ed9cc"
+			},
+			{
+				"name": "avalon-usdx",
+				"address": "0x77ff9b0cdbb6039b9d42d92d7289110e6ccd3890"
+			},
+			{
+				"name": "avalon-xaum",
+				"address": "0x4b801fb6f0830d070f40aff9adfc8f6939cc1f8d"
+			},
+      {
+        "name": "openfi",
+        "address": "0xc6ec0e8fcbcc566628ef5812aca7c6db04b4d132"
       }
     ]
   },
@@ -43,7 +137,7 @@
       {
         "name": "sparklend",
         "address": "0x2Dae5307c5E3FD1CF5A72Cb6F698f915860607e0",
-        "addressesProvider": "0x49d24798d3b84965F0d1fc8684EF6565115e70c1",
+        "addressesProvider": "0xA98DaCB3fC964A6A0d2ce3B77294241585EAbA6d",
         "dataProvider": "0x2a002054A06546bB5a264D57A81347e23Af91D18"
       }
     ]
@@ -54,6 +148,10 @@
       {
         "name": "aave",
         "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      },
+      {
+        "name": "ploutos-money",
+        "address":"0x93bef731821b2e534ccfbd330734d35de34fa418"
       }
     ]
   },
@@ -65,9 +163,25 @@
         "address": "0x69a5F9AD4f96ebf0a0C792dD42a01cC5C0102fef"
       },
       {
-        "name": "neverland",
+        "name": "K613",
+        "address": "0x4ba3856a4d851d39c27e2e866dab7a95ef6e0113"
+      },
+      {
+        "name": "neverland-0x80F00661",
         "address": "0x80F00661b13CC5F6ccd3885bE7b4C9c67545D585"
-      }
+      },
+			{
+				"name": "neverland-0x690ad251",
+				"address": "0x690ad251a0d9c8a47cf1bc5e4c0dbd3131ee09d3"
+			},
+			{
+				"name": "neverland-0x99cbb760",
+				"address": "0x99cbb76041fb8206e2459085afb98bbc683db527"
+			},
+			{
+				"name": "neverland-0xf1a9323d",
+				"address": "0xf1a9323d97572a6d673e193d7fe0ecc8b7dcd4b8"
+			}    
     ]
   },
   "146": {
@@ -76,6 +190,51 @@
       {
         "name": "aave",
         "address": "0x5362dBb1e601abF3a4c14c22ffEdA64042E5eAA3"
+      },
+			{
+				"name": "avalon",
+				"address": "0x6cce1bc3fe54c9b1915e5f01ee076e4c4c3cdd19"
+			},
+      {
+        "name": "avalon-usda",
+        "address": "0xd33ee43551167cdd15ef9cf87ceecc0ff69cc922"
+      },
+			{
+				"name": "avalon-solv",
+				"address": "0x974e2b16ddbf0ae6f78b4534353c2871213f2dc9"
+			},
+			{
+				"name": "dtrinity-dlend",
+				"address": "0xedc3cfb1aa36c570cc1d374876268bdda2d460cc"
+			},
+			{
+				"name": "magsinio",
+				"address": "0x73b635843352af89278bde2213866c457c94b271"
+			},
+			{
+				"name": "vicuna-0xaa1c02a8",
+				"address": "0xaa1c02a83362bce106dff6eb65282fe8b97a1665"
+			},
+			{
+				"name": "vicuna-0x680f8a57",
+				"address": "0x680f8a574b0273f26a314ca61466c0a4f1e2d95e"
+			},
+			{
+				"name": "vicuna-0x4895151c",
+				"address": "0x4895151c8eb560c0de6bd29a3916610ddfceb094"
+			},
+			{
+				"name": "vicuna-0x1f672bd2",
+				"address": "0x1f672bd230d0fc2ee9a75d2037a92cc1225a4ad8"
+			}
+		]
+  },
+  "169": {
+    "chain": "manta",
+    "markets": [
+      {
+        "name": "zerolend",
+        "address": "0x2f9bb73a8e98793e26cb2f6c4ad037bdf1c6b269"
       }
     ]
   },
@@ -85,7 +244,42 @@
       {
         "name": "aave",
         "address": "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116"
+      },
+      {
+        "name": "zerolend",
+        "address": "0xffd79d05d5dc37e221ed7d3971e75ed5930c6580"
       }
+    ]
+  },
+  "204": {
+    "chain": "opbnb",
+    "markets": [
+      {
+        "name": "kinza",
+        "address": "0x3Aadc38eBAbD6919Fbd00C118Ae6808CBfE441CB"
+      }
+    ]
+  },
+  "223": {
+    "chain": "b2",
+    "markets": [
+      {
+        "name": "avalon",
+        "address": "0xc0843a5a8527fd7221256893d4a4305145937e8c"
+      }
+    ]
+  },
+  "252": {
+    "chain": "fraxtal",
+    "markets": [
+			{
+				"name": "dtrinity-dlend",
+				"address": "0xd76c827ee2ce1e37c37fc2ce91376812d3c9bce2"
+			},
+			{
+				"name": "glyph",
+				"address": "0xc1c5312bcaa6cb2ada949553af75802fe48d5228"
+			}
     ]
   },
   "324": {
@@ -94,7 +288,33 @@
       {
         "name": "aave",
         "address": "0x78e30497a3c7527d953c6B1E3541b021A98Ac43c"
-      }
+      },
+			{
+				"name": "zerolend",
+				"address": "0x4d9429246ea989c9cee203b43f6d1c7d83e3b8f8"
+			}
+    ]
+  },
+  "388": {
+    "chain": "cronos-zkevm",
+    "markets": [
+			{
+				"name": "amply-finance",
+				"address": "0x4643aca481f5c9843cb73cd9ed274a1b247f3d2b"
+			}
+    ]
+  },
+  "747": {
+    "chain": "flow",
+    "markets": [
+			{
+				"name": "more-markets-0xbc92aac2",
+				"address": "0xbc92aac2dbbf42215248b5688eb3d3d2b32f2c8d"
+			},
+			{
+				"name": "more-markets-0x23946e2f",
+				"address": "0x23946e2fa751f0aecf655a59613bef86e20881b5"
+			}
     ]
   },
   "999": {
@@ -104,6 +324,18 @@
         "name": "hypurrfi",
         "address": "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b"
       },
+			{
+				"name": "hyperyield-0xc0fd3f8e",
+				"address": "0xc0fd3f8e8b0334077c9f342671be6f1a53001f12"
+			},
+			{
+				"name": "hyperyield-0x8cc02b04",
+				"address": "0x8cc02b048dea40d8d0d13eac9866f5bb42d3f4e9"
+			},
+			{
+				"name": "ploutos-money",
+				"address": "0xab9adcd398ec5b14a3dc50f82780e9a4baa42e34"
+			},
       {
         "name": "hyperlend",
         "address": "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b"
@@ -119,13 +351,146 @@
       }
     ]
   },
+  "1116": {
+    "chain": "core",
+    "markets": [
+			{
+				"name": "avalon-obtc",
+				"address": "0x2f3552ce2f071b642deeae5c84ed2eee3ed08d43"
+			},
+			{
+				"name": "avalon-solv",
+				"address": "0x67197de79b2a8fc301bab591c78ae5430b9704fd"
+			},
+			{
+				"name": "avalon-ubtc",
+				"address": "0x7f6f0e50db09c49027314103aa5a8f6db862dbd0"
+			},
+			{
+				"name": "colend-0x0cea9f0f",
+				"address": "0x0cea9f0f49f30d376390e480ba32f903b43b19c5"
+			},
+			{
+				"name": "colend-0x29a462dc",
+				"address": "0x29a462dc59d7e624e1a3295b9d38416908bae1f4"
+			}
+		]
+  },
+  "1329": {
+    "chain": "sei",
+    "markets": [
+			{
+				"name": "avalon-usda",
+				"address": "0xc1bfbf4e0adca79790bfa0a557e4080f05e2b438"
+			},
+			{
+				"name": "avalon-solv",
+				"address": "0xe5eb6abba365a49c8624532acaed54a47cc36d3c"
+			},
+			{
+				"name": "yeilend-0x4a4d9abd",
+				"address": "0x4a4d9abd36f923cba0af62a39c01dec2944fb638"
+			},
+			{
+				"name": "yeilend-0x7b5b1a71",
+				"address": "0x7b5b1a719d54664657451db7600fd5c3ca0fa136"
+			}
+    ]
+  },
+  "1514": {
+    "chain": "story",
+    "markets": [
+			{
+				"name": "unleash-protocol",
+				"address": "0xC62Af8aa9E2358884B6e522900F91d3c924e1b38"
+			}
+    ]
+  },
+  "1672":{
+    "chain": "pharos",
+    "markets": [
+			{
+				"name": "avalon-innovative",
+				"address": "0xdef0eb584700fc81c73accd555cb6cea5fb85c3e"
+			},
+			{
+				"name": "avalon",
+				"address": "0xd9b9e4f8257bff9b1415d74c1ef88d8057f60cba"
+			},
+			{
+				"name": "openfi",
+				"address": "0x30b2e1411fd2ed9f1f46f59497e2186ce5be3b26"
+			},
+			{
+				"name": "zona",
+				"address": "0xda464e68208a3083eb65fe5c522a72aed1c1372a"
+			}
+		]
+  },
   "1868": {
     "chain": "soneium",
     "markets": [
       {
         "name": "aave",
         "address": "0xDd3d7A7d03D9fD9ef45f3E587287922eF65CA38B"
-      }
+      },
+			{
+				"name": "sake-0x0bd12d3c",
+				"address": "0x0bd12d3c4e794cf9919618e2bc71bdd0c4ff1cf6"
+			},
+			{
+				"name": "sake-0x3c3987a3",
+				"address": "0x3c3987a310ee13f7b8cbbe21d97d4436ba5e4b5f"
+			}
+		]
+  },
+  "2345": {
+    "chain": "goat",
+    "markets": [
+			{
+				"name": "avalon",
+				"address": "0x4b801fb6f0830d070f40aff9adfc8f6939cc1f8d"
+			}      
+    ]
+  },
+  "2741": {
+    "chain": "abstract",
+    "markets": [
+			{
+				"name": "kona",
+				"address": "0x8f16b5713f412c5de4951aaf678eb8409101f819"
+			},
+			{
+				"name": "zerolend",
+				"address": "0x7c4bae19949d77b7259dc4a898e64dc5c2d10b02"
+			}
+      
+    ]
+  },
+  "2818": {
+    "chain": "morph",
+    "markets": [
+			{
+				"name": "quokkalend",
+				"address": "0x876b85955803938f5590326098cba6c1db94ca12"
+			}      
+    ]
+  },
+  "4200": {
+    "chain": "merlin",
+    "markets": [
+      {
+        "name": "avalon",
+        "address": "0xea5c99a3cca5f95ef6870a1b989755f67b6b1939"
+      },
+      {
+				"name": "avalon-innovative",
+				"address": "0xdcb0faa822b99b87e630bf47399c5a0bf3c642cf"
+			},
+			{
+				"name": "avalon-unibtc",
+				"address": "0x155d50d9c1d589631ea4e2ead744ce82622ad9d3"
+			}
     ]
   },
   "4326": {
@@ -134,7 +499,49 @@
       {
         "name": "aave",
         "address": "0x7e324AbC5De01d112AfC03a584966ff199741C28"
+      },
+      {
+        "name": "velkonix",
+        "address": "0x202fc1fef70c8a7001f1579518e9288a547c12ee"
       }
+    ]
+  },
+  "4663":{
+    "chain": "robinhood",
+    "markets": [
+			{
+				"name": "kaskad",
+				"address": "0x91d1d9294a5e735746fa3e68bf88286ca6c485d5"
+			},
+			{
+				"name": "oter-finance",
+				"address": "0x127797f6dbbd03bdda09a70a8347dcfd1cf598b9"
+			},
+			{
+				"name": "zona",
+				"address": "0xc07d049859642b299e75bc85aa4752653f8380c1"
+			}
+		]
+  },
+  "4689": {
+    "chain": "iotex",
+    "markets": [
+      {
+        "name": "avalon",
+        "address": "0x29ee512b76f58ff4d281c49c7d1b6b248c79f009"
+      },
+			{
+				"name": "avalon-usda",
+				"address": "0xab82814e4c5bc2ede88db334276dfe01a4bccfd0"
+			},
+			{
+				"name": "avalon-unibtc",
+				"address": "0x99a05a9210b2861cced5db7696eed3f4d73eb70c"
+			},
+			{
+				"name": "avalon-uniiotx",
+				"address": "0x4b801fb6f0830d070f40aff9adfc8f6939cc1f8d"
+			}
     ]
   },
   "5000": {
@@ -146,14 +553,59 @@
       }
     ]
   },
+  "8217": {
+    "chain": "kaia",
+    "markets": [
+			{
+				"name": "avalon-main",
+				"address": "0xcf1af042f2a071df60a64ed4bdc9c7dee40780be"
+			},
+			{
+				"name": "avalon-other",
+				"address": "0x4659f938458afb37f3340270fc9cdfe665809c1b"
+			},
+			{
+				"name": "rhombus-finance",
+				"address": "0xc17bdf95abd73b851917b6233090e025427e1e84"
+			}
+    ]
+  },
   "8453": {
     "chain": "base",
     "markets": [
       {
         "name": "aave",
         "address": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
-      }
-    ]
+      },
+			{
+				"name": "avalon",
+				"address": "0x6374a1f384737bccccd8fae13064c18f7c8392e5"
+			},
+			{
+				"name": "extra-finance-xlend",
+				"address": "0x09b11746dfd1b5a8325e30943f8b3d5000922e03"
+			},
+			{
+				"name": "mooncake",
+				"address": "0x6abea1a2b47f09c779cb3d52b85097cb2bfabcb0"
+			},
+			{
+				"name": "ploutos-money",
+				"address": "0xf072795653316fd7fb15b2e4ff4e273385986ac2"
+			},
+			{
+				"name": "seamless",
+				"address": "0x8f44fd754285aa6a2b8b9b97739b79746e0475a7"
+			},
+			{
+				"name": "yieldlend",
+				"address": "0x35297537a1f8c67d3f7ab017a303f746982b3031"
+			},
+			{
+				"name": "zerolend",
+				"address": "0x766f21277087e18967c1b10bf602d8fe56d0c671"
+			}
+		]
   },
   "9745": {
     "chain": "plasma",
@@ -161,6 +613,19 @@
       {
         "name": "aave",
         "address": "0x925a2A7214Ed92428B5b1B090F80b25700095e12"
+      },
+      {
+        "name": "ploutos-money",
+        "address": "0x3775df2ac7fbf5ed636595aefed4544b9fa14c0a"
+      }
+    ]
+  },
+  "25363": {
+    "chain": "fluent",
+    "markets": [
+      {
+        "name": "vena-finance",
+        "address": "0xD6E69976C8Aea2A4075Bc637fE8881672FF14013"
       }
     ]
   },
@@ -170,8 +635,20 @@
       {
         "name": "aave",
         "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
-      }
-    ]
+      },
+			{
+				"name": "avalon-pumpbtc",
+				"address": "0x4b801fb6f0830d070f40aff9adfc8f6939cc1f8d"
+			},
+			{
+				"name": "avalon-solv",
+				"address": "0xe1ee45db12ac98d16f1342a03c93673d74527b55"
+			},
+			{
+				"name": "ploutos-money",
+				"address": "0xddc98ff53945e334ecca339b4dd8847b3769e8f0"
+			}
+		]
   },
   "42220": {
     "chain": "celo",
@@ -182,13 +659,43 @@
       }
     ]
   },
+  "43111": {
+    "chain": "hemi",
+    "markets": [
+			{
+				"name": "ploutos-money",
+				"address": "0xddc98ff53945e334ecca339b4dd8847b3769e8f0"
+			},
+			{
+				"name": "zerolend",
+				"address": "0xdb7e029394a7cdbe27abdaaf4d15e78bac34d6e8"
+			}
+    ]
+  },
   "43114": {
     "chain": "avalanche",
     "markets": [
       {
         "name": "aave",
         "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+      },
+      {
+        "name": "ploutos-money",
+        "address": "0x35414b591125f15cc1b6d485d94e849def432bdb"
       }
+    ]
+  },
+  "48900": {
+    "chain": "zircuit",
+    "markets": [
+			{
+				"name": "avalon",
+				"address": "0xc1bfbf4e0adca79790bfa0a557e4080f05e2b438"
+			},
+			{
+				"name": "zerolend",
+				"address": "0x2774c8b95cab474d0d21943d83b9322fb1ce9cf5"
+			}
     ]
   },
   "57073": {
@@ -207,6 +714,31 @@
       {
         "name": "aave",
         "address": "0xc47b8C00b0f69a36fa203Ffeac0334874574a8Ac"
+      },
+			{
+				"name": "zerolend-0x5db340ce",
+				"address": "0x5db340cefe09a9ffd1883f572c09917de5bca230"
+			},
+			{
+				"name": "zerolend-0xc6ff96ae",
+				"address": "0xc6ff96aefd1cc757d56e1e8dcc4633dd7aa5222d"
+			},
+			{
+				"name": "zerolend-0x2f9bb73a",
+				"address": "0x2f9bb73a8e98793e26cb2f6c4ad037bdf1c6b269"
+			},
+			{
+				"name": "zerolend-0xbdaa004a",
+				"address": "0xbdaa004a456e7f2daff00ffcdcbead5da27b7966"
+			}
+		]
+  },
+  "81457": {
+    "chain": "blast",
+    "markets": [
+      {
+        "name": "zerolend",
+        "address": "0xa70b0f3c2470abbe104bdb3f3aaa9c7c54bea7a8"
       }
     ]
   },
@@ -216,7 +748,41 @@
       {
         "name": "mystic",
         "address": "0xCE192A6E105cD8dd97b8Dedc5B5b263B52bb6AE0"
+      },
+      {
+        "name": "solera",
+        "address": "0x2a8D6a5faB9190580006187b6693f4F69Ee2b07d"
+      },
+      {
+        "name": "avalon",
+        "address": "0xb8fcefbb1c92ae7b41eee40ebc91c810836fac46"
       }
+    ]
+  },
+  "200901": {
+    "chain": "bitlayer",
+    "markets": [
+			{
+				"name": "avalon",
+				"address": "0xea5c99a3cca5f95ef6870a1b989755f67b6b1939"
+			},
+			{
+				"name": "avalon-stbtc",
+				"address": "0xed6d6d18f20f8b419b5442c43d3e48ee568dec14"
+			},
+			{
+				"name": "avalon-unibtc",
+				"address": "0xc486115c7db399f0e080a3713bf01b65cc8a5b64"
+			}
+    ]
+  },
+  "222222": {
+    "chain": "hydration",
+    "markets": [
+      {
+        "name": "hydration-lending",
+        "address": "0x1b02E051683b5cfaC5929C25E84adb26ECf87B38"
+      }      
     ]
   },
   "534352": {
@@ -225,6 +791,24 @@
       {
         "name": "aave",
         "address": "0x11fCfe756c05AD438e312a7fd934381537D3cFfe"
+      },
+			{
+				"name": "avalon",
+				"address": "0xa90fb5234a659b7e5738775f8b48f8f833b3451c"
+			},
+			{
+				"name": "U235",
+				"address": "0xeb787d93fd7c6f5995977ec89303b5cfe6668682"
+			}
+
+    ]
+  },
+  "747474": {
+    "chain": "katana",
+    "markets": [
+      {
+        "name": "ploutos-money",
+        "address": "0x56f543bff654193ecfb8fb9d5e7d1c30edb69288"
       }
     ]
   }

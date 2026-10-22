@@ -1,0 +1,105 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 4114,
+  "name": "Citrea Mainnet",
+  "testedAt": "2026-10-17T20:37:02.166Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.mainnet.citrea.xyz",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 17772,
+      "chainId": 4114,
+      "chainIdOk": true,
+      "head": 14083468,
+      "client": "citrea/v2.6.0/aarch64/rust-1.88.0",
+      "latency": {
+        "p50": 62,
+        "p95": 101,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 9946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 1000"
+      },
+      "history": {
+        "stateDepth": 14083459,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32010: The batch request was too large Exceeded max limit of 100",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 64
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

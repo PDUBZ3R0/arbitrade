@@ -9,31 +9,29 @@ if (!PRIVATE_KEY && process.argv.some(a => a.includes('deploy') || a === 'run'))
     console.warn('[hardhat] PRIVATE_KEY is not set in .env — deployments will fail');
 }
 
-
-// NOTE: BASE_RPC is also read by source/util/config.ts (env override is
-// `<LABEL>_RPC`), so setting it in .env repoints the scanner too.
-const BASE_RPC    = process.env.BASE_RPC    || 'https://mainnet.base.org';
-const AVALANCHE_RPC = process.env.AVALANCHE_RPC || 'https://avalanche-rpc.publicnode.com';
-const POLYGON_RPC = process.env.POLYGON_RPC || 'https://polygon-bor-rpc.publicnode.com';
-const SONIC_RPC   = process.env.SONIC_RPC   || 'https://rpc.soniclabs.com';
-const GNOSIS_RPC  = process.env.GNOSIS_RPC  || 'https://gnosis-rpc.publicnode.com';
-const INK_RPC     = process.env.INK_RPC     || 'https://ink-rpc.publicnode.com';
-const MONAD_RPC   = process.env.MONAD_RPC   || 'https://rpc1.monad.xyz';
-const KATANA_RPC    = process.env.KATANA_RPC || 'https://katana.gateway.tenderly.co';
-const MEGAETH_RPC   = process.env.MEGAETH_RPC || 'https://megaeth.drpc.org';
-const BERACHAIN_RPC = process.env.BERACHAIN_RPC || 'https://berachain-rpc.publicnode.com';
-const MODE_RPC      = process.env.MODE_RPC || 'https://mode.drpc.org';
-const PLASMA_RPC    = process.env.PLASMA_RPC || 'https://rpc.plasma.to';
-const ROBINHOOD_RPC = process.env.ROBINHOOD_RPC || 'https://robinhood-rpc.publicnode.com';
-const HYPERLIQUID_RPC = process.env.HYPERLIQUID_RPC || 'https://rpc.hyperliquid.xyz/evm';
-const ARBITRUM_RPC  = process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc';
-const OPTIMISM_RPC  = process.env.OPTIMISM_RPC || 'https://mainnet.optimism.io';
-const ARC_RPC       = process.env.ARC_RPC || 'https://arc-rpc.publicnode.com';
-const CRONOS_RPC    = process.env.CRONOS_RPC || 'https://cronos-evm-rpc.publicnode.com';
-const MORPH_RPC     = process.env.MORPH_RPC || 'https://rpc-quicknode.morphl2.io';
-const TEMPO_PRESTO_RPC = process.env.TEMPO_PRESTO_RPC || 'https://tempo-mainnet.drpc.org';
-const STABLE_RPC    = process.env.STABLE_RPC || 'https://stable-mainnet.rpc.sentio.xyz';
-const PHAROS_RPC    = process.env.PHAROS_RPC || 'https://infra.originstake.com/pharos/evm';
+const ARBITRUM_RPC      = process.env.ARBITRUM_RPC      || 'https://arb1.arbitrum.io/rpc';
+const ARC_RPC           = process.env.ARC_RPC           || 'https://arc-rpc.publicnode.com';
+const AVALANCHE_RPC     = process.env.AVALANCHE_RPC     || 'https://avalanche-rpc.publicnode.com';
+const BASE_RPC          = process.env.BASE_RPC          || 'https://mainnet.base.org';
+const BERACHAIN_RPC     = process.env.BERACHAIN_RPC     || 'https://berachain-rpc.publicnode.com';
+const BSC_RPC           = process.env.BSC_RPC           || 'https://bsc.api.pocket.network';
+const CRONOS_RPC        = process.env.CRONOS_RPC        || 'https://cronos-evm-rpc.publicnode.com';
+const GNOSIS_RPC        = process.env.GNOSIS_RPC        || 'https://gnosis-rpc.publicnode.com';
+const HYPERLIQUID_RPC   = process.env.HYPERLIQUID_RPC   || 'https://rpc.hyperliquid.xyz/evm';
+const INK_RPC           = process.env.INK_RPC           || 'https://ink-rpc.publicnode.com';
+const KATANA_RPC        = process.env.KATANA_RPC        || 'https://katana.gateway.tenderly.co';
+const MEGAETH_RPC       = process.env.MEGAETH_RPC       || 'https://megaeth.drpc.org';
+const MODE_RPC          = process.env.MODE_RPC          || 'https://mode.drpc.org';
+const MONAD_RPC         = process.env.MONAD_RPC         || 'https://rpc1.monad.xyz';
+const MORPH_RPC         = process.env.MORPH_RPC         || 'https://rpc-quicknode.morphl2.io';
+const OPTIMISM_RPC      = process.env.OPTIMISM_RPC      || 'https://mainnet.optimism.io';
+const PHAROS_RPC        = process.env.PHAROS_RPC        || 'https://infra.originstake.com/pharos/evm';
+const PLASMA_RPC        = process.env.PLASMA_RPC        || 'https://rpc.plasma.to';
+const POLYGON_RPC       = process.env.POLYGON_RPC       || 'https://polygon-bor-rpc.publicnode.com';
+const ROBINHOOD_RPC     = process.env.ROBINHOOD_RPC     || 'https://robinhood-rpc.publicnode.com';
+const SONIC_RPC         = process.env.SONIC_RPC         || 'https://rpc.soniclabs.com';
+const STABLE_RPC        = process.env.STABLE_RPC        || 'https://stable-mainnet.rpc.sentio.xyz';
+const TEMPO_RPC         = process.env.TEMPO_RPC         || 'https://tempo-mainnet.drpc.org';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -44,6 +42,12 @@ export default defineConfig({
     plugins: [HardhatIgnitionViem],
     defaultNetwork: "polygon",
     networks: {
+        bsc: {
+            url: BSC_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
         avalanche: {
             url: AVALANCHE_RPC,
             accounts,
@@ -158,8 +162,8 @@ export default defineConfig({
             type: "http",
             chainType: "generic",
         },
-        'tempo-presto': {
-            url: TEMPO_PRESTO_RPC,
+        tempo: {
+            url: TEMPO_RPC,
             accounts,
             type: "http",
             chainType: "generic",

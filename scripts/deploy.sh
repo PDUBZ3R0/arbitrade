@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deploy the project's contracts to a chain — only what needs it.
 #
-# Usage: bash scripts/deploy.sh <flasharb|liquidator|contract|probe|all> <chain> [--force] [--check]
+# Usage: bash scripts/deploy.sh <flasharb|liquidator|contract|probe|sniper|all> <chain> [--force] [--check]
 #   yarn deploy <what> <chain>, or the shortcuts in package.json:
 #   yarn deploy-flasharb / deploy-liquidator / deploy-contract / deploy-probe / deploy-all <chain>
 #
@@ -42,12 +42,12 @@ WHAT="$1"; CHAIN="$2"
 shift 2 2>/dev/null
 
 if [ "$WHAT" = "all" ]; then
-    [ -z "$CHAIN" ] && { echo "Usage: yarn deploy-all <chain> [--check]" >&2; exit 2; }
+    [ -z "$CHAIN" ] && { echo "Usage: yarn deploy all <chain> [--check]" >&2; exit 2; }
     for w in contract flasharb probe liquidator; do
         if ! bash "$0" "$w" "$CHAIN" "$@"; then
             case " $* " in *" --check "*) continue ;; esac   # --check: report every contract
             echo "" >&2
-            echo "[deploy all] ${w} failed — stopping. See log/${CHAIN}/deploy-*.log; re-run when fixed." >&2
+            echo "[deploy] ${w} failed — stopping. See log/${CHAIN}/deploy-*.log; re-run when fixed." >&2
             exit 1
         fi
     done
@@ -67,7 +67,8 @@ case "$WHAT" in
     liquidator) CONTRACT=LiquidationExecutor; FIELD=liquidator; MODULE=LiquidationModule; STAGE=deploy-liquidator ;;
     contract)   CONTRACT=YoBatches3;          FIELD=contract;   MODULE=Yo3Module;         STAGE=deploy-contract ;;
     probe)      CONTRACT=TokenProbe;          FIELD=probe;      MODULE=TokenProbeModule;  STAGE=deploy-probe ;;
-    *) echo "Usage: yarn deploy <flasharb|liquidator|contract|probe|all> <chain> [--force] [--check]" >&2; exit 2 ;;
+    sniper)     CONTRACT=SniperExecutor;      FIELD=sniper;     MODULE=SniperModule;      STAGE=deploy-sniper ;;
+    *) echo "Usage: yarn deploy <flasharb|liquidator|contract|probe|sniper|all> <chain> [--force] [--check]" >&2; exit 2 ;;
 esac
 FUTURE="${MODULE}#${CONTRACT}"
 if [ -z "$CHAIN" ] || [ "${CHAIN#--}" != "$CHAIN" ]; then
@@ -97,12 +98,32 @@ if [ "$WHAT" = "flasharb" ] || [ "$WHAT" = "probe" ]; then
     fi
 fi
 
+# SniperExecutor's owner: sniper's hot wallet (SNIPER_OWNER, else SniperModule.owner in the
+# parameters file). Not the deployer: the deployer must never control sniper's funds.
+if [ "$WHAT" = "sniper" ]; then
+    OWNER="${SNIPER_OWNER:-}"
+    if [ -z "$OWNER" ] && [ -f "$PARAMS" ]; then
+        OWNER=$(node -e "const p=require('./$PARAMS'); const a=p.SniperModule && p.SniperModule.owner; if(a) console.log(a)")
+    fi
+    case "$OWNER" in
+        0x[0-9a-fA-F]*) [ ${#OWNER} -eq 42 ] || OWNER="" ;;
+        *) OWNER="" ;;
+    esac
+    if [ -z "$OWNER" ]; then
+        echo "SniperExecutor needs its owner, sniper's hot wallet address: SNIPER_OWNER=0x… yarn deploy sniper $CHAIN" >&2
+        echo '  (or { "SniperModule": { "owner": "0x…" } } in '"$PARAMS"')' >&2
+        exit 1
+    fi
+    export SNIPER_OWNER="$OWNER"
+    TMP_PARAMS=$(mktemp --suffix=.json)
+    echo "{ \"SniperModule\": { \"owner\": \"$OWNER\" } }" > "$TMP_PARAMS"
+    PARAMS_ARG="--parameters $TMP_PARAMS"
+fi
+
 CHAIN_ID=$(node --input-type=module -e "
 import JSON5 from 'json5'; import { readFileSync } from 'node:fs';
-const c = JSON5.parse(readFileSync('conf/${CHAIN}.json5', 'utf8'));
-if (c?.chain?.id) process.stdout.write(String(c.chain.id));" 2>/dev/null)
-[ -z "$CHAIN_ID" ] && CHAIN_ID=$(node --experimental-strip-types --disable-warning=ExperimentalWarning -e "
-const { loadChainConfig } = await import('./source/util/config.ts'); process.stdout.write(String(loadChainConfig('${CHAIN}').chain.id));" 2>/dev/null)
+const c = JSON5.parse(readFileSync('conf/@chains.json5', 'utf8'));
+if (c['$CHAIN']?.id) process.stdout.write(String(c['$CHAIN']?.id));" 2>/dev/null)
 if [ -z "$CHAIN_ID" ]; then echo "Could not read the chain id for $CHAIN (conf/${CHAIN}.json5 / conf/@chains.json5)" >&2; exit 1; fi
 DEPLOYMENT_ID="chain-${CHAIN_ID}"
 JOURNAL="ignition/deployments/${DEPLOYMENT_ID}/journal.jsonl"
@@ -118,6 +139,17 @@ const { loadChainConfig } = await import('./source/util/config.ts'); process.std
 if [ -n "$RPC_HOST" ]; then
     RPC_ENV="$(echo "$CHAIN" | tr '[:lower:]-' '[:upper:]_')_RPC"
     export "$RPC_ENV=$RPC_HOST"
+fi
+# No host: the chain is served by the rated pool, which a deploy can't use (one node must see
+# the nonce and the transaction). Hardhat then got an empty URL: "unsupported protocol".
+if [ -z "$RPC_HOST" ]; then
+    RPC_ENV="$(echo "$CHAIN" | tr '[:lower:]-' '[:upper:]_')_RPC"
+    echo "[deploy] no RPC for $CHAIN: set $RPC_ENV in .env (or on the command line) to one node to deploy through." >&2
+    node -e "
+const f = 'conf/provider/${CHAIN_ID}.json'; let d; try { d = require('./' + f); } catch { process.exit(0); }
+const ok = d.endpoints.filter(e => e.kind === 'http' && e.reachable && e.chainIdOk && !(e.batch && e.batch.error)).slice(0, 4);
+if (ok.length) console.error('  rated endpoints that answered cleanly (' + f + '):\\n' + ok.map(e => '    ' + e.url).join('\\n'));" || true
+    exit 1
 fi
 RPC_SHOWN=$(echo "$RPC_HOST" | sed -E 's#(/[^/]{20,})$#/***#')
 mkdir -p "log/${CHAIN}"
@@ -168,8 +200,8 @@ check() { node --experimental-strip-types --disable-warning=ExperimentalWarning 
     # scripts/deploy-direct.ts sends the create and waits for the receipt or the
     # code instead. Ignition's journal for these chains is then simply not
     # updated; contract-update's downgrade guard keeps it from undoing this.
-    DIRECT=0
-    if [ "$CHAIN_ID" = "999" ] || [ "$CHAIN_ID" = "998" ]; then DIRECT=1; fi
+    DIRECT=1
+#    if [ "$CHAIN_ID" = "999" ] || [ "$CHAIN_ID" = "998" ]; then DIRECT=1; fi
 
     # Ignition keys on the future id: an existing record — stale, or for code we
     # are replacing — must go, or it reports "Nothing new to deploy".

@@ -83,7 +83,10 @@ try {
 
 // The chain id is known, so pin it: no network auto-detection, whose retry
 // chatter on a dead RPC would bury the one line deploy.sh prints.
-const provider = new RetryingJsonRpcProvider(cfg.chain.host, Number(cfg.chain.id), { staticNetwork: true });
+// batchMaxCount 1: ethers batches concurrent calls, and the scan for unrecorded deploys sends 32
+// getCode at once. rpc3.monad.xyz answers batches over 10 with HTTP 413, which failed the check
+// ("could not read the chain") and refused every Monad deploy (conf/provider ratings: batch.max 10).
+const provider = new RetryingJsonRpcProvider(cfg.chain.host, Number(cfg.chain.id), { staticNetwork: true, batchMaxCount: 1 });
 const codeAt = async (a: string): Promise<string> => {
     for (let i = 0; ; i++) {
         try { return await provider.getCode(a); }

@@ -40,7 +40,7 @@
           fee: 0.0025,
         },
         'Uniswap v2': {
-          address: '0xb45e53277a7e0f1d35f2a77160e91e25507f1763',
+          address: '.',
           deployBlock: 347155,
           fee: 0.003,
         },
@@ -324,7 +324,7 @@
     },
     v2fee: {
       list: {
-        'Shadow Solidly': {
+        'Shadow A Solidly': {
           address: '0x2da25e7446a70d7be65fd4c053948becaa6374c8',
           deployBlock: 4028276,
           hasStableFlag: true,
@@ -332,8 +332,8 @@
           feeFunction: 'fee',
           feeDivisor: 1000000,
         },
-        // find-factories --add 2026-10-12: 1 pairs in sweep, explorer "PairFactory"; probed ShadowV3Factory [high] (name matches a registered pattern whose fee call did not answer on-chain; probe found ShadowV3Factory)
-        PairFactory_d54aa58e: {
+        
+        "Shadow B Solidly": {
           address: '0xd54aa58eda39230316dc1a949305dd3b4ba8010c',
           deployBlock: 3806596,
           feeTarget: 'pair',

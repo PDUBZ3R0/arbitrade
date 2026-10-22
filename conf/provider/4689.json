@@ -1,0 +1,588 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 4689,
+  "name": "IoTeX Network Mainnet",
+  "testedAt": "2026-10-18T09:32:49.312Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xEc0cd5c1D61943A195bcA7b381dc60F9F545A540",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x19630043fa565ffe1856d82a958902c50e69f56e51c7760c0fd64242c8f327de",
+      "block": 53508781
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://babel-api.mainnet.iotex.one",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 24884,
+      "chainId": 4689,
+      "chainIdOk": true,
+      "head": 53508838,
+      "client": "v2.5.1.1/go version go1.27.2 linux/amd64",
+      "latency": {
+        "p50": 154,
+        "p95": 176,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 89098,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "3: range exceeds the limit"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "13: history is pruned, only supported for latest 3000 blocks, but requested height 53408782: not supported"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32603: batch size 500 exceeds the limit 100: batch too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method: eth_createAccessList\n: web3 method not found",
+        "eth_getProof": "-32603: method: eth_getProof\n: web3 method not found",
+        "trace_call": "-32603: method: trace_call\n: web3 method not found",
+        "txpool_status": "-32603: method: txpool_status\n: web3 method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 82
+        },
+        "reader": {
+          "pass": true,
+          "score": 45
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://babel-api.mainnet.iotex.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25050,
+      "chainId": 4689,
+      "chainIdOk": true,
+      "head": 53508838,
+      "client": "v2.5.1.1/go version go1.27.2 linux/amd64",
+      "latency": {
+        "p50": 161,
+        "p95": 171,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 89098,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "3: range exceeds the limit"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "13: history is pruned, only supported for latest 3000 blocks, but requested height 53408782: not supported"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32603: batch size 500 exceeds the limit 100: batch too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method: eth_createAccessList\n: web3 method not found",
+        "eth_getProof": "-32603: method: eth_getProof\n: web3 method not found",
+        "trace_call": "-32603: method: trace_call\n: web3 method not found",
+        "txpool_status": "-32603: method: txpool_status\n: web3 method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 82
+        },
+        "reader": {
+          "pass": true,
+          "score": 45
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://babel-api.fastblocks.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25744,
+      "chainId": 4689,
+      "chainIdOk": true,
+      "head": 53508838,
+      "client": "v2.5.1.1/go version go1.27.2 linux/amd64",
+      "latency": {
+        "p50": 174,
+        "p95": 209,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 89098,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "3: range exceeds the limit"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "13: history is pruned, only supported for latest 3000 blocks, but requested height 53408782: not supported"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32603: batch size 500 exceeds the limit 100: batch too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method: eth_createAccessList\n: web3 method not found",
+        "eth_getProof": "-32603: method: eth_getProof\n: web3 method not found",
+        "trace_call": "-32603: method: trace_call\n: web3 method not found",
+        "txpool_status": "-32603: method: txpool_status\n: web3 method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 44
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://iotex.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 116028,
+      "chainId": 4689,
+      "chainIdOk": true,
+      "head": 53508838,
+      "client": "v2.4.1/go version go1.24.13 linux/amd64",
+      "latency": {
+        "p50": 45,
+        "p95": 51,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 4989098,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "addressError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "topicOnlyError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "oldLogsError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
+      },
+      "history": {
+        "stateDepth": 53508791,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": false,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32603: strconv.ParseUint: parsing \"0x4\": invalid syntax",
+        "eth_getBlockReceipts": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_createAccessList": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_getProof": "-32603: method: eth_getProof\n: web3 method not found",
+        "trace_call": "-32603: method: trace_call\n: web3 method not found",
+        "txpool_status": "-32403: Method is not allowed."
+      },
+      "throttledDuringProbes": 55,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": true,
+          "score": 79
+        },
+        "reader": {
+          "pass": true,
+          "score": 25
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://iotex-network.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34399,
+      "chainId": 4689,
+      "chainIdOk": true,
+      "head": 53508838,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 121,
+        "p95": 461,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 89098,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "13: history is pruned, only supported for latest 3000 blocks, but requested height 53408785: not supported"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method: eth_createAccessList\n: web3 method not found",
+        "eth_getProof": "-32603: method: eth_getProof\n: web3 method not found",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32603: method: txpool_status\n: web3 method not found"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 27
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/4689",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7264,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.depinscan.io/iotex",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 283,
+      "error": "ECONNREFUSED",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.chainanalytics.org/iotex",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 41,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://api-iotex-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7999,
+      "error": "HTTP 429: Too Many Requests ",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        }
+      }
+    }
+  ]
+}

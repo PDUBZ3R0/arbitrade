@@ -1,0 +1,1452 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 324,
+  "name": "zkSync Mainnet",
+  "testedAt": "2026-10-18T08:03:38.309Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x000000000000000000000000000000000000800a",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 72543502
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://zksync.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 20932,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 58,
+        "p95": 68,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "oldLogsError": "27: Unknown state. First available state is 1"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "27: Unknown state. First available state is 1"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": false,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "-32601: method is not available",
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 51
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 45
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://mainnet.era.zksync.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 20646,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 75,
+        "p95": 84,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 904179,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "resultCapError": "-32602: Query returned more than 10000 results. Try with this block range [0x452c5fa, 0x452ceec].",
+        "combinedError": "-32602: Query returned more than 10000 results. Try with this block range [0x452c5fa, 0x452d18f]."
+      },
+      "history": {
+        "stateDepth": 72543501,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: rpc method is not whitelisted",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32602: Invalid params missing field `tracer` at line 1 column 2",
+        "trace_call": "-32601: rpc method is not whitelisted",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: rpc method is not whitelisted"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 59
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://zksync-era.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 31190,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 184,
+        "p95": 365,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 178,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "resultCapError": "-32602: Query returned more than 1024 results. Try with this block range [0x452e923, 0x452ea15].",
+        "combinedError": "-32602: Query returned more than 10000 results. Try with this block range [0x452c5fb, 0x452d190]."
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32602: Block with such an ID is pruned; the first retained block is 72053263"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not supported",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://zksync-era.api.pocket.network",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 74789,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 170,
+        "p95": 185,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "resultCapError": "-32602: Query returned more than 10000 results. Try with this block range [0x452c611, 0x452cefd].",
+        "combinedError": "-32602: Query returned more than 10000 results. Try with this block range [0x452c611, 0x452d1a7]."
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32602: Block with such an ID is pruned; the first retained block is 72530485"
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 3,
+        "logs": 8,
+        "lastHeadAgeSec": 2.1,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 40
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 87
+        }
+      }
+    },
+    {
+      "url": "wss://zksync.drpc.org",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 8909,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 45,
+        "p95": 54,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 79
+        },
+        "reader": {
+          "pass": true,
+          "score": 35
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://zksync-era.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 93442,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543542,
+      "client": "sentio-super-node/v2.585.0-9d8a368f72f619090ea143b6338f83b7ed9e5ed9/linux-amd64/",
+      "latency": {
+        "p50": 97,
+        "p95": 104,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 178,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"code\":8,\"message\":\"public eth_getLogs is limited to 1000 blocks\"}",
+        "resultCapError": "-32602: Query returned more than 1024 results. Try with this block range [0x452e92e, 0x452ea28].",
+        "combinedError": "-32602: Query returned more than 1024 results. Try with this block range [0x452e92e, 0x452ea6a]."
+      },
+      "history": {
+        "stateDepth": 72543513,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "0: batch answered with a single object {\"code\":8,\"message\":\"JSON-RPC batch exceeds the maximum of 5 requests\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 27,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 68
+        },
+        "trader": {
+          "pass": true,
+          "score": 76
+        },
+        "reader": {
+          "pass": true,
+          "score": 44
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://324.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 42393,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 124,
+        "p95": 199,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 72543531,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: rpc method is not whitelisted",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: rpc method is not whitelisted"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 70
+        },
+        "reader": {
+          "pass": true,
+          "score": 37
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://zksync.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 110370,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 170,
+        "p95": 185,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 903875,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "addressError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "topicOnlyError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "oldLogsError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32602: Block with such an ID is pruned; the first retained block is 72530485"
+      },
+      "batch": {
+        "max": 2,
+        "error": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_createAccessList": "-32000: Backend error, StatusCode: 400",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32602: Invalid params missing field `tracer` at line 1 column 2",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 48,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": true,
+          "score": 66
+        },
+        "reader": {
+          "pass": true,
+          "score": 29
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://li-fi-redirect.intustechno.workers.dev/rpc",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7281,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://go.getblock.io/f76c09905def4618a34946bf71851542",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 534,
+      "error": "HTTP 401: Unknown token",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        }
+      }
+    },
+    {
+      "url": "https://zksync.meowrpc.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 92,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.hostdefi.com/api/rpc/zksync-era",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 17832,
+      "chainId": 324,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 72543543,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://endpoints.omniatech.io/v1/zksync-era/mainnet/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 252,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/zksync2-era",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14610,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543503,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 87,
+        "p95": 101,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 904179,
+        "stateOverride": true,
+        "revertProbe": "override"
+      },
+      "logs": {
+        "maxRange": 51,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: eth_getLogs is limited to 0 - 50 blocks range"
+      },
+      "history": {
+        "stateDepth": 72543502,
+        "archive": true
+      },
+      "batch": {
+        "max": 50,
+        "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_maxPriorityFeePerGas": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_getBlockReceipts": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_createAccessList": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_getProof": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "debug_traceCall": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "trace_call": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "txpool_status": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_blobBaseFee": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…",
+        "eth_newFilter": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uni…"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/zksync_era",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 273,
+      "error": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        }
+      }
+    },
+    {
+      "url": "https://api.zan.top/zksync-mainnet",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 189490,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 246,
+        "p95": 1048,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "gasCapError": "-32011: cu limit exceeded; Request too fast per second. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"1a14e04d633e0f9d\"}",
+        "stateOverrideError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "addressError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "topicOnlyError": "-32011: cu limit exceeded; Request too fast per second. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"1a14e05b01c1ca35\"}",
+        "oldLogsError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32602: Block with such an ID is pruned; the first retained block is 72053677"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32003: cu limit exceeded; request too fast per second {\"traceId\":\"1a14e062c0483591\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": false,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "-32601: method error; invalid method: eth_maxPriorityFeePerGas {\"traceId\":\"1a14e0631f471675\"}",
+        "eth_getBlockReceipts": "-32012: cu limit exceeded; Method \"eth_getBlockReceipts\" is not available for unregistered accounts.…",
+        "eth_createAccessList": "-32601: method error; invalid method: eth_createAccessList {\"traceId\":\"1a14e06565362765\"}",
+        "eth_getProof": "-32601: method error; invalid method: eth_getProof {\"traceId\":\"1a14e0657426b6c1\"}",
+        "debug_traceCall": "-32012: cu limit exceeded; Method \"debug_traceCall\" is not available for unregistered accounts. Plea…",
+        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a14e067b96d16c9\"}",
+        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a14e067c95e20cd\"}",
+        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a14e067d8f83dc5\"}"
+      },
+      "throttledDuringProbes": 57,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32011: cu limit exceeded; Request too fast per second. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"1a14e04d633e0f9d\"})"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://api-zksync-era-mainnet-full.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 154169,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543507,
+      "latency": {
+        "p50": 152,
+        "p95": 560,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": null,
+        "gasCap": null,
+        "stateOverride": true,
+        "revertError": "HTTP 429: Too Many Requests ",
+        "gasCapError": "HTTP 429: Too Many Requests "
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "addressError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "topicOnlyError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "oldLogsError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. "
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "HTTP 429: Too Many Requests "
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 429: Too Many Requests ",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": false,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "HTTP 429: Too Many Requests ",
+        "eth_getBlockReceipts": "HTTP 429: Too Many Requests ",
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "HTTP 429: Too Many Requests ",
+        "debug_traceCall": "HTTP 403: Your current plan does not support the debug_traceCall method. Please upgrade to a paid pl…",
+        "trace_call": "HTTP 403: Your current plan does not support the trace_call method. Please upgrade to a paid plan at…",
+        "txpool_status": "HTTP 429: Too Many Requests ",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 56,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/324",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 251205,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543543,
+      "latency": {
+        "p50": 168,
+        "p95": 380,
+        "n": 5,
+        "failures": 7
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": true,
+        "revertProbe": "override",
+        "gasCapError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "logs": {
+        "maxRange": 81,
+        "maxAddresses": 1000,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "topicOnlyError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "batch": {
+        "max": 2,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_maxPriorityFeePerGas": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_createAccessList": "-32009: all nodes failed",
+        "eth_getProof": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "debug_traceCall": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_blobBaseFee": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…"
+      },
+      "throttledDuringProbes": 93,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        }
+      }
+    },
+    {
+      "url": "https://zksync-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 192147,
+      "chainId": 324,
+      "chainIdOk": true,
+      "head": 72543522,
+      "client": "zkSync/v2.0",
+      "latency": {
+        "p50": 55,
+        "p95": 72,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "debug_traceCall": "-32602: Invalid params missing field `tracer` at line 1 column 2",
+        "trace_call": "-32601: Method not found: trace_call",
+        "txpool_status": "-32601: Method not found: txpool_status",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 72,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

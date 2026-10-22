@@ -35,6 +35,15 @@ interface IProbeMorpho {
     function flashLoan(address token, uint256 assets, bytes calldata data) external;
 }
 
+/// Concentrated-liquidity pool: Uniswap V3, PancakeV3, Slipstream CL and Algebra
+/// all spell swap the same way, and call back *SwapCallback for what is owed.
+interface IProbeCLPool {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function swap(address recipient, bool zeroForOne, int256 amountSpecified, uint160 sqrtPriceLimitX96, bytes calldata data)
+        external returns (int256 amount0, int256 amount1);
+}
+
 interface IProbePair {
     function token0() external view returns (address);
     function token1() external view returns (address);
@@ -65,6 +74,13 @@ interface IProbePair {
 ///   2  Uniswap V3 pool  flash           -> uniswapV3FlashCallback (+ Pancake / Algebra spellings)
 ///   3  Morpho Blue      flashLoan       -> onMorphoFlashLoan       (Longbow on Robinhood Chain)
 /// probe() is the original Aave-only entry point, kept so older clients work.
+///
+/// CONCENTRATED LIQUIDITY. probeCLFrom() runs the same round trip through a
+/// V3-style pool (Uniswap V3, PancakeV3, Slipstream CL, Algebra): an exact-input
+/// swap each way, paying what the pool asks in its swap callback. The pool
+/// checks its own balance after the callback, so a token taxed on the way in
+/// can never be sold there; the probe measures what arrived and reports it
+/// (ProbeResult with no root back) instead of tripping that check.
 /// Nothing is ever repaid: every callback ends in a revert, so no lender is
 /// ever left short — the whole eth_call unwinds.
 contract TokenProbe {
@@ -78,6 +94,13 @@ contract TokenProbe {
     /// The lender the current probe borrows from; the one callback admitted.
     /// Storage, not transient: the call always reverts, so it never persists.
     address private _lender;
+    /// probeCLFrom: the pool under test (the only swap callback admitted), what it is paid in, and the buy leg's numbers.
+    address private _clPool;
+    address private _clPay;
+    uint256 private _buyRequested;
+    uint256 private _buyReceived;
+    uint256 private _sellSent;
+    uint256 private _sellArrived;
 
     uint8 internal constant STAGE_NO_CODE       = 0; // token address has no bytecode
     uint8 internal constant STAGE_FUND_PAIR     = 1; // root.transfer(pair)
@@ -132,6 +155,13 @@ contract TokenProbe {
     /// @param lender  Aave pool / Balancer vault / V3 pool holding root / Morpho singleton
     function probeFrom(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap) external {
         _borrow(source, lender, root, amount, pair, feeBpsCap);
+    }
+
+    /// @notice probeFrom for a concentrated-liquidity pool (V3 / CL / Algebra). feeBpsCap is unused: swaps are exact input.
+    function probeCLFrom(uint8 source, address lender, address root, uint256 amount, address pool) external {
+        if (pool == lender) revert TokenNotInLender();   // a V3 lender is locked during its flash
+        _clPool = pool;
+        _borrow(source, lender, root, amount, pool, 0);
     }
 
     function _borrow(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap) internal {
@@ -199,6 +229,7 @@ contract TokenProbe {
     /// The probe itself. Always reverts.
     function _run(uint256 amount, bytes calldata data) internal {
         (address root, address pair, uint16 feeBpsCap) = abi.decode(data, (address, address, uint16));
+        if (_clPool != address(0)) _runCL(root, amount);
         Ctx memory c;
         c.root = root;
         c.pair = IProbePair(pair);
@@ -234,6 +265,66 @@ contract TokenProbe {
         _call(STAGE_SELL_SWAP, address(c.pair), abi.encodeCall(IProbePair.swap,
             (c.rootIs0 ? requested : 0, c.rootIs0 ? 0 : requested, address(this), bytes(""))));
         received = IProbeERC20(c.root).balanceOf(address(this)) - before;
+    }
+
+    // ---- concentrated liquidity -------------------------------------------------------
+
+    uint160 internal constant MIN_SQRT_RATIO_PLUS_1 = 4295128740;
+    uint160 internal constant MAX_SQRT_RATIO_MINUS_1 = 1461446703485210103287273052203988822378723970341;
+
+    function _runCL(address root, uint256 amount) internal {
+        IProbeCLPool pool = IProbeCLPool(_clPool);
+        bool rootIs0 = pool.token0() == root;
+        address token = rootIs0 ? pool.token1() : pool.token0();
+        if (!rootIs0 && pool.token1() != root) revert ProbeFailed(STAGE_NO_CODE, "root is not in the pool");
+        if (token.code.length == 0) revert ProbeFailed(STAGE_NO_CODE, "token has no code");
+
+        // Stages 1-2: root in, token out.
+        _clPay = root;
+        uint256 before = IProbeERC20(token).balanceOf(address(this));
+        (int256 a0, int256 a1) = _clSwap(STAGE_BUY_SWAP, pool, rootIs0, amount);
+        _buyRequested = uint256(-(rootIs0 ? a1 : a0));
+        _buyReceived = IProbeERC20(token).balanceOf(address(this)) - before;
+
+        // Stages 3-4: everything received back in, root out. A taxed transfer stops in the callback.
+        _clPay = token;
+        before = IProbeERC20(root).balanceOf(address(this));
+        (a0, a1) = _clSwap(STAGE_SELL_SWAP, pool, !rootIs0, _buyReceived);
+        uint256 rootRequested = uint256(-(rootIs0 ? a0 : a1));
+        uint256 rootReceived = IProbeERC20(root).balanceOf(address(this)) - before;
+        revert ProbeResult(_buyRequested, _buyReceived, _sellSent, _sellArrived, rootRequested, rootReceived);
+    }
+
+    function _clSwap(uint8 stage, IProbeCLPool pool, bool zeroForOne, uint256 amountIn) internal returns (int256 a0, int256 a1) {
+        (bool ok, bytes memory ret) = address(pool).call(abi.encodeCall(IProbeCLPool.swap,
+            (address(this), zeroForOne, int256(amountIn), zeroForOne ? MIN_SQRT_RATIO_PLUS_1 : MAX_SQRT_RATIO_MINUS_1, bytes(""))));
+        if (!ok) {
+            // A verdict from inside the callback (ProbeResult / ProbeFailed) passes through as it is.
+            bytes4 sel = ret.length >= 4 ? bytes4(ret) : bytes4(0);
+            if (sel == ProbeResult.selector || sel == ProbeFailed.selector) assembly { revert(add(ret, 32), mload(ret)) }
+            revert ProbeFailed(stage, ret);
+        }
+        (a0, a1) = abi.decode(ret, (int256, int256));
+    }
+
+    /// Uniswap V3 / Slipstream, PancakeV3, Algebra: pay the pool what it is owed.
+    function uniswapV3SwapCallback(int256 d0, int256 d1, bytes calldata) external { _clPayOwed(d0, d1); }
+    function pancakeV3SwapCallback(int256 d0, int256 d1, bytes calldata) external { _clPayOwed(d0, d1); }
+    function algebraSwapCallback(int256 d0, int256 d1, bytes calldata) external { _clPayOwed(d0, d1); }
+
+    function _clPayOwed(int256 d0, int256 d1) internal {
+        if (_clPool == address(0) || msg.sender != _clPool) revert NotPool();
+        uint256 owed = uint256(d0 > 0 ? d0 : d1);
+        if (_clPay != IProbeCLPool(_clPool).token0() && _clPay != IProbeCLPool(_clPool).token1()) revert NotPool();
+        bool selling = _buyRequested != 0;
+        uint256 poolBefore = IProbeERC20(_clPay).balanceOf(msg.sender);
+        _transfer(selling ? STAGE_SELL_TRANSFER : STAGE_FUND_PAIR, _clPay, msg.sender, owed);
+        if (!selling) return;
+        uint256 got = IProbeERC20(_clPay).balanceOf(msg.sender) - poolBefore;
+        _sellSent = owed;
+        _sellArrived = got;
+        // The pool would revert on the shortfall: report the tax measured instead.
+        if (got < owed) revert ProbeResult(_buyRequested, _buyReceived, owed, got, 0, 0);
     }
 
     function _reserves(Ctx memory c) internal view returns (uint256 rRoot, uint256 rTok) {

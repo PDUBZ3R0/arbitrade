@@ -1,0 +1,542 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 1776,
+  "name": "Injective",
+  "testedAt": "2026-10-17T21:01:23.227Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xa00c59ff5a080d2b954d0c75e46e22a0c371235a",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x3e8aae37f890eb1f9d63dd4d2062f3f0be757848a0f0760e4f3e53dad556e861",
+      "block": 187744121
+    }
+  },
+  "endpoints": [
+    {
+      "url": "wss://sentry.evm-ws.injective.network",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 47416,
+      "chainId": 1776,
+      "chainIdOk": true,
+      "head": 187744256,
+      "client": "evm-gateway/v1.4.4",
+      "latency": {
+        "p50": 135,
+        "p95": 200,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 22,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: maximum [from, to] blocks distance: 10000",
+        "addressError": "-32000: invalid criteria: max filter addresses exceeded: 50 > 32",
+        "resultCapError": "-32000: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: rpc error: code = Unknown desc = codespace sdk code 18: invalid request: failed to load state at height 187743123; version mismatch on immutable IAVL tr…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32000: gasLimit of block height 187744149 should be bigger than 0 , current gaslimit 0",
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 25,
+        "logs": 48,
+        "lastHeadAgeSec": 0.2,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 84
+        },
+        "reader": {
+          "pass": true,
+          "score": 72
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 89
+        }
+      }
+    },
+    {
+      "url": "wss://injectiveevm-ws.polkachu.com",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 79474,
+      "chainId": 1776,
+      "chainIdOk": true,
+      "head": 187744256,
+      "client": "1.6.0",
+      "latency": {
+        "p50": 166,
+        "p95": 245,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 22,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: maximum [from, to] blocks distance: 10000",
+        "addressError": "-32000: invalid criteria: max filter addresses exceeded: 50 > 32",
+        "resultCapError": "-32000: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: height 1 is not available, lowest height is 186040000"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 26,
+        "logs": 50,
+        "lastHeadAgeSec": 0.2,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 71
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 87
+        }
+      }
+    },
+    {
+      "url": "https://sentry.evm-rpc.injective.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 29481,
+      "chainId": 1776,
+      "chainIdOk": true,
+      "head": 187744255,
+      "client": "evm-gateway/v1.4.4",
+      "latency": {
+        "p50": 135,
+        "p95": 156,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 22,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: maximum [from, to] blocks distance: 10000",
+        "addressError": "-32000: invalid criteria: max filter addresses exceeded: 50 > 32",
+        "resultCapError": "-32000: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: rpc error: code = Unknown desc = codespace sdk code 18: invalid request: failed to load state at height 187743122; version mismatch on immutable IAVL tr…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": true,
+          "score": 72
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://injectiveevm-rpc.polkachu.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 63959,
+      "chainId": 1776,
+      "chainIdOk": true,
+      "head": 187744255,
+      "client": "1.6.0",
+      "latency": {
+        "p50": 183,
+        "p95": 210,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 22,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: maximum [from, to] blocks distance: 10000",
+        "addressError": "-32000: invalid criteria: max filter addresses exceeded: 50 > 32",
+        "resultCapError": "-32000: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: height 1 is not available, lowest height is 186040000"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 67
+        },
+        "reader": {
+          "pass": true,
+          "score": 70
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://1776.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 35573,
+      "chainId": 1776,
+      "chainIdOk": true,
+      "head": 187744255,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 220,
+        "p95": 270,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 22,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "addressError": "-32000: invalid criteria: max filter addresses exceeded: 50 > 32"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: error in json rpc client, with http response metadata: (Status: 503 Service Unavailable, Protocol HTTP/1.1). error unmarshalling: json: cannot unmarshal…"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 2,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 53
+        },
+        "trader": {
+          "pass": true,
+          "score": 48
+        },
+        "reader": {
+          "pass": true,
+          "score": 43
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://injective-evm-rpc.scvsecurity.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 129,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "wss://injective-evm-ws.scvsecurity.io",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 129,
+      "error": "connect failed: Unexpected server response: 530",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 530",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 530"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 530"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 530"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 530"
+        }
+      }
+    }
+  ]
+}

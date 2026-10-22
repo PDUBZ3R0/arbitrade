@@ -1,0 +1,326 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 42793,
+  "name": "Etherlink Mainnet",
+  "testedAt": "2026-10-17T20:43:20.849Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x6bde51212203ae5d592cc5180da2abbd41c922de",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x1bbf55d483639f8103dc4e035af71a4fbdb16c80be740fa3eef81198acefa094",
+      "block": 55860839
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.ankr.com/etherlink_mainnet",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34800,
+      "chainId": 42793,
+      "chainIdOk": true,
+      "head": 55860886,
+      "client": "octez-evm-node/octez-evm-node 0.67 (build: 0)-668b298d/Unix/ocamlc.5.3.0",
+      "latency": {
+        "p50": 83,
+        "p95": 105,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 29946876,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 55860838,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32090: Too many requests, reason: call rate limit exhausted, retry in 10s",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32004: Method not supported eth_createAccessList",
+        "eth_getProof": "-32004: Method not supported eth_getProof",
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_blobBaseFee": "-32004: Method not supported eth_blobBaseFee",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 6,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 90
+        },
+        "reader": {
+          "pass": true,
+          "score": 52
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://node.mainnet.etherlink.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22392,
+      "chainId": 42793,
+      "chainIdOk": true,
+      "head": 55860886,
+      "client": "octez-evm-node/octez-evm-node 0.67 (build: 0)-668b298d/Unix/ocamlc.5.3.0",
+      "latency": {
+        "p50": 74,
+        "p95": 98,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 29946876,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 55860838,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32004: Method not supported eth_createAccessList",
+        "eth_getProof": "-32004: Method not supported eth_getProof",
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32075: Method disabled, reason: restricted by blockchain schema",
+        "eth_blobBaseFee": "-32004: Method not supported eth_blobBaseFee",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 69
+        },
+        "trader": {
+          "pass": true,
+          "score": 86
+        },
+        "reader": {
+          "pass": true,
+          "score": 48
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://42793.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 59560,
+      "chainId": 42793,
+      "chainIdOk": true,
+      "head": 55860886,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 199,
+        "p95": 235,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 29946876,
+        "stateOverride": false,
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 111,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 112"
+      },
+      "history": {
+        "stateDepth": 55860843,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": false,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "HTTP 429: You are using a public-good RPC with strict rate limits. To lift these limits you can obta…",
+        "eth_createAccessList": "-32004: Method not supported eth_createAccessList",
+        "eth_getProof": "HTTP 429: You are using a public-good RPC with strict rate limits. To lift these limits you can obta…",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32075: Method disabled, reason: restricted by blockchain schema",
+        "eth_blobBaseFee": "-32004: Method not supported eth_blobBaseFee",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 24,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 51
+        },
+        "trader": {
+          "pass": true,
+          "score": 63
+        },
+        "reader": {
+          "pass": true,
+          "score": 35
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/42793",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14911,
+      "chainId": 42793,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

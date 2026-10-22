@@ -1,0 +1,1457 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 222222,
+  "name": "Hydration",
+  "testedAt": "2026-10-19T14:50:23.299Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x00f283c7a97ecb60dd905cdab52febceec04dc0f",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x4beccb90f994c31aced7a23b5611020728a23d8ec5cddd1a3e9d97b96fda8666",
+      "block": 15978691
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.hydradx.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 97408,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978867,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 265,
+        "p95": 285,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 56939,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 59
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.hydradx.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 110496,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978868,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 255,
+        "p95": 265,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 56939,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 8,
+        "logs": 132,
+        "lastHeadAgeSec": 0.2,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 81
+        }
+      }
+    },
+    {
+      "url": "https://rpc.coke.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 108313,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978867,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 270,
+        "p95": 288,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 56939,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 58
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.coke.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 112276,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978868,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 260,
+        "p95": 264,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 48758,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 7,
+        "logs": 9,
+        "lastHeadAgeSec": 1.9,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 72
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 81
+        }
+      }
+    },
+    {
+      "url": "wss://hydration-rpc.n.dwellir.com",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 131645,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978868,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 140,
+        "p95": 141,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 39872,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 7,
+        "logs": 9,
+        "lastHeadAgeSec": 1.7,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 92
+        },
+        "trader": {
+          "pass": true,
+          "score": 84
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 89
+        }
+      }
+    },
+    {
+      "url": "https://hydration-rpc.n.dwellir.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 112403,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978868,
+      "client": "hydradx/v447.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 141,
+        "p95": 149,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 21806,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 89
+        },
+        "trader": {
+          "pass": true,
+          "score": 84
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://222222.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 39210,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978867,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 157,
+        "p95": 320,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 54
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None }))"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.helikon.io/hydradx",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 51,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.helikon.io/hydradx",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 6,
+      "error": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND rpc.helikon.io"
+        }
+      }
+    },
+    {
+      "url": "https://hydration.dotters.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10000,
+      "error": "timeout 10000ms",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "https://hydration.ibp.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 65,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "wss://hydration.ibp.network",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7,
+      "error": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: getaddrinfo ENOTFOUND hydration.ibp.network"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.cay.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 190,
+      "error": "ECONNREFUSED",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.cay.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 159,
+      "error": "connect failed: connect ECONNREFUSED 156.67.62.17:443",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: connect ECONNREFUSED 156.67.62.17:443",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 156.67.62.17:443"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 156.67.62.17:443"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 156.67.62.17:443"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 156.67.62.17:443"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.parm.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 175,
+      "error": "ECONNREFUSED",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ECONNREFUSED"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.parm.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 165,
+      "error": "connect failed: connect ECONNREFUSED 65.109.82.212:443",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: connect ECONNREFUSED 65.109.82.212:443",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 65.109.82.212:443"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 65.109.82.212:443"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 65.109.82.212:443"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: connect ECONNREFUSED 65.109.82.212:443"
+        }
+      }
+    },
+    {
+      "url": "wss://hydration.dotters.network",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10002,
+      "error": "connect timeout 10000ms",
+      "ws": {
+        "connected": false,
+        "error": "connect timeout 10000ms",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.roach.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10001,
+      "error": "timeout 10000ms",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.roach.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10001,
+      "error": "connect timeout 10000ms",
+      "ws": {
+        "connected": false,
+        "error": "connect timeout 10000ms",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.zipp.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10001,
+      "error": "timeout 10000ms",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.zipp.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10001,
+      "error": "connect timeout 10000ms",
+      "ws": {
+        "connected": false,
+        "error": "connect timeout 10000ms",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/222222",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 256315,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 15978692,
+      "latency": {
+        "p50": 771,
+        "p95": 1040,
+        "n": 6,
+        "failures": 6
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "gasCapError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 604,
+        "maxAddresses": 3,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "addressError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "oldLogsError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32014: no providers honoring historical block tags on state reads"
+      },
+      "batch": {
+        "max": 2,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": false,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32012: no providers serving eth_getProof for a block this far behind the chain tip",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "txpool_status": "-32002: method not supported",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…"
+      },
+      "throttledDuringProbes": 89,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.sin.hydration.cloud",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 115423,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 14977794,
+      "client": "hydradx/v443.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 260,
+        "p95": 268,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 41929,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32603: Filter pool is full (limit 500)."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1001074,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc.sin.hydration.cloud",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 125332,
+      "chainId": 222222,
+      "chainIdOk": true,
+      "head": 14977794,
+      "client": "hydradx/v443.0/fc-rpc-2.0.0-dev",
+      "latency": {
+        "p50": 280,
+        "p95": 301,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertProbe": "contract",
+        "gasCapError": "-32603: execution fatal: Module(ModuleError { index: 93, error: [3, 0, 0, 0], message: None })",
+        "stateOverrideError": "returned 0x (override ignored)"
+      },
+      "logs": {
+        "maxRange": 42997,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 3162,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32603: query timeout of 10 seconds exceeded",
+        "resultCapError": "-32603: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: Fetch account balances failed: Application(Execution(Other(\"Exported method EthereumRuntimeRPCApi_account_basic is not found\")))"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found",
+        "eth_getProof": "-32601: Method not found",
+        "debug_traceCall": "-32601: Method not found",
+        "trace_call": "-32601: Method not found",
+        "txpool_status": "-32601: Method not found",
+        "eth_blobBaseFee": "-32601: Method not found",
+        "eth_newFilter": "-32603: Filter pool is full (limit 500)."
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": 0,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1001074,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 1001074 blocks behind"
+        }
+      }
+    }
+  ]
+}

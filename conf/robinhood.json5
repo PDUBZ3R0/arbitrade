@@ -6,7 +6,7 @@
     token: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
     contract: '0x5609B0Db47b4727f37084A59BD49eef9f478476e',
     executor: '0x1043D1F0a1B89F23A6Fe1B6656E1c65c92d05534',
-    probe: '0x0426d7687911f81DcD7769655b995650a765a7D5',
+    probe: '0xf69fAA48dD29E936B1A17ED5C9b4b51bb917F229',
     liquidator: '0xbc04E12771de574f98401e3cC54b667e147ecA6C',
     sequencer: 'https://sequencer.mainnet.chain.robinhood.com',
     threads: 10,

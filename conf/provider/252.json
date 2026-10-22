@@ -1,0 +1,1011 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 252,
+  "name": "Fraxtal",
+  "testedAt": "2026-10-17T20:38:11.627Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x4200000000000000000000000000000000000015",
+      "topic": "0x12cb9a47c977b6cbe82b9e495407e99a32a54bca6b26f1e4d497a3a42dccb914",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 42729268
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.frax.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 19075,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "reth/v2.5.2-0fbe428/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 65,
+        "p95": 107,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 42729267,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32600: Exceeded the maximum batch size of 250 requests",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not allowed or not found.",
+        "eth_getProof": "-32603: no state found for block number 42729270",
+        "debug_traceCall": "-32601: Method not allowed or not found.",
+        "trace_call": "-32601: Method not allowed or not found.",
+        "txpool_status": "-32601: Method not allowed or not found.",
+        "eth_blobBaseFee": "-32601: Method not allowed or not found.",
+        "eth_newFilter": "-32601: Method not allowed or not found."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 74
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://fraxtal.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 32931,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "reth/v2.0.0-eb4c15e/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 173,
+        "p95": 212,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100000,
+        "maxAddresses": 200,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 100000",
+        "addressError": "-32602: Invalid params getLogs scan work too large: addresses x blocks exceeds this endpoint's cap; narrow the block range or split the address list",
+        "resultCapError": "-32602: invalid argument 0: missing required field 'address' for log filter"
+      },
+      "history": {
+        "stateDepth": 42729277,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 75
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://fraxtal.gateway.tenderly.co",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 50388,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 67,
+        "p95": 75,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 42729272,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32005: rate limit exceeded",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32005: rate limit exceeded",
+        "trace_call": "-32005: rate limit exceeded",
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 12,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 86
+        },
+        "reader": {
+          "pass": true,
+          "score": 77
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://fraxtal-rpc.publicnode.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 21728,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "reth/v2.2.0-7680d6d/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 60,
+        "p95": 105,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 50000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32701: exceed maximum block range: 50000",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/frxETH/host"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32603: state at block #42629299 is pruned"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": true,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 81
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://fraxtal.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22097,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 63,
+        "p95": 161,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 42729267,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32603: no state found for block number 42729272",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://frax-mainnet.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 93463,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "sentio-super-node/v2.584.1-8f96637505f7d4c6b04fcb1a31c28513e1e548d4/linux-amd64/",
+      "latency": {
+        "p50": 96,
+        "p95": 161,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"code\":8,\"message\":\"public eth_getLogs is limited to 1000 blocks\"}"
+      },
+      "history": {
+        "stateDepth": 42729293,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "0: batch answered with a single object {\"code\":8,\"message\":\"JSON-RPC batch exceeds the maximum of 5 requests\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}"
+      },
+      "throttledDuringProbes": 27,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 88
+        },
+        "reader": {
+          "pass": true,
+          "score": 59
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/fraxtal",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 77654,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 266,
+        "p95": 686,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32603: state at block #41729281 is pruned"
+      },
+      "batch": {
+        "max": 500,
+        "error": "-32600: Exceeded the maximum batch size of 250 requests",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "eth_newFilter": "35: method is not available"
+      },
+      "throttledDuringProbes": 30,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 85
+        },
+        "trader": {
+          "pass": true,
+          "score": 53
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://fraxtal-rpc.publicnode.com",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 69426,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "reth/v2.2.0-7680d6d/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 40,
+        "p95": 64,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 50000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32701: exceed maximum block range: 50000",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/frxETH/host"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32603: state at block #42629310 is pruned"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "timeout 15000ms",
+        "eth_maxPriorityFeePerGas": "timeout 15000ms",
+        "eth_getBlockReceipts": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_createAccessList": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_getProof": "socket closed (code 1013 Connection timeout exceeded)",
+        "debug_traceCall": "socket closed (code 1013 Connection timeout exceeded)",
+        "trace_call": "socket closed (code 1013 Connection timeout exceeded)",
+        "txpool_status": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_blobBaseFee": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_newFilter": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 70
+        },
+        "trader": {
+          "pass": true,
+          "score": 79
+        },
+        "reader": {
+          "pass": true,
+          "score": 62
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1013 Connection timeout exceeded))"
+        }
+      }
+    },
+    {
+      "url": "wss://fraxtal.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9325,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 49,
+        "p95": 160,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://252.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 41227,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 137,
+        "p95": 202,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 42729317,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not allowed or not found.",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: Method not allowed or not found.",
+        "eth_newFilter": "-32601: Method not allowed or not found."
+      },
+      "throttledDuringProbes": 19,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 51
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/252",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 243186,
+      "chainId": 252,
+      "chainIdOk": true,
+      "head": 42729390,
+      "latency": {
+        "p50": 95,
+        "p95": 103,
+        "n": 7,
+        "failures": 5
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": true,
+        "revertError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "gasCapError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "logs": {
+        "maxRange": 37,
+        "maxAddresses": 84,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "addressError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "topicOnlyError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "eth_getBlockReceipts": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "debug_traceCall": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "trace_call": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
+        "txpool_status": "-32002: method not supported",
+        "eth_newFilter": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…"
+      },
+      "throttledDuringProbes": 97,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 37"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices))"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices))"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

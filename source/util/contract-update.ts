@@ -36,6 +36,11 @@
 // would quietly point the config back at stale code. If the check cannot tell
 // (no artifact, RPC down), the field is left alone and the run says so.
 //   --trust-ignition   skip the guard and take Ignition's record as-is
+//
+// Sniper (~/Development/sniper, or SNIPER_DIR) keeps the same two contracts in the same place,
+// chain.probe and chain.sniper of its conf/<label>.json5. After this chain's conf is settled, those
+// two fields are copied there with the same textual edit, when sniper has a conf for the chain. Before
+// that (2026-10-22) sniper kept them under live.*, and a redeployed probe had to be copied by hand.
 
 import fs from 'fs';
 import path from 'path';
@@ -47,7 +52,7 @@ import { resolveChain } from './config.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
-type Field = 'contract' | 'executor' | 'probe' | 'liquidator';
+type Field = 'contract' | 'executor' | 'probe' | 'liquidator' | 'sniper';
 
 /** Futures per field, most preferred first. */
 export const FIELD_FUTURES: Record<Field, string[]> = {
@@ -55,6 +60,7 @@ export const FIELD_FUTURES: Record<Field, string[]> = {
     executor: ['FlashArbModule#FlashArbExecutor'],
     probe:    ['TokenProbeModule#TokenProbe'],
     liquidator: ['LiquidationModule#LiquidationExecutor'],
+    sniper:   ['SniperModule#SniperExecutor'],
 };
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -65,6 +71,7 @@ const FUTURE_CONTRACT: Record<string, string> = {
     'FlashArbModule#FlashArbExecutor': 'FlashArbExecutor',
     'TokenProbeModule#TokenProbe': 'TokenProbe',
     'LiquidationModule#LiquidationExecutor': 'LiquidationExecutor',
+    'SniperModule#SniperExecutor': "SniperExecutor"
 };
 
 /**
@@ -91,6 +98,39 @@ export interface Change {
     address: string;
     previous?: string;          // the value that was there, when one was
     action: 'unchanged' | 'replaced' | 'uncommented' | 'inserted';
+}
+
+/** The fields sniper reads from its own conf's chain block. */
+export const SNIPER_FIELDS: Field[] = ['probe', 'sniper'];
+
+/**
+ * Copy chain.probe / chain.sniper from arbitrade's settled conf text into sniper's conf for the
+ * same chain. Pure on the texts: returns sniper's new text (or null: nothing to copy) and the changes.
+ */
+export function mirrorFields(arbText: string, sniperText: string): { text: string; changes: Change[] } | null {
+    const chain = (JSON5.parse(arbText) as { chain?: Record<string, unknown> }).chain ?? {};
+    const updates = SNIPER_FIELDS.filter(f => typeof chain[f] === 'string' && ADDRESS_RE.test(chain[f] as string))
+        .map(f => ({ field: f, future: `arbitrade chain.${f}`, address: chain[f] as string }));
+    if (!updates.length) return null;
+    return applyUpdates(sniperText, updates);
+}
+
+function mirrorToSniper(label: string, arbText: string, dryRun: boolean): void {
+    const dir = process.env.SNIPER_DIR ?? path.resolve(PROJECT_ROOT, '..', 'sniper');
+    const file = path.join(dir, 'conf', `${label}.json5`);
+    if (!fs.existsSync(file)) return;
+    const original = fs.readFileSync(file, 'utf8');
+    const r = mirrorFields(arbText, original);
+    if (!r) return;
+    const check = (JSON5.parse(r.text) as { chain?: Record<string, unknown> }).chain ?? {};
+    for (const c of r.changes) if (check[c.field] !== c.address) throw new Error(`sniper edit check failed: chain.${c.field} reads ${String(check[c.field])}, expected ${c.address} — ${file} NOT written`);
+    const changed = r.changes.filter(c => c.action !== 'unchanged');
+    if (!changed.length) return;
+    console.log(`\nsniper: ${file}${dryRun ? '  (dry run)' : ''}`);
+    for (const c of changed) console.log(`  ${c.field.padEnd(9)} ${c.address}  (${c.action === 'replaced' ? `was ${c.previous}` : c.action === 'uncommented' ? 'uncommented placeholder' : 'added'})`);
+    if (dryRun) return;
+    fs.writeFileSync(file + '.tmp', r.text);
+    fs.renameSync(file + '.tmp', file);
 }
 
 /** Pick, per field, the most preferred future present in deployed_addresses.json. */
@@ -200,7 +240,7 @@ export function applyUpdates(text: string, updates: Array<{ field: Field; future
                 // adds several keeps them together, in order), else after the last
                 // live property — making sure the line we follow ends in a comma.
                 let at = -1;
-                lines.forEach((l, j) => { if (/^[ \t]*(['"]?)(token|contract|executor|probe|liquidator)\1[ \t]*:/.test(l)) at = j; });
+                lines.forEach((l, j) => { if (/^[ \t]*(['"]?)(token|contract|executor|probe|liquidator|sniper)\1[ \t]*:/.test(l)) at = j; });
                 if (at < 0) {
                     for (let j = lines.length - 1; j >= 0; j--) if (/^[ \t]*[\w'"]+[ \t]*:/.test(lines[j])) { at = j; break; }
                 }
@@ -227,7 +267,8 @@ function usage(msg?: string): never {
     if (msg) console.error(msg);
     console.error('Usage: yarn contract-update <chain> [--dry-run] [--deployment <id>]');
     console.error('  --deployment <id>   Ignition deployment id (default chain-<chainId>)');
-    console.error('  --set <field>=<0x…> Set one field (contract|executor|probe|liquidator) to this address instead');
+    console.error('  --set <field>=<0x…> Set one field (contract|executor|probe|liquidator|sniper) to this address instead');
+    console.error('  (chain.probe and chain.sniper are copied into sniper\'s conf/<chain>.json5 too, when it has one; SNIPER_DIR to point elsewhere)');
     console.error('  --trust-ignition    Skip the check that refuses to replace current code with Ignition\'s record');
     process.exit(1);
 }
@@ -245,8 +286,8 @@ async function main() {
     const setArg = si >= 0 ? args[si + 1] : undefined;
     let setUpdate: { field: Field; future: string; address: string } | null = null;
     if (si >= 0) {
-        const m = /^(contract|executor|probe|liquidator)=(0x[0-9a-fA-F]{40})$/.exec(setArg ?? '');
-        if (!m) usage('--set needs <field>=<address>, field one of contract, executor, probe, liquidator');
+        const m = /^(contract|executor|probe|liquidator|sniper)=(0x[0-9a-fA-F]{40})$/.exec(setArg ?? '');
+        if (!m) usage('--set needs <field>=<address>, field one of contract, executor, probe, liquidator, sniper');
         setUpdate = { field: m[1] as Field, future: `--set ${m[1]}`, address: m[2] };
     }
 
@@ -301,7 +342,7 @@ async function main() {
             console.log(`  ${field.padEnd(9)} — nothing deployed (${FIELD_FUTURES[field].join(' / ')}); left as is`);
         }
     }
-    if (updates.length === 0) { console.log('\nNothing to update.'); return; }
+    if (updates.length === 0) { console.log('\nNothing to update.'); mirrorToSniper(meta.label, original, dryRun); return; }
 
     const { text, changes } = applyUpdates(original, updates);
 
@@ -325,13 +366,14 @@ async function main() {
         }
     }
 
-    if (text === original) { console.log('\nNo changes.'); return; }
-    if (dryRun) { console.log('\nDry run: file not written.'); return; }
+    if (text === original) { console.log('\nNo changes.'); mirrorToSniper(meta.label, original, dryRun); return; }
+    if (dryRun) { console.log('\nDry run: file not written.'); mirrorToSniper(meta.label, text, dryRun); return; }
 
     const tmp = confPath + '.tmp';
     fs.writeFileSync(tmp, text);
     fs.renameSync(tmp, confPath);
     console.log(`\nUpdated ${path.relative(PROJECT_ROOT, confPath)}.`);
+    mirrorToSniper(meta.label, text, dryRun);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

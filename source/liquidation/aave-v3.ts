@@ -52,6 +52,7 @@ const PROVIDER_IFACE = new Interface([
 const ORACLE_IFACE = new Interface([
     'function BASE_CURRENCY_UNIT() view returns (uint256)',
     'function getAssetsPrices(address[] assets) view returns (uint256[])',
+    'function getAssetPrice(address asset) view returns (uint256)',
 ]);
 
 const ERC20_IFACE = new Interface([
@@ -257,11 +258,27 @@ export async function loadEModeBonuses(provider: JsonRpcProvider, market: AaveMa
 export async function readPrices(provider: JsonRpcProvider, market: AaveMarket, blockTag?: number): Promise<Map<string, bigint>> {
     const assets = market.reserves.map(r => getAddress(r.asset));
     const [r] = await multicall3(provider, [{
-        target: market.oracle, allowFailure: false,
+        target: market.oracle, allowFailure: true,
         callData: ORACLE_IFACE.encodeFunctionData('getAssetsPrices', [assets]),
     }], blockTag);
-    const prices = ORACLE_IFACE.decodeFunctionResult('getAssetsPrices', r.returnData)[0] as bigint[];
-    return new Map(market.reserves.map((res, i) => [res.asset, prices[i]]));
+    if (r.success) {
+        const prices = ORACLE_IFACE.decodeFunctionResult('getAssetsPrices', r.returnData)[0] as bigint[];
+        return new Map(market.reserves.map((res, i) => [res.asset, prices[i]]));
+    }
+    // One reserve's feed reverting fails getAssetsPrices for all of them: dTrinity
+    // on Sonic (sfrxUSD's feed reverts with a custom error) crashed the watcher
+    // on its first sweep. Read each reserve on its own and leave out the ones
+    // that fail. The Pool reverts on those too, so their accounts can't be read
+    // or liquidated until the feed is back, but every other account can.
+    const each = await multicall3(provider, market.reserves.map(res => ({
+        target: market.oracle, allowFailure: true,
+        callData: ORACLE_IFACE.encodeFunctionData('getAssetPrice', [getAddress(res.asset)]),
+    })), blockTag);
+    const out = new Map<string, bigint>();
+    market.reserves.forEach((res, i) => {
+        if (each[i].success && each[i].returnData.length >= 66) out.set(res.asset, ORACLE_IFACE.decodeFunctionResult('getAssetPrice', each[i].returnData)[0] as bigint);
+    });
+    return out;
 }
 
 // --- accounts ----------------------------------------------------------------

@@ -1,0 +1,415 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 2345,
+  "name": "GOAT Network",
+  "testedAt": "2026-10-18T09:25:07.827Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xfb24fc6ffa67c2dc59321e5db181c6b80a223b87",
+      "topic": "0xd036ef843065e771a1843d7069302c165f7914773a82e12e06a78ebe8fc54fa4",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 16177910
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.goat.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 17099,
+      "chainId": 2345,
+      "chainIdOk": true,
+      "head": 16177918,
+      "client": "Geth/v0.4.2-goat-5b7af19e-20260317/linux-amd64/go1.25.8",
+      "latency": {
+        "p50": 49,
+        "p95": 63,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: historical state c965f98d392d8a2862dbfea18d6390296d62110cd7ce596ecb117f241b631e2b is not available"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 93
+        },
+        "reader": {
+          "pass": true,
+          "score": 81
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://goat-mainnet-alpha.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 27906,
+      "chainId": 2345,
+      "chainIdOk": true,
+      "head": 16177918,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 51,
+        "p95": 284,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 16177909,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "19: Temporary internal error. Please retry, trace-id: 51c85f1690643e0f75022c619b0fe0f8",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 61
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/goat_mainnet",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 19639,
+      "chainId": 2345,
+      "chainIdOk": true,
+      "head": 16177918,
+      "client": "Geth/v0.4.2-goat-5b7af19e-20260317/linux-amd64/go1.25.8",
+      "latency": {
+        "p50": 70,
+        "p95": 116,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 16177912,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 91
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://goat-mainnet-alpha.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 10762,
+      "chainId": 2345,
+      "chainIdOk": true,
+      "head": 16177918,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 45,
+        "p95": 376,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 76
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/2345",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14627,
+      "chainId": 2345,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

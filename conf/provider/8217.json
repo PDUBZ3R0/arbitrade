@@ -1,0 +1,832 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 8217,
+  "name": "Kaia Mainnet",
+  "testedAt": "2026-10-17T20:45:43.793Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xd077a400968890eacc75cdc901f0356c943e4fdb",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x3f09988faddccf7d8e3cb3ee6a00b082a80f963088476c31b034d6fe8fb75fb5",
+      "block": 230066919
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://public-en.node.kaia.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 41658,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230067170,
+      "client": "Klaytn/v2.2.2a/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 227,
+        "p95": 242,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 299946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: gas limit 1000000000 exceeds the upper limit 500000000"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 5623,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "resultCapError": "-32000: query returned more than 10000 results"
+      },
+      "history": {
+        "stateDepth": 230066920,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: there is no account corresponding to the given address",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 75
+        },
+        "reader": {
+          "pass": true,
+          "score": 85
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://kaia.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 46753,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230067170,
+      "client": "Klaytn/v2.2.2/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 181,
+        "p95": 361,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 299946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: gas limit 1000000000 exceeds the upper limit 500000000"
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 200,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1778,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "addressError": "-32602: Invalid params getLogs scan work too large: addresses x blocks exceeds this endpoint's cap; narrow the block range or split the address list",
+        "resultCapError": "-32602: request is too complex/large, try lesser input"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node ac89a5afc829c6dea971e7e533d5a6d33c2554142663f946da81e3e711e3ce6c (path )"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: there is no account corresponding to the given address",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": true,
+          "score": 79
+        },
+        "reader": {
+          "pass": true,
+          "score": 87
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/kaia",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 28353,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230067170,
+      "client": "Klaytn/v2.2.2/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 119,
+        "p95": 207,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 299946876,
+        "stateOverride": true,
+        "gasCapError": "-32000: gas limit 1000000000 exceeds the upper limit 500000000"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 230066943,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: there is no account corresponding to the given address",
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 69
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 71
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://8217.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 118327,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230067170,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 276,
+        "p95": 424,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 299946876,
+        "stateOverride": true,
+        "gasCapError": "-32003: daily request limit reached"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 230066962,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "HTTP 429: You are using a public-good RPC with strict rate limits. To lift these limits you can obta…",
+        "debug_traceCall": "HTTP 429: You are using a public-good RPC with strict rate limits. To lift these limits you can obta…",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 49,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 54
+        },
+        "reader": {
+          "pass": true,
+          "score": 57
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://alpha-hardworking-orb.kaia-mainnet.quiknode.pro",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7452,
+      "error": "-32003: daily request limit reached",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32003: daily request limit reached"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32003: daily request limit reached"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32003: daily request limit reached"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32003: daily request limit reached"
+        }
+      }
+    },
+    {
+      "url": "https://kaia-public.nodies.app",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 205,
+      "error": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access.",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        }
+      }
+    },
+    {
+      "url": "https://go.getblock.io/d7094dbd80ab474ba7042603fe912332",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 435,
+      "error": "HTTP 401: Unknown token",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/8217",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22221,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/klay",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 461,
+      "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        }
+      }
+    },
+    {
+      "url": "https://klaytn.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14900,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 230067170,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://klaytn.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16257,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230067151,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 66,
+        "p95": 135,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "19: Temporary internal error. Please retry, trace-id: 8056ad47c9436d0091e705d3ce960082",
+        "gasCapError": "19: Temporary internal error. Please retry, trace-id: 5e669952b608fe74adc769b871d11b94",
+        "stateOverrideError": "-32601: the method eth_call does not exist/is not available"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32601: the method eth_getLogs does not exist/is not available",
+        "addressError": "-32601: the method eth_getLogs does not exist/is not available",
+        "topicOnlyError": "-32601: the method eth_getLogs does not exist/is not available",
+        "oldLogsError": "-32601: the method eth_getLogs does not exist/is not available"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32601: the method eth_getBalance does not exist/is not available"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": false,
+        "eth_maxPriorityFeePerGas": false,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32601: the method eth_feeHistory does not exist/is not available",
+        "eth_maxPriorityFeePerGas": "-32601: the method eth_maxPriorityFeePerGas does not exist/is not available",
+        "eth_getBlockReceipts": "-32601: the method eth_getBlockReceipts does not exist/is not available",
+        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
+        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "-32601: the method eth_blockNumber does not exist/is not available"
+      },
+      "headLag": 19,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://kaia.therpc.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 40,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "wss://klaytn.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 380,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "client": "Geth/v10.0.0/drpc",
+      "error": "eth_blockNumber failed",
+      "head": 230067151,
+      "headLag": 19,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 19 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://kaia-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 209798,
+      "chainId": 8217,
+      "chainIdOk": true,
+      "head": 230066959,
+      "client": "Klaytn/v2.2.2/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 58,
+        "p95": 149,
+        "n": 4,
+        "failures": 8
+      },
+      "call": {
+        "revertData": null,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "gasCapError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "stateOverrideError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": 400,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "ECONNRESET",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "oldLogsError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: Method not found: eth_createAccessList",
+        "eth_getProof": "-32000: there is no account corresponding to the given address",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "trace_call": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "txpool_status": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_blobBaseFee": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_newFilter": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …"
+      },
+      "throttledDuringProbes": 78,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

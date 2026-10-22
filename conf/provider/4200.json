@@ -1,0 +1,537 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 4200,
+  "name": "Merlin Mainnet",
+  "testedAt": "2026-10-18T09:29:14.087Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://merlin.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 31706,
+      "chainId": 4200,
+      "chainIdOk": true,
+      "head": 32447263,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 57,
+        "p95": 348,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946878,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 32447252,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "19: Temporary internal error. Please retry, trace-id: 54c917c564c531938a2f91049fbb4822",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.merlinchain.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 32989,
+      "chainId": 4200,
+      "chainIdOk": true,
+      "head": 32447264,
+      "client": "cdk-erigon/v2.0.3/linux-amd64/go1.21.5",
+      "latency": {
+        "p50": 260,
+        "p95": 1877,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946878,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: block range too large, max range: 2000"
+      },
+      "history": {
+        "stateDepth": 32447253,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch limit 100 exceeded (can increase by --rpc.batch.limit). Requested batch of size: 500",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": true,
+          "score": 63
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://4200.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34607,
+      "chainId": 4200,
+      "chainIdOk": true,
+      "head": 32447264,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 111,
+        "p95": 316,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946878,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 32447255,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 4,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 71
+        },
+        "reader": {
+          "pass": true,
+          "score": 53
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://merlin.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 11219,
+      "chainId": 4200,
+      "chainIdOk": true,
+      "head": 32447263,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 44,
+        "p95": 331,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946878,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 64
+        },
+        "reader": {
+          "pass": true,
+          "score": 40
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-merlin.rockx.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 16,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://merlin-mainnet-enterprise.unifra.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 8,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "https://endpoints.omniatech.io/v1/merlin/mainnet/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 197,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://merlin.blockpi.network/v1/rpc/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 696,
+      "error": "-32000: Due to the high consumption or high frequency of Remote Procedure Call (RPC) requests, you have exceeded the level limit. Upgrade your plan at https://b…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Due to the high consumption or high frequency of Remote Procedure Call (RPC) requests, you have exceeded the level limit. Upgrade your plan at https://b…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Due to the high consumption or high frequency of Remote Procedure Call (RPC) requests, you have exceeded the level limit. Upgrade your plan at https://b…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Due to the high consumption or high frequency of Remote Procedure Call (RPC) requests, you have exceeded the level limit. Upgrade your plan at https://b…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: Due to the high consumption or high frequency of Remote Procedure Call (RPC) requests, you have exceeded the level limit. Upgrade your plan at https://b…"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/4200",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7235,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    }
+  ]
+}

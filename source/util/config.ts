@@ -60,6 +60,7 @@ export type ChainMeta = {
     contract?: string;         // deployed YoBatches address
     executor?: string;         // deployed FlashArbExecutor address (piece 6) — set after `yarn deploy-flasharb <chain>`
     probe?: string;            // deployed TokenProbe address — set after `yarn deploy-probe <chain>` (used by `yarn probe`)
+    sniper?: string;           // deployed SniperExecutor (~/Development/sniper's real trades) — `SNIPER_OWNER=0x… yarn deploy sniper <chain>`
     liquidator?: string;       // deployed LiquidationExecutor — `yarn deploy-liquidator <chain>` then `yarn contract-update <chain>`
     threads?: number;
     interval?: number;
@@ -647,11 +648,9 @@ export function resolveChain(arg: string): ChainMeta {
  */
 export function loadChainConfig(chainArg: string): ChainConfig {
     const meta = resolveChain(chainArg);
-    const p = path.join(CONF_DIR, `${meta.label}.json5`);
-    if (!fs.existsSync(p)) {
-        throw new Error(`No config file for chain "${meta.name}" at ${p} (label: "${meta.label}")`);
-    }
-    const raw = JSON5.parse(fs.readFileSync(p, 'utf-8')) as RawChainConfig;
+    let p = path.join(CONF_DIR, `${meta.label}.json5`);
+    
+    const raw = (!fs.existsSync(p) ? meta : JSON5.parse(fs.readFileSync(p, 'utf-8'))) as RawChainConfig;
 
     // Merge registry defaults with per-chain overrides. Per-chain wins for
     // fields both specify. But name/label always come from the registry (they're

@@ -1,0 +1,4118 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 56,
+  "name": "BNB Smart Chain Mainnet",
+  "testedAt": "2026-10-15T23:30:30.912Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://bsc-mainnet.public.blastapi.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 75215,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "reth-bsc/v0.1.1-457f81a/linux",
+      "latency": {
+        "p50": 54,
+        "p95": 64,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32000: Your request has been rate-limited due to unusually high traffic on the Alchemy public API. Consider creating a free Alchemy account or upgrading to a p…",
+        "addressError": "-32000: Your request has been rate-limited due to unusually high traffic on the Alchemy public API. Consider creating a free Alchemy account or upgrading to a p…",
+        "topicOnlyError": "-32000: Your request has been rate-limited due to unusually high traffic on the Alchemy public API. Consider creating a free Alchemy account or upgrading to a p…",
+        "oldLogsError": "-32000: Your request has been rate-limited due to unusually high traffic on the Alchemy public API. Consider creating a free Alchemy account or upgrading to a p…"
+      },
+      "history": {
+        "stateDepth": 127873830,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "HTTP 401: Only core evm requests are allowed.",
+        "eth_createAccessList": "HTTP 401: Only core evm requests are allowed.",
+        "debug_traceCall": "HTTP 401: Only core evm requests are allowed.",
+        "trace_call": "HTTP 401: Only core evm requests are allowed.",
+        "txpool_status": "HTTP 401: Only core evm requests are allowed.",
+        "eth_blobBaseFee": "HTTP 401: Only core evm requests are allowed.",
+        "eth_newFilter": "HTTP 401: Only core evm requests are allowed."
+      },
+      "throttledDuringProbes": 21,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 96
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 79324,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 53,
+        "p95": 107,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 50000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: exceed maximum block range: 50000",
+        "resultCapError": "-32005: logs count exceeds the limit 50000"
+      },
+      "history": {
+        "stateDepth": 127873551,
+        "archive": true
+      },
+      "batch": {
+        "max": 50,
+        "error": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, please check out https://meganode.nodereal.io/",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…",
+        "eth_maxPriorityFeePerGas": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…",
+        "eth_getBlockReceipts": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…",
+        "eth_createAccessList": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…",
+        "eth_getProof": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…",
+        "debug_traceCall": "-32602: please assign a tracer, such as `callTracer`",
+        "trace_call": "-32005: You have reached the maximum API usage limit of public. If you need higher throughput, pleas…"
+      },
+      "throttledDuringProbes": 23,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 93
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 87
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 53145,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874792,
+      "client": "Geth/v1.7.8/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 163,
+        "p95": 185,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 46366,
+        "maxAddresses": 795,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 178,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds block range limit reduce the block range; this endpoint caps the getLogs span",
+        "addressError": "-32602: request is too complex/large, try lesser input",
+        "resultCapError": "-32602: invalid argument 0: missing required field 'address' for log filter"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32600: batch has 500 payloads, limit is 100 on this public endpoint. Split the batch, or contact directors@pokt.foundation for higher limits. {\"max_batch_paylo…",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 92
+        },
+        "trader": {
+          "pass": true,
+          "score": 82
+        },
+        "reader": {
+          "pass": true,
+          "score": 74
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://bsc.api.pocket.network",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 81045,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-cdb7548b-20260811/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 185,
+        "p95": 194,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 582942,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32000: failed to process log index epoch 3541: failed to retrieve log at index 237633855668: failed to retrieve receipts for block 127272409 containing searche…",
+        "resultCapError": "-32602: invalid argument 0: missing required field 'address' for log filter",
+        "combinedError": "-32000: Execution timeout exceeded"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32603: state at block #127774474 is pruned"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 34,
+        "logs": 4684,
+        "lastHeadAgeSec": 0.1,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": true,
+          "score": 67
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 78
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed.bnbchain.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 15977,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7-6c154fb3-20260723/linux-amd64/go1.26.5",
+      "latency": {
+        "p50": 40,
+        "p95": 56,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed1.defibit.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 15921,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 41,
+        "p95": 49,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed1.ninicoin.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16051,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 41,
+        "p95": 53,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed2.defibit.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 15968,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 44,
+        "p95": 59,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed3.defibit.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16020,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 45,
+        "p95": 56,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed4.defibit.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16179,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 45,
+        "p95": 59,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed2.ninicoin.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16036,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 49,
+        "p95": 70,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed3.ninicoin.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16146,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7-6c154fb3-20260723/linux-amd64/go1.26.5",
+      "latency": {
+        "p50": 51,
+        "p95": 66,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed4.ninicoin.io",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16066,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 47,
+        "p95": 58,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed1.bnbchain.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 15989,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 40,
+        "p95": 68,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed3.bnbchain.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16014,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 40,
+        "p95": 55,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed2.bnbchain.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16436,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 51,
+        "p95": 59,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-dataseed4.bnbchain.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16584,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7-6c154fb3-20260723/linux-amd64/go1.26.5",
+      "latency": {
+        "p50": 59,
+        "p95": 100,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://binance.nodereal.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16990,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7-6c154fb3-20260723/linux-amd64/go1.26.5",
+      "latency": {
+        "p50": 45,
+        "p95": 62,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32005: limit exceeded",
+        "addressError": "-32005: limit exceeded",
+        "topicOnlyError": "-32005: limit exceeded",
+        "oldLogsError": "-32005: limit exceeded"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32000: batch length does not support more than 100",
+        "nullIdErrors": true
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32005: limit exceeded",
+        "debug_traceCall": "-32002: the resource debug_traceCall is not available.",
+        "trace_call": "-32002: the resource trace_call is not available."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 90
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 21706,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "sentio-super-node/v2.583.0-b678fb8db9a28646ecb79254a9df67350bdff5a4/linux-amd64/",
+      "latency": {
+        "p50": 100,
+        "p95": 107,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 18,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32000: block span 49999 of range [127824426, 127874425] exceeds the limit 10000",
+        "resultCapError": "-32000: too many results: the result count exceeds the limit, please narrow the query block range"
+      },
+      "history": {
+        "stateDepth": 127874429,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 85
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 79
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-bsc.48.club",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 42689,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-ac3146c8-20261007/linux-amd64/go1.25.5",
+      "latency": {
+        "p50": 47,
+        "p95": 64,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: exceed maximum block range: 5000",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 10,
+        "error": "HTTP 429",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 3e0177268ee563314bcab4bb933c940f2c6d950e4f879fc9a0a4808e28d6c6bc (path ) s…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 71
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 67
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://0.48.club",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 61456,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-ac3146c8-20261007/linux-amd64/go1.25.5",
+      "latency": {
+        "p50": 48,
+        "p95": 73,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: exceed maximum block range: 5000",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 10,
+        "error": "HTTP 429",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 9e793eb1e7a6b3700248c8761afd4749785cef12ff8c1434c8fc35efc0b4003b (path ) s…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 71
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 67
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.rpc.blxrbdn.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 150006,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.7-ccac555e-20261014/linux-amd64/go1.25.0",
+      "latency": {
+        "p50": 49,
+        "p95": 129,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: exceed maximum block range: 5000",
+        "resultCapError": "-32002: request timed out",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 053bd76a2aa7f2fe583f06df20318c968bf82eb168e87fbc04760b4125a24de2 (path ) s…",
+        "debug_traceCall": "HTTP 403: <html><body><h1>403 Forbidden</h1> Request forbidden by administrative rules. </body></htm…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 71
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 81
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.blockrazor.xyz",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25468,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-76bdf58a-20260924/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 41,
+        "p95": 51,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 26,
+        "maxAddresses": 10,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: log query range must not exceed 25 blocks",
+        "addressError": "-32000: exceed max addresses or topics per search position",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 136cac2b8322bcb2224dd59f6ce15e83e59f6c03a475c9dcaa6a98ca1a098b21 (path ) s…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 5,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 26"
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 81
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.blockrazor.xyz/fullprivacy",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25356,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-76bdf58a-20260924/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 44,
+        "p95": 60,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 26,
+        "maxAddresses": 10,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: log query range must not exceed 25 blocks",
+        "addressError": "-32000: exceed max addresses or topics per search position",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 0a1736375a760fbe649f7ba6d0ed4120278cd692d737d8568d4e5b2684b7b141 (path ) s…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 5,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 26"
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 81
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.blockrazor.xyz/maxbackrun",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25658,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-76bdf58a-20260924/linux-amd64/go1.25.3",
+      "latency": {
+        "p50": 51,
+        "p95": 70,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 26,
+        "maxAddresses": 10,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: log query range must not exceed 25 blocks",
+        "addressError": "-32000: exceed max addresses or topics per search position",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 0eea85888d0ea34dfd335b64591b6bc62b2f594ce0c060940adfb21d3abfa9f5 (path ) s…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available"
+      },
+      "throttledDuringProbes": 5,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range 26"
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 81
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-rpc.publicnode.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 64794,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "reth-bsc/v0.1.2-dirty-968d07d/linux",
+      "latency": {
+        "p50": 60,
+        "p95": 76,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 9576,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/bnb/host",
+        "oldLogsError": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32602: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 63
+        },
+        "trader": {
+          "pass": true,
+          "score": 80
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/bsc",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 86480,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874788,
+      "client": "reth-bsc/v0.1.1-457f81a/linux",
+      "latency": {
+        "p50": 159,
+        "p95": 324,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 999946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32602: param error; The block range is too large. Consider narrowing it down to within 10,000 blocks. {\"traceId\":\"1a141e530a97c831\"}",
+        "resultCapError": "-32701: Please specify an address in your request",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": 127874459,
+        "archive": true
+      },
+      "batch": {
+        "max": 500,
+        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a141e5e508ef421\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32602: historical state for this block is not available on this endpoint (archive data required)"
+      },
+      "throttledDuringProbes": 34,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 4,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 63
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 4 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://public-bsc.nownodes.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 292118,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v1.7.8-cdb7548b-20260811/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 179,
+        "p95": 195,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 673171,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "timeout 30000ms",
+        "resultCapError": "-32002: request timed out",
+        "oldLogsError": "-32000: header not found"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32000: historical state 8534b2fe68ab0ae296123b206940aede548bb34295aeb126d77be1e19008efa1 is not available"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 79
+        },
+        "trader": {
+          "pass": true,
+          "score": 57
+        },
+        "reader": {
+          "pass": true,
+          "score": 68
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-bsc.blockmachine.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 72878,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "blockmachine-gateway/v0.1.0",
+      "latency": {
+        "p50": 149,
+        "p95": 171,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 10000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: block range exceeds maximum allowed (max=10000, requested=50000) — the range is INCLUSIVE, so page with to = from + 9999 (a 10000-block span means to - …",
+        "resultCapError": "-32003: response too large: 90737814 bytes exceeds the 52428800 byte limit — retry with a block range of at most 333 blocks (you asked for 1000) — the range is …"
+      },
+      "history": {
+        "stateDepth": 127874480,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792106940,\"retry_after_ms\":30000,\"unit\":\"cu_per_minute\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792106940,\"retry_after_ms\":21000,\"uni…",
+        "trace_call": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792106940,\"retry_after_ms\":13000,\"uni…",
+        "txpool_status": "-32029: rate limit exceeded {\"limit\":60,\"remaining\":0,\"reset\":1792106940,\"retry_after_ms\":5000,\"unit…"
+      },
+      "throttledDuringProbes": 15,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "retryAfter": "44"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 77
+        },
+        "trader": {
+          "pass": true,
+          "score": 60
+        },
+        "reader": {
+          "pass": true,
+          "score": 55
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://56.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 61206,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 124,
+        "p95": 281,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 599946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 178,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "resultCapError": "HTTP 413: Request Too Large "
+      },
+      "history": {
+        "stateDepth": 127874654,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call"
+      },
+      "throttledDuringProbes": 2,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "retryAfter": "0"
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 65
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 71
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://bsc-rpc.publicnode.com",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 74387,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "reth-bsc/v0.1.2-dirty-968d07d/linux",
+      "latency": {
+        "p50": 48,
+        "p95": 65,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 50000,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32701: exceed maximum block range: 50000",
+        "addressError": "-32602: Request blocked",
+        "resultCapError": "-32701: Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/bnb/host"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32603: state at block #127773730 is pruned"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "timeout 15000ms",
+        "eth_maxPriorityFeePerGas": "timeout 15000ms",
+        "eth_getBlockReceipts": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_createAccessList": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_getProof": "socket closed (code 1013 Connection timeout exceeded)",
+        "debug_traceCall": "socket closed (code 1013 Connection timeout exceeded)",
+        "trace_call": "socket closed (code 1013 Connection timeout exceeded)",
+        "txpool_status": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_blobBaseFee": "socket closed (code 1013 Connection timeout exceeded)",
+        "eth_newFilter": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1013 Connection timeout exceeded)"
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 70
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 61
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1013 Connection timeout exceeded))"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-rpc.blockreq.com/v1/rpc/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 57000,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874789,
+      "client": "reth-bsc/v0.1.2-968d07d/linux",
+      "latency": {
+        "p50": 105,
+        "p95": 125,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": false,
+        "rangeError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access.",
+        "resultCapError": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+        "combinedError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access.",
+        "oldLogsError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "batch": {
+        "max": 50,
+        "error": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "debug_traceCall": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "trace_call": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "txpool_status": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "eth_newFilter": "-32000: RPC Endpoint Key access denied"
+      },
+      "throttledDuringProbes": 10,
+      "rate": {
+        "cleanRps": 20,
+        "limitedAt": 40,
+        "sent": 150,
+        "retryAfter": "4"
+      },
+      "headLag": 3,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 54
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 3 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 97077,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 65,
+        "p95": 160,
+        "n": 11,
+        "failures": 1
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "oldLogsError": "-32000: Your request has been rate-limited due to unusually high traffic on the Alchemy public API. Consider creating a free Alchemy account or upgrading to a p…"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "19: Temporary internal error. Please retry, trace-id: cadd1d46d0c077e87109d4eb4325c45e"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 42,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 40
+        },
+        "trader": {
+          "pass": true,
+          "score": 64
+        },
+        "reader": {
+          "pass": true,
+          "score": 39
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://bnb.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 196827,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "client": "Geth/v1.7.7/linux-amd64/go1.25.12",
+      "latency": {
+        "p50": 46,
+        "p95": 174,
+        "n": 11,
+        "failures": 1
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": 49946876,
+        "stateOverride": true,
+        "revertError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "gasCapError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "addressError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "topicOnlyError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "oldLogsError": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "-32000: not supported"
+      },
+      "batch": {
+        "max": 0,
+        "error": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_createAccessList": "-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate…",
+        "eth_getProof": "-32000: missing trie node 25e9f5dd6237fcd286fb4aed2bf451bd721d8a63143e1da08f4fabbcc5b7a224 (path ) s…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32403: Method is not allowed."
+      },
+      "throttledDuringProbes": 85,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32029: Too Many Requests, Please apply an OnFinality API key or contact us to receive a higher rate limit)"
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.nodeflare.app/bnb/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 35,
+      "error": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: <!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]> <html class"
+        }
+      }
+    },
+    {
+      "url": "https://xrpc.cl/bsc",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 4179,
+      "error": "-32000: XRPC Cluster: Backend bsc node currently syncing and fallbacks busy",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend bsc node currently syncing and fallbacks busy"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend bsc node currently syncing and fallbacks busy"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend bsc node currently syncing and fallbacks busy"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32000: XRPC Cluster: Backend bsc node currently syncing and fallbacks busy"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.hostdefi.com/api/rpc/bsc",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7125,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/56",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7229,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    },
+    {
+      "url": "wss://rpc-bsc.48.club/ws",
+      "kind": "ws",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 187,
+      "error": "connect failed: Unexpected server response: 400",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 400",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 400"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 400"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 400"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 400"
+        }
+      }
+    },
+    {
+      "url": "https://binance-smart-chain-public.nodies.app",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 158,
+      "error": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access.",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 403: The network of this endpoint requires a paid subscription plan. Subscribe at https://nodies.app to get access."
+        }
+      }
+    },
+    {
+      "url": "https://go.getblock.io/cc778cdbdf5c4b028ec9456e0e6c0cf3",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 796,
+      "error": "HTTP 401: Unknown token",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 401: Unknown token"
+        }
+      }
+    },
+    {
+      "url": "https://bscrpc.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 169,
+      "error": "0: \"message: API key disabled, json-rpc code: -32051, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, json-rpc code: -32051, rest code: 403\""
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/bnb",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 172,
+      "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.blockpi.network/v1/rpc/private",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 179,
+      "error": "100021: Apikey not found",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "100021: Apikey not found"
+        }
+      }
+    },
+    {
+      "url": "https://bsc.meowrpc.com",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 52914,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874790,
+      "latency": {
+        "p50": 297,
+        "p95": 320,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32000: The method eth_call is not supported.",
+        "gasCapError": "-32000: The method eth_call is not supported.",
+        "stateOverrideError": "-32000: The method eth_call is not supported."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32000: The method eth_getLogs is not supported.",
+        "addressError": "-32000: The method eth_getLogs is not supported.",
+        "topicOnlyError": "-32000: The method eth_getLogs is not supported.",
+        "oldLogsError": "-32000: The method eth_getLogs is not supported."
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: header not found"
+      },
+      "batch": {
+        "max": 2,
+        "error": "HTTP 400: Bad Request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: missing trie node 4b6461767e392760e05dc4c5f7960e703f186f19fc0e62ccd78eb9b5139ab2c9 (path ) s…",
+        "debug_traceCall": "-32601: The method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: The method trace_call does not exist/is not available",
+        "txpool_status": "-32601: The method txpool_status does not exist/is not available",
+        "eth_newFilter": "-32000: The method eth_newFilter is not supported."
+      },
+      "throttledDuringProbes": 30,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32000: The method eth_call is not supported.)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32000: The method eth_call is not supported.)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://services.tokenview.io/vipapi/nodeservice/bsc?apikey=gVFJX5OyPdc2kHH7youg",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7302,
+      "error": "HTTP 429",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.polysplit.cloud/v1/chain/56",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 359,
+      "error": "HTTP 200: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initia",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initia"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initia"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initia"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 200: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initia"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-mainnet.4everland.org/v1/37fa9972c1b1cd5fab542c7bdd4cde2f",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 288,
+      "error": "40104: Invalid API Key.",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "40104: Invalid API Key."
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "40104: Invalid API Key."
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "40104: Invalid API Key."
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "40104: Invalid API Key."
+        }
+      }
+    },
+    {
+      "url": "wss://bsc-mainnet.4everland.org/ws/v1/37fa9972c1b1cd5fab542c7bdd4cde2f",
+      "kind": "ws",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 287,
+      "error": "connect failed: Unexpected server response: 401",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 401",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        }
+      }
+    },
+    {
+      "url": "https://api.zan.top/bsc-mainnet",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 182827,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874792,
+      "client": "reth-bsc/v0.1.1-457f81a/linux",
+      "latency": {
+        "p50": 260,
+        "p95": 1335,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "gasCapError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "stateOverrideError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "addressError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "topicOnlyError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "oldLogsError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…"
+      },
+      "history": {
+        "stateDepth": 127873948,
+        "archive": true
+      },
+      "batch": {
+        "max": 500,
+        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a141e3782af88f5\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32012: cu limit exceeded; Method \"eth_getBlockReceipts\" is not available for unregistered accounts.…",
+        "debug_traceCall": "-32012: cu limit exceeded; Method \"debug_traceCall\" is not available for unregistered accounts. Plea…",
+        "trace_call": "-32012: cu limit exceeded; Method \"trace_call\" is not available for unregistered accounts. Please vi…",
+        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a141e3ea1f5e7b9\"}",
+        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a141e3eb160a0f1\"}"
+      },
+      "throttledDuringProbes": 57,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://endpoints.omniatech.io/v1/bsc/mainnet/public",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 285,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.owlracle.info/bsc/70d38ce1826c4a60bb2a8e05a6c8b20f",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 172,
+      "error": "0: true",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: true"
+        }
+      }
+    },
+    {
+      "url": "https://public-bsc-mainnet.fastnode.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 266,
+      "error": "HTTP 404",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404"
+        }
+      }
+    },
+    {
+      "url": "https://api-bsc-mainnet-full.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 10979,
+      "chainId": 56,
+      "chainIdOk": true,
+      "client": "Geth/v1.7.8-cdb7548b-20260811/linux-amd64/go1.25.12",
+      "error": "eth_blockNumber failed",
+      "head": 127874791,
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://bsc.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9224,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874411,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 59,
+        "p95": 165,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 194751,
+      "chainId": 56,
+      "chainIdOk": true,
+      "head": 127874791,
+      "client": "reth-bsc/v0.1.0-unknown/linux",
+      "latency": {
+        "p50": 53,
+        "p95": 59,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "oldLogsError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 127874028,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "trace_call": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 74,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "most requests fail"
+        }
+      }
+    },
+    {
+      "url": "https://bsc-rpc-public.chainpulse.cc",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 432,
+      "error": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-status-c"
+        }
+      }
+    },
+    {
+      "url": "wss://bsc-ws-node.nariox.org",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 10003,
+      "error": "connect timeout 10000ms",
+      "ws": {
+        "connected": false,
+        "error": "connect timeout 10000ms",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect timeout 10000ms"
+        }
+      }
+    }
+  ]
+}

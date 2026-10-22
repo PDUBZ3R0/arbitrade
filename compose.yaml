@@ -15,66 +15,66 @@ x-arb: &arb
 services:
   sonic:
     <<: *arb
-    image: arbitrade:sonic
+    image: sonic
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: sonic } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - sonic-db:/app/db
       - sonic-log:/app/log
 
   gnosis:
     <<: *arb
-    image: arbitrade:gnosis
+    image: gnosis
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: gnosis } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - gnosis-db:/app/db
       - gnosis-log:/app/log
 
   hyperliquid:
     <<: *arb
-    image: arbitrade:hyperliquid
+    image: hyperliquid
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: hyperliquid } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - hyperliquid-db:/app/db
       - hyperliquid-log:/app/log
 
   monad:
     <<: *arb
-    image: arbitrade:monad
+    image: monad
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: monad } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - monad-db:/app/db
       - monad-log/:/app/log
 
   ink:
     <<: *arb
-    image: arbitrade:ink
+    image: ink
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - ink-db:/app/db
       - ink-log:/app/log     
 
   robinhood:
     <<: *arb
-    image: arbitrade:robinhood
+    image: robinhood
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: robinhood } }
     environment:
       MODE: "live"
-      RUN_HOT: 1
+      RUNS: "liquidate"
     volumes:
       - robinhood-db:/app/db
       - robinhood-log:/app/log

@@ -74,6 +74,8 @@ const AP = new Interface([
     'function getPoolDataProvider() view returns (address)',
 ]);
 const ORACLE = new Interface(['function getAssetPrice(address) view returns (uint256)']);
+/** Aave V2's LendingPool names the provider getAddressesProvider(); V3's Pool, ADDRESSES_PROVIDER(). */
+const POOL_V2 = new Interface(['function getAddressesProvider() view returns (address)']);
 
 export type AaveIdentity = CheckResult & {
     addressesProvider?: string;
@@ -101,7 +103,14 @@ export async function checkAavePool(
     if (own === '0x') { c.fail(`no contract at ${pool} — wrong address, or wrong chain`); return out; }
 
     const ap = (await view(provider, pool, POOL, 'ADDRESSES_PROVIDER'))?.[0] as string | undefined;
-    if (!ap) { c.fail(`has code but no ADDRESSES_PROVIDER() — not an Aave V3 Pool`); return out; }
+    if (!ap) {
+        // Magsin (Sonic) and Glyph (Fraxtal) were listed here as V3; both are V2
+        // LendingPools, which the V3 venue can't read (different ReserveData layout).
+        const v2 = (await view(provider, pool, POOL_V2, 'getAddressesProvider'))?.[0] as string | undefined;
+        if (v2) c.fail(`an Aave V2 LendingPool (getAddressesProvider() = ${getAddress(v2)}), not V3 — the aave-v3 venue can't liquidate it`);
+        else c.fail(`has code but no ADDRESSES_PROVIDER() — not an Aave V3 Pool`);
+        return out;
+    }
     const back = (await view(provider, ap, AP, 'getPool'))?.[0] as string | undefined;
     if (!back || getAddress(back) !== pool) { c.fail(`AddressesProvider ${ap} says its pool is ${back ?? '(nothing)'} — stale or wrong address`); return out; }
     out.addressesProvider = getAddress(ap);

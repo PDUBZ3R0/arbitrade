@@ -31,6 +31,7 @@ import { hasSelector } from './bytecode.ts';
 export const PROBE_ABI = [
     'function probe(address root, uint256 amount, address pair, uint16 feeBpsCap)',
     'function probeFrom(uint8 source, address lender, address root, uint256 amount, address pair, uint16 feeBpsCap)',
+    'function probeCLFrom(uint8 source, address lender, address root, uint256 amount, address pool)',
     'error ProbeResult(uint256 buyRequested, uint256 buyReceived, uint256 sellSent, uint256 sellArrived, uint256 rootRequested, uint256 rootReceived)',
     'error ProbeFailed(uint8 stage, bytes reason)',
     'error NotPool()',
@@ -134,6 +135,7 @@ export function classifyRevertData(data: string | null): ProbeOutcome {
                 return withStage('error'); // root token transfer failed — a config problem, not a verdict
             case STAGE.BUY_SWAP:
                 if (r.includes('TRANSFER')) return withStage('honeypot'); // token refused to be sent to a contract
+                if (r === 'TF') return withStage('honeypot');             // the same from a V3 pool's TransferHelper
                 // K-check or size problems: fee above cap, non-CP curve, or dust — inconclusive for the token.
                 // 0xa932492f = K() custom error (seen on Sonic's Shadow pairs).
                 if (/(^|[^A-Z])K($|[^A-Z])/.test(r) || r.includes('INSUFFICIENT') || reason.includes('0xa932492f')) return withStage('pair-rejects');
@@ -239,4 +241,38 @@ export async function probePair(
         }
         return classifyRevertData(data);
     }
+}
+
+// -----------------------------------------------------------------------------
+
+const PROBE_CL_SELECTOR = id('probeCLFrom(uint8,address,address,uint256,address)').slice(2, 10);
+
+/** Whether the TokenProbe at `address` can probe concentrated-liquidity pools (probeCLFrom). */
+export async function probeSupportsCL(provider: JsonRpcProvider, address: string): Promise<boolean> {
+    return hasSelector((await provider.getCode(address)).toLowerCase(), PROBE_CL_SELECTOR);
+}
+
+/**
+ * The round trip through a V3 / CL / Algebra pool (TokenProbe.probeCLFrom): exact-input
+ * swaps each way, no fee cap. Such a pool checks its balance after the swap callback,
+ * so a token taxed on the way in can't be sold there at all: a sell tax is a honeypot
+ * for anyone holding it from this pool, whatever its size.
+ */
+export async function probeCLPool(provider: JsonRpcProvider, probeAddress: string, root: string, pool: string, amount: bigint, via: ProbeLender): Promise<ProbeOutcome> {
+    const probe = new Contract(probeAddress, PROBE_ABI, provider);
+    let r: ProbeOutcome;
+    try {
+        await probe.probeCLFrom.staticCall(via.source, via.lender, root, amount, pool);
+        return { status: 'error', buyTaxBps: null, sellTaxBps: null, stage: null, reason: 'probe call returned without reverting — wrong address?' };
+    } catch (err) {
+        const data = extractRevertData(err);
+        if (!data) {
+            const msg = String((err as any)?.shortMessage ?? (err as any)?.message ?? err).slice(0, 160);
+            return { status: 'error', buyTaxBps: null, sellTaxBps: null, stage: null, reason: `rpc: ${msg}` };
+        }
+        r = classifyRevertData(data);
+    }
+    if (r.status === 'fee-on-transfer' && (r.sellTaxBps ?? 0) > 0)
+        return { ...r, status: 'honeypot', reason: `sell tax ${((r.sellTaxBps ?? 0) / 100).toFixed(2)}%: a concentrated-liquidity pool can't take a taxed sell` };
+    return r;
 }

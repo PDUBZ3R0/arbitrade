@@ -116,15 +116,6 @@
       }
     ]
   },
-  "246": {
-    "chain": "eden",
-    "markets": [
-      {
-        "name": "morpho",
-        "address": "0xF050a2BB0468FF23cF2964AC182196C94D6815C3"
-      }
-    ]
-  },
   "252": {
     "chain": "fraxtal",
     "markets": [
@@ -149,6 +140,15 @@
       {
         "name": "morpho",
         "address": "0xea4f2979D7A99B40404b447Cf71c008e3805760F"
+      }
+    ]
+  },
+  "714": {
+    "chain": "eden",
+    "markets": [
+      {
+        "name": "morpho",
+        "address": "0xF050a2BB0468FF23cF2964AC182196C94D6815C3"
       }
     ]
   },
@@ -208,7 +208,7 @@
       }
     ]
   },
-  "2525": {
+  "1776": {
     "chain": "injective",
     "markets": [
       {
@@ -442,7 +442,7 @@
       }
     ]
   },
-  "685685": {
+  "685689": {
     "chain": "gensyn",
     "markets": [
       {

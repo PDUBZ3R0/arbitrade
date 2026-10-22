@@ -28,6 +28,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import JSON5 from 'json5';
 
 export const PROTOCOLS = ['aave-v3', 'morpho-blue', 'compound-v3'] as const;
 export type Protocol = typeof PROTOCOLS[number];
@@ -57,7 +58,10 @@ export function loadMarkets(protocol: Protocol, opts: { fresh?: boolean } = {}):
     const book: MarketBook = new Map();
     const file = marketsFile(protocol);
     if (fs.existsSync(file)) {
-        const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+        // JSON5: these files are hand-edited, and a trailing comma left by
+        // deleting an entry made JSON.parse throw, which took down verify-markets
+        // and every liquidator that loads the book.
+        const raw = JSON5.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
         for (const [key, v] of Object.entries(raw)) {
             if (!/^\d+$/.test(key)) continue;                 // _doc and friends
             const id = Number(key);
@@ -101,7 +105,7 @@ export function saveMarkets(protocol: Protocol, book: MarketBook): void {
     const file = marketsFile(protocol);
     let extra: Record<string, unknown> = {};
     try {
-        const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+        const raw = JSON5.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
         extra = Object.fromEntries(Object.entries(raw).filter(([k]) => !/^\d+$/.test(k)));
     } catch { /* new file */ }
     // Built by hand: a JS object always lists integer keys first, which would

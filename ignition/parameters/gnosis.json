@@ -1,5 +1,8 @@
 {
   "FlashArbModule": {
     "aavePool": "0xb50201558B00496A145fE76f7424749556E326D8"
+  },
+  "SniperModule": {
+    "owner": "0xeb530E92936137Ac1CAE01f7276307D954E1dF5D"
   }
 }

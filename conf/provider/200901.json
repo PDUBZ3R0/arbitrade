@@ -1,0 +1,447 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 200901,
+  "name": "Bitlayer Mainnet",
+  "testedAt": "2026-10-18T10:02:57.728Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xef63d4e178b3180beec9b0e143e0f37f4c93f4c2",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 26680116
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.bitlayer.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 36498,
+      "chainId": 200901,
+      "chainIdOk": true,
+      "head": 26680134,
+      "client": "Geth/v1.1.10-stable-842b00a4/linux-amd64/go1.21.13",
+      "latency": {
+        "p50": 263,
+        "p95": 653,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 217f431d4591e33cf382194112de110f5ccc7873661724d971de2523602b2e55 (path ) state 0x217f431d4591e33cf382194112de110f5ccc7873661724d971de2…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32000: method FeeHistory not support",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 71
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://ws.bitlayer.org",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 53178,
+      "chainId": 200901,
+      "chainIdOk": true,
+      "head": 26680134,
+      "client": "Geth/v1.1.10-stable-842b00a4/linux-amd64/go1.21.13",
+      "latency": {
+        "p50": 230,
+        "p95": 240,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 217f431d4591e33cf382194112de110f5ccc7873661724d971de2523602b2e55 (path ) state 0x217f431d4591e33cf382194112de110f5ccc7873661724d971de2…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32000: method FeeHistory not support",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 5,
+        "logs": 6,
+        "lastHeadAgeSec": 0.5,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 75
+        },
+        "reader": {
+          "pass": true,
+          "score": 73
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 83
+        }
+      }
+    },
+    {
+      "url": "https://200901.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 31689,
+      "chainId": 200901,
+      "chainIdOk": true,
+      "head": 26680134,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 144,
+        "p95": 295,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 217f431d4591e33cf382194112de110f5ccc7873661724d971de2523602b2e55 (path ) state 0x217f431d4591e33cf382194112de110f5ccc7873661724d971de2…"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32000: method FeeHistory not support",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 1,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 68
+        },
+        "reader": {
+          "pass": true,
+          "score": 51
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.bitlayer-rpc.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 226,
+      "error": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/bitlayer",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 237,
+      "error": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        }
+      }
+    },
+    {
+      "url": "https://rpc-bitlayer.rockx.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 62,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "wss://ws.bitlayer-rpc.com",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 163,
+      "error": "connect failed: Unexpected server response: 401",
+      "ws": {
+        "connected": false,
+        "error": "connect failed: Unexpected server response: 401",
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "connect failed: Unexpected server response: 401"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/200901",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7270,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    }
+  ]
+}

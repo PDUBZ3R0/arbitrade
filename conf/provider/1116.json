@@ -1,0 +1,748 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 1116,
+  "name": "Core Blockchain Mainnet",
+  "testedAt": "2026-10-18T09:16:02.632Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x0000000000000000000000000000000000001000",
+      "topic": "0x93a090ecc682c002995fad3c85b30c5651d7fd29b0be5da9d784a3302aedc055",
+      "topic2": "0xdd84a3fa9ef9409f550d54d6affec7e9c480c878c6ab27b78912a03e1b371c6e",
+      "block": 39667722
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.coredao.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 19384,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12",
+      "latency": {
+        "p50": 59,
+        "p95": 80,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 0465463bf56b4513e96f3af79a8c55a2c035df2ede98b94e13df270d85206e49 (path ) state 0x0465463bf56b4513e96f3af79a8c55a2c035df2ede98b94e13df2…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 74
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://ws.coredao.org",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34627,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12",
+      "latency": {
+        "p50": 51,
+        "p95": 56,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 0465463bf56b4513e96f3af79a8c55a2c035df2ede98b94e13df270d85206e49 (path ) state 0x0465463bf56b4513e96f3af79a8c55a2c035df2ede98b94e13df2…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 5,
+        "logs": 5,
+        "lastHeadAgeSec": 0.9,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 93
+        },
+        "reader": {
+          "pass": true,
+          "score": 75
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 95
+        }
+      }
+    },
+    {
+      "url": "https://core.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22246,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 60,
+        "p95": 166,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 39667726,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 92
+        },
+        "reader": {
+          "pass": true,
+          "score": 60
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/core",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22709,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.0",
+      "latency": {
+        "p50": 113,
+        "p95": 165,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": 39667721,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 86
+        },
+        "reader": {
+          "pass": true,
+          "score": 58
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://core.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9250,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 48,
+        "p95": 152,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 0
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 50
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://1116.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 59190,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667784,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 186,
+        "p95": 275,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 39667731,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call"
+      },
+      "throttledDuringProbes": 24,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 64
+        },
+        "reader": {
+          "pass": true,
+          "score": 43
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://public.1rpc.io/core",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 217,
+      "error": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32001: You've reached the usage limit for your current plan. To continue with higher limits and uninterrupted access, please upgrade here: https://www.1rpc.io/…"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/1116",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14795,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 39667784,
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc-core.icecreamswap.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 743,
+      "error": "HTTP 404: <html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> <hr><center>nginx</c",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: <html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> <hr><center>nginx</c"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: <html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> <hr><center>nginx</c"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: <html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> <hr><center>nginx</c"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: <html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> <hr><center>nginx</c"
+        }
+      }
+    },
+    {
+      "url": "https://api.zan.top/core-mainnet",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 161982,
+      "chainId": 1116,
+      "chainIdOk": true,
+      "head": 39667783,
+      "client": "Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12",
+      "latency": {
+        "p50": 259,
+        "p95": 1272,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "gasCapError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…",
+        "stateOverrideError": "-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "addressError": "-32011: cu limit exceeded; Request too fast per second. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"1a14e4af3abb390d\"}",
+        "topicOnlyError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…",
+        "oldLogsError": "-32012: cu limit exceeded; Method \"eth_getLogs\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId…"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: missing trie node 73e84c1b190497aeb0ee4ac7c2342e7a572dba51840bdebab4d60a38eb50a1fb (path ) state 0x73e84c1b190497aeb0ee4ac7c2342e7a572dba51840bdebab4d60…"
+      },
+      "batch": {
+        "max": 500,
+        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a14e4b961688415\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": false,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32601: method error; invalid method: eth_getBlockReceipts {\"traceId\":\"1a14e4b9a124ef49\"}",
+        "debug_traceCall": "-32012: cu limit exceeded; Method \"debug_traceCall\" is not available for unregistered accounts. Plea…",
+        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a14e4bbe3c1b905\"}",
+        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a14e4bbf2b2df29\"}",
+        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a14e4bc021ee73d\"}"
+      },
+      "throttledDuringProbes": 50,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (-32012: cu limit exceeded; Method \"eth_call\" is not available for unregistered accounts. Please visit https://zan.top/ and register to unlock more. {\"traceId\":\"…)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

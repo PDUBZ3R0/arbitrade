@@ -1,0 +1,1079 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 42220,
+  "name": "Celo Mainnet",
+  "testedAt": "2026-10-17T20:29:00.377Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 80367940
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://celo-json-rpc.stakely.io",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 37481,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368177,
+      "client": "reth/v2.2.0-7680d6d/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 191,
+        "p95": 492,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds max block range 100000",
+        "resultCapError": "-32602: query exceeds max results 20000, retry with the range 80366958-80367486",
+        "combinedError": "-32602: query exceeds max results 20000, retry with the range 80357958-80358492"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32603: state at block #80267963 is pruned"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "trace_call": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 91
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 75
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/celo",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 127643,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368178,
+      "client": "reth/v2.2.0-3cbf835/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 229,
+        "p95": 282,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true,
+        "gasCapError": "0: \"Rate limited\""
+      },
+      "logs": {
+        "maxRange": 73842,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large",
+        "resultCapError": "-32602: query exceeds max results 20000, retry with the range 80366989-80367545",
+        "combinedError": "-32062: Block range is too large"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "0: \"Rate limited\""
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: \"Rate limited\"",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "0: \"Rate limited\"",
+        "trace_call": "-32053: API key is not allowed to access method"
+      },
+      "throttledDuringProbes": 52,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 78
+        },
+        "trader": {
+          "pass": true,
+          "score": 47
+        },
+        "reader": {
+          "pass": true,
+          "score": 42
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://forno.celo.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 32801,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368175,
+      "client": "reth/v2.2.0-06140ff/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 120,
+        "p95": 270,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 5000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32602: query exceeds range, retry smaller (max block range 5000, got 9999)",
+        "resultCapError": "-32602: query exceeds max results 20000, retry with the range 80366936-80367466",
+        "combinedError": "-32602: query exceeds max results 20000, retry with the range 80362936-80363439"
+      },
+      "history": {
+        "stateDepth": 80367939,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32603: no state found for block number 80367956",
+        "debug_traceCall": "-32601: rpc method is not whitelisted",
+        "trace_call": "-32601: rpc method is not whitelisted",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: rpc method is not whitelisted"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 4,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 76
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 4 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 72
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/celo",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 27027,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368177,
+      "client": "reth/v2.2.0-7680d6d/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 56,
+        "p95": 71,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 316,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32062: Block range is too large",
+        "resultCapError": "-32602: query exceeds max results 20000, retry with the range 80366939-80367469",
+        "combinedError": "-32602: query exceeds max results 20000, retry with the range 80366939-80367520"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: no state found for block 0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32062: Batch size too large",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32053: API key is not allowed to access method",
+        "trace_call": "-32053: API key is not allowed to access method",
+        "txpool_status": "-32053: API key is not allowed to access method",
+        "eth_newFilter": "-32075: Method disabled"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 68
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 66
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "wss://forno.celo.org/ws",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 36801,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368177,
+      "latency": {
+        "p50": 120,
+        "p95": 124,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": false,
+        "combined": false,
+        "oldLogs": false,
+        "resultCapError": "socket closed (code 1006)",
+        "combinedError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "socket closed (code 1006)"
+      },
+      "batch": {
+        "max": 0,
+        "error": "socket closed (code 1006)",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 65
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 46
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no newHeads (socket closed (code 1006))"
+        }
+      }
+    },
+    {
+      "url": "https://42220.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 74105,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368179,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 174,
+        "p95": 372,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 599946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 562,
+        "orTopics": true,
+        "combined": false,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "resultCapError": "HTTP 413: Request Too Large ",
+        "combinedError": "HTTP 413: Request Too Large "
+      },
+      "history": {
+        "stateDepth": 80368102,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: Method not found"
+      },
+      "throttledDuringProbes": 13,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 57
+        },
+        "trader": {
+          "pass": true,
+          "score": 64
+        },
+        "reader": {
+          "pass": true,
+          "score": 65
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/42220",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7324,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.celocolombia.org",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 16071,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 0,
+      "client": "Geth/v2.2.4-stable-aee04e0b/linux-amd64/go1.24.13",
+      "latency": {
+        "p50": 45,
+        "p95": 84,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-32801: no historical RPC is available for this historical (pre-L2) execution request",
+        "gasCapError": "-32801: no historical RPC is available for this historical (pre-L2) execution request",
+        "stateOverrideError": "-32801: no historical RPC is available for this historical (pre-L2) execution request"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": null,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32603: json: unsupported value: NaN",
+        "eth_createAccessList": "-32801: no historical RPC is available for this historical (pre-L2) execution request",
+        "eth_getProof": "-32801: no historical RPC is available for this historical (pre-L2) execution request",
+        "debug_traceCall": "-32801: no historical RPC is available for this historical (pre-L2) execution request",
+        "trace_call": "-32601: the method trace_call does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 80368179,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 80368179 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 80368179 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 80368179 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 80368179 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://celo.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 382,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "client": "Geth/v10.0.0/drpc",
+      "error": "eth_blockNumber failed",
+      "head": 80368171,
+      "headLag": 8,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "wss://celo.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 334,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "client": "Geth/v10.0.0/drpc",
+      "error": "eth_blockNumber failed",
+      "head": 80368171,
+      "headLag": 8,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 8 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://celo.api.onfinality.io/public",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 14849,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://celo-rpc.blockreq.com/v1/rpc/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 68603,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80368034,
+      "client": "reth/v2.2.0-06140ff/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 124,
+        "p95": 314,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access.",
+        "oldLogsError": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "-32601: public endpoint only serves recent blocks (last 1024). Register at blockreq.com for historical / archive access."
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "-32005: Rate limit reached. Visit blockreq.com — sign up to double your free rate limit.",
+        "eth_getProof": "-32602: distance to target block exceeds maximum proof window",
+        "debug_traceCall": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "trace_call": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "txpool_status": "-32601: method not supported on the public endpoint. Register at blockreq.com for full access.",
+        "eth_newFilter": "-32000: RPC Endpoint Key access denied"
+      },
+      "throttledDuringProbes": 11,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "retryAfter": "4"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://celo-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 195728,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80367951,
+      "client": "reth/v2.2.0-06140ff/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 60,
+        "p95": 68,
+        "n": 3,
+        "failures": 9
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "gasCapError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade.",
+        "stateOverrideError": "-16401: Method 'eth_call' is available for paid plans only. To access this feature, please upgrade your subscription at https://co.tatum.io/upgrade."
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "addressError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "topicOnlyError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "oldLogsError": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+      },
+      "history": {
+        "stateDepth": 80367950,
+        "archive": true
+      },
+      "batch": {
+        "max": 0,
+        "error": "0: batch answered with a single object {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": true,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_maxPriorityFeePerGas": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getBlockReceipts": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_createAccessList": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_getProof": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
+        "eth_blobBaseFee": "-32601: Method not found: eth_blobBaseFee",
+        "eth_newFilter": "-32601: Method not found: eth_newFilter"
+      },
+      "throttledDuringProbes": 73,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "60"
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://api-celo-mainnet-archive.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 182856,
+      "chainId": 42220,
+      "chainIdOk": true,
+      "head": 80367978,
+      "latency": {
+        "p50": 216,
+        "p95": 640,
+        "n": 5,
+        "failures": 7
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 4946876,
+        "stateOverride": false,
+        "gasCapError": "HTTP 429: Too Many Requests ",
+        "stateOverrideError": "HTTP 429: Too Many Requests "
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "addressError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "topicOnlyError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "oldLogsError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. "
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "HTTP 429: Too Many Requests "
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 429: Too Many Requests ",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_maxPriorityFeePerGas": "HTTP 429: Too Many Requests ",
+        "eth_getBlockReceipts": "HTTP 429: Too Many Requests ",
+        "eth_createAccessList": "HTTP 429: Too Many Requests ",
+        "eth_getProof": "HTTP 429: Too Many Requests ",
+        "debug_traceCall": "HTTP 403: Your current plan does not support the debug_traceCall method. Please upgrade to a paid pl…",
+        "trace_call": "HTTP 403: Your current plan does not support the trace_call method. Please upgrade to a paid plan at…"
+      },
+      "throttledDuringProbes": 68,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    }
+  ]
+}

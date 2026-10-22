@@ -1,0 +1,110 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 685685,
+  "name": "Gensyn Testnet",
+  "testedAt": "2026-10-17T20:43:59.782Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x0000000071727de22e5e9d8baf0edac6f37da032",
+      "topic": "0xbb47ee3e183a558b1a2ff0874b079f3fc5478b7454eacf2bfc5af2ff5878f972",
+      "topic2": "0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f",
+      "block": 25326608
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://gensyn-testnet.g.alchemy.com/public",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 18270,
+      "chainId": 685685,
+      "chainIdOk": true,
+      "head": 25326617,
+      "client": "op-reth/v2.6.0-da6d3252/x86_64-linux",
+      "latency": {
+        "p50": 56,
+        "p95": 62,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 549946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32600: You can make eth_getLogs requests with up to a 100 block range. Based on your parameters, this block range should work: [0x1827024, 0x1827087]"
+      },
+      "history": {
+        "stateDepth": 25326607,
+        "archive": true
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "-32600: Only core evm requests are allowed.",
+        "eth_createAccessList": "-32600: Only core evm requests are allowed.",
+        "eth_getProof": "-32603: no state found for block number 25326610",
+        "debug_traceCall": "-32600: Only core evm requests are allowed.",
+        "trace_call": "-32600: Only core evm requests are allowed.",
+        "txpool_status": "-32600: Only core evm requests are allowed.",
+        "eth_blobBaseFee": "-32600: Only core evm requests are allowed.",
+        "eth_newFilter": "-32600: Only core evm requests are allowed."
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 93
+        },
+        "reader": {
+          "pass": true,
+          "score": 96
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    }
+  ]
+}

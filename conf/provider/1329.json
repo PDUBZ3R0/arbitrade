@@ -1,0 +1,974 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 1329,
+  "name": "Sei Network",
+  "testedAt": "2026-10-17T20:38:15.789Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x811b2453b1d841f5478affffe32cec24f952a8a7",
+      "topic": "0x132a710a1db18b330e44d0df2cd064c47d3d5e3240ad0386c6ea5641974409e5",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "block": 238172029
+    }
+  },
+  "endpoints": [
+    {
+      "url": "wss://evm-ws.sei-apis.com",
+      "kind": "ws",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 31686,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172442,
+      "client": "Geth/linux-amd64/go1.25.8",
+      "latency": {
+        "p50": 42,
+        "p95": 85,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32601: the method eth_getLogs does not exist/is not available",
+        "addressError": "-32601: the method eth_getLogs does not exist/is not available",
+        "topicOnlyError": "-32601: the method eth_getLogs does not exist/is not available",
+        "oldLogsError": "-32601: the method eth_getLogs does not exist/is not available"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32000: requested height 237172197 has been pruned; earliest available is 237525000"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: eth_getProof is not supported yet; please reach out to the Sei Labs if you need this endpoin…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32000: blobs not supported on this chain",
+        "eth_newFilter": "-32601: the method eth_newFilter does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 33,
+        "logs": 4,
+        "lastHeadAgeSec": 0.2,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 75
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 89
+        }
+      }
+    },
+    {
+      "url": "wss://sei.api.pocket.network",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 77715,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172443,
+      "client": "Geth/linux-amd64/go1.25.14",
+      "latency": {
+        "p50": 170,
+        "p95": 219,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 9946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "-32601: Method not supported",
+        "addressError": "-32601: Method not supported",
+        "topicOnlyError": "-32601: Method not supported",
+        "oldLogsError": "-32601: Method not supported"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32000: requested height 237172123 has been pruned; earliest available is 238071280"
+      },
+      "batch": {
+        "max": 50,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: eth_getProof is not supported yet; please reach out to the Sei Labs if you need this endpoin…",
+        "debug_traceCall": "-32601: the method debug_traceCall does not exist/is not available",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32000: blobs not supported on this chain",
+        "eth_newFilter": "-32601: the method eth_newFilter does not exist/is not available"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 34,
+        "logs": 3,
+        "lastHeadAgeSec": 0,
+        "died": false
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": true,
+          "score": 81
+        },
+        "reader": {
+          "pass": true,
+          "score": 57
+        },
+        "subscriber": {
+          "pass": true,
+          "score": 87
+        }
+      }
+    },
+    {
+      "url": "https://sei.api.pocket.network",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 54365,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172443,
+      "client": "Geth/linux-amd64/go1.25.14",
+      "latency": {
+        "p50": 180,
+        "p95": 244,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 9946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32602: invalid argument 0: block range exceeds maximum 2000",
+        "resultCapError": "-32602: invalid argument 0: missing required field 'address' for log filter",
+        "oldLogsError": "-32000: requested fromBlock 1 is before earliest available block 238072154"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32000: requested height 237172080 has been pruned; earliest available is 238070706"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: eth_getProof is not supported yet; please reach out to the Sei Labs if you need this endpoin…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32000: blobs not supported on this chain"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 66
+        },
+        "trader": {
+          "pass": true,
+          "score": 79
+        },
+        "reader": {
+          "pass": true,
+          "score": 64
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://evm-rpc.sei-apis.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 32123,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172442,
+      "client": "Geth/linux-amd64/go1.25.8",
+      "latency": {
+        "p50": 101,
+        "p95": 205,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: block range too large (5000), maximum allowed is 2000 blocks",
+        "oldLogsError": "-32000: requested fromBlock 1 is before earliest available block 229666772"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: requested height 1 has been pruned; earliest available is 232170438"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": false,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32601: rpc method is not whitelisted",
+        "eth_getProof": "-32601: rpc method is not whitelisted",
+        "debug_traceCall": "-32601: rpc method is not whitelisted",
+        "trace_call": "-32601: rpc method is not whitelisted",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: rpc method is not whitelisted"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 66
+        },
+        "trader": {
+          "pass": true,
+          "score": 75
+        },
+        "reader": {
+          "pass": true,
+          "score": 67
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://sei-evm-rpc.stakeme.pro",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 65254,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172441,
+      "client": "Geth/linux-amd64/go1.25.6",
+      "latency": {
+        "p50": 184,
+        "p95": 241,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 19946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: block range too large (5000), maximum allowed is 2000 blocks",
+        "oldLogsError": "-32000: requested fromBlock 1 is before earliest available block 238082821"
+      },
+      "history": {
+        "stateDepth": 100000,
+        "archive": false,
+        "error": "-32000: requested height 237172073 has been pruned; earliest available is 238069385"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: eth_getProof is not supported yet; please reach out to the Sei Labs if you need this endpoin…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32000: blobs not supported on this chain"
+      },
+      "throttledDuringProbes": 4,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 2,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 66
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 2 blocks behind"
+        },
+        "reader": {
+          "pass": true,
+          "score": 69
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://1329.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 50547,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172442,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 126,
+        "p95": 379,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 99946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "oldLogsError": "-32000: requested fromBlock 1 is before earliest available block 229666772"
+      },
+      "history": {
+        "stateDepth": 238172216,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": false,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32601: rpc method is not whitelisted",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32601: rpc method is not whitelisted"
+      },
+      "throttledDuringProbes": 13,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 52
+        },
+        "trader": {
+          "pass": true,
+          "score": 56
+        },
+        "reader": {
+          "pass": true,
+          "score": 57
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.swiftnodes.io/rpc/sei",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 157052,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172443,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 496,
+        "p95": 1365,
+        "n": 11,
+        "failures": 1
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 9946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1972,
+        "maxAddresses": 5,
+        "topicOnly": true,
+        "topicOnlyMaxRange": null,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: block range too large (5000), maximum allowed is 2000 blocks",
+        "addressError": "19: Temporary internal error. Please retry, trace-id: 1e57e8bfb4ba875166b1b26a1eaa7e3b",
+        "resultCapError": "-32701: Please specify an address in your request",
+        "oldLogsError": "-32000: requested fromBlock 1 is before earliest available block 238072360"
+      },
+      "history": {
+        "stateDepth": 1000,
+        "archive": false,
+        "error": "27: Unknown state. First available state is 237822136"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_getProof": "-32000: eth_getProof is not supported yet; please reach out to the Sei Labs if you need this endpoin…",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: the method txpool_status does not exist/is not available",
+        "eth_blobBaseFee": "-32000: blobs not supported on this chain"
+      },
+      "throttledDuringProbes": 11,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "1"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 44
+        },
+        "trader": {
+          "pass": true,
+          "score": 26
+        },
+        "reader": {
+          "pass": true,
+          "score": 33
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://sei.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 20078,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172373,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 84,
+        "p95": 109,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "19: Temporary internal error. Please retry, trace-id: 0d38343108013aa150bde753bbcbe08e",
+        "gasCapError": "19: Temporary internal error. Please retry, trace-id: 56b3dd2d3e12977f1e432eed01b92eb6",
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "19: Temporary internal error. Please retry, trace-id: 8b4490f80ae6e632724c3a8531b1df7d",
+        "addressError": "19: Temporary internal error. Please retry, trace-id: 4bf79efae8ce4df2609025a900d3c7d9",
+        "topicOnlyError": "19: Temporary internal error. Please retry, trace-id: 844bae5450408391b04196852f083984",
+        "oldLogsError": "19: Temporary internal error. Please retry, trace-id: 23f9721455630aadb5c723c860459aa7"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "19: Temporary internal error. Please retry, trace-id: 5e92d7c8db1c8d69462c78bfb08d652d"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "19: Temporary internal error. Please retry, trace-id: 6610cd06a26493e08622fcb0ce3781bb",
+        "eth_maxPriorityFeePerGas": "19: Temporary internal error. Please retry, trace-id: 27bfc1bb77cb0e764620ee5d006025bf",
+        "eth_getBlockReceipts": "19: Temporary internal error. Please retry, trace-id: 2b153226be5db1acaf3e98989e4580ba",
+        "eth_createAccessList": "19: Temporary internal error. Please retry, trace-id: 58797c099a5dc80c9b2f5835c5ce0b0b",
+        "eth_getProof": "19: Temporary internal error. Please retry, trace-id: 593c86ee96e31c5b1bf2f89caab8582c",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 70,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/1329",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 22143,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "error": "eth_blockNumber failed",
+      "head": 238172442,
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "getLogs range unusable"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no revert data (untested)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://sei-public.nodies.app",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 150,
+      "error": "HTTP 404: Unsupported path: /",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: Unsupported path: /"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: Unsupported path: /"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: Unsupported path: /"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 404: Unsupported path: /"
+        }
+      }
+    },
+    {
+      "url": "https://sei.therpc.io",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 41,
+      "error": "ENOTFOUND",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "ENOTFOUND"
+        }
+      }
+    },
+    {
+      "url": "wss://sei.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 42532,
+      "chainId": 1329,
+      "chainIdOk": true,
+      "head": 238172373,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 47,
+        "p95": 91,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": false,
+        "gasCap": null,
+        "stateOverride": false,
+        "revertError": "19: Temporary internal error. Please retry, trace-id: d005e8dab3c816178b6cb7ea1071b74b",
+        "gasCapError": "19: Temporary internal error. Please retry, trace-id: 5754a6504c60262a58700fbf2cd3c80e",
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "19: Temporary internal error. Please retry, trace-id: dc18ea75edde3c1340b6ce1f95b6c8c2",
+        "addressError": "19: Temporary internal error. Please retry, trace-id: ba7f709b59b92925fc7720fcd8c3bbb3",
+        "topicOnlyError": "19: Temporary internal error. Please retry, trace-id: 55841239c1e2cb23f1dcb2f59aa99cea",
+        "oldLogsError": "19: Temporary internal error. Please retry, trace-id: fb044b470518bf3f02e65e7ed37256dd"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "19: Temporary internal error. Please retry, trace-id: 2faba3e92ef88391fa2fbedd04b81863"
+      },
+      "batch": {
+        "max": 0,
+        "error": "timeout 30000ms",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_feeHistory": "19: Temporary internal error. Please retry, trace-id: e0bcd03c38db5cff4d016db573e68280",
+        "eth_maxPriorityFeePerGas": "19: Temporary internal error. Please retry, trace-id: b69b6713ec52d91696da72203d30a5ab",
+        "eth_getBlockReceipts": "19: Temporary internal error. Please retry, trace-id: b9a7eab2069e11dbaf87b0e2da74cb34",
+        "eth_createAccessList": "19: Temporary internal error. Please retry, trace-id: 53c76be58647a41f841e5a3e500310ae",
+        "eth_getProof": "19: Temporary internal error. Please retry, trace-id: 5bbeb9fd6da90e9b8f6bf7e2f8bfaaa0",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "socket closed (code 1006)",
+        "txpool_status": "socket closed (code 1006)",
+        "eth_blobBaseFee": "socket closed (code 1006)",
+        "eth_newFilter": "socket closed (code 1006)"
+      },
+      "ws": {
+        "connected": true,
+        "heads": 0,
+        "logs": null,
+        "lastHeadAgeSec": null,
+        "died": false,
+        "error": "socket closed (code 1006)"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "error": "socket closed (code 1006)"
+      },
+      "headLag": 70,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 70 blocks behind"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,479 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 2020,
+  "name": "Ronin",
+  "testedAt": "2026-10-17T20:45:03.166Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62",
+      "block": 62400533
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://ronin.gateway.tenderly.co",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 48379,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "head": 62400557,
+      "client": "Tenderly/1.0",
+      "latency": {
+        "p50": 85,
+        "p95": 97,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 499946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 10000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: no state found for block 0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32005: rate limit exceeded",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32005: rate limit exceeded",
+        "trace_call": "-32005: rate limit exceeded",
+        "txpool_status": "-32601: method not found",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 10,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 96
+        },
+        "trader": {
+          "pass": true,
+          "score": 90
+        },
+        "reader": {
+          "pass": true,
+          "score": 80
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://2020.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 40500,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "head": 62400557,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 137,
+        "p95": 233,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 62400536,
+        "archive": true
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call"
+      },
+      "throttledDuringProbes": 10,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 69
+        },
+        "reader": {
+          "pass": true,
+          "score": 51
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://api.roninchain.com/rpc",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34719,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "head": 62400556,
+      "client": "conduit-op-reth/v2.3.1-7e38e02/x86_64-unknown-linux-gnu",
+      "latency": {
+        "p50": 186,
+        "p95": 286,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 198,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: Invalid params requested block range 1000 exceeds the limit of 200; narrow your fromBlock/toBlock"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32603: no state found for block 0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "batch": {
+        "max": 2,
+        "error": "0: batch answered with a single object {\"message\":\"Too many requests\",\"request_id\":\"b5d9d15f37bb506b46d0952941869724\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": null,
+        "eth_newFilter": null
+      },
+      "methodErrors": {
+        "eth_getBlockReceipts": "no result or error in reply {\"message\":\"Method is not whitelist: eth_getBlockReceipts\",\"request_id\":…",
+        "eth_createAccessList": "no result or error in reply {\"message\":\"Method is not whitelist: eth_createAccessList\",\"request_id\":…",
+        "eth_getProof": "no result or error in reply {\"message\":\"Method is not whitelist: eth_getProof\",\"request_id\":\"288bcd6…",
+        "debug_traceCall": "no result or error in reply {\"message\":\"Method is not whitelist: debug_traceCall\",\"request_id\":\"d6b2…",
+        "trace_call": "no result or error in reply {\"message\":\"Method is not whitelist: trace_call\",\"request_id\":\"9e861b054…",
+        "txpool_status": "no result or error in reply {\"message\":\"Method is not whitelist: txpool_status\",\"request_id\":\"677c19…",
+        "eth_blobBaseFee": "no result or error in reply {\"message\":\"Method is not whitelist: eth_blobBaseFee\",\"request_id\":\"8ab9…",
+        "eth_newFilter": "no result or error in reply {\"message\":\"Method is not whitelist: eth_newFilter\",\"request_id\":\"8858a4…"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 10,
+        "limitedAt": 20,
+        "sent": 70,
+        "retryAfter": "8"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 57
+        },
+        "trader": {
+          "pass": true,
+          "score": 56
+        },
+        "reader": {
+          "pass": true,
+          "score": 47
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://ronin.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 215,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "client": "Geth/v10.0.0/drpc",
+      "error": "eth_blockNumber failed",
+      "head": 62400540,
+      "headLag": 17,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "wss://ronin.drpc.org",
+      "kind": "ws",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 467,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "client": "Geth/v10.0.0/drpc",
+      "error": "eth_blockNumber failed",
+      "head": 62400540,
+      "headLag": 17,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 17 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/2020",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7326,
+      "error": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …"
+        }
+      }
+    },
+    {
+      "url": "https://ronin-mainnet.gateway.tatum.io",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7403,
+      "error": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests per minu"
+        }
+      }
+    },
+    {
+      "url": "https://api-gateway.skymavis.com/rpc?apikey=9aqYLBbxSC6LROynQJBvKkEIsioqwHmr",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 214,
+      "error": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"0d04ab37",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"0d04ab37"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"0d04ab37"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"0d04ab37"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"0d04ab37"
+        }
+      }
+    },
+    {
+      "url": "https://api-ronin-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7653,
+      "error": "HTTP 429: Too Many Requests ",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "HTTP 429: Too Many Requests "
+        }
+      }
+    }
+  ]
+}

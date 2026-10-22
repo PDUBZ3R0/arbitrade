@@ -129,10 +129,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49710700,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 1000000,
@@ -186,7 +186,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 4 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -217,10 +217,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49711450,
         "stateOverride": true,
-        "revertError": "-32003: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 965,
@@ -281,9 +281,8 @@
           "score": 58
         },
         "trader": {
-          "pass": false,
-          "score": 0,
-          "why": "no revert data (-32003: err: intrinsic gas too low (supplied gas 100000))"
+          "pass": true,
+          "score": 81
         },
         "reader": {
           "pass": true,
@@ -313,10 +312,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49712697,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": null,
@@ -373,7 +372,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 5 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -404,10 +403,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49711670,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 15335,
@@ -463,7 +462,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 2 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -494,10 +493,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49712370,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": null,
@@ -554,7 +553,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 4 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -585,10 +584,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49710589,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": null,
@@ -661,7 +660,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 4 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -692,10 +691,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49712414,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 10000,
@@ -751,7 +750,7 @@
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no revert data (-32000: err: intrinsic gas too low (supplied gas 100000))"
+          "why": "head 2 blocks behind"
         },
         "reader": {
           "pass": true,
@@ -781,10 +780,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49710434,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 1000000,
@@ -935,10 +934,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49710567,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 10000,
@@ -1027,10 +1026,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 49712653,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 10000,
@@ -1126,10 +1125,10 @@
         "failures": 4
       },
       "call": {
-        "revertData": false,
+        "revertData": true,
         "gasCap": 599711318,
         "stateOverride": true,
-        "revertError": "-32000: err: intrinsic gas too low (supplied gas 100000)"
+        "revertProbe": "override"
       },
       "logs": {
         "maxRange": 1000,

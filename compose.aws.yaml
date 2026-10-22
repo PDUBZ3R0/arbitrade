@@ -37,6 +37,7 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: base } }
     environment:
       MODE: "live"
+      RUNS: "liquidate"
     logging:
       <<: *cloudwatch
       options: { <<: *cw, awslogs-group: arbitrade/base }
@@ -50,6 +51,7 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
     environment:
       MODE: "live"
+      RUNS: "liquidate"
     logging:
       <<: *cloudwatch
       options: { <<: *cw, awslogs-group: arbitrade/optimism }
@@ -63,6 +65,7 @@ services:
     build: { context: ., dockerfile: Containerfile, args: { CHAIN: arbitrum } }
     environment:
       MODE: "live"
+      RUNS: "liquidate"
     logging:
       <<: *cloudwatch
       options: { <<: *cw, awslogs-group: arbitrade/arbitrum }

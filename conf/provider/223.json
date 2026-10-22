@@ -1,0 +1,458 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 223,
+  "name": "B2 Mainnet",
+  "testedAt": "2026-10-18T09:14:55.077Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://b2-mainnet.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 99792,
+      "chainId": 223,
+      "chainIdOk": true,
+      "head": 39575551,
+      "client": "sentio-super-node/v2.585.0-9d8a368f72f619090ea143b6338f83b7ed9e5ed9/linux-amd64/",
+      "latency": {
+        "p50": 101,
+        "p95": 174,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 4946876,
+        "stateOverride": true,
+        "gasCapError": "no result or error in reply {\"code\":8,\"message\":\"public eth_call is limited to 10000000 gas, shared by all M"
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"code\":8,\"message\":\"public eth_getLogs is limited to 1000 blocks\"}"
+      },
+      "history": {
+        "stateDepth": 39575500,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "0: batch answered with a single object {\"code\":8,\"message\":\"JSON-RPC batch exceeds the maximum of 5 requests\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}"
+      },
+      "throttledDuringProbes": 30,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 88
+        },
+        "reader": {
+          "pass": true,
+          "score": 44
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://b2-mainnet.alt.technology",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 21061,
+      "chainId": 223,
+      "chainIdOk": true,
+      "head": 39575551,
+      "client": "Geth/v1.101315.2-stable-7c281983/linux-amd64/go1.21.11",
+      "latency": {
+        "p50": 106,
+        "p95": 154,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: block range greater than 1000 max"
+      },
+      "history": {
+        "stateDepth": 39575500,
+        "archive": true
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: rpc method is not whitelisted",
+        "trace_call": "-32601: rpc method is not whitelisted",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 87
+        },
+        "reader": {
+          "pass": true,
+          "score": 72
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.bsquared.network",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25892,
+      "chainId": 223,
+      "chainIdOk": true,
+      "head": 39575551,
+      "client": "Geth/v1.101315.2-stable-7c281983/linux-amd64/go1.21.11",
+      "latency": {
+        "p50": 212,
+        "p95": 298,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32602: block range greater than 1000 max"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: missing trie node ef20be3bb9d3a682d74bc552d12d4ea063f0592699442ee007c95aece62a0567 (path ) state 0xef20be3bb9d3a682d74bc552d12d4ea063f0592699442ee007c95…"
+      },
+      "batch": {
+        "max": 100,
+        "error": "-32014: too many RPC calls in batch request",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: rpc method is not whitelisted",
+        "trace_call": "-32601: rpc method is not whitelisted",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 76
+        },
+        "reader": {
+          "pass": true,
+          "score": 68
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://223.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 77926,
+      "chainId": 223,
+      "chainIdOk": true,
+      "head": 39575550,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 367,
+        "p95": 482,
+        "n": 11,
+        "failures": 1
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
+      },
+      "history": {
+        "stateDepth": 1000000,
+        "archive": false,
+        "error": "-32000: missing trie node ef20be3bb9d3a682d74bc552d12d4ea063f0592699442ee007c95aece62a0567 (path ) state 0xef20be3bb9d3a682d74bc552d12d4ea063f0592699442ee007c95…"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": true,
+        "eth_getProof": true,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "txpool_status": "-32601: rpc method is not whitelisted",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 25,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 62
+        },
+        "trader": {
+          "pass": true,
+          "score": 32
+        },
+        "reader": {
+          "pass": true,
+          "score": 41
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://mainnet.b2-rpc.com",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 50,
+      "error": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key disabled, reason: tenant disabled, json-rpc code: -32051, rest code: 403\""
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/223",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 9083,
+      "chainId": 223,
+      "chainIdOk": true,
+      "client": "RouteMesh/v1",
+      "error": "eth_blockNumber failed",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        }
+      }
+    },
+    {
+      "url": "https://rpc.ankr.com/b2",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 162,
+      "error": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\"",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "0: \"message: API key is not allowed to access blockchain, json-rpc code: -32052, rest code: 403\""
+        }
+      }
+    }
+  ]
+}

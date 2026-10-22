@@ -1,0 +1,408 @@
+{
+  "tool": "vetted-provider 0.1.0",
+  "chainId": 988,
+  "name": "Stable Mainnet",
+  "testedAt": "2026-10-17T20:32:30.003Z",
+  "from": "B3T4M4X",
+  "options": {
+    "maxRps": 40,
+    "wsWatchSec": 15,
+    "maxLag": 5,
+    "only": "all",
+    "skip": [],
+    "sample": {
+      "address": "0x779ded0c9e1022225f8e0630b35a9b54be713736",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0xbb47ee3e183a558b1a2ff0874b079f3fc5478b7454eacf2bfc5af2ff5878f972",
+      "block": 43427701
+    }
+  },
+  "endpoints": [
+    {
+      "url": "https://rpc.stable.xyz",
+      "kind": "http",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 25207,
+      "chainId": 988,
+      "chainIdOk": true,
+      "head": 43427835,
+      "client": "Version dev ()\nCompiled at  using Go go1.25.0 (amd64)",
+      "latency": {
+        "p50": 149,
+        "p95": 334,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32000: maximum [from, to] blocks distance: 1024",
+        "oldLogsError": "-32000: failed to fetch block result from CometBFT: failed to fetch trimmed block result from CometBFT: height 1 is not available, lowest height is 38429001"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: rpc error: code = Unknown desc = codespace sdk code 38: not found: failed to load state at height 43426702; historical version not found: 43426702: inva…"
+      },
+      "batch": {
+        "max": 1000,
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": true,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method handler crashed",
+        "eth_getProof": "-32000: rpc error: code = Unknown desc = codespace sdk code 18: invalid request: cannot query with h…",
+        "trace_call": "-32601: the method trace_call does not exist/is not available",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 63
+        },
+        "trader": {
+          "pass": true,
+          "score": 82
+        },
+        "reader": {
+          "pass": true,
+          "score": 72
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://stable.drpc.org",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 28482,
+      "chainId": 988,
+      "chainIdOk": true,
+      "head": 43427834,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 63,
+        "p95": 211,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "oldLogsError": "-32000: failed to fetch block result from CometBFT: failed to fetch trimmed block result from CometBFT: height 1 is not available, lowest height is 38429001"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "27: Unknown state. First available state is 1"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method handler crashed",
+        "eth_getProof": "-32000: rpc error: code = Unknown desc = codespace sdk code 18: invalid request: cannot query with h…",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "19: Temporary internal error. Please retry, trace-id: 904c7cced5f5395610ed40f68220960c",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 51
+        },
+        "trader": {
+          "pass": true,
+          "score": 78
+        },
+        "reader": {
+          "pass": true,
+          "score": 46
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://stable-mainnet.rpc.sentio.xyz",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 92824,
+      "chainId": 988,
+      "chainIdOk": true,
+      "head": 43427834,
+      "client": "sentio-super-node/v2.584.1-8f96637505f7d4c6b04fcb1a31c28513e1e548d4/linux-amd64/",
+      "latency": {
+        "p50": 95,
+        "p95": 110,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "no result or error in reply {\"code\":8,\"message\":\"public eth_getLogs is limited to 1000 blocks\"}"
+      },
+      "history": {
+        "stateDepth": 43427700,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "0: batch answered with a single object {\"code\":8,\"message\":\"JSON-RPC batch exceeds the maximum of 5 requests\"}",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method handler crashed",
+        "eth_getProof": "-32000: rpc error: code = Unknown desc = codespace sdk code 18: invalid request: cannot query with h…",
+        "debug_traceCall": "no result or error in reply {\"code\":5,\"message\":\"method debug_traceCall not found\"}",
+        "trace_call": "no result or error in reply {\"code\":5,\"message\":\"method trace_call not found\"}",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 27,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 73
+        },
+        "trader": {
+          "pass": true,
+          "score": 76
+        },
+        "reader": {
+          "pass": true,
+          "score": 54
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://988.rpc.thirdweb.com",
+      "kind": "http",
+      "tracking": "yes",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 34375,
+      "chainId": 988,
+      "chainIdOk": true,
+      "head": 43427834,
+      "client": "thirdweb/1.0",
+      "latency": {
+        "p50": 307,
+        "p95": 699,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 24946876,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 1000,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 1000,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": false,
+        "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000",
+        "oldLogsError": "-32000: failed to fetch block result from CometBFT: failed to fetch trimmed block result from CometBFT: height 1 is not available, lowest height is 37833001"
+      },
+      "history": {
+        "stateDepth": 64,
+        "archive": false,
+        "error": "-32000: rpc error: code = Unknown desc = codespace sdk code 38: not found: failed to load state at height 43426713; historical version not found: 43426713: inva…"
+      },
+      "batch": {
+        "max": 10,
+        "error": "-32600: batch of 50 exceeds the limit of 25 calls for keyless access. Get a free API key at https://thirdweb.com/create-api-key",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": false,
+        "trace_call": false,
+        "txpool_status": true,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32603: method handler crashed",
+        "eth_getProof": "-32603: We are not able to process your request at this time. Please contact thirdweb support 94b0b5…",
+        "debug_traceCall": "-32601: Invalid method debug_traceCall",
+        "trace_call": "-32601: Invalid method trace_call",
+        "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
+      },
+      "throttledDuringProbes": 3,
+      "rate": {
+        "cleanRps": 5,
+        "limitedAt": 10,
+        "sent": 30,
+        "retryAfter": "0"
+      },
+      "headLag": 1,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 52
+        },
+        "trader": {
+          "pass": true,
+          "score": 37
+        },
+        "reader": {
+          "pass": true,
+          "score": 39
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
+    {
+      "url": "https://lb.routeme.sh/rpc/evm/988",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": false,
+      "ms": 7268,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
+        }
+      }
+    }
+  ]
+}
