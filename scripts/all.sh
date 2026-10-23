@@ -44,7 +44,7 @@ logd "@startup@" runstart
 
 if [[ "$KEYWORD" = "L" ]]; then
     supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS
-elif [[ "$KEYWORD" = "_" ]];
+elif [[ "$KEYWORD" = "_" ]]; then
     supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS &
 fi
 
