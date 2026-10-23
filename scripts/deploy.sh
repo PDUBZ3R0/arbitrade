@@ -120,10 +120,7 @@ if [ "$WHAT" = "sniper" ]; then
     PARAMS_ARG="--parameters $TMP_PARAMS"
 fi
 
-CHAIN_ID=$(node --input-type=module -e "
-import JSON5 from 'json5'; import { readFileSync } from 'node:fs';
-const c = JSON5.parse(readFileSync('conf/@chains.json5', 'utf8'));
-if (c['$CHAIN']?.id) process.stdout.write(String(c['$CHAIN']?.id));" 2>/dev/null)
+CHAIN_ID=$(node --input-type=module -e "./source/util/chainid.ts" 2>/dev/null)
 if [ -z "$CHAIN_ID" ]; then echo "Could not read the chain id for $CHAIN (conf/${CHAIN}.json5 / conf/@chains.json5)" >&2; exit 1; fi
 DEPLOYMENT_ID="chain-${CHAIN_ID}"
 JOURNAL="ignition/deployments/${DEPLOYMENT_ID}/journal.jsonl"

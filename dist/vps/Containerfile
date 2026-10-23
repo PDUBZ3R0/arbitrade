@@ -39,7 +39,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 make g++ git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json yarn.lock ./
+COPY package.json ./
 # Runtime deps only: hardhat / viem are for deploying, not for running.
 RUN yarn install --production --frozen-lockfile --network-timeout 600000 \
  && yarn cache clean
@@ -51,26 +51,25 @@ RUN test -n "$CHAIN" || { echo 'build with --build-arg CHAIN=<chain> (e.g. base,
 
 # tini: PID 1 that reaps zombies and (-g) forwards stop signals to every process.
 RUN apt-get update \
+ && apt-get full-upgrade -y \
  && apt-get install -y --no-install-recommends tini ca-certificates sqlite3 \
  && rm -rf /var/lib/apt/lists/*
 
 ENV CHAIN=${CHAIN} \
+    CONTAINED=yeah \
     NODE_ENV=production \
-    MODE=test \
-    MANUAL_ON_BOOT=1 \
-    HOT_ARGS="--gas-margin 1.5 --candidates 20" \
-    LIQ_ARGS="--follow" \
-    LIQUIDATE=auto
+    MODE=test 
 
 WORKDIR /app
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node package.json ./
 COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
+RUN export CHAIN_ID=$(cd /opt/arbitrade/ && node source/util/chainid.ts $CHAIN)
 # The registry, the chain's config and its blacklist (<chain>-blacklist.json5) if any.
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
 # RPC ratings from `vetrpc vet <chainId>` — the provider pool reads conf/provider/<chainId>.json.
-COPY --chown=node:node conf/provider ./conf/provider/
+COPY --chown=node:node conf/provider ./conf/provider/${CHAIN_ID}.json
 # Lending-market address book (Aave / Morpho / Comet by chain id) — liq-watch and the
 # flash-lender book read it; without it Morpho and Compound have no addresses.
 COPY --chown=node:node conf/markets ./conf/markets/

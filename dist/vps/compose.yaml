@@ -23,6 +23,7 @@ services:
     volumes:
       - sonic-db:/app/db
       - sonic-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   avalanche:
     <<: *arb
@@ -34,6 +35,7 @@ services:
     volumes:
       - avalanche-db:/app/db
       - avalanche-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   polygon:
     <<: *arb
@@ -45,6 +47,7 @@ services:
     volumes:
       - polygon-db:/app/db
       - polygon-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   gnosis:
     <<: *arb
@@ -56,6 +59,7 @@ services:
     volumes:
       - gnosis-db:/app/db
       - gnosis-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   hyperliquid:
     <<: *arb
@@ -67,6 +71,7 @@ services:
     volumes:
       - hyperliquid-db:/app/db
       - hyperliquid-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   monad:
     <<: *arb
@@ -78,6 +83,7 @@ services:
     volumes:
       - monad-db:/app/db
       - monad-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   ink:
     <<: *arb
@@ -88,7 +94,8 @@ services:
       RUNS: "liquidate"
     volumes:
       - ink-db:/app/db
-      - ink-log:/app/log     
+      - ink-log:/app/log
+      - ./db:/opt/seed/db:ro
 
   robinhood:
     <<: *arb
@@ -100,6 +107,7 @@ services:
     volumes:
       - robinhood-db:/app/db
       - robinhood-log:/app/log
+      - ./db:/opt/seed/db:ro
           
 volumes:
   sonic-db:
