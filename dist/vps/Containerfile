@@ -65,7 +65,7 @@ COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node package.json ./
 COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
-RUN export CHAIN_ID=$(cd /opt/arbitrade/ && node source/util/chainid.ts $CHAIN)
+ENV CHAIN_ID=$(node ./source/util/chainid.ts $CHAIN)
 # The registry, the chain's config and its blacklist (<chain>-blacklist.json5) if any.
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
 # RPC ratings from `vetrpc vet <chainId>` — the provider pool reads conf/provider/<chainId>.json.
