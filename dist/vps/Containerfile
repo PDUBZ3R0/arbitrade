@@ -65,19 +65,10 @@ COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node package.json ./
 COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
-ENV CHAIN_ID=$(node ./source/util/chainid.ts $CHAIN)
-# The registry, the chain's config and its blacklist (<chain>-blacklist.json5) if any.
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
-# RPC ratings from `vetrpc vet <chainId>` — the provider pool reads conf/provider/<chainId>.json.
-COPY --chown=node:node conf/provider ./conf/provider/${CHAIN_ID}.json
-# Lending-market address book (Aave / Morpho / Comet by chain id) — liq-watch and the
-# flash-lender book read it; without it Morpho and Compound have no addresses.
+COPY --chown=node:node conf/provider ./conf/provider/*.json
 COPY --chown=node:node conf/markets ./conf/markets/
-# The seed DB is NOT copied in — it is mounted read-only from the host at
-# /opt/seed/db at run time (see compose.yaml / the run example above), and the
-# entry script copies it into the /app/db volume only on first boot. This keeps
-# the big SQLite out of the image layers. /opt/seed/db is created here as the
-# mount point; it is empty in the image.
+
 RUN mkdir -p /app/db /app/log /opt/seed/db && chown node:node /app /app/db /app/log /opt/seed /opt/seed/db
 
 USER node
