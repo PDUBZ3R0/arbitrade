@@ -66,7 +66,7 @@ COPY --chown=node:node package.json ./
 COPY --chown=node:node source ./source
 COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node conf/@chains.json5 conf/${CHAIN}*.json5 ./conf/
-COPY --chown=node:node conf/provider ./conf/provider/*.json
+COPY --chown=node:node conf/provider ./conf/provider/
 COPY --chown=node:node conf/markets ./conf/markets/
 
 RUN mkdir -p /app/db /app/log /opt/seed/db && chown node:node /app /app/db /app/log /opt/seed /opt/seed/db
