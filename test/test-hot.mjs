@@ -499,6 +499,81 @@ if (FLASH) {
        'unpriced swap root refused before simulating', u.simulationError ?? '(no error)');
 }
 
+// --- 10. move gate, detached receipt, one-call repeat -------------------------
+console.log('\n10. only big swaps trigger; the receipt does not hold the feed; a repeat cycle simulates in one call');
+{
+    if (FLASH) for (const p of [pAB, pBC, pCA]) await (await p.setFlashOff(false)).wait();
+    const fast = new CandidateExecutor(cfg, provider, pricing, {
+        ownerAddress: w.address, live: true, signer: w, gasMarginMultiple: 1, minProfitTokens: 0.01,
+        detachReceipt: true,
+    });
+    const reps = [];
+    const h = createHotLoop({
+        index: ix, db, thresholds: () => thresholds, pricing: () => pricing, decimalsByToken,
+        attempt: (c, d) => fast.attempt(c, d),
+        report: (a) => { reps.push(a); printAttempt(cfg, a, (s) => console.log(`    ${s}`)); },
+        candidatesPerBlock: 3, cooldownMs: 0, minMoveBps: 10,
+        log: (s) => console.log(`    ${s}`),
+    });
+    // The feed is stopped (section 7); hand the loop what a Sync would carry.
+    const updatesNow = async () => {
+        const bn = await provider.getBlockNumber();
+        const us = await Promise.all([pAB, pBC, pCA].map(async (p) => {
+            const [r0, r1] = await p.getReserves();
+            return { pair: (await p.getAddress()).toLowerCase(), reserve0: Number(r0), reserve1: Number(r1), blockNumber: bn, logIndex: 0 };
+        }));
+        return [us, bn];
+    };
+    const swapBig = async () => {
+        await (await tRoot.mint(w.address, E(100_000))).wait();
+        await (await tRoot.approve(AB, E(100_000))).wait();
+        await (await pAB.drift(ROOT, E(100_000))).wait();
+    };
+
+    // a. The edge sections 7-8 left open is still there, but nothing moved:
+    //    a standing edge is not a fresh dislocation, and must not be attempted.
+    {
+        const [us, bn] = await updatesNow();
+        await h.onBatch(us, bn);
+        const s = h.stats();
+        ok(s.candidatesFound > 0 && s.skippedSmallMove > 0 && s.attempts === 0,
+           'a scoring cycle with no price move is held back by the gate',
+           `found ${s.candidatesFound}, gated ${s.skippedSmallMove}, attempts ${s.attempts}`);
+    }
+
+    // b. A big swap: attempted, sent, and onBatch returns BEFORE the receipt.
+    {
+        await swapBig();
+        const [us, bn] = await updatesNow();
+        await h.onBatch(us, bn);
+        const s = h.stats();
+        ok(s.attempts === 1, 'the big swap was attempted', `${s.attempts}`);
+        ok(reps.length === 0, 'onBatch returned without waiting for the receipt', `${reps.length} report(s) already`);
+        const [us2, bn2] = await updatesNow();
+        await h.onBatch(us2, bn2);
+        ok(h.stats().attempts === 1, 'nothing else is attempted while our tx is pending (or it settled first)',
+           `attempts ${h.stats().attempts}, pending skips ${h.stats().pendingTxSkips}`);
+        await h.idle();
+        ok(reps.length === 1 && reps[0].confirmed && reps[0].realisedProfit > 0n,
+           'the trade CONFIRMED and was reported once the receipt landed', reps[0]?.simulationError ?? '');
+        ok(h.stats().confirmed === 1, 'and counted as confirmed', `${h.stats().confirmed}`);
+    }
+
+    // c. The same cycle again: its gas is known, so one estimateGas is the simulation.
+    {
+        await swapBig();
+        const [us, bn] = await updatesNow();
+        await h.onBatch(us, bn);
+        await h.idle();
+        const last = reps.at(-1);
+        ok(reps.length === 2 && last.confirmed, 'the repeat trade CONFIRMED', last?.simulationError ?? '');
+        ok(/estimate\+simulate/.test(last?.latency ?? '') && !/(^|, )simulate \d/.test(last?.latency ?? ''),
+           'via the one-call path (no separate simulate)', last?.latency ?? '');
+        ok(last && last.minProfitUsed >= last.built.minProfitWei && last.realisedProfit >= last.minProfitUsed,
+           'still bound by the floor, and cleared it', last ? `${last.realisedProfit} >= ${last.minProfitUsed}` : '');
+    }
+}
+
 db.close();
 provider.destroy();
 

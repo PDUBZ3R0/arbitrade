@@ -374,6 +374,8 @@ export type RawChainConfig = {
         minProfitTokens?: number;
         minLiquidityTokens?: number;
         minInputTokens?: number;
+        /** Hot loop: attempt only cycles through a pool a swap just moved by this many bps (--min-move-bps). */
+        minMoveBps?: number;
     };
     /**
      * Chain-tuned reserves-stage dust threshold (piece 4), same numeraire

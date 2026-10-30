@@ -24,7 +24,14 @@
 //   rolling sweep  every account with debt, once per `sweepMs` (10 min),
 //                  spread across ticks: each tick reads the next slice, sized
 //                  by the time since the last tick, so the whole set is covered
-//                  per period without ever stalling the loop. (The first,
+//                  per period without ever stalling the loop. A tick carries
+//                  at most `sweepSliceMs` (1 min) of it: sized by the gap
+//                  alone, a tick that ran long owed the whole queue, so the
+//                  next ran long too. Avalanche (30k accounts, free-plan RPC
+//                  timeouts) fell into that on Oct 24 and read everyone every
+//                  tick for 15 hours; ticks took up to 2h, and near accounts it
+//                  was watching were liquidated by others mid-tick. A slow
+//                  RPC now stretches the cycle instead. (The first,
 //                  startup sweep is a single full pass.) Catches what events
 //                  and prices cannot: interest accrual, aToken transfers out of
 //                  a borrower (no Pool event), and eMode or liquidation-
@@ -81,6 +88,7 @@ export type HealthOptions = {
     bigMoveFrac?: number;       // default 0.10
     watchEvery?: number;        // ticks, default 10
     sweepMs?: number;           // default 600_000
+    sweepSliceMs?: number;      // most of the sweep one tick carries, in time; default 60_000
     batchSize?: number;         // accounts per eth_call, default 100
     concurrency?: number;       // eth_calls in flight, default 4
     minProfitUsd?: number;      // dust floor: max liquidation profit, default 0 (off)
@@ -151,7 +159,7 @@ export class HealthMonitor {
         this.now = now;
         this.opts = {
             nearHF: 1.05, watchHF: 1.25, priceRecheckMaxHF: 2.0, bigMoveFrac: 0.10,
-            watchEvery: 10, sweepMs: 600_000, batchSize: 100, concurrency: 4, minProfitUsd: 0,
+            watchEvery: 10, sweepMs: 600_000, sweepSliceMs: 60_000, batchSize: 100, concurrency: 4, minProfitUsd: 0,
             ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v != null)),
         } as Required<HealthOptions>;
         this.nearHF = wad(this.opts.nearHF);
@@ -319,7 +327,7 @@ export class HealthMonitor {
         // the time since the last tick, so the queue drains once per sweepMs
         // whatever the block time or tick latency.
         const now = this.now();
-        const elapsed = Math.min(this.opts.sweepMs, Math.max(0, now - this.lastTickAt));
+        const elapsed = Math.min(this.opts.sweepMs, this.opts.sweepSliceMs, Math.max(0, now - this.lastTickAt));
         this.lastTickAt = now;
         let sweepCompleted = false;
         let budget = Math.ceil(this.sweepQueue.length * elapsed / this.opts.sweepMs);

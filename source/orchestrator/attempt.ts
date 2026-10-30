@@ -118,6 +118,12 @@ export type CandidateAttempt = {
     funding?: string;
     /** The root's decimals/symbol, for rendering a swap root (not in the flash-token config). */
     rootMeta?: { decimals: number; symbol?: string };
+    /**
+     * Set only with ExecutorOptions.detachReceipt, on a broadcast attempt: the
+     * receipt + ledger work still running. Resolves to this same object with
+     * confirmed / realisedProfit / simulationError filled in; never rejects.
+     */
+    settled?: Promise<CandidateAttempt>;
 };
 
 export type ExecutorOptions = {
@@ -156,6 +162,18 @@ export type ExecutorOptions = {
      * within a day, so this is a 10x error, not a rounding one.
      */
     gasPriceMaxAgeMs?: number;
+    /**
+     * Return from attempt() as soon as the transaction is sent, with the
+     * receipt wait in `settled` (see CandidateExecutor.settle). For the hot
+     * loop; a batch pass wants the inline wait. Default false.
+     */
+    detachReceipt?: boolean;
+    /**
+     * How long a cycle's measured gas is reused to price its floor up front,
+     * so a repeat attempt simulates in one call (see attempt(), step 0).
+     * Default 10 minutes; 0 always takes the two-call path.
+     */
+    gasMemoryMs?: number;
 };
 
 /**
@@ -658,10 +676,55 @@ export class CandidateExecutor {
         if (!built) { attempt.decayReason = whyNull.reason; return attempt; }   // edge decayed since evaluation
         mark('build');
 
+        let call = this.callFor(useFlash, terms, candidate.rootToken, built);
+        let gasUnits: bigint | undefined;
+        let effectiveMinProfit: bigint | undefined;
+
+        // 0. Fast path: one round trip instead of two. The full path below is
+        // estimateGas (to learn the gas, hence the floor) THEN staticCall at that
+        // floor — ~200ms each through the pool (Robinhood: build 273ms, estimate
+        // 202ms, simulate 184ms), on a chain where a backrun is contested within
+        // a block or two. Gas for a given cycle barely moves between attempts, so
+        // once it has been measured the floor is known up front, and a single
+        // estimateGas AT that floor is both the simulation (it reverts exactly
+        // when staticCall would) and a fresh gas reading. The floor is then
+        // re-checked against the fresh gas: if gas grew past what it assumed,
+        // or the call reverted, fall through to the full path, which re-prices
+        // the floor, tells a broken path from a missed floor, and tries the
+        // lender — the slow path still owns every failure.
+        const gasKey = this.gasKey(candidate, useFlash);
+        const knownGas = this.knownGas(gasKey);
+        if (knownGas != null && !(this.gasFloorWeiFor(candidate.rootToken, knownGas) == null && this.isSwapOnly(candidate.rootToken))) {
+            const floor = this.gasFloorWeiFor(candidate.rootToken, knownGas);
+            const eff = floor != null && floor > built.minProfitWei ? floor : built.minProfitWei;
+            attempt.funding = useFlash ? 'flash-swap' : terms!.provider;
+            if (built.expectedProfit < eff) {
+                // Same refusal the full path would reach, without spending its estimateGas.
+                attempt.gasEstimate = knownGas;
+                attempt.gasFloorWei = floor;
+                attempt.minProfitUsed = eff;
+                attempt.belowGasFloor = true;
+                return attempt;
+            }
+            try {
+                const g = await call.fn.estimateGas(...call.args(eff), { from: this.opts.ownerAddress });
+                const fresh = this.gasFloorWeiFor(candidate.rootToken, g);
+                if (fresh == null || fresh <= eff) {
+                    gasUnits = g;
+                    effectiveMinProfit = eff;
+                    attempt.gasEstimate = g;
+                    attempt.gasFloorWei = fresh;
+                    attempt.minProfitUsed = eff;
+                    attempt.simulated = true;
+                    this.rememberGas(gasKey, g);
+                    mark('estimate+simulate');
+                }
+            } catch { /* fall through to the full path — see above */ }
+        }
+
+        if (!attempt.simulated) {
         // 1. Measure gas for THIS candidate. estimateGas also reverts if the
         // path is not executable, so it doubles as a first validation.
-        let call = this.callFor(useFlash, terms, candidate.rootToken, built);
-        let gasUnits: bigint;
         try {
             gasUnits = await call.fn.estimateGas(...call.args(built.minProfitWei), { from: this.opts.ownerAddress });
         } catch (err) {
@@ -702,9 +765,9 @@ export class CandidateExecutor {
 
         // 2. Raise the floor to cover gas. The config floor is a preference;
         // this is the break-even line.
-        const gasFloor = this.gasFloorWeiFor(candidate.rootToken, gasUnits);
+        const gasFloor = this.gasFloorWeiFor(candidate.rootToken, gasUnits!);
         attempt.gasFloorWei = gasFloor;
-        const effectiveMinProfit = gasFloor != null && gasFloor > built.minProfitWei
+        effectiveMinProfit = gasFloor != null && gasFloor > built.minProfitWei
             ? gasFloor
             : built.minProfitWei;
         attempt.minProfitUsed = effectiveMinProfit;
@@ -723,6 +786,10 @@ export class CandidateExecutor {
 
         // Predicted profit has to clear the gas-adjusted floor before we spend
         // anything else on this candidate.
+        // Remembered whether or not this attempt goes on to pay: a cycle that
+        // is below its floor now is exactly the one re-tried when it grows,
+        // and that retry should be the one-call fast path.
+        this.rememberGas(this.gasKey(candidate, useFlash), gasUnits!);
         if (built.expectedProfit < effectiveMinProfit) {
             attempt.belowGasFloor = true;
             return attempt;
@@ -739,6 +806,10 @@ export class CandidateExecutor {
                 + await this.diagnoseRepay(err, call, built, effectiveMinProfit, candidate) + await this.diagnoseGated(err, candidate);
             return attempt;
         }
+        }
+        // Both paths leave these set once the candidate simulated clean.
+        gasUnits = gasUnits!;
+        effectiveMinProfit = effectiveMinProfit!;
 
         if (!this.opts.live) return attempt;
 
@@ -776,22 +847,23 @@ export class CandidateExecutor {
             attempt.broadcast = true;
             attempt.txHash = txHash;
 
-            // A direct send can silently not land (dropped from ordering), so
-            // bound the wait and treat a timeout as not-landed rather than hang.
-            const receipt = await this.provider.waitForTransaction(txHash, 1, 60_000);
-            if (!receipt) {
-                (signer as { reset?: () => void }).reset?.();
-                attempt.simulationError = `broadcast but not mined within 60s, txHash=${txHash}`;
-                return attempt;
-            }
-            attempt.latency = latencyNote(built.blockTag, receipt.blockNumber, t0, marks);
-            if (receipt.status !== 1) {
-                attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
-                return attempt;
-            }
-            attempt.confirmed = true;
-            attempt.realisedProfit = await this.recordTrade(candidate, built, txHash, receipt);
-            return attempt;
+            return this.settle(attempt, async () => {
+                // A direct send can silently not land (dropped from ordering), so
+                // bound the wait and treat a timeout as not-landed rather than hang.
+                const receipt = await this.provider.waitForTransaction(txHash, 1, 60_000);
+                if (!receipt) {
+                    (signer as { reset?: () => void }).reset?.();
+                    attempt.simulationError = `broadcast but not mined within 60s, txHash=${txHash}`;
+                    return;
+                }
+                attempt.latency = latencyNote(built!.blockTag, receipt.blockNumber, t0, marks);
+                if (receipt.status !== 1) {
+                    attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
+                    return;
+                }
+                attempt.confirmed = true;
+                attempt.realisedProfit = await this.recordTrade(candidate, built!, txHash, receipt);
+            });
         }
 
         // Explicit gasLimit: without it ethers re-runs eth_estimateGas before
@@ -812,39 +884,79 @@ export class CandidateExecutor {
         attempt.broadcast = true;
         attempt.txHash = tx.hash;
 
-        // Wait for confirmation — a clean eth_call simulation doesn't guarantee
-        // the tx lands successfully; reserves can move between simulate and
-        // inclusion. "Successful" for the trade ledger means status=1
-        // confirmed, not just sent.
-        //
-        // ethers v6's wait() does not return a status=0 receipt: it THROWS
-        // CALL_EXCEPTION with the receipt attached. Left uncaught, a mined
-        // revert surfaced as "attempt threw … transaction execution reverted"
-        // with no hash, and the attempt was never reported as a broadcast
-        // (Sonic hot run, 2026-10-12, #13814).
-        let receipt: any;
-        try {
-            // Bounded: a tx that is dropped (or whose nonce another tx took) never
-            // mines, and an unbounded wait would stall the loop for good.
-            receipt = await tx.wait(1, 60_000);
-        } catch (err: any) {
-            if (err?.receipt) receipt = err.receipt;
-            else {
-                attempt.simulationError = `broadcast, but waiting for the receipt failed: ${String(err?.shortMessage ?? err?.message ?? err).slice(0, 160)}, txHash=${tx.hash}`;
-                return attempt;
+        return this.settle(attempt, async () => {
+            // Wait for confirmation — a clean eth_call simulation doesn't guarantee
+            // the tx lands successfully; reserves can move between simulate and
+            // inclusion. "Successful" for the trade ledger means status=1
+            // confirmed, not just sent.
+            //
+            // ethers v6's wait() does not return a status=0 receipt: it THROWS
+            // CALL_EXCEPTION with the receipt attached. Left uncaught, a mined
+            // revert surfaced as "attempt threw … transaction execution reverted"
+            // with no hash, and the attempt was never reported as a broadcast
+            // (Sonic hot run, 2026-10-12, #13814).
+            let receipt: any;
+            try {
+                // Bounded: a tx that is dropped (or whose nonce another tx took) never
+                // mines, and an unbounded wait would stall the loop for good.
+                receipt = await tx.wait(1, 60_000);
+            } catch (err: any) {
+                if (err?.receipt) receipt = err.receipt;
+                else {
+                    attempt.simulationError = `broadcast, but waiting for the receipt failed: ${String(err?.shortMessage ?? err?.message ?? err).slice(0, 160)}, txHash=${tx.hash}`;
+                    return;
+                }
             }
-        }
-        attempt.latency = latencyNote(built.blockTag, receipt?.blockNumber, t0, marks);
-        if (!receipt || receipt.status !== 1) {
-            // Broadcast but reverted on-chain — not a trade, not logged to the
-            // ledger. Surfaced via simulationError so the CLI print picks it up.
-            attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${tx.hash}`;
-            return attempt;
-        }
+            attempt.latency = latencyNote(built!.blockTag, receipt?.blockNumber, t0, marks);
+            if (!receipt || receipt.status !== 1) {
+                // Broadcast but reverted on-chain — not a trade, not logged to the
+                // ledger. Surfaced via simulationError so the CLI print picks it up.
+                attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${tx.hash}`;
+                return;
+            }
 
-        attempt.confirmed = true;
-        attempt.realisedProfit = await this.recordTrade(candidate, built, tx.hash, receipt);
-        return attempt;
+            attempt.confirmed = true;
+            attempt.realisedProfit = await this.recordTrade(candidate, built!, tx.hash, receipt);
+        });
+    }
+
+    /**
+     * Run the after-broadcast work (receipt, ledger). Inline by default; with
+     * detachReceipt, in the background, and the attempt comes back now with
+     * `settled` to await.
+     *
+     * Why detach: the hot loop's handler is awaited by the Sync feed, so while
+     * an attempt waits on its own receipt the feed queues every block behind it
+     * and the index scores nothing. On a chain making several blocks a second
+     * that is the window in which the next dislocation appears and is taken by
+     * someone else. Never rejects — a failure here is reported on the attempt,
+     * as the inline path always did.
+     */
+    private settle(attempt: CandidateAttempt, after: () => Promise<void>): Promise<CandidateAttempt> {
+        const done = after().then(() => attempt, (err) => {
+            attempt.simulationError ??= `after broadcast: ${String((err as Error)?.message ?? err).slice(0, 200)}, txHash=${attempt.txHash}`;
+            return attempt;
+        });
+        if (!this.opts.detachReceipt) return done;
+        attempt.settled = done;
+        return Promise.resolve(attempt);
+    }
+
+    /** Gas measured per cycle and funding route, for the one-call fast path. */
+    private readonly measuredGas = new Map<string, { gas: bigint; at: number }>();
+    private gasKey(c: Candidate, flashSwap: boolean): string {
+        return `${flashSwap ? 'f' : 'l'}:${c.hops.map(h => `${h.pair}>${h.tokenIn}`).join(',').toLowerCase()}`;
+    }
+    private knownGas(key: string): bigint | null {
+        const ms = this.opts.gasMemoryMs ?? 10 * 60_000;
+        const g = this.measuredGas.get(key);
+        if (!g || !(ms > 0)) return null;
+        if (Date.now() - g.at > ms) { this.measuredGas.delete(key); return null; }
+        return g.gas;
+    }
+    private rememberGas(key: string, gas: bigint): void {
+        if (!((this.opts.gasMemoryMs ?? 10 * 60_000) > 0)) return;
+        this.measuredGas.set(key, { gas, at: Date.now() });
     }
 
     /**

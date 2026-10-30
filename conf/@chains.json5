@@ -167,6 +167,12 @@
     currency: 'BERA',
     explorer: 'https://berascan.com',
   },
+  hydration: {
+    id: 222222,
+    name: 'Hydration',
+    currency: 'WETH',
+    explorer: 'https://explorer.evm.hydration.cloud',
+  },
   scroll: {
     id: 534352,
     name: 'Scroll',

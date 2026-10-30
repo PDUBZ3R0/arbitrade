@@ -40,12 +40,20 @@ runstart(){
         yarn tokens $CHAIN 
 }
 
+# The liquidator starts BEFORE the startup pipeline, not after it. It only
+# needs the pool DB for exit routes, and reads it live, so the pipeline's
+# updates reach it as they land. Gated behind runstart, it never started on
+# Polygon, HyperEVM, Monad or Robinhood in the Oct 23-24 run: their scans were
+# still going 33h later, through a BTC move with 15 liquidations on Polygon's
+# Aave alone.
+if [[ "$KEYWORD" = "L" || "$KEYWORD" = "_" ]]; then
+    supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS &
+fi
+
 logd "@startup@" runstart
 
 if [[ "$KEYWORD" = "L" ]]; then
-    supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS
-elif [[ "$KEYWORD" = "_" ]]; then
-    supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS &
+    wait
 fi
 
 if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then

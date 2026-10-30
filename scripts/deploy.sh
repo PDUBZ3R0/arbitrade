@@ -120,7 +120,7 @@ if [ "$WHAT" = "sniper" ]; then
     PARAMS_ARG="--parameters $TMP_PARAMS"
 fi
 
-CHAIN_ID=$(node --input-type=module -e "./source/util/chainid.ts" 2>/dev/null)
+CHAIN_ID=$(node ./source/util/chainid.ts $CHAIN 2>/dev/null)
 if [ -z "$CHAIN_ID" ]; then echo "Could not read the chain id for $CHAIN (conf/${CHAIN}.json5 / conf/@chains.json5)" >&2; exit 1; fi
 DEPLOYMENT_ID="chain-${CHAIN_ID}"
 JOURNAL="ignition/deployments/${DEPLOYMENT_ID}/journal.jsonl"

@@ -50,6 +50,10 @@ export type HotLoopStats = {
     skippedBelowGas: number;
     /** Candidates through a pair that refuses the executor or a token measured unsafe. */
     skippedKnownBad: number;
+    /** Candidates passed over because no pair of theirs moved >= minMoveBps recently. */
+    skippedSmallMove: number;
+    /** Batches skipped because our own transaction was still waiting on its receipt. */
+    pendingTxSkips: number;
 };
 
 export type HotLoopDeps = {
@@ -104,6 +108,25 @@ export type HotLoopDeps = {
      * enough that a gas-price drop is noticed. 0 disables.
      */
     gasMemoryMs?: number;
+    /**
+     * Only attempt cycles through a pool whose price a recent swap moved by at
+     * least this many basis points. 0 (default) attempts everything that scores.
+     *
+     * Why: a swap that barely moves a pool cannot open an edge by itself, so a
+     * cycle that "becomes" profitable on one is either a phantom (float noise,
+     * a stale pair — Robinhood, 2026-10-14: 104 of 106 decayed cycles had
+     * nothing move on re-read) or a sliver someone with lower latency already
+     * took. Every such attempt is ~500ms of RPC during which the feed is held
+     * and the index scores nothing — so it is spent where a big swap just
+     * opened a real dislocation instead.
+     */
+    minMoveBps?: number;
+    /**
+     * How many blocks a big move keeps its pools eligible. Default 2: a
+     * dislocation skipped on cooldown, or found a block late, is still worth
+     * the attempt on the next block or two; after that it has been taken.
+     */
+    moveWindowBlocks?: number;
 };
 
 export type HotLoop = {
@@ -116,7 +139,13 @@ export type HotLoop = {
      */
     sweep: (candidates: IndexedCandidate[]) => Promise<void>;
     stats: () => HotLoopStats;
+    /** Resolves once no transaction of ours is awaiting its receipt (detachReceipt). For shutdown and tests. */
+    idle: () => Promise<void>;
 };
+
+/** |ln(new price / old price)| in bps, price = res1/res0 (virtual reserves for v3). Shared with ./pending-probe.ts. */
+export const moveBps = (o0: number, o1: number, n0: number, n1: number): number =>
+    o0 > 0 && o1 > 0 && n0 > 0 && n1 > 0 ? Math.abs(Math.log((n1 / n0) / (o1 / o0))) * 1e4 : Infinity;
 
 export function createHotLoop(deps: HotLoopDeps): HotLoop {
     const log = deps.log ?? console.log;
@@ -128,7 +157,20 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
         attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0, skippedKnownBad: 0,
         v3PoolsRefreshed: 0, v3RefreshErrors: 0, skippedBelowGas: 0,
+        skippedSmallMove: 0, pendingTxSkips: 0,
     };
+
+    // Our own broadcast, still waiting on its receipt (ExecutorOptions.detachReceipt).
+    // Nothing else is attempted until it settles — same reason as the cooldown:
+    // the next attempt would price from state our pending trade is about to
+    // change, and race its nonce — but the feed keeps applying Syncs meanwhile.
+    let inFlight: Promise<void> | null = null;
+
+    // Price moves, for minMoveBps. Pair index → the last block a swap moved
+    // its price by at least minMoveBps.
+    const minMoveBps = deps.minMoveBps ?? 0;
+    const moveWindow = deps.moveWindowBlocks ?? 2;
+    const bigMoveAt = new Map<number, number>();
 
     // Set on BROADCAST, not on every attempt: the cooldown exists so we do
     // not race our own pending transaction. Stamping it on every simulation
@@ -238,6 +280,12 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         stats.batches++;
         movedPairs.length = 0;
         let unknown = 0;
+        let biggestMove = 0;
+        const noteMove = (pi: number, o0: number, o1: number) => {
+            const m = moveBps(o0, o1, ix.res0[pi], ix.res1[pi]);
+            if (m > biggestMove) biggestMove = m;
+            if (minMoveBps > 0 && m >= minMoveBps) bigMoveAt.set(pi, toBlock);
+        };
         const touchedV3: string[] = [];
         for (const u of updates) {
             if (u.v3) {
@@ -245,12 +293,15 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
                 else unknown++;
                 continue;
             }
+            const known = ix.pairIdx.get(u.pair.toLowerCase());
+            const o0 = known !== undefined ? ix.res0[known] : 0, o1 = known !== undefined ? ix.res1[known] : 0;
             const pi = ix.applySync(u.pair, u.reserve0, u.reserve1);
             // -1 means a pair the index has never heard of: created after the
             // last `yarn reserves`, or filtered out as unsafe/stable. Not an
             // error — nothing to re-score. Counted because a creeping number is
             // the signal that the index is going stale.
             if (pi < 0) { unknown++; continue; }
+            noteMove(pi, o0, o1);
             movedPairs.push(pi);
         }
         // V3 events carry no state: re-read every touched pool in one call
@@ -259,8 +310,10 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         if (touchedV3.length > 0) {
             try {
                 for (const f of await deps.refreshV3!(touchedV3)) {
+                    const known = ix.pairIdx.get(f.pair.toLowerCase());
+                    const o0 = known !== undefined ? ix.res0[known] : 0, o1 = known !== undefined ? ix.res1[known] : 0;
                     const pi = ix.applyV3State(f.pair, f.state);
-                    if (pi >= 0) movedPairs.push(pi);
+                    if (pi >= 0) { noteMove(pi, o0, o1); movedPairs.push(pi); }
                 }
                 stats.v3PoolsRefreshed += touchedV3.length;
             } catch (err) {
@@ -276,13 +329,28 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         stats.trianglesRescored += affected.length;
         if (affected.length === 0) return;
 
-        const found = ix.scoreMany(affected, deps.thresholds());
+        let found = ix.scoreMany(affected, deps.thresholds());
         if (found.length === 0) return;
         stats.candidatesFound += found.length;
 
+        let gatedNote = '';
+        if (minMoveBps > 0) {
+            const recent = (pair: string) => {
+                const at = bigMoveAt.get(ix.pairIdx.get(pair.toLowerCase()) ?? -1);
+                return at !== undefined && toBlock - at <= moveWindow;
+            };
+            const before = found.length;
+            found = found.filter(c => c.hops.some(h => recent(h.pair)));
+            stats.skippedSmallMove += before - found.length;
+            if (before > found.length) gatedNote = `, ${before - found.length} below the ${minMoveBps}bps move gate`;
+            // Expire stale entries so the map holds only the live window.
+            for (const [pi, at] of bigMoveAt) if (toBlock - at > moveWindow) bigMoveAt.delete(pi);
+        }
+
         log(`[${new Date().toISOString()}] block ${toBlock} — ${movedPairs.length} pair(s) moved` +
-            `${unknown ? ` (+${unknown} unknown)` : ''}, ${affected.length} triangle(s) re-scored, ` +
-            `${found.length} candidate(s)`);
+            `${unknown ? ` (+${unknown} unknown)` : ''}, largest ${Number.isFinite(biggestMove) ? `${biggestMove.toFixed(1)}bps` : 'new'}, ` +
+            `${affected.length} triangle(s) re-scored, ${found.length} candidate(s)${gatedNote}`);
+        if (found.length === 0) return;
 
         await attemptAll(found, 'this block');
     }
@@ -295,6 +363,12 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
      */
     async function attemptAll(found: IndexedCandidate[], scope: string): Promise<void> {
         found.sort((a, b) => rankValue(b) - rankValue(a));
+
+        if (inFlight) {
+            stats.pendingTxSkips++;
+            log(`  (our transaction is still awaiting its receipt — skipping ${scope})`);
+            return;
+        }
 
         // Cooldown. After a broadcast, the chain state we would price from
         // includes our own pending transaction, and racing ourselves into the
@@ -341,7 +415,19 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
                 continue;
             }
             if (attempt.broadcast) lastAttemptAt = now();
-            deps.report(attempt);
+            if (attempt.settled) {
+                // Sent; the receipt arrives in the background while the feed
+                // keeps the index current. Report (and count) once it lands.
+                log(`  #${ic.triangleId} — sent ${attempt.txHash}, awaiting receipt`);
+                inFlight = attempt.settled.then((a) => {
+                    // The cooldown runs from the receipt, as it did when the wait was inline.
+                    lastAttemptAt = now();
+                    if (a.confirmed) stats.confirmed++;
+                    try { deps.report(a); } catch (err) { log(`  [!] report failed: ${(err as Error).message}`); }
+                }).finally(() => { inFlight = null; });
+            } else {
+                deps.report(attempt);
+            }
             if (attempt.simulated) stats.simulatedClean++;
             // A gas refusal says the CYCLE is too small, not that its pairs
             // are broken: a bigger cycle through the same pool may well pay.
@@ -351,7 +437,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
             if (attempt.belowGasFloor && attempt.gasFloorWei != null && gasMemoryMs > 0) {
                 gasFloors.set(cycleKey(ic), { floor: Number(attempt.gasFloorWei), until: now() + gasMemoryMs });
             }
-            if (attempt.confirmed) stats.confirmed++;
+            if (attempt.confirmed && !attempt.settled) stats.confirmed++;
 
             if (!attempt.simulated) {
                 const decayed = attempt.built === null && !attempt.simulationError;
@@ -383,5 +469,5 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         await attemptAll(candidates, 'the startup sweep');
     }
 
-    return { onBatch, sweep, stats: () => ({ ...stats }) };
+    return { onBatch, sweep, stats: () => ({ ...stats }), idle: async () => { while (inFlight) await inFlight; } };
 }

@@ -18,7 +18,7 @@
     "factories": "bash scripts/log.sh source/util find-factories",
     "deploy": "bash scripts/deploy.sh",
     "contract-update": "bash scripts/log.sh source/util contract-update",
-    "configure": "bash scripts/init.sh",
+    "bootstrap": "bash scripts/init.sh",
     "cleanup": "bash scripts/log.sh source db-clean",
     "verify-fees": "bash scripts/log.sh source verify-fees",
     "check-fees": "bash scripts/log.sh source check-fee-config",

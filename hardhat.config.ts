@@ -32,6 +32,7 @@ const ROBINHOOD_RPC     = process.env.ROBINHOOD_RPC     || 'https://robinhood-rp
 const SONIC_RPC         = process.env.SONIC_RPC         || 'https://rpc.soniclabs.com';
 const STABLE_RPC        = process.env.STABLE_RPC        || 'https://stable-mainnet.rpc.sentio.xyz';
 const TEMPO_RPC         = process.env.TEMPO_RPC         || 'https://tempo-mainnet.drpc.org';
+const HYDRATION_RPC = process.env.HYDRATION_RPC || 'https://hydration-rpc.n.dwellir.com';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -176,6 +177,12 @@ export default defineConfig({
         },
         pharos: {
             url: PHAROS_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        hydration: {
+            url: HYDRATION_RPC,
             accounts,
             type: "http",
             chainType: "generic",

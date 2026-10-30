@@ -311,7 +311,7 @@ try {
     ok(rowA?.tier === 'far' && rowA.hf === st(A).hf && rowA.checkedBlock === h1, 'health persisted across reopen');
     db2.close();
     const db3 = new LiqDB(liqDbPath('anvil'), POOL);
-    const mon2 = new HealthMonitor(provider, market, db3, { watchEvery: 1000, sweepMs: 1_000_000 }, () => clock);
+    const mon2 = new HealthMonitor(provider, market, db3, { watchEvery: 1000, sweepMs: 1_000_000, sweepSliceMs: 1_000_000 }, () => clock);
     await mon2.sweep(await head());
 
     console.log('4. price trigger');
@@ -450,6 +450,15 @@ try {
         ok(!kReadEarly && rmon.accounts.get(K).checkedBlock > h0, 'dust K read only on its sweep turn (tick 4)');
         ok(order.every(u => swept.has(u)), 'every account with debt read within one sweepMs');
         ok(completions === 1, 'exactly one cycle completion in sweepMs', `${completions}`);
+
+        // A tick after a long stall carries at most sweepSliceMs of the sweep, not
+        // the whole queue (Avalanche: one slow tick made every next tick a full sweep).
+        const cmon = new HealthMonitor(provider, market, rdb, { sweepMs: 1000, sweepSliceMs: 250, minProfitUsd: 5 }, () => rclock);
+        await cmon.sweep(await head());
+        rclock += 60_000;
+        await provider.send('evm_mine', []);
+        const tc = await cmon.tick(await head(), []);
+        ok(tc.reasons.sweep <= 2 && !tc.sweepCompleted, 'after a 60s stall the sweep slice is still ≤ 2 (8 × 250/1000), the queue not drained', JSON.stringify(tc.reasons));
 
         await send(pool.repay(USDC, units(30, 6), K, ov()));
         const hk = await head();

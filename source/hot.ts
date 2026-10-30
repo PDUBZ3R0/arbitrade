@@ -58,10 +58,12 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
+import { createPendingProbe, rpcBackend, subscribePending } from './orchestrator/pending-probe.ts';
 import { makeProvider, redactUrl, usesPool } from './util/rpc.ts';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { heapMb } from './util/heap.ts';
 import path from 'node:path';
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { acquireLock } from './util/instance-lock.ts';
 
 const args = process.argv.slice(2);
@@ -88,6 +90,17 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('  --no-stable              Leave Solidly stable pools out even when the executor can trade them.');
     console.error('  --no-startup-refresh     Score from the DB snapshot until each pair next trades (skip the one-time read of every pair/pool).');
     console.error('  --allow-second           Start even though another hot loop for this chain is running (log/<chain>/hot.lock).');
+    console.error('  --min-move-bps N         Only attempt cycles through a pool whose price a swap moved by at least');
+    console.error('                           N bps in the last --move-window blocks (default: conf evaluator.minMoveBps,');
+    console.error('                           else 10). 0 attempts every cycle that scores.');
+    console.error('  --move-window N          Blocks a big move keeps its pools eligible (default 2).');
+    console.error('  --pending-probe          Also watch the mempool and MEASURE pre-confirmation backruns: simulate each');
+    console.error('                           pending swap through our pools, score the cycles it would open, then log');
+    console.error('                           where it landed and what followed it (log/<chain>/pending-probe.jsonl).');
+    console.error('                           Never sends anything. Defaults exist for Sonic and Polygon.');
+    console.error('  --pending-ws URL[,URL]   Pending-tx websocket(s). Default: <LABEL>_PENDING_WS, else the measured default.');
+    console.error('  --pending-sim URL        HTTP endpoint for eth_simulateV1 and receipts (default: the first --pending-ws as https).');
+    console.error('  --pending-sims N         Simulations in flight at once; pending swaps beyond are dropped (default 8).');
     console.error('  --v3-chunk N             V3 pools per getV3States eth_call (default 50). Lower it for');
     console.error('                           a rate-limited RPC that rejects or drops larger reads.');
     console.error('  --v3-refresh-sec N       Re-read V3 pools whose last state read failed, every N sec');
@@ -139,6 +152,9 @@ const noV3 = hasFlag('--no-v3');
 const noStable = hasFlag('--no-stable');
 const v3ChunkSize = num('--v3-chunk', 50, v => v >= 1, 'at least 1');
 const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
+const moveWindowBlocks = num('--move-window', 2, v => v >= 0 && Number.isInteger(v), 'a whole number, zero or more');
+const pendingProbeOn = hasFlag('--pending-probe');
+const pendingSims = num('--pending-sims', 8, v => v >= 1 && Number.isInteger(v), 'a whole number, at least 1');
 
 const cfg = loadChainConfig(chainArg);
 // Push feed: --ws pins one websocket. Otherwise, on the rated pool, the
@@ -194,6 +210,9 @@ if (!cfg.chain.executor) {
 const minProfitTokens = minProfitTokensOpt ?? cfg.evaluator?.minProfitTokens ?? 0.001;
 const minLiquidityTokens = cfg.evaluator?.minLiquidityTokens ?? 0;
 const minInputTokens = cfg.evaluator?.minInputTokens ?? 0;
+// 10bps by default: below the cheapest V2 fee, so a swap this small cannot
+// open a cycle on its own, while any swap that can still clears it easily.
+const minMoveBps = num('--min-move-bps', cfg.evaluator?.minMoveBps ?? 10, v => v >= 0, 'zero or more');
 
 console.log(`Hot loop for ${cfg.chain.name} (chain id ${cfg.chain.id})`);
 console.log(`Executor:  ${cfg.chain.executor}`);
@@ -201,6 +220,7 @@ console.log(`Mode:      ${live ? 'LIVE — will broadcast clean simulations' : '
 console.log(`Feed:      ${wsUrl ? `websocket ${redactUrl(wsUrl)}` : poolPush ? 'push through the rated pool (failover + backfill)' : `HTTP polling every ${pollMs}ms (one block of latency — pass --ws for push)`}`);
 console.log(`Owner:     ${ownerAddress}`);
 console.log(`Per block: up to ${candidatesPerBlock} candidate(s), ${gasMarginMultiple}x gas margin, ${maxRoiPct}% ROI cap`);
+console.log(`Trigger:   ${minMoveBps > 0 ? `a swap moving a pool >= ${minMoveBps}bps (eligible for ${moveWindowBlocks} block(s) after)` : 'every cycle that scores (--min-move-bps 0)'}`);
 console.log('');
 
 const dbFile = dbPath(cfg.chain.label);
@@ -216,6 +236,8 @@ const executor = new CandidateExecutor(cfg, provider, {}, {
     minProfitTokens,
     // Short, because this process runs for hours. See ExecutorOptions.
     gasPriceMaxAgeMs: 12_000,
+    // The feed waits on the handler; a receipt wait inline holds every block behind it.
+    detachReceipt: true,
 });
 const executorV3 = await executor.supportsV3();
 const v3 = !noV3 && executorV3 && !!cfg.chain.contract;
@@ -438,6 +460,8 @@ const hot = createHotLoop({
     report: (a) => printAttempt(cfg, a),
     candidatesPerBlock,
     cooldownMs,
+    minMoveBps,
+    moveWindowBlocks,
     // Self-healing: when an attempt shows the index was wrong about a cycle,
     // re-read its pairs (token balances, the same thing `yarn reserves` and
     // Sync carry) and correct the index.
@@ -589,6 +613,51 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
     }
 }
 
+// --- pending-swap probe (measurement only) -----------------------------------
+//
+// See ./orchestrator/pending-probe.ts. Started after the startup refresh so it
+// scores against current reserves, never before.
+//
+// Defaults are the endpoints measured on 2026-10-30: each returns full
+// transaction objects to newPendingTransactions(true), so no per-hash fetch.
+// Sonic publicnode saw 99% of mined txs ~1.1s ahead; Polygon publicnode only
+// ~18% (drpc 89%, but hashes only — pass it with --pending-ws to compare, at
+// the cost of a capped eth_getTransactionByHash per tx). Both answer
+// eth_simulateV1 over https.
+const PENDING_DEFAULTS: Record<number, string> = {
+    146: 'wss://sonic-rpc.publicnode.com',
+    137: 'wss://polygon-bor-rpc.publicnode.com',
+};
+let pendingFeed: ReturnType<typeof subscribePending> | null = null;
+let pendingProbe: ReturnType<typeof createPendingProbe> | null = null;
+if (pendingProbeOn) {
+    const envKey = `${cfg.chain.label.toUpperCase().replace(/-/g, '_')}_PENDING_WS`;
+    const wsList = (getStr('--pending-ws') ?? process.env[envKey] ?? PENDING_DEFAULTS[cfg.chain.id] ?? '')
+        .split(',').map(u => u.trim()).filter(Boolean);
+    if (wsList.length === 0) {
+        console.error(`--pending-probe: no pending-tx websocket known for ${cfg.chain.name}. Pass --pending-ws or set ${envKey}.`);
+        process.exit(1);
+    }
+    const simUrl = getStr('--pending-sim') ?? wsList[0].replace(/^ws(s?):/, 'http$1:');
+    const backend = rpcBackend(simUrl);
+    const jsonl = path.join('log', cfg.chain.label, 'pending-probe.jsonl');
+    mkdirSync(path.dirname(jsonl), { recursive: true });
+    pendingProbe = createPendingProbe({
+        index: ix,
+        thresholds: () => thresholds,
+        pricing: () => pricing,
+        decimalsByToken,
+        ...backend,
+        indexedBlock: () => watcher.lastBlock(),
+        minMoveBps,
+        maxSimInFlight: pendingSims,
+        record: (o) => appendFileSync(jsonl, JSON.stringify({ chain: cfg.chain.label, ...o }) + '\n'),
+    });
+    pendingFeed = subscribePending(wsList, pendingProbe.onPending);
+    console.log(`Pending:   probing ${wsList.map(redactUrl).join(', ')} (simulate on ${redactUrl(simUrl)}, ` +
+        `${pendingSims} at once) — measurement only, nothing is sent; outcomes in ${jsonl}`);
+}
+
 const TRANSPORT_NOTE: Record<string, string> = {
     subscribe: 'eth_subscribe(logs) — pushed, no polling, no getLogs',
     topic: 'ranged eth_getLogs by topic',
@@ -696,8 +765,10 @@ setInterval(() => {
         `${s.candidatesFound} candidate(s), ${s.attempts} attempt(s), ${s.confirmed} confirmed` +
         (s.skippedBelowGas ? `, ${s.skippedBelowGas} skipped below gas` : '') +
         (s.skippedKnownBad ? `, ${s.skippedKnownBad} skipped known-bad` : '') +
+        (s.skippedSmallMove ? `, ${s.skippedSmallMove} below move gate` : '') +
         (st.reconnects ? `, ${st.reconnects} reconnect(s)` : '') +
         `, pricing ${age}m old, heap ${heapMb()}`);
+    if (pendingProbe && pendingFeed) console.log(`  [pending] ${pendingSummary()}`);
 
     // A chain that has not advanced a BLOCK is gone; one that has not produced
     // a Sync is merely quiet. The watcher reconnects on its own, so this is a
@@ -738,10 +809,29 @@ setInterval(() => {
 // heartbeat above (deliberate exit(1)). shutdown() clears it.
 const keepAlive = setInterval(() => {}, 1 << 30);
 
+function pendingSummary(): string {
+    const p = pendingProbe!.stats(), f = pendingFeed!.stats();
+    return `${f.connected} feed(s) up, ${p.seen} pending seen (${p.duplicates} dup, ${p.notASwap} not a swap, ${p.filteredOut} not ours` +
+        (f.unfetched ? `, ${f.unfetched} hash(es) not fetched` : '') + `) -> ${p.simulated} simulated` +
+        (p.simulated ? ` (avg ${Math.round(p.simMsTotal / p.simulated)}ms)` : '') +
+        (p.simDropped ? `, ${p.simDropped} dropped at the in-flight cap` : '') +
+        (p.simErrors ? `, ${p.simErrors} sim error(s)` : '') + (p.simReverted ? `, ${p.simReverted} would revert` : '') +
+        ` -> ${p.touchedOurPools} touched our pools, ${p.belowGate} below the move gate -> ${p.opportunities} opened a cycle` +
+        (p.standingSkipped ? ` (${p.standingSkipped} standing cycle(s) ignored)` : '') +
+        ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x`;
+}
+
 const shutdown = async (sig: string) => {
     console.log(`\n${sig} — stopping.`);
     clearInterval(keepAlive);
     await watcher.stop();
+    pendingFeed?.stop();
+    if (pendingProbe) {
+        await Promise.race([pendingProbe.idle(), sleep(5_000)]);
+        console.log(`Pending probe: ${pendingSummary()}`);
+    }
+    // A sent trade's receipt and ledger row, if one is in flight — bounded, the executor's own wait is 60s.
+    await Promise.race([hot.idle(), sleep(65_000)]);
     const s = watcher.stats();
     console.log(`Transport ${watcher.transport()}: drained ${s.blocksDrained} block(s), ` +
         `${s.logsPushed} pushed log(s), saw ${s.updatesSeen} Sync log(s), kept ${s.updatesKept}, ${s.errors} error(s).`);
@@ -756,6 +846,8 @@ const shutdown = async (sig: string) => {
         (h.skippedMuted ? `, ${h.skippedMuted} candidate(s) skipped as muted` : '') +
         (h.skippedBelowGas ? `, ${h.skippedBelowGas} candidate(s) skipped below a known gas floor` : '') +
         (h.skippedKnownBad ? `, ${h.skippedKnownBad} candidate(s) skipped through a permissioned pair or unsafe token` : '') +
+        (h.skippedSmallMove ? `, ${h.skippedSmallMove} candidate(s) below the ${minMoveBps}bps move gate` : '') +
+        (h.pendingTxSkips ? `, ${h.pendingTxSkips} batch(es) skipped while our tx was pending` : '') +
         (h.pairsUnknown ? `, ${h.pairsUnknown} update(s) for unknown pairs (re-run \`yarn reserves\`)` : ''));
     db.close();
     provider.destroy();
