@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
-// Pending-swap probe: phase 1 of a pre-confirmation backrun path. MEASURES
-// ONLY — nothing here builds, signs or sends a transaction.
+// Pending-swap probe: phases 1 and 2 of a pre-confirmation backrun path.
+// MEASURES ONLY — it builds our executor call to simulate it, but nothing here
+// signs or sends a transaction.
 //
 // The hot loop reacts to a swap one block after it lands. On a chain with a
 // public mempool the swap is visible before that: measured 2026-10-30 on
@@ -26,8 +27,17 @@
 //   score      apply those logs to the live index, score the touched cycles,
 //              restore — all synchronously, so the hot loop's handler can
 //              never observe the shadow state
+//   backrun    (phase 2) build the executor call for the best few new cycles
+//              on the victim's exact post-swap reserves, and eth_simulateV1
+//              [victim, backrun] as one bundle: does it execute behind THIS
+//              swap, what ArbExecuted says it made, does that clear gas
 //   track      did it land, where in its block, what came straight after it,
 //              and is the cycle still open once the index has the block
+//
+// Phase 1 (2026-10-30) showed why phase 2 is needed: on Polygon 14 of 19
+// cycles a pending swap "opened" were still open a block later, while the
+// hot loop's attempts at the same chain confirmed 0 of 130. The index's float
+// score is not evidence a cycle executes; the bundle simulation is.
 //
 // Lives inside the hot process (`yarn arbitrage <chain> --pending-probe`)
 // rather than as its own CLI because it needs exactly what that process
@@ -37,7 +47,8 @@
 
 import { JsonRpcProvider } from 'ethers';
 import type { TriangleIndex, ScoreThresholds, IndexedCandidate, V3PoolState } from './triangle-index.ts';
-import type { RootPricing } from './attempt.ts';
+import type { RootPricing, BackrunPlan } from './attempt.ts';
+import type { Candidate } from '../evaluator/evaluator.ts';
 import { decodeSync, SYNC_TOPICS, V3_SWAP_TOPIC, PANCAKE_V3_SWAP_TOPIC } from './sync-watcher.ts';
 import { moveBps } from './hot-loop.ts';
 
@@ -71,6 +82,19 @@ export type LandedTx = {
     /** Block timestamp, seconds. */
     timestamp?: number;
 };
+
+/** The victim and our backrun simulated as one bundle, in that order, on one block. */
+export type BundleResult = {
+    victimOk: boolean;
+    ok: boolean;
+    error?: string;
+    gasUsed: bigint;
+    logs: SimLog[];
+    baseBlock: number;
+};
+
+/** The state a pending swap leaves its pools at, exact — what buildHops takes as postState. */
+export type PostState = { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, V3PoolState> };
 
 /** The transaction directly after the victim in its block. */
 export type NextTx = {
@@ -114,6 +138,21 @@ export type PendingProbeStats = {
     /** Once the index had the victim's block, the cycle still scored. */
     stillOpen: number;
     simMsTotal: number;
+    /** Phase 2: cycles for which a backrun was prepared and bundle-simulated. */
+    backrunsTried: number;
+    /** The exact walk on the post-swap reserves did not clear the config floor. */
+    backrunDecayed: number;
+    /** Refused before building (known bad, executor support, funding) or the path could not be read. */
+    backrunRefused: number;
+    /** The victim itself reverted in the bundle: nothing to measure. */
+    backrunVictimReverted: number;
+    /** Our executor call reverted behind the victim. */
+    backrunReverted: number;
+    /** Executed behind the victim with a realised profit... */
+    backrunClean: number;
+    /** ...and that profit cleared the gas floor at the simulated gas. */
+    backrunClearsFloor: number;
+    backrunMsTotal: number;
 };
 
 export type PendingProbeDeps = {
@@ -122,6 +161,20 @@ export type PendingProbeDeps = {
     pricing: () => RootPricing;
     decimalsByToken: Map<string, number>;
     simulate: (tx: PendingTx) => Promise<SimResult>;
+    /**
+     * Phase 2, dry run: build our executor call on the post-swap state and
+     * simulate it bundled behind the victim. Optional: without it the probe
+     * only scores (phase 1).
+     */
+    backrun?: {
+        /** Usually CandidateExecutor.prepareBackrun, bound to the DB. */
+        prepare: (c: Candidate, post: PostState) => Promise<BackrunPlan>;
+        bundle: (victim: PendingTx, call: { from: string; to: string; data: string }) => Promise<BundleResult>;
+        /** Usually CandidateExecutor.arbExecutedProfit. */
+        profitOf: (logs: SimLog[]) => bigint | null;
+        /** Cycles per pending swap to build and simulate, best first. Default 3. */
+        perSwap?: number;
+    };
     receipt: (hash: string) => Promise<LandedTx | null>;
     /** Ordering evidence. Optional: without it, nothing is said about what followed the victim. */
     nextTx?: (blockNumber: number, transactionIndex: number) => Promise<NextTx | null>;
@@ -168,7 +221,7 @@ const word = (data: string, i: number): bigint => {
 const int24 = (w: bigint): number => Number(BigInt.asIntN(24, w & 0xffffffn));
 
 type PoolMove =
-    | { kind: 'v2'; pi: number; pair: string; r0: number; r1: number; bps: number }
+    | { kind: 'v2'; pi: number; pair: string; r0: number; r1: number; raw0: bigint; raw1: bigint; bps: number }
     | { kind: 'v3'; pi: number; pair: string; state: V3PoolState; bps: number };
 
 type Opportunity = {
@@ -177,7 +230,7 @@ type Opportunity = {
     simMs: number;
     baseBlock: number;
     moves: Array<{ pair: string; bps: number }>;
-    cycles: Array<{ triangleId: number; root: string; symbol?: string; netProfit: number; value: number; pairs: string[] }>;
+    cycles: Array<{ triangleId: number; root: string; symbol?: string; netProfit: number; value: number; pairs: string[]; backrun?: Record<string, unknown> }>;
     gasPrice?: bigint;
 };
 
@@ -194,6 +247,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         simReverted: 0, touchedOurPools: 0, belowGate: 0, v3OutOfWindow: 0, opportunities: 0,
         standingSkipped: 0, landed: 0, landedReverted: 0, notLanded: 0, lateSim: 0, nextTouchedPools: 0,
         stillOpen: 0, simMsTotal: 0,
+        backrunsTried: 0, backrunDecayed: 0, backrunRefused: 0, backrunVictimReverted: 0,
+        backrunReverted: 0, backrunClean: 0, backrunClearsFloor: 0, backrunMsTotal: 0,
     };
 
     // Addresses without 0x, lowercase: the prefilter scans raw calldata hex.
@@ -243,7 +298,9 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             if (SYNC_TOPIC_SET.has(topic) && !ix.pairIsV3[pi]) {
                 const d = decodeSync(l.data);
                 if (!d) continue;
+                // The raw words too: the backrun is built on exact reserves (buildHops walks in BigInt).
                 byPool.set(pi, { kind: 'v2', pi, pair: ix.pairAddr[pi], r0: d.reserve0, r1: d.reserve1,
+                    raw0: word(l.data, 0), raw1: word(l.data, 1),
                     bps: moveBps(ix.res0[pi], ix.res1[pi], d.reserve0, d.reserve1) });
             } else if (V3_SWAP_TOPIC_SET.has(topic) && ix.pairIsV3[pi]) {
                 const old = ix.v3State[pi];
@@ -349,7 +406,81 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         log(`  [pending] ${tx.hash.slice(0, 12)}… moves ${op.moves.map(m => `${m.pair.slice(0, 8)} ${m.bps}bps`).join(', ')}` +
             ` → ${fresh.length} new cycle(s), best ${fmt(best.netProfit)} ${best.symbol ?? best.root.slice(0, 8)}` +
             (Number.isFinite(best.value) ? ` (~${fmt(best.value)} numeraire)` : '') + ` — simulated in ${simMs}ms on block ${sim.baseBlock}`);
+        if (deps.backrun) await backruns(tx, moves, fresh, op);
         await outcome(op, tris);
+    }
+
+    /**
+     * Phase 2: for the best few new cycles, build the executor call on the
+     * victim's exact post-swap state and simulate [victim, backrun] in one
+     * eth_simulateV1 call — the only place that state exists before the block.
+     * The contract sizes every hop from live reserves, so this answers what
+     * buildHops' prediction cannot: does the cycle execute behind THIS swap,
+     * what does ArbExecuted say it made, and does that clear gas.
+     */
+    async function backruns(tx: PendingTx, moves: PoolMove[], fresh: IndexedCandidate[], op: Opportunity): Promise<void> {
+        const br = deps.backrun!;
+        const post: PostState = { reserves: new Map(), v3: new Map() };
+        for (const m of moves) {
+            if (m.kind === 'v2') post.reserves.set(m.pair, { reserve0: m.raw0, reserve1: m.raw1 });
+            else post.v3.set(m.pair, m.state);
+        }
+        const n = Math.min(br.perSwap ?? 3, fresh.length);
+        await Promise.all(fresh.slice(0, n).map(async (c, i) => {
+            const t0 = now();
+            const rec: Record<string, unknown> = {};
+            op.cycles[i].backrun = rec;
+            stats.backrunsTried++;
+            const tag = `  [backrun] ${tx.hash.slice(0, 12)}… #${c.triangleId}`;
+            const dec = deps.decimalsByToken.get(c.rootToken.toLowerCase()) ?? 18;
+            const sym = deps.pricing()[c.rootToken.toLowerCase()]?.symbol ?? c.rootToken.slice(0, 8);
+            const tok = (w: bigint) => fmt(Number(w) / 10 ** dec);
+            try {
+                const plan = await br.prepare(c as Candidate, post);
+                if (!plan.tx) {
+                    if (plan.decayReason !== undefined) { stats.backrunDecayed++; rec.result = 'decayed'; rec.reason = plan.decayReason; }
+                    else { stats.backrunRefused++; rec.result = 'refused'; rec.reason = plan.error; }
+                    log(`${tag} — ${rec.result}: ${String(rec.reason ?? '').slice(0, 200)}`);
+                    return;
+                }
+                let funding = plan.funding, built = plan.built!;
+                let b = await br.bundle(tx, plan.tx);
+                if (b.victimOk && !b.ok && plan.fallback) {
+                    // Same retry attempt() makes: the flash swap reverted, try the lender.
+                    rec.flashSwapError = b.error;
+                    ({ funding, built } = plan.fallback);
+                    b = await br.bundle(tx, plan.fallback.tx);
+                }
+                rec.funding = funding;
+                rec.expectedProfit = built.expectedProfit.toString();
+                rec.ms = now() - t0;
+                rec.bundleBaseBlock = b.baseBlock;
+                if (!b.victimOk) { stats.backrunVictimReverted++; rec.result = 'victim-reverted'; log(`${tag} — the victim reverts in the bundle; nothing to measure`); return; }
+                rec.gasUsed = b.gasUsed.toString();
+                if (!b.ok) {
+                    stats.backrunReverted++;
+                    rec.result = 'reverted'; rec.reason = b.error;
+                    log(`${tag} — REVERTS behind the victim (predicted ${tok(built.expectedProfit)} ${sym}, ${funding}` +
+                        (rec.flashSwapError !== undefined ? ', after the flash swap reverted too' : '') + `): ${String(b.error ?? '').slice(0, 160)}`);
+                    return;
+                }
+                const profit = br.profitOf(b.logs);
+                const floor = plan.floorFor!(b.gasUsed);
+                const clears = profit != null && floor != null && profit >= floor;
+                stats.backrunClean++;
+                if (clears) stats.backrunClearsFloor++;
+                Object.assign(rec, { result: clears ? 'clears-floor' : 'below-floor', profit: profit?.toString(), floor: floor?.toString() });
+                log(`${tag} — executes behind the victim: profit ${profit != null ? tok(profit) : '?'} ${sym} (predicted ${tok(built.expectedProfit)}), ` +
+                    `gas ${b.gasUsed}, floor ${floor != null ? tok(floor) : 'unpriceable'} → ${clears ? 'WOULD SEND' : 'below the floor'} [${rec.ms}ms, ${funding}` +
+                    (rec.flashSwapError !== undefined ? ' after the flash swap reverted' : '') + `]`);
+            } catch (e) {
+                stats.backrunRefused++;
+                rec.result = 'error'; rec.reason = (e as Error).message?.slice(0, 240);
+                log(`${tag} — error: ${rec.reason}`);
+            } finally {
+                stats.backrunMsTotal += now() - t0;
+            }
+        }));
     }
 
     /** `tris` are the index's dense triangle numbers (what scoreMany takes); op.cycles carry the DB ids. */
@@ -453,7 +584,7 @@ const hexq = (v: string | bigint | undefined): string | undefined => v == null ?
  * whose nonce is one ahead of latest (a sender queueing several) would fail
  * for a reason that has nothing to do with its swap.
  */
-export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'receipt' | 'nextTx'> & { destroy: () => void } {
+export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'receipt' | 'nextTx'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
     const p = new JsonRpcProvider(url, undefined, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 });
     const blockTs = new Map<number, number>();
     const timestamp = async (n: number): Promise<number | undefined> => {
@@ -476,6 +607,21 @@ export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 're
                 ok: Number(c.status) === 1,
                 error: c.error?.message,
                 logs: (c.logs ?? []).map((l: any) => ({ address: l.address, topics: l.topics, data: l.data })),
+                baseBlock: Number(b.number) - 1,
+            };
+        },
+        async bundle(victim, ours) {
+            const v = { from: victim.from, to: victim.to, input: victim.input, value: hexq(victim.value) ?? '0x0', gas: hexq(victim.gas) };
+            const res = await p.send('eth_simulateV1', [{ blockStateCalls: [{ calls: [v, { from: ours.from, to: ours.to, input: ours.data }] }], validation: false }, 'latest']);
+            const b = res?.[0];
+            const [cv, co] = b?.calls ?? [];
+            if (!cv || !co) throw new Error('eth_simulateV1 returned fewer than two call results');
+            return {
+                victimOk: Number(cv.status) === 1,
+                ok: Number(co.status) === 1,
+                error: co.error?.message ?? (co.error?.data ? `revert ${co.error.data}` : undefined),
+                gasUsed: BigInt(co.gasUsed ?? 0),
+                logs: (co.logs ?? []).map((l: any) => ({ address: l.address, topics: l.topics, data: l.data })),
                 baseBlock: Number(b.number) - 1,
             };
         },

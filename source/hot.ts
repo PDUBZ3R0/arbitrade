@@ -95,8 +95,9 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           else 10). 0 attempts every cycle that scores.');
     console.error('  --move-window N          Blocks a big move keeps its pools eligible (default 2).');
     console.error('  --pending-probe          Also watch the mempool and MEASURE pre-confirmation backruns: simulate each');
-    console.error('                           pending swap through our pools, score the cycles it would open, then log');
-    console.error('                           where it landed and what followed it (log/<chain>/pending-probe.jsonl).');
+    console.error('                           pending swap through our pools, score the cycles it would open, simulate our');
+    console.error('                           executor call bundled behind it, then log where it landed and what followed');
+    console.error('                           it (log/<chain>/pending-probe.jsonl).');
     console.error('                           Never sends anything. Defaults exist for Sonic and Polygon.');
     console.error('  --pending-ws URL[,URL]   Pending-tx websocket(s). Default: <LABEL>_PENDING_WS, else the measured default.');
     console.error('  --pending-sim URL        HTTP endpoint for eth_simulateV1 and receipts (default: the first --pending-ws as https).');
@@ -618,7 +619,7 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
 // See ./orchestrator/pending-probe.ts. Started after the startup refresh so it
 // scores against current reserves, never before.
 //
-// Defaults are the endpoints measured on 2026-10-30: each returns full
+// Defaults are the endpoints measured on 2026-10-30 (Gnosis added the same day): each returns full
 // transaction objects to newPendingTransactions(true), so no per-hash fetch.
 // Sonic publicnode saw 99% of mined txs ~1.1s ahead; Polygon publicnode only
 // ~18% (drpc 89%, but hashes only — pass it with --pending-ws to compare, at
@@ -627,6 +628,9 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
 const PENDING_DEFAULTS: Record<number, string> = {
     146: 'wss://sonic-rpc.publicnode.com',
     137: 'wss://polygon-bor-rpc.publicnode.com',
+    // ~45% of mined txs seen, ~3.3s ahead, heavily re-announced (~160 msgs/s
+    // for far fewer txs); drpc and rpc.gnosischain.com send nothing.
+    100: 'wss://gnosis-rpc.publicnode.com',
 };
 let pendingFeed: ReturnType<typeof subscribePending> | null = null;
 let pendingProbe: ReturnType<typeof createPendingProbe> | null = null;
@@ -649,6 +653,13 @@ if (pendingProbeOn) {
         decimalsByToken,
         ...backend,
         indexedBlock: () => watcher.lastBlock(),
+        // Phase 2: our real executor call, bundle-simulated behind the victim.
+        // prepareBackrun builds and encodes; nothing is signed or sent.
+        backrun: {
+            prepare: (c, post) => executor.prepareBackrun(c, db, post),
+            bundle: backend.bundle,
+            profitOf: (logs) => executor.arbExecutedProfit(logs),
+        },
         minMoveBps,
         maxSimInFlight: pendingSims,
         record: (o) => appendFileSync(jsonl, JSON.stringify({ chain: cfg.chain.label, ...o }) + '\n'),
@@ -818,6 +829,10 @@ function pendingSummary(): string {
         (p.simErrors ? `, ${p.simErrors} sim error(s)` : '') + (p.simReverted ? `, ${p.simReverted} would revert` : '') +
         ` -> ${p.touchedOurPools} touched our pools, ${p.belowGate} below the move gate -> ${p.opportunities} opened a cycle` +
         (p.standingSkipped ? ` (${p.standingSkipped} standing cycle(s) ignored)` : '') +
+        (p.backrunsTried ? ` -> ${p.backrunsTried} backrun(s) built: ${p.backrunDecayed} decayed on exact reserves, ${p.backrunRefused} refused, ` +
+            `${p.backrunReverted} reverted behind the victim, ${p.backrunClean} executed (${p.backrunClearsFloor} clearing the gas floor)` +
+            (p.backrunVictimReverted ? `, ${p.backrunVictimReverted} victim reverted` : '') +
+            ` avg ${Math.round(p.backrunMsTotal / p.backrunsTried)}ms` : '') +
         ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x`;
 }
 

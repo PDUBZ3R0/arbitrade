@@ -254,6 +254,16 @@ export async function buildHops(
         whyNull?: { reason?: string };
         /** V3-kind hops that are Algebra pools (globalState/tickTable): read with getAlgebraStates. */
         algebraPools?: Set<string>;
+        /**
+         * State that is not on chain yet: what a pending swap will leave its
+         * pools at (pending-probe.ts, from eth_simulateV1's logs). These pools
+         * are taken from here instead of the read; every other pool is read at
+         * latest as usual, which is right because the pending swap does not
+         * touch them. Keys lowercase. A stable pool in here is refused: its
+         * quote is the pair's own getAmountOut, which can only answer for the
+         * state already on chain.
+         */
+        postState?: { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, any> };
     } = {},
 ): Promise<BuiltArb | null> {
     const why = (r: string): null => { if (opts.whyNull) opts.whyNull.reason = r; return null; };
@@ -264,8 +274,12 @@ export async function buildHops(
     // 1. Fresh state for the whole path, at ONE block: V3 pools through
     // YoBatches (which reports the block it read at), then the V2 pairs'
     // reserves through Multicall3 pinned to that same block.
-    const v3Hops = hops.filter(isV3);
-    const v3ByPool = new Map<string, any>();
+    const post = opts.postState;
+    for (const h of hops) {
+        if (h.stable && post?.reserves.has(h.pair.toLowerCase())) return why(`stable hop ${h.pair} is moved by the pending swap; its quote can only be read for on-chain state`);
+    }
+    const v3Hops = hops.filter(h => isV3(h) && !post?.v3.has(h.pair.toLowerCase()));
+    const v3ByPool = new Map<string, any>(post?.v3 ?? []);
     let blockTag: number | undefined;
     // This chain's own block, asked up front where the contracts can't report it.
     if (await blockNumberIsL1(provider)) blockTag = await provider.getBlockNumber();
@@ -326,6 +340,8 @@ export async function buildHops(
             reserve1: decoded[1] as bigint,
         });
     }
+    // Read anyway (one multicall either way), then replaced by the post-swap state.
+    if (post) for (const [p, r] of post.reserves) if (reservesByPair.has(p)) reservesByPair.set(p, r);
 
     // 2. token0/token1 ordering — fixed at pair creation, cached from the scan.
     // Only used for the local prediction; the contract reads token0() itself,

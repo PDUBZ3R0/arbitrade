@@ -17,7 +17,11 @@
 //     calls never cost a simulation;
 //   - a cycle that already scored before the victim is not credited to it;
 //   - the ordering evidence: the tx right after the victim touching the
-//     cycle's pools is recorded.
+//     cycle's pools is recorded;
+//   - phase 2: our REAL executor call, built on the victim's post-swap
+//     reserves, executes behind it in a bundle simulation — realising exactly
+//     the profit the exact walk predicted — while the same call at latest
+//     (no victim) reverts, and nothing is ever sent.
 // -----------------------------------------------------------------------------
 
 import { JsonRpcProvider, Wallet, ContractFactory } from 'ethers';
@@ -25,6 +29,7 @@ import { readFileSync, rmSync, mkdirSync } from 'fs';
 import { ArbitradeDB } from '../source/util/db.ts';
 import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
 import { createPendingProbe, rpcBackend, subscribePending } from '../source/orchestrator/pending-probe.ts';
+import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 
 const art = JSON.parse(readFileSync(new URL('./artifacts.json', import.meta.url), 'utf8'));
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -50,6 +55,13 @@ await provider.send('evm_setAutomine', [true]);
 
 // --- venue: ROOT -> B -> C -> ROOT, balanced ---------------------------------
 console.log('0. venue');
+// Multicall3 at its canonical address: buildHops reads through it, and a call
+// to a codeless address "succeeds" with 0x (see test-hot.mjs).
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+{
+    const mc = await deploy('Multicall3Min');
+    await provider.send('anvil_setCode', [MULTICALL3, await provider.getCode(await mc.getAddress())]);
+}
 const tRoot = await deploy('MockToken', 'ROOT', 0);
 const tB = await deploy('MockToken', 'B', 0);
 const tC = await deploy('MockToken', 'C', 0);
@@ -66,8 +78,17 @@ const seed = async (pair, tx, ax, ty, ay) => {
 await seed(pAB, tRoot, E(1_000_000), tB, E(1_000_000));
 await seed(pBC, tB, E(1_000_000), tC, E(1_000_000));
 await seed(pCA, tC, E(1_000_000), tRoot, E(1_000_000));
+const lender = await deploy('MockAavePool', 5n);       // 0.05% premium
+const POOL = await lender.getAddress();
+await (await tRoot.mint(POOL, E(10_000_000))).wait();
+const exec = await deploy('FlashArbExecutor', POOL);
+const EXEC = await exec.getAddress();
 await (await tRoot.mint(w.address, E(1_000_000))).wait();
 await (await tRoot.approve(AB, E(1_000_000))).wait();
+// CA never calls back. The profitable direction behind the victim is
+// ROOT -> C (CA) -> B -> ROOT (AB), so CA is the flash-swapped first hop: it reverts, and the
+// probe must retry through the lender exactly as attempt() would.
+await (await pCA.setFlashOff(true)).wait();
 
 // --- DB + index --------------------------------------------------------------
 console.log('\n1. index');
@@ -99,9 +120,23 @@ const thresholds = {
 };
 ok(ix.triangleCount === 1 && ix.scoreAll(thresholds).length === 0, 'one triangle, nothing profitable at balanced reserves');
 
+const cfg = {
+    raw: {},
+    chain: { name: 'Anvil', label: 'anvil', id: 31337, host: RPC_URL, token: ROOT, executor: EXEC },
+    factories: [{ address: FACTORY, fee: 0.003 }],
+    flashloan: { provider: 'aave-v3', pool: POOL, premium: 0.0005, flashSwap: true,
+        tokens: [ROOT, B, C].map((a, i) => ({ symbol: ['ROOT', 'B', 'C'][i], address: a, decimals: 18 })) },
+    evaluator: { minProfitTokens: 0.01, minLiquidityTokens: 1, minInputTokens: 0.1 },
+    scan: {},
+};
+const executor = new CandidateExecutor(cfg, provider, pricing, {
+    ownerAddress: w.address, live: false, gasMarginMultiple: 1, minProfitTokens: 0.01, gasPriceMaxAgeMs: 1,
+});
+
 // --- probe -------------------------------------------------------------------
 console.log('\n2. probe on the mempool');
 const records = [];
+const plans = [];
 const logs = [];
 let indexed = await provider.getBlockNumber();
 const backend = rpcBackend(RPC_URL);
@@ -110,6 +145,11 @@ const probe = createPendingProbe({
     decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
     ...backend,
     indexedBlock: () => indexed,
+    backrun: {
+        prepare: async (c, post) => { const p = await executor.prepareBackrun(c, db, post); plans.push(p); return p; },
+        bundle: backend.bundle,
+        profitOf: (l) => executor.arbExecutedProfit(l),
+    },
     minMoveBps: 10,
     receiptPollMs: 100,
     landWaitMs: 15_000,
@@ -133,8 +173,8 @@ await probe.idle();
 let s = probe.stats();
 ok(s.notASwap >= 1, 'approve skipped as a token op, no simulation', JSON.stringify({ notASwap: s.notASwap }));
 ok(s.filteredOut >= 1, 'mint naming none of our pairs skipped', JSON.stringify({ filteredOut: s.filteredOut }));
-ok(s.simulated === 1 && s.touchedOurPools === 1 && s.belowGate === 1 && s.opportunities === 0,
-   'tiny swap simulated, touches AB, gated below 10bps', JSON.stringify(s));
+ok(s.simulated === 1 && s.touchedOurPools === 1 && s.belowGate === 1 && s.opportunities === 0 && s.backrunsTried === 0,
+   'tiny swap simulated, touches AB, gated below 10bps — no backrun built', JSON.stringify(s));
 await provider.send('evm_mine', []);
 // The noise block lands; bring the index up to it as the Sync feed would.
 for (const p of [pAB]) { const [r0, r1] = await p.getReserves(); ix.applySync((await p.getAddress()), Number(r0), Number(r1)); }
@@ -143,6 +183,7 @@ const abMid = [ix.res0[ix.pairIdx.get(AB.toLowerCase())], ix.res1[ix.pairIdx.get
 
 // The victim: a big swap that opens ROOT -> B -> C -> ROOT. Then, at the same
 // fee, a tx touching CA — standing in for a backrunner.
+const nonceBeforeVictim = await provider.getTransactionCount(w.address, 'latest');
 const victim = await pAB.drift(ROOT, E(100_000), { ...gas, nonce: nonce++ });
 const after = await pCA.sync({ ...gas, nonce: nonce++ });
 ok(await until(() => probe.stats().opportunities === 1), 'victim seen pending, simulated, and opens a cycle', JSON.stringify(probe.stats()));
@@ -152,6 +193,24 @@ ok(ix.res0[pi] === abMid[0] && ix.res1[pi] === abMid[1] && ix.scoreAll(threshold
    'live index untouched by the shadow score (no candidate before the victim lands)');
 ok(abMid[0] !== abBefore[0] || abMid[1] !== abBefore[1], '(sanity) the tiny swap did move AB in the index');
 ok(logs.some(l => l.includes(victim.hash.slice(0, 12)) && /new cycle/.test(l)), 'detection logged with the victim hash');
+
+// Phase 2, checked while the victim is still pending.
+// Not idle(): that would also wait out the landing check for a victim not yet mined.
+await until(() => probe.stats().backrunClean + probe.stats().backrunReverted + probe.stats().backrunDecayed + probe.stats().backrunRefused >= 1);
+s = probe.stats();
+ok(s.backrunsTried === 1 && s.backrunClean === 1 && s.backrunClearsFloor === 1,
+   'backrun built on the post-swap reserves executes behind the victim and clears the gas floor', JSON.stringify({
+       tried: s.backrunsTried, decayed: s.backrunDecayed, refused: s.backrunRefused, reverted: s.backrunReverted, clean: s.backrunClean, clears: s.backrunClearsFloor }));
+ok(logs.some(l => /\[backrun\].*WOULD SEND/.test(l)), 'backrun verdict logged');
+// The same call at latest — the victim still pending — has no edge to take:
+// proof that the victim's state, not something already on chain, is what it trades.
+{
+    const tx = plans.find(p => p.tx)?.tx;
+    let reverted = false;
+    try { await provider.call({ from: tx.from, to: tx.to, data: tx.data }); } catch { reverted = true; }
+    ok(tx && reverted, 'the same call without the victim reverts at latest');
+}
+ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim, 'nothing of ours was sent (the owner nonce is unchanged on chain)');
 
 await provider.send('evm_mine', []);
 const minedAt = await provider.getBlockNumber();
@@ -170,7 +229,11 @@ ok(rec?.next?.hash === after.hash && rec.next.touchedCyclePools === true && rec.
 ok(rec?.stillOpenAfter === true && s.stillOpen === 1, 'nobody arbitraged it: still open once the index has the block');
 ok(rec?.cycles?.[0]?.netProfit > 0 && rec.moves.some(m => m.pair === AB.toLowerCase() && m.bps > 10), 'record carries the cycle profit and the move',
    JSON.stringify(rec?.cycles?.[0]));
-
+const b = rec?.cycles?.[0]?.backrun;
+// flashFeeFor rounds the lender's fee UP (safe direction), so the prediction may sit a wei under.
+ok(b?.funding === 'aave-v3' && typeof b.flashSwapError === 'string', 'the flash swap through CA reverted and the backrun fell back to the lender', JSON.stringify({ funding: b?.funding, flashSwapError: b?.flashSwapError }));
+ok(b?.result === 'clears-floor' && BigInt(b.profit) - BigInt(b.expectedProfit) >= 0n && BigInt(b.profit) - BigInt(b.expectedProfit) <= 1n && BigInt(b.gasUsed) > 0n,
+   'ArbExecuted profit in the bundle equals the exact walk on the post-swap reserves (to the fee\'s 1-wei round-up)', JSON.stringify(b));
 // A standing cycle is not credited to the next swap through it.
 console.log('\n3. standing edge');
 await pAB.drift(ROOT, E(5_000), { ...gas, nonce: nonce++ });   // ~100bps: clears the gate, but the cycle already scores

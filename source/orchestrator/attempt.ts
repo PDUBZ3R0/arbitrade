@@ -73,6 +73,20 @@ export const EXECUTOR_ABI_V2_ONLY = [
 /** The evaluator's per-root threshold/pricing table. See EvaluateResult. */
 export type RootPricing = EvaluateResult['rootPricing'];
 
+/** prepareBackrun's answer: a call to simulate behind the victim, or why there is none. */
+export type BackrunPlan = {
+    error?: string;
+    /** buildHops refused: the exact walk on the post-swap state does not clear the config floor. */
+    decayReason?: string;
+    built?: BuiltArb;
+    funding?: string;
+    tx?: { from: string; to: string; data: string };
+    /** The profit this call must realise at `gas` units to be worth sending; null when gas cannot be priced in a swap root. */
+    floorFor?: (gas: bigint) => bigint | null;
+    /** For a flash-swap call: the same path through the lender, to try if the flash swap reverts. */
+    fallback?: { built: BuiltArb; funding: string; tx: { from: string; to: string; data: string } };
+};
+
 export type CandidateAttempt = {
     candidate: Candidate;
     built: BuiltArb | null;
@@ -563,6 +577,149 @@ export class CandidateExecutor {
     }
 
     /**
+     * Everything that rules a candidate out, or picks its funding, before any
+     * path is read: executor version and hop support, flash swap vs lender,
+     * pool callbacks. Shared by attempt() and prepareBackrun() so a backrun
+     * is refused for exactly the reasons a trade would be.
+     */
+    private async preflight(candidate: Candidate): Promise<{ error: string } | { terms: FlashTerms | null; useFlash: boolean; algebraPools: Set<string> }> {
+        const versionError = await this.checkExecutorVersion();
+        if (versionError) return { error: versionError };
+        if (!this.executorHasV3 && candidate.hops.some(h => h.kind === 'v3')) {
+            return { error:
+                `cycle has a v3 hop and the executor at ${this.cfg.chain.executor} predates V3 hops — ` +
+                `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy` };
+        }
+
+        if (!this.executorHasStable && candidate.hops.some(h => h.stable)) {
+            return { error:
+                `cycle has a stable-pool hop and the executor at ${this.cfg.chain.executor} predates HOP_STABLE — ` +
+                `yarn deploy flasharb ${this.cfg.chain.label}` };
+        }
+
+        // Funding. A cycle whose first hop is a V2-style pair is funded by
+        // flash-swapping that pair (no lender, no premium — the evaluator
+        // scored it that way, see cyclePremium). Anything else borrows the
+        // root from its lender.
+        const terms = flashTermsFor(this.cfg, candidate.rootToken);
+        let useFlash = this.wantsFlashSwap(candidate);
+        if (useFlash && !this.executorHasFlashSwap) {
+            if (!this.warnedNoFlashSwap) {
+                this.warnedNoFlashSwap = true;
+                console.warn(
+                    `  [!] flashloan.flashSwap is on but the executor at ${this.cfg.chain.executor} has no executeFlashSwap — ` +
+                    `borrowing instead, and the evaluator's zero-premium scores overstate those cycles. ` +
+                    `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then yarn contract-update ${this.cfg.chain.label}`);
+            }
+            useFlash = false;
+        }
+        if (!useFlash) {
+            const why = this.lenderUnusable(candidate, terms);
+            if (why) return { error: why };
+        }
+
+        // The executor answers two swap callbacks. A pool that calls anything
+        // else would revert the swap; say so here instead of paying for an
+        // estimateGas to find out.
+        const algebraPools = new Set<string>();
+        for (const h of candidate.hops) {
+            if (h.kind !== 'v3') continue;
+            const f = this.cfg.factories.find(x => x.address.toLowerCase() === h.factory.toLowerCase());
+            // Algebra pools (V1 and Integral) call algebraSwapCallback, whatever
+            // the conf says; their state is read with getAlgebraState.
+            const algebra = f?.group === 'algebra';
+            const cb = algebra ? 'algebraSwapCallback' : f?.callback;
+            if (algebra) algebraPools.add(h.pair.toLowerCase());
+            // Every callback the verifier records is (int256,int256,bytes)-shaped;
+            // an executor with V3_ANY_CALLBACK pays it under whatever name.
+            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb) && !this.executorHasAnyCallback
+                && !(cb === 'algebraSwapCallback' && this.executorHasAlgebra)) {
+                return { error: cb === 'algebraSwapCallback'
+                    ? `v3 hop ${h.pair} is an Algebra pool and the executor at ${this.cfg.chain.executor} predates algebraSwapCallback — yarn deploy flasharb ${this.cfg.chain.label}`
+                    : `v3 hop ${h.pair} calls ${cb}, which the executor at ${this.cfg.chain.executor} does not answer (predates V3_ANY_CALLBACK) — yarn deploy flasharb ${this.cfg.chain.label}` };
+            }
+        }
+        return { terms, useFlash, algebraPools };
+    }
+
+    /**
+     * The same built path funded by the lender instead of a flash swap: same
+     * amounts (so no re-read), hop 0 pays straight into hop 1 again, and the
+     * lender's fee comes out of the profit.
+     */
+    private viaLender(built: BuiltArb, terms: FlashTerms | null): BuiltArb {
+        const lenderFee = flashFeeFor(built.rootAmountIn, terms?.premium ?? 0);
+        return { ...built, flashFee: lenderFee, expectedProfit: built.expectedProfit + built.flashFee - lenderFee,
+            hops: built.hops.map((h, i) =>
+                i === 0 && built.hops[1].kind !== HOP_V3 ? { ...h, recipient: built.hops[1].pair } : h) };
+    }
+
+    /**
+     * The executor call that would backrun a pending swap, built on the state
+     * that swap leaves behind (`postState`, from pending-probe.ts) — NOT sent,
+     * not even estimated: no RPC can estimate against a state that is not on
+     * chain yet, so the caller simulates it bundled behind the victim
+     * (eth_simulateV1) and checks the realised profit against `floorFor`.
+     *
+     * Same refusals as attempt() (known bad, preflight) and the same exact
+     * walk (buildHops), so a backrun the probe calls clean is one the trade
+     * path would have built too. The call carries the config floor only, so
+     * the simulation reports what the cycle really makes even when that is
+     * below gas; floorFor(gasUsed) is the line it has to clear to be worth it.
+     */
+    async prepareBackrun(candidate: Candidate, db: ArbitradeDB, postState: NonNullable<Parameters<typeof buildHops>[6]>['postState']): Promise<BackrunPlan> {
+        const bad = this.knownBad(candidate);
+        if (bad) return { error: `known bad: ${bad}` };
+        const pre = await this.preflight(candidate);
+        if ('error' in pre) return pre;
+        await this.ensureGasPrice();
+        const root = candidate.rootToken;
+        const whyNull: { reason?: string } = {};
+        let built: BuiltArb | null;
+        try {
+            built = await buildHops(this.provider, this.cfg.chain.executor!, db, candidate, this.minProfitWeiFor(root), this.cfg.chain.contract, {
+                flashSwap: pre.useFlash, premium: pre.useFlash ? 0 : (pre.terms?.premium ?? 0),
+                algebraPools: pre.algebraPools, whyNull, postState,
+            });
+        } catch (err) {
+            return { error: `could not read the path: ${(err as Error).message?.slice(0, 240) ?? String(err)}` };
+        }
+        if (!built) return { decayReason: whyNull.reason };
+        const encode = (useFlash: boolean, b: BuiltArb) => {
+            const call = this.callFor(useFlash, pre.terms, root, b);
+            return { from: this.opts.ownerAddress, to: this.cfg.chain.executor!, data: this.executor.interface.encodeFunctionData(call.name, call.args(b.minProfitWei)) };
+        };
+        const floorFor = (gas: bigint) => {
+            const f = this.gasFloorWeiFor(root, gas);
+            if (f == null) return this.isSwapOnly(root) ? null : built!.minProfitWei;
+            return f > built!.minProfitWei ? f : built!.minProfitWei;
+        };
+        // attempt() retries a reverting flash swap through the lender (a pair
+        // that never calls back, a reentrancy-locked fork — Sonic, SuperSonic:
+        // LOCKED). Offer the same retry, or the probe counts as a revert a
+        // backrun the trade path would have sent. Sonic, 2026-10-30: 57 of 57
+        // backrun reverts were flash-swap funded.
+        let fallback: BackrunPlan['fallback'];
+        if (pre.useFlash && !this.lenderUnusable(candidate, pre.terms)) {
+            const lb = this.viaLender(built, pre.terms);
+            fallback = { built: lb, funding: pre.terms!.provider, tx: encode(false, lb) };
+        }
+        return { built, funding: pre.useFlash ? 'flash-swap' : pre.terms!.provider, tx: encode(pre.useFlash, built), floorFor, fallback };
+    }
+
+    /** The profit an ArbExecuted event in these logs reports, or null when the executor emitted none. */
+    arbExecutedProfit(logs: Array<{ address: string; topics: string[]; data: string }>): bigint | null {
+        for (const log of logs) {
+            if (log.address.toLowerCase() !== this.cfg.chain.executor!.toLowerCase()) continue;
+            try {
+                const parsed = this.executor.interface.parseLog({ topics: [...log.topics], data: log.data });
+                if (parsed?.name === 'ArbExecuted') return parsed.args[3] as bigint;
+            } catch { /* not our event */ }
+        }
+        return null;
+    }
+
+    /**
      * Build, gas-check, simulate and (if live) broadcast one candidate.
      *
      * Never throws for an unexecutable candidate — a revert, a decayed edge or
@@ -589,68 +746,10 @@ export class CandidateExecutor {
         // socket had taken 0.2 s. Not a local nonce cache: the liquidator may be
         // sending from the same wallet.
         const sendPrep = this.opts.live && this.opts.signer ? prepareSend(this.opts.signer, this.provider) : null;
-        const versionError = await this.checkExecutorVersion();
-        if (versionError) {
-            attempt.simulationError = versionError;
-            return attempt;
-        }
-        if (!this.executorHasV3 && candidate.hops.some(h => h.kind === 'v3')) {
-            attempt.simulationError =
-                `cycle has a v3 hop and the executor at ${this.cfg.chain.executor} predates V3 hops — ` +
-                `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy`;
-            return attempt;
-        }
-
-        if (!this.executorHasStable && candidate.hops.some(h => h.stable)) {
-            attempt.simulationError =
-                `cycle has a stable-pool hop and the executor at ${this.cfg.chain.executor} predates HOP_STABLE — ` +
-                `yarn deploy flasharb ${this.cfg.chain.label}`;
-            return attempt;
-        }
-
-        // Funding. A cycle whose first hop is a V2-style pair is funded by
-        // flash-swapping that pair (no lender, no premium — the evaluator
-        // scored it that way, see cyclePremium). Anything else borrows the
-        // root from its lender.
-        const terms = flashTermsFor(this.cfg, candidate.rootToken);
-        let useFlash = this.wantsFlashSwap(candidate);
-        if (useFlash && !this.executorHasFlashSwap) {
-            if (!this.warnedNoFlashSwap) {
-                this.warnedNoFlashSwap = true;
-                console.warn(
-                    `  [!] flashloan.flashSwap is on but the executor at ${this.cfg.chain.executor} has no executeFlashSwap — ` +
-                    `borrowing instead, and the evaluator's zero-premium scores overstate those cycles. ` +
-                    `yarn deploy-flasharb ${this.cfg.chain.label} --redeploy, then yarn contract-update ${this.cfg.chain.label}`);
-            }
-            useFlash = false;
-        }
-        if (!useFlash) {
-            const why = this.lenderUnusable(candidate, terms);
-            if (why) { attempt.simulationError = why; return attempt; }
-        }
-
-        // The executor answers two swap callbacks. A pool that calls anything
-        // else would revert the swap; say so here instead of paying for an
-        // estimateGas to find out.
-        const algebraPools = new Set<string>();
-        for (const h of candidate.hops) {
-            if (h.kind !== 'v3') continue;
-            const f = this.cfg.factories.find(x => x.address.toLowerCase() === h.factory.toLowerCase());
-            // Algebra pools (V1 and Integral) call algebraSwapCallback, whatever
-            // the conf says; their state is read with getAlgebraState.
-            const algebra = f?.group === 'algebra';
-            const cb = algebra ? 'algebraSwapCallback' : f?.callback;
-            if (algebra) algebraPools.add(h.pair.toLowerCase());
-            // Every callback the verifier records is (int256,int256,bytes)-shaped;
-            // an executor with V3_ANY_CALLBACK pays it under whatever name.
-            if (cb && !EXECUTOR_V3_CALLBACKS.has(cb) && !this.executorHasAnyCallback
-                && !(cb === 'algebraSwapCallback' && this.executorHasAlgebra)) {
-                attempt.simulationError = cb === 'algebraSwapCallback'
-                    ? `v3 hop ${h.pair} is an Algebra pool and the executor at ${this.cfg.chain.executor} predates algebraSwapCallback — yarn deploy flasharb ${this.cfg.chain.label}`
-                    : `v3 hop ${h.pair} calls ${cb}, which the executor at ${this.cfg.chain.executor} does not answer (predates V3_ANY_CALLBACK) — yarn deploy flasharb ${this.cfg.chain.label}`;
-                return attempt;
-            }
-        }
+        const pre = await this.preflight(candidate);
+        if ('error' in pre) { attempt.simulationError = pre.error; return attempt; }
+        const { terms, algebraPools } = pre;
+        let useFlash = pre.useFlash;
 
         await this.ensureGasPrice();
 
@@ -739,11 +838,7 @@ export class CandidateExecutor {
                 attempt.simulationError = msg + await this.diagnoseRepay(err, call, built, built.minProfitWei, candidate) + await this.diagnoseGated(err, candidate);
                 return attempt;   // would revert on-chain
             }
-            // Same amounts, but now the lender charges its fee: profit shrinks by it.
-            const lenderFee = flashFeeFor(built.rootAmountIn, terms?.premium ?? 0);
-            const viaLender = { ...built, flashFee: lenderFee, expectedProfit: built.expectedProfit + built.flashFee - lenderFee,
-                hops: built.hops.map((h, i) =>
-                i === 0 && built!.hops[1].kind !== HOP_V3 ? { ...h, recipient: built!.hops[1].pair } : h) };
+            const viaLender = this.viaLender(built, terms);
             const lenderCall = this.callFor(false, terms, candidate.rootToken, viaLender);
             try {
                 gasUnits = await lenderCall.fn.estimateGas(...lenderCall.args(built.minProfitWei), { from: this.opts.ownerAddress });
