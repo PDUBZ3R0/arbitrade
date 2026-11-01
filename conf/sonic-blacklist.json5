@@ -258,5 +258,10 @@
             reason:  "PairFactory_cb3e3ce8 (solidly): no pairs after a scan to block 81055335 for event 0xc4805696 — db-clean --empty",
             addedAt: "2026-10-15",
         },
+        {
+            address: "0x087159f68f2f17b79f15b3108eb82c6f91bea2f5",
+            reason:  "yarn pair-code 2026-10-31: trap — Factory_087159f6 (SonicOS): swap() accepts only one caller (msg.sender == factory.router(), \"SonicOSPair: FORBIDDEN\"; conf fee 0); every trade from our executor reverts",
+            addedAt: "2026-10-31",
+        },
     ]
 }

@@ -14,8 +14,8 @@
 //
 // Verdicts:
 //   trap         swap() asks a contract other than the factory or the tokens
-//                (the fee, or permission), gates on tx.origin or a per-address
-//                flag, or the pair can delegatecall / selfdestruct.
+//                (the fee, or permission), gates on tx.origin, msg.sender or a
+//                per-address flag, or the pair can delegatecall / selfdestruct.
 //   watch        the fee or a pause is read from the factory (normal for
 //                Solidly, but owner-set), the pair has owner-gated setters, or
 //                it is an upgradeable proxy.
@@ -119,6 +119,11 @@ export function classifyPairCode(sol: string, opts: { proxy?: string | null; fac
         add('trap', `swap() ${verb} ${label(c.selector)} on ${where}`);
     }
     if (/tx\.origin/.test(swap.body)) add('trap', 'swap() checks tx.origin');
+    // Sonic, 2026-10-31: SonicOS pair 0xfba7cd38 (factory 0x087159f6, fee 0 in the conf)
+    // does require(msg.sender == factory.router(), "SonicOSPair: FORBIDDEN"). Only its own
+    // router may swap, so every trade our executor sends through it reverts.
+    if (/require\(\s*(?:address\()?msg\.sender\)?\s*==|require\([^;]*==\s*\(?\s*(?:address\()?msg\.sender\b/.test(swap.body))
+        add('trap', 'swap() accepts only one caller (msg.sender check)');
     if (/require\([^;]*storage_map_\w+\[\s*(?:address\()?\s*(?:msg\.sender|tx\.origin|arg2)\b/.test(swap.body))
         add('trap', 'swap() requires a per-address flag (whitelist or blacklist)');
     if (/delegatecall/.test(sol) && !findings.some(f => /delegatecall/.test(f.what))) add('trap', 'the pair can delegatecall');

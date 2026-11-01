@@ -33,6 +33,8 @@ const SONIC_RPC         = process.env.SONIC_RPC         || 'https://rpc.soniclab
 const STABLE_RPC        = process.env.STABLE_RPC        || 'https://stable-mainnet.rpc.sentio.xyz';
 const TEMPO_RPC         = process.env.TEMPO_RPC         || 'https://tempo-mainnet.drpc.org';
 const HYDRATION_RPC = process.env.HYDRATION_RPC || 'https://hydration-rpc.n.dwellir.com';
+const RONIN_RPC     = process.env.RONIN_RPC || 'https://ronin.gateway.tenderly.co';
+const OPBNB_RPC     = process.env.OPBNB_RPC || 'https://rpc.swiftnodes.io/rpc/opbnb';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -183,6 +185,18 @@ export default defineConfig({
         },
         hydration: {
             url: HYDRATION_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        ronin: {
+            url: RONIN_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        opbnb: {
+            url: OPBNB_RPC,
             accounts,
             type: "http",
             chainType: "generic",

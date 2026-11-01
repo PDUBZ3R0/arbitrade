@@ -45,6 +45,9 @@ console.log('\n2. other ways a swap() can be rigged');
     const o = classifyPairCode(withLine('require(address(tx.origin) == address(store_k));'));
     ok(o.verdict === 'trap' && o.findings.some(f => /tx\.origin/.test(f.what)), 'a tx.origin check: trap', show(o));
 
+    const m = classifyPairCode(withLine('require(msg.sender == (address(var_c.length)), "SonicOSPair: FORBIDDEN");'));
+    ok(m.verdict === 'trap' && m.findings.some(f => /only one caller/.test(f.what)), 'a router-only swap() (SonicOS): trap', show(m));
+
     const w = classifyPairCode(withLine('require(storage_map_c[address(msg.sender)]);'));
     ok(w.verdict === 'trap' && w.findings.some(f => /per-address flag/.test(f.what)), 'a whitelist on the caller: trap', show(w));
 

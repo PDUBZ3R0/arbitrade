@@ -51,6 +51,12 @@
     name: 'X Layer',
     currency: 'OKB',
   },
+  opbnb: {
+    id: 204,
+    name: 'opBNB',
+    currency: 'BNB',
+    explorer: 'https://opbnbscan.com',
+  },
   zksync: {
     id: 324,
     name: 'zkSync Era',
@@ -87,6 +93,12 @@
     id: 1868,
     name: 'Soneium',
     currency: 'ETH',
+  },
+  ronin: {
+    id: 2020,
+    name: 'Ronin',
+    currency: 'RON',
+    explorer: 'https://app.roninchain.com',
   },
   morph: {
     id: 2818,

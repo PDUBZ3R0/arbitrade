@@ -1,6 +1,11 @@
 {
     factories: [
         {
+            address: "0x7e48de0ae2ba1dc3652b89b88a4a8d9d132f9ebb",
+            reason: "2 pairs with 30% fees",
+            addedAt: "2026-10-31"
+        },
+        {
             address: "0x05cb9ee637a145576681c53bb6df078f398e19b7",
             reason:  "dead (0/24 pairs with real liquidity)",
             addedAt: "2026-09-01",
@@ -7049,6 +7054,46 @@
         {
             address: "0xf36f0be0ad4c55fd5c59686a175fea2beaa6b8d0",
             reason:  "yarn pair-code 2026-10-31: trap — same pair code as PancakeFactory_7125d2b9: isStaked(caller) via staking(), tx.origin check, owner activate()/deactivate()",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x6e553d5f028bd747a27e138fa3109570081a23ae",
+            reason:  "yarn pair-code 2026-10-31: trap — FlashLiquidityAV2: swap() accepts only one caller (require(manager == msg.sender, \"ONLY MANAGER\")); every trade from our executor reverts; 54943 triangles",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x3ba4ac751327b4988e3b62267949610ff6d9885e",
+            reason:  "yarn pair-code 2026-10-31: trap — EddaFactory: swap() accepts only one caller (require(msg.sender == router, \"Edda: ONLY_ROUTER\")); every trade from our executor reverts; 16850 triangles",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x5911f22b96b6b94a343c69ace0816646442a98cc",
+            reason:  "yarn pair-code 2026-10-31: trap — Factory_5911f22b (Mytrade): swap() accepts only one caller (\"MytradePair: caller is not the orderbook or router\"); every trade from our executor reverts; 14585 triangles",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0xd9302ab59eaf8360623b62ab6b858e26b4a3116d",
+            reason:  "yarn pair-code 2026-10-31: trap — Factory_d9302ab5 (Mytrade): swap() accepts only one caller (\"MytradePair: caller is not the orderbook or router\"); every trade from our executor reverts",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x7f664c90869fbe24a86323b0544185cfd492dc61",
+            reason:  "yarn pair-code 2026-10-31: trap — Factory_7f664c90 (Mytrade): swap() accepts only one caller (\"MytradePair: caller is not the orderbook or router\"); every trade from our executor reverts",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x59c2997a3d73f32590d9d49de63b860bb1477d3c",
+            reason:  "yarn pair-code 2026-10-31: trap — FlashLiquidityBV2: swap() accepts only one caller (\"FlashLiquidity: not from flashbot\"); every trade from our executor reverts",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x2ed031ee9b227d73a7092e3c8f69d120ba8b8b27",
+            reason:  "yarn pair-code 2026-10-31: trap — SwapFactory_2ed031ee: swap() accepts only one caller (msg.sender == factory.router(), \"invalid caller\"); every trade from our executor reverts",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x81605ccfe4923205b8858cd84467234e6fa781bd",
+            reason:  "yarn pair-code 2026-10-31: trap — Factory_81605ccf: swap() accepts only one caller (\"OwnableRouterCaller: caller is not the router\"); every trade from our executor reverts",
             addedAt: "2026-10-31",
         },
     ]

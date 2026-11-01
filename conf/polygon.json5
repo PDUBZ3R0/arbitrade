@@ -3717,14 +3717,6 @@
           // verify-fees 2026-10-13: fee 0.003 → 0.00305 (empirical)
           fee: 0.00305,
         },
-        // find-factories --add 2026-10-13: 2 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
-        // 2026-10-31: fee 0.003 → 0.3. Its pairs read fee() from 0xe00b4a22 (300 per mille), measured
-        // 30% both ways on a fork; verify-fees had said MATCH because recoverFee dropped fees >= 20%.
-        UniswapV2Factory_7e48de0a: {
-          address: '0x7e48de0ae2ba1dc3652b89b88a4a8d9d132f9ebb',
-          deployBlock: 44362848,
-          fee: 0.3,
-        },
         // find-factories --add 2026-10-13: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_d05bf133: {
           address: '0xd05bf133f956a8881da2af4cca84c944ee36c31b',
