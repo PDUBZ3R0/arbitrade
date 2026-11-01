@@ -145,7 +145,62 @@ export function recoverFee(swap: RawLog, sync: RawLog): number | null {
     const den = Number(aIn * (rOut - aOut));
     if (!(den > 0)) return null;
     const fee = 1 - num / den;
-    return (fee >= -0.001 && fee < 0.2) ? fee : null;
+    // Any fee below 100% is a real reading, however large. This used to drop
+    // anything >= 20% as implausible, and a pair that charges more is exactly
+    // the one we must not trade through. Polygon, 2026-10-31: WPOL/DAI
+    // 0xd4ba843f (factory 0x7e48de0a) reads its fee from 0xe00b4a22.fee() =
+    // 300 per mille, so 30% both ways (measured on a fork). Every swap it
+    // made was discarded here, verify-fees moved on to whatever still gave
+    // an answer and reported "MATCH 0.003", and the hot loop's simulations
+    // went on to revert "UniswapV2: K" 35 times in 25 minutes through 25
+    // different triangles.
+    return (fee >= -0.001 && fee < 1) ? fee : null;
+}
+
+/** What the token probe recorded for a token (tokens.probeStatus, tokens.*TaxBps). */
+export type TokenProbe = { probeStatus: string | null; buyTaxBps: number | null; sellTaxBps: number | null };
+
+/**
+ * Choose which of a factory's pairs to read swaps from: pairs whose tokens are
+ * all trusted (a flash-loan root, or probed clean) first, then pairs with an
+ * unprobed or untestable token, and never a pair with a token the probe found
+ * taxing, nonstandard or a honeypot. Order within each tier is kept (callers
+ * pass the most active first).
+ *
+ * A plain transfer tax does not skew recoverFee: the pair logs as amountIn
+ * what it actually received. What does is a token that moves the pair's
+ * balance by any other route (reflection payouts, rebases, a tax charged to
+ * the sender on top of the amount): amountIn or the Sync reserve then carries
+ * that drift, and the recovered fee is off by it. The probe can't say which
+ * kind of tax a token has, so a flagged token is left out entirely.
+ *
+ * Polygon, 2026-10-31: factories 0x232b5b1f and 0x5fe2602a have only
+ * CBS/USDT0 and HKDT/USDT0 pairs (both tokens probed fee-on-transfer, 37 bps).
+ * The 2026-10-13 audit measured them at 0.0025 and lowered the config; the
+ * 2026-10-31 audit measured 0.003 from the same pairs.
+ */
+export function pickFeeSamplePairs<P extends { pair: string; token0: string; token1: string }>(
+    pairs: P[],
+    probes: Map<string, TokenProbe>,
+    trusted: Set<string>,
+    limit = 5,
+): { picked: P[]; excluded: Array<{ pair: string; token: string; why: string }> } {
+    const flagged = (t: string): string | null => {
+        const p = probes.get(t.toLowerCase());
+        if (!p) return null;
+        if (p.probeStatus === 'fee-on-transfer' || p.probeStatus === 'honeypot' || p.probeStatus === 'nonstandard') return p.probeStatus;
+        if ((p.buyTaxBps ?? 0) > 0 || (p.sellTaxBps ?? 0) > 0) return `taxed ${p.buyTaxBps ?? 0}/${p.sellTaxBps ?? 0} bps`;
+        return null;
+    };
+    const known = (t: string) => trusted.has(t.toLowerCase()) || probes.get(t.toLowerCase())?.probeStatus === 'clean';
+    const excluded: Array<{ pair: string; token: string; why: string }> = [];
+    const clean: P[] = [], unprobed: P[] = [];
+    for (const p of pairs) {
+        const bad = [p.token0, p.token1].map(t => ({ t, why: flagged(t) })).find(x => x.why);
+        if (bad) { excluded.push({ pair: p.pair, token: bad.t, why: bad.why! }); continue; }
+        (known(p.token0) && known(p.token1) ? clean : unprobed).push(p);
+    }
+    return { picked: [...clean, ...unprobed].slice(0, limit), excluded };
 }
 
 /** Snap to the nearest half basis point if within rounding noise of it. */

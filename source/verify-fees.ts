@@ -54,7 +54,7 @@ import { fileURLToPath } from 'node:url';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { deriveFeeFromBytecode } from './util/decompile-fee.ts';
-import { empiricallyVerifyFee } from './util/empirical-fee.ts';
+import { empiricallyVerifyFee, pickFeeSamplePairs } from './util/empirical-fee.ts';
 import { acquireCode, analyzeFeeWithClaude, type ClaudeFeeAnalysis } from './util/source-fee.ts';
 import { makeProvider } from './util/rpc.ts';
 import { editFactoriesInConf, type FactoryEdit } from './util/conf-edit.ts';
@@ -151,6 +151,8 @@ type Row = {
     pairs: string[];
 };
 const rows: Row[] = [];
+// Flash-loan roots are blue chips the probe never tests; their pairs count as clean.
+const trustedTokens = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
 let claudeCalls = 0;
 
 const CONFLICT_TOLERANCE = 0.0002;
@@ -172,6 +174,11 @@ for (const f of factories) {
     // lowest-address picks are a poor choice for anything needing real history.
     const candidates = db.getPairsForFactory(f.address, 5);
     const bestPair = candidates[0]?.pair ?? sample.pair;
+    // Swaps are read only from pairs whose tokens can't move the pair's balance
+    // on their own; see pickFeeSamplePairs for the CBS/HKDT readings that flipped.
+    const wider = db.getPairsForFactory(f.address, 50);
+    const { picked: feePairs, excluded: taxedPairs } = pickFeeSamplePairs(
+        wider, db.getTokenProbes(wider.flatMap(c => [c.token0, c.token1])), trustedTokens);
 
     // --- 1. sevm decompile (free)
     const decompiled = await deriveFeeFromBytecode(provider, sample.pair);
@@ -182,7 +189,11 @@ for (const f of factories) {
     let empiricalSampleCount = 0;
     let empiricalError: string | undefined;
     if (decompiled.confidence !== 'derived' || claudeAll) {
-        for (const candidate of candidates) {
+        if (feePairs.length === 0 && taxedPairs.length > 0) {
+            empiricalConfidence = 'unknown';
+            empiricalError = `not measured: all ${taxedPairs.length} pair(s) have a token the probe flagged (${[...new Set(taxedPairs.map(t => t.why))].join(', ')})`;
+        }
+        for (const candidate of feePairs) {
             const empirical = await empiricallyVerifyFee(provider, candidate.pair, { hypersync });
             empiricalFee = empirical.fee;
             empiricalConfidence = empirical.confidence;

@@ -22,6 +22,7 @@
     "cleanup": "bash scripts/log.sh source db-clean",
     "verify-fees": "bash scripts/log.sh source verify-fees",
     "check-fees": "bash scripts/log.sh source check-fee-config",
+    "pair-code": "bash scripts/log.sh source verify-pair-code",
     "scan": "bash scripts/log.sh source scan",
     "reserves": "bash scripts/log.sh source reserves",
     "tokens": "bash scripts/log.sh source tokens",

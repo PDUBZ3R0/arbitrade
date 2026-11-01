@@ -624,11 +624,18 @@ export function mixed_cycle_product(hops) {
 /**
  * Gross profit at input x, walking every hop piecewise. Input that a V3 hop
  * cannot price inside its tick window is treated as lost (conservative).
+ *
+ * `whole` floors each hop's output to raw units, as the pools do (see
+ * cycle_profit in calculus.js: a 2-unit dust pool credited fractions it never
+ * pays). Off by default because optimal_mixed_cycle's ternary search calls
+ * this, and floors put flat steps in the curve that search relies on. Use it
+ * for the profit reported at the chosen size.
  */
-export function mixed_cycle_profit(x, hops) {
+export function mixed_cycle_profit(x, hops, whole = false) {
     let amt = x;
     for (const h of hops) {
         amt = hop_output(amt, h);
+        if (whole) amt = Math.floor(amt);
         if (!(amt > 0)) return -x;
     }
     return amt - x;

@@ -52,7 +52,9 @@
           address: '0x477ce834ae6b7ab003cce4bc4d8697763ff456fa',
           deployBlock: 17703715,
           // verify-fees 2026-10-13: fee 0.003 → 0.0024 (claude)
-          fee: 0.0024,
+          // 2026-10-31: fee 0.0024 → 0.00245. Report-only verify-fees (RPC, last ~300k blocks) measured 0.00245;
+          // the 0.0024 came from Claude's reading of the bytecode, not from swaps. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.00245,
         },
         JetswapV2: {
           address: '0x668ad0ed2622c62e24f0d5ab6b6ac1b9d2cd4ac7',
@@ -161,7 +163,10 @@
           address: '0x972C77e47CffaF6017D617E0Aa09Cf51ecb43b4C',
           fee: 0.003,
         },
-        JetswapV2: {
+        // 2026-10-31: was a second `JetswapV2` key, which hid the first (0x668ad0ed, 457 pairs) from the
+        // loader. A separate deployment, blacklisted as dead (0/18 pairs with real liquidity), so the
+        // duplicate swapped a live factory for a dead one.
+        JetswapV2_d54187ea: {
           address: '0xd54187ea5a6758fc8abdfaa353aae8f16ca59ef3',
           deployBlock: 16547715,
           fee: 0.003,
@@ -543,7 +548,10 @@
         Factory_95c6d24c: {
           address: '0x95c6d24c02f1f2cb4c93dbea8e53d95e12bc4d47',
           deployBlock: 18159604,
-          fee: 0.001,  // verify-fees 2026-10-02: empirical (was 0.003)
+          // verify-fees 2026-10-02: empirical 0.001 (was 0.003)
+          // 2026-10-31: fee 0.001 → 0.003. Report-only verify-fees (RPC, last ~300k blocks) measured 0.003;
+          // the readings disagree, so its pairs probably charge different fees. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.003,
         },
         Factory_4e8d9cb4: {
           address: '0x4e8d9cb43e8fe8af67a92bfa918453517e51ff3c',
@@ -2763,7 +2771,9 @@
           address: '0x232b5b1fbf570da914f75971bd68d68f2cd0776d',
           deployBlock: 44600887,
           // verify-fees 2026-10-13: fee 0.003 → 0.0025 (empirical)
-          fee: 0.0025,
+          // 2026-10-31: fee 0.0025 → 0.003. Report-only verify-fees (RPC, last ~300k blocks) measured 0.003;
+          // the 10-13 audit measured 0.0025, so its pairs probably charge different fees. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.003,
         },
         // find-factories --add 2026-10-13: 3 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_6b2ac8b7: {
@@ -3547,7 +3557,9 @@
         Factory_015151d9: {
           address: '0x015151d9779c07a8e5039f02d6a23186ea4876bb',
           deployBlock: 33409340,
-          fee: 0.003,
+          // 2026-10-31: fee 0.003 → 0.00305. Report-only verify-fees (RPC, last ~300k blocks) measured 0.00305;
+          // the 10-13 audit had measured 0.003. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.00305,
         },
         // find-factories --add 2026-10-13: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_53db8b3d: {
@@ -3706,10 +3718,12 @@
           fee: 0.00305,
         },
         // find-factories --add 2026-10-13: 2 pairs in sweep, explorer "UniswapV2Factory"; fee 0.003 (assumed)
+        // 2026-10-31: fee 0.003 → 0.3. Its pairs read fee() from 0xe00b4a22 (300 per mille), measured
+        // 30% both ways on a fork; verify-fees had said MATCH because recoverFee dropped fees >= 20%.
         UniswapV2Factory_7e48de0a: {
           address: '0x7e48de0ae2ba1dc3652b89b88a4a8d9d132f9ebb',
           deployBlock: 44362848,
-          fee: 0.003,
+          fee: 0.3,
         },
         // find-factories --add 2026-10-13: 2 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_d05bf133: {
@@ -3728,7 +3742,9 @@
           address: '0x5fe2602aaf2357b5de79fe119f8bf05e59ff3799',
           deployBlock: 46123596,
           // verify-fees 2026-10-13: fee 0.003 → 0.0025 (empirical)
-          fee: 0.0025,
+          // 2026-10-31: fee 0.0025 → 0.003. Report-only verify-fees (RPC, last ~300k blocks) measured 0.003;
+          // the 10-13 audit measured 0.0025, so its pairs probably charge different fees. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.003,
         },
         // find-factories --add 2026-10-13: 2 pairs in sweep, explorer "EagleSwapFactory"; fee 0.003 (assumed)
         EagleSwapFactory_04990f0b: {
@@ -5726,7 +5742,9 @@
           address: '0xa4d4a81c78bc20f401e528ab2b2b8f5493defba8',
           deployBlock: 42720626,
           // verify-fees 2026-10-13: fee 0.003 → 0.0025 (empirical)
-          fee: 0.0025,
+          // 2026-10-31: fee 0.0025 → 0.003. Report-only verify-fees (RPC, last ~300k blocks) measured 0.003;
+          // the 10-13 audit measured 0.0025, so its pairs probably charge different fees. Raised: a fee set too low reverts, one too high only shrinks profit.
+          fee: 0.003,
         },
         // find-factories --add 2026-10-13: 1 pairs in sweep, unverified on explorer; fee 0.003 (assumed)
         Factory_000603f2: {

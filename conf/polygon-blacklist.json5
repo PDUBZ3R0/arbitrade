@@ -7016,5 +7016,40 @@
             reason:  "restricted DEX — TokenProbe: 2 probed pair(s) rejected swap() from outsiders, 0 accepted",
             addedAt: "2026-10-14",
         },
+        {
+            address: "0x7e48de0ae2ba1dc3652b89b88a4a8d9d132f9ebb",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() reads fee() from hard-coded 0xe00b4a22 (300 per mille, 30% both ways on a fork); WPOL/DAI 0xd4ba843f reverted \"UniswapV2: K\" 35 times in one 25-min hot run while verify-fees called it 0.003",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x6064d55bf1e5c6c25db6a9ba5319ddb7a8b00cb3",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() delegatecalls a stored address and checks tx.origin; 12 owner setters incl. setOriginBlacklist, setSenderBlacklist/Whitelist, setWhitelistEnabled, setImpl",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x3cb48176af2fe0482db52af4a1caca0a4153d43c",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() asks the factory isRouter(caller); only its routers can trade",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x9e2b21cfd8f3d86a298d37ca9f3fd250f2634c19",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() asks the factory isAllowedToSwap(); fees from factory getFees(address)",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x5bbef554b545532305fdf12d4ded9d1f27d00662",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() asks the factory isAllowedToSwap(address) and isWhitelisted(address); fee via feeManager/getFeeDistribution and a discount manager",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0x7125d2b96d3e99d18067a6771ee6ab505fbf4fde",
+            reason:  "yarn pair-code 2026-10-31: trap — swap() requires isStaked(caller) on the factory's staking() contract and checks tx.origin; owner activate()/deactivate()",
+            addedAt: "2026-10-31",
+        },
+        {
+            address: "0xf36f0be0ad4c55fd5c59686a175fea2beaa6b8d0",
+            reason:  "yarn pair-code 2026-10-31: trap — same pair code as PancakeFactory_7125d2b9: isStaked(caller) via staking(), tx.origin check, owner activate()/deactivate()",
+            addedAt: "2026-10-31",
+        },
     ]
 }

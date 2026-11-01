@@ -879,6 +879,20 @@ export class ArbitradeDB {
 
     // ------------------------------------------- safety probe (contracts/TokenProbe.sol, source/probe.ts)
 
+    /** The probe's verdict and measured taxes for each address that has a tokens row. */
+    getTokenProbes(addresses: string[]): Map<string, { probeStatus: string | null; buyTaxBps: number | null; sellTaxBps: number | null }> {
+        const out = new Map();
+        const lower = [...new Set(addresses.map(a => a.toLowerCase()))];
+        for (let i = 0; i < lower.length; i += 500) {
+            const chunk = lower.slice(i, i + 500);
+            const rows = this.db.prepare(
+                `SELECT address, probeStatus, buyTaxBps, sellTaxBps FROM tokens WHERE address IN (${chunk.map(() => '?').join(',')})`
+            ).all(...chunk) as Array<{ address: string; probeStatus: string | null; buyTaxBps: number | null; sellTaxBps: number | null }>;
+            for (const r of rows) out.set(r.address, { probeStatus: r.probeStatus, buyTaxBps: r.buyTaxBps, sellTaxBps: r.sellTaxBps });
+        }
+        return out;
+    }
+
     /**
      * Tokens eligible to appear in a triangle: the non-root side of every live
      * pair that touches a flash-loan root. (Every triangle the enumerator

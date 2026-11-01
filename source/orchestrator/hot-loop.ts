@@ -54,6 +54,8 @@ export type HotLoopStats = {
     skippedSmallMove: number;
     /** Batches skipped because our own transaction was still waiting on its receipt. */
     pendingTxSkips: number;
+    /** Batches applied but not scored because the loop was held (startup refresh). */
+    heldBatches: number;
 };
 
 export type HotLoopDeps = {
@@ -141,6 +143,22 @@ export type HotLoop = {
     stats: () => HotLoopStats;
     /** Resolves once no transaction of ours is awaiting its receipt (detachReceipt). For shutdown and tests. */
     idle: () => Promise<void>;
+    /**
+     * While held, batches still update the index but nothing is scored or
+     * attempted. For the startup refresh: until it finishes, most of the
+     * index is the DB snapshot, and a Sync on one pair re-scores cycles whose
+     * other pools are as old as that snapshot.
+     *
+     * Polygon, 2026-10-30: the refresh took 72s on a 16-day-old snapshot
+     * (2,507 of 7,930 V3 pools had moved). The feed attempted cycles all
+     * through it: 43 of the run's 48 "edge decayed on fresh reserves" came in
+     * those 72s, nearly all "re-read … v3 pool(s): N had moved" — pools the
+     * refresh had not reached yet. Each cost an exact walk and a re-read on
+     * the same public RPCs the refresh was reading from. The startup sweep
+     * that follows the refresh rescores every triangle, so nothing a held
+     * batch moved is missed.
+     */
+    hold: (on: boolean) => void;
 };
 
 /** |ln(new price / old price)| in bps, price = res1/res0 (virtual reserves for v3). Shared with ./pending-probe.ts. */
@@ -157,8 +175,11 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         candidatesFound: 0, cooldownSkips: 0, skippedSharingFailedPair: 0,
         attempts: 0, simulatedClean: 0, confirmed: 0, pairsResynced: 0, skippedMuted: 0, skippedKnownBad: 0,
         v3PoolsRefreshed: 0, v3RefreshErrors: 0, skippedBelowGas: 0,
-        skippedSmallMove: 0, pendingTxSkips: 0,
+        skippedSmallMove: 0, pendingTxSkips: 0, heldBatches: 0,
     };
+
+    // Held: apply every update, score nothing. See HotLoop.hold.
+    let held = false;
 
     // Our own broadcast, still waiting on its receipt (ExecutorOptions.detachReceipt).
     // Nothing else is attempted until it settles — same reason as the cooldown:
@@ -324,6 +345,7 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         stats.pairsUnknown += unknown;
         stats.pairsApplied += movedPairs.length;
         if (movedPairs.length === 0) return;
+        if (held) { stats.heldBatches++; return; }
 
         const affected = ix.affectedTriangles(movedPairs);
         stats.trianglesRescored += affected.length;
@@ -469,5 +491,8 @@ export function createHotLoop(deps: HotLoopDeps): HotLoop {
         await attemptAll(candidates, 'the startup sweep');
     }
 
-    return { onBatch, sweep, stats: () => ({ ...stats }), idle: async () => { while (inFlight) await inFlight; } };
+    return {
+        onBatch, sweep, stats: () => ({ ...stats }), idle: async () => { while (inFlight) await inFlight; },
+        hold: (on) => { held = on; },
+    };
 }

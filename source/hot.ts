@@ -61,6 +61,7 @@ import { createHotLoop } from './orchestrator/hot-loop.ts';
 import { createPendingProbe, rpcBackend, subscribePending } from './orchestrator/pending-probe.ts';
 import { makeProvider, redactUrl, usesPool } from './util/rpc.ts';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
+import { readChunked, isTransientRpcError } from './util/chunked-read.ts';
 import { heapMb } from './util/heap.ts';
 import path from 'node:path';
 import { appendFileSync, mkdirSync } from 'node:fs';
@@ -381,10 +382,7 @@ executor.setRootPricing(pricing);
 // Pools left unread land in `staleV3`, which the heal timer below drains.
 const V3_WORDS = cfg.reserves?.v3Words ?? 2;
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
-/** A node that refused the call (rate limit, null-data CALL_EXCEPTION, timeout) — not a real revert. Worth a retry. */
-const isTransient = (e: unknown): boolean =>
-    /missing revert data|could not coalesce|CALL_EXCEPTION|SERVER_ERROR|TIMEOUT|timeout|rate limit|too many request|ECONNRESET|ETIMEDOUT|socket hang up|-3200[0-9]|\b429\b|\b503\b/i
-        .test((e as Error)?.message ?? String(e));
+const isTransient = isTransientRpcError;
 
 /** Pools whose most recent state read failed — drained by the heal timer. */
 const staleV3 = new Set<string>();
@@ -549,29 +547,34 @@ if (!watcher.ready()) {
 // feed starts so nothing that trades from here on can be missed, and anything
 // the feed touches meanwhile is skipped — its Sync is newer than this read.
 // Same reads the self-healing resync uses (token balances; YoBatches V3 state).
+// The loop is held (see HotLoop.hold) for the length of the refresh: until
+// it finishes, a feed batch would score cycles through pools still on the
+// snapshot. The sweep below rescores everything once it is done.
 if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
+    hot.hold(true);
     const t0 = Date.now();
     process.stdout.write('Startup refresh (every pair and pool, from chain)... ');
     let movedV2 = 0, readV2 = 0, movedV3 = 0, readV3n = 0, failed = 0;
     const off = (a: number, b: number) => Math.abs(a - b) > 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1);
     const v2Pairs: string[] = [], v3Pools: string[] = [];
     for (const [p, pi] of ix.pairIdx) (ix.pairIsV3[pi] ? v3Pools : v2Pairs).push(p);
-    const CHUNK = 400;
-    for (let i = 0; i < v2Pairs.length; i += CHUNK) {
-        const chunk = v2Pairs.slice(i, i + CHUNK);
-        const triples = chunk.map(p => { const pi = ix.pairIdx.get(p)!; return [p, ix.tokenAddr[ix.pairToken0[pi]], ix.tokenAddr[ix.pairToken1[pi]]] as [string, string, string]; });
-        try {
-            const rows = await getReservesByPairs(provider, cfg.chain.contract, triples, { canonical: true });
-            for (const r of rows) {
-                const p = r.pair.toLowerCase();
-                if (touchedDuringRefresh!.has(p)) continue;
-                const pi = ix.pairIdx.get(p)!;
-                const r0 = Number(r.reserves0), r1 = Number(r.reserves1);
-                readV2++;
-                if (off(ix.res0[pi], r0) || off(ix.res1[pi], r1)) { movedV2++; ix.applySync(p, r0, r1); }
-            }
-        } catch { failed += chunk.length; }
+    // Retried and split on refusal (util/chunked-read.ts): with a bare
+    // try/catch, Polygon left 3,600 of 17,000 pairs on 16-day-old reserves.
+    const triples = v2Pairs.map(p => { const pi = ix.pairIdx.get(p)!; return [p, ix.tokenAddr[ix.pairToken0[pi]], ix.tokenAddr[ix.pairToken1[pi]]] as [string, string, string]; });
+    const read = await readChunked(triples, 400, (chunk) => getReservesByPairs(provider, cfg.chain.contract!, chunk, { canonical: true }));
+    for (const { row: r } of read.rows) {
+        const p = r.pair.toLowerCase();
+        if (touchedDuringRefresh!.has(p)) continue;
+        const pi = ix.pairIdx.get(p)!;
+        const r0 = Number(r.reserves0), r1 = Number(r.reserves1);
+        readV2++;
+        if (off(ix.res0[pi], r0) || off(ix.res1[pi], r1)) { movedV2++; ix.applySync(p, r0, r1); }
     }
+    // A pair that never read keeps the DB snapshot, which can be weeks old —
+    // stale enough to score as an open cycle that is not there. Zero it so
+    // its triangles cannot score until its next Sync puts real reserves back.
+    for (const { item: [p] } of read.failed) if (!touchedDuringRefresh!.has(p)) ix.applySync(p, 0, 0);
+    failed = read.failed.length;
     if (v3Pools.length > 0) {
         for (const f of await readV3(v3Pools)) {
             if (!f.state || touchedDuringRefresh!.has(f.pair.toLowerCase())) continue;
@@ -585,9 +588,11 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
     }
     const skipped = touchedDuringRefresh!.size;
     touchedDuringRefresh = null;
+    hot.hold(false);
     console.log(`${Date.now() - t0}ms — ${movedV2}/${readV2} pair(s) and ${movedV3}/${readV3n} v3 pool(s) had moved since the DB snapshot` +
         (skipped ? `, ${skipped} already updated by the feed` : '') +
-        (failed ? `, ${failed} pair(s) unreadable (left as-is; the feed corrects them on their next trade)` : ''));
+        (hot.stats().heldBatches ? `; ${hot.stats().heldBatches} feed batch(es) applied unscored meanwhile` : '') +
+        (failed ? `, ${failed} pair(s) unreadable after retries (held out of scoring until their next Sync)` : ''));
 } else {
     touchedDuringRefresh = null;
 }
@@ -823,17 +828,22 @@ const keepAlive = setInterval(() => {}, 1 << 30);
 function pendingSummary(): string {
     const p = pendingProbe!.stats(), f = pendingFeed!.stats();
     return `${f.connected} feed(s) up, ${p.seen} pending seen (${p.duplicates} dup, ${p.notASwap} not a swap, ${p.filteredOut} not ours` +
-        (f.unfetched ? `, ${f.unfetched} hash(es) not fetched` : '') + `) -> ${p.simulated} simulated` +
+        (f.unfetched ? `, ${f.unfetched} hash(es) not fetched` : '') +
+        (f.stalls ? `, ${f.stalls} silent feed(s) reopened` : '') + `) -> ${p.simulated} simulated` +
         (p.simulated ? ` (avg ${Math.round(p.simMsTotal / p.simulated)}ms)` : '') +
         (p.simDropped ? `, ${p.simDropped} dropped at the in-flight cap` : '') +
         (p.simErrors ? `, ${p.simErrors} sim error(s)` : '') + (p.simReverted ? `, ${p.simReverted} would revert` : '') +
         ` -> ${p.touchedOurPools} touched our pools, ${p.belowGate} below the move gate -> ${p.opportunities} opened a cycle` +
         (p.standingSkipped ? ` (${p.standingSkipped} standing cycle(s) ignored)` : '') +
+        (p.nonceGapped ? `, ${p.nonceGapped} queued behind a nonce gap` : '') +
         (p.backrunsTried ? ` -> ${p.backrunsTried} backrun(s) built: ${p.backrunDecayed} decayed on exact reserves, ${p.backrunRefused} refused, ` +
-            `${p.backrunReverted} reverted behind the victim, ${p.backrunClean} executed (${p.backrunClearsFloor} clearing the gas floor)` +
+            `${p.backrunReverted} reverted behind the victim, ${p.backrunClean} executed (${p.backrunClearsFloor} clearing the floor at the victim's gas price` +
+            (p.backrunClearsMarketOnly ? `, ${p.backrunClearsMarketOnly} only at market gas` : '') + `)` +
             (p.backrunVictimReverted ? `, ${p.backrunVictimReverted} victim reverted` : '') +
             ` avg ${Math.round(p.backrunMsTotal / p.backrunsTried)}ms` : '') +
-        ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x`;
+        ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x` +
+        (p.competitorSeen ? `; a competitor took the cycle after ${p.competitorSeen} victim(s)` +
+            (p.competitorTiedVictim ? ` (${p.competitorTiedVictim} at the victim's own price)` : '') + `, ${p.beatsCompetitor} backrun(s) would clear bidding over it` : '');
 }
 
 const shutdown = async (sig: string) => {

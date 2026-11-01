@@ -28,7 +28,7 @@ import { JsonRpcProvider, Wallet, ContractFactory } from 'ethers';
 import { readFileSync, rmSync, mkdirSync } from 'fs';
 import { ArbitradeDB } from '../source/util/db.ts';
 import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
-import { createPendingProbe, rpcBackend, subscribePending } from '../source/orchestrator/pending-probe.ts';
+import { createPendingProbe, rpcBackend, subscribePending, victimGasPrice, competitorVerdict } from '../source/orchestrator/pending-probe.ts';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 
 const art = JSON.parse(readFileSync(new URL('./artifacts.json', import.meta.url), 'utf8'));
@@ -212,6 +212,27 @@ ok(logs.some(l => /\[backrun\].*WOULD SEND/.test(l)), 'backrun verdict logged');
 }
 ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim, 'nothing of ours was sent (the owner nonce is unchanged on chain)');
 
+// The same victim seen by a probe told its sender is two nonces behind:
+// queued behind a gap, not next to land — no backrun is built for it.
+{
+    const gapRecords = [];
+    let prepared = 0;
+    const gapped = createPendingProbe({
+        index: ix, thresholds: () => thresholds, pricing: () => pricing,
+        decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
+        ...backend,
+        nonceOf: async () => victim.nonce - 2,
+        backrun: { prepare: async () => { prepared++; return {}; }, bundle: backend.bundle, profitOf: () => null },
+        minMoveBps: 10, landWaitMs: 1, record: (o) => gapRecords.push(o), log: () => {},
+    });
+    const raw = await provider.send('eth_getTransactionByHash', [victim.hash]);
+    gapped.onPending(raw);
+    await gapped.idle();
+    const g = gapped.stats();
+    ok(g.opportunities === 1 && g.nonceGapped === 1 && g.backrunsTried === 0 && prepared === 0 && gapRecords[0]?.nonceGap === 2,
+       'a victim queued behind a nonce gap is recorded, not backrun', JSON.stringify({ opp: g.opportunities, gapped: g.nonceGapped, tried: g.backrunsTried, rec: gapRecords[0]?.nonceGap }));
+    ok(probe.stats().nonceGapped === 0, '(sanity) the real probe saw the victim as next to land');
+}
 await provider.send('evm_mine', []);
 const minedAt = await provider.getBlockNumber();
 // Apply the victim's block to the index, as the Sync feed would, then let the outcome check run.
@@ -234,6 +255,39 @@ const b = rec?.cycles?.[0]?.backrun;
 ok(b?.funding === 'aave-v3' && typeof b.flashSwapError === 'string', 'the flash swap through CA reverted and the backrun fell back to the lender', JSON.stringify({ funding: b?.funding, flashSwapError: b?.flashSwapError }));
 ok(b?.result === 'clears-floor' && BigInt(b.profit) - BigInt(b.expectedProfit) >= 0n && BigInt(b.profit) - BigInt(b.expectedProfit) <= 1n && BigInt(b.gasUsed) > 0n,
    'ArbExecuted profit in the bundle equals the exact walk on the post-swap reserves (to the fee\'s 1-wei round-up)', JSON.stringify(b));
+// The floor is priced at the victim's gas price — the bid that lands directly
+// behind it under fee ordering — not at the market price.
+{
+    const base = (await provider.getBlock(b.bundleBaseBlock)).baseFeePerGas;
+    ok(BigInt(b.bidGasPrice) === base + gas.maxPriorityFeePerGas && b.floorAtMarket != null,
+       'the bid is what the victim pays on the base block (base fee + its tip)', JSON.stringify({ bid: b.bidGasPrice, base: base.toString() }));
+    const plan = plans.find(p => p.tx);
+    const px = 1n << 40n, g = BigInt(b.gasUsed);
+    const f = plan.floorFor(g, px);
+    // Margin 1, ROOT is the numeraire: the floor is gas x bid, to float rounding.
+    ok(Math.abs(Number(f) / Number(g * px) - 1) < 1e-9 && plan.floorFor(g, 1n) === plan.floorFor(g, 2n),
+       'floorFor prices gas at the bid it is given, and the config floor still holds under a cheap bid', JSON.stringify({ f: f.toString(), want: (g * px).toString() }));
+}
+ok(rec?.competitor?.hash === after.hash && rec.competitor.offset === 1 && rec.competitor.belowVictim === false && s.competitorSeen === 1,
+   'the tx that took the cycle\'s pools after the victim is recorded as the competitor, with its gas price', JSON.stringify(rec?.competitor));
+// The CA sync after the victim paid the victim's own price — as Polygon's
+// backrunner did: no bid beats it from behind the victim.
+ok(rec.competitor.tiedVictim === true && b?.tiedAtVictimPrice === true && b.beatsCompetitor === false && b.floorToBeatCompetitor === b.floor
+   && s.competitorTiedVictim === 1 && s.beatsCompetitor === 0,
+   'a competitor at the victim\'s own price is a tie, not something to outbid', JSON.stringify({ floor: b?.floor, toBeat: b?.floorToBeatCompetitor, tied: b?.tiedAtVictimPrice }));
+{
+    // Below the victim: bid one wei over the competitor. Margin-free floor = gas x price for the check.
+    const f = { floorFor: (g, px) => g * px, gasUsed: 100n, profit: 1_000n };
+    const under = competitorVerdict(f, 5n, 20n), over = competitorVerdict({ ...f, profit: 500n }, 5n, 20n), tie = competitorVerdict(f, 20n, 20n);
+    ok(under.beats && under.floor === 600n && !under.tied && !over.beats && !tie.beats && tie.tied && tie.floor === 2_000n,
+       'competitorVerdict: outbid below the victim when profit allows; at the victim\'s price, a tie priced at the victim', JSON.stringify({ under, over, tie }, (k, v) => typeof v === 'bigint' ? String(v) : v));
+}
+// victimGasPrice: legacy pays gasPrice; 1559 pays min(cap, base + tip); no base fee -> the cap (errs high).
+ok(victimGasPrice({ gasPrice: 7n }, 100n) === 7n
+   && victimGasPrice({ maxFeePerGas: 50n, maxPriorityFeePerGas: 3n }, 10n) === 13n
+   && victimGasPrice({ maxFeePerGas: 50n, maxPriorityFeePerGas: 45n }, 10n) === 50n
+   && victimGasPrice({ maxFeePerGas: 50n, maxPriorityFeePerGas: 3n }, null) === 50n,
+   'victimGasPrice: legacy, 1559 below the cap, 1559 at the cap, unknown base fee');
 // A standing cycle is not credited to the next swap through it.
 console.log('\n3. standing edge');
 await pAB.drift(ROOT, E(5_000), { ...gas, nonce: nonce++ });   // ~100bps: clears the gate, but the cycle already scores
@@ -243,6 +297,18 @@ s = probe.stats();
 ok(s.opportunities === 1 && s.standingSkipped >= 1, 'a swap through an already-open cycle is not counted as opening it',
    JSON.stringify({ opportunities: s.opportunities, standing: s.standingSkipped }));
 await provider.send('evm_mine', []);
+
+// A socket that goes silent without closing is retired and reopened, and the
+// connected count stays one per URL across reconnects.
+console.log('\n4. silent feed');
+{
+    const quiet = subscribePending([WS_URL], () => {}, { stallMs: 1_000, log: (s) => console.log(`    ${s}`) });
+    ok(await until(() => quiet.stats().connected === 1), 'second feed subscribed');
+    ok(await until(() => quiet.stats().stalls >= 2 && quiet.stats().connected === 1, 15_000),
+       'silence (no pending txs) retires the socket and resubscribes, still one feed up', JSON.stringify(quiet.stats()));
+    quiet.stop();
+    ok(await until(() => quiet.stats().connected === 0), 'stop() leaves nothing connected');
+}
 
 feed.stop();
 backend.destroy();

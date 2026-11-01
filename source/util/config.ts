@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSON5 from 'json5';
+import { findDuplicateKeys } from './json5-dupes.ts';
 import 'dotenv/config';
 import { lookupDexPattern } from './dex-patterns.ts';
 import { blacklistedAddresses } from './blacklist.ts';
@@ -648,11 +649,25 @@ export function resolveChain(arg: string): ChainMeta {
  * Load a per-chain config file, keyed by label. Merges with the ChainMeta
  * from the registry (so per-chain files can override registry defaults).
  */
+/**
+ * JSON5.parse keeps the last of two equal keys without a word, so a second
+ * factory under the same name hides the first (see util/json5-dupes.ts).
+ */
+export function assertNoDuplicateKeys(text: string, file: string): void {
+    const dupes = findDuplicateKeys(text);
+    if (dupes.length) {
+        throw new Error(`${file} has duplicate key(s); the earlier entry would be silently dropped:\n` +
+            dupes.map(d => `  ${d.path ? d.path + '.' : ''}${d.key} (lines ${d.lines[0]} and ${d.lines[1]})`).join('\n'));
+    }
+}
+
 export function loadChainConfig(chainArg: string): ChainConfig {
     const meta = resolveChain(chainArg);
     let p = path.join(CONF_DIR, `${meta.label}.json5`);
     
-    const raw = (!fs.existsSync(p) ? meta : JSON5.parse(fs.readFileSync(p, 'utf-8'))) as RawChainConfig;
+    const text = fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : null;
+    if (text) assertNoDuplicateKeys(text, `conf/${meta.label}.json5`);
+    const raw = (text === null ? meta : JSON5.parse(text)) as RawChainConfig;
 
     // Merge registry defaults with per-chain overrides. Per-chain wins for
     // fields both specify. But name/label always come from the registry (they're

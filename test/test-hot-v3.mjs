@@ -14,6 +14,9 @@
 //      re-read; a Sync-shaped update for the V3 pool is ignored.
 //   4. Self-healing re-reads a cycle's V3 pool through refreshV3, not through
 //      the V2 balanceOf path.
+//   5. A held loop (startup refresh) applies a batch but scores and attempts
+//      nothing; released, the same move is attempted. Polygon, 2026-10-30: 43
+//      of 48 decays came while the refresh was still reading V3 pools.
 //
 //   npm i -D @uniswap/v3-core@1.0.1 solc@0.8.24     (one-time)
 //   node --experimental-strip-types test/test-hot-v3.mjs   (anvil on PATH)
@@ -275,6 +278,31 @@ try {
                    { pair: CA.toLowerCase(), factory: V2F, tokenIn: C, tokenOut: ROOT, fee: 0.003, kind: 'v2' }] }]);
         ok(calls.length === 1 && calls[0].length === 1 && calls[0][0] === BC, 'the V3 pool went to refreshV3');
         ok(v2calls.length === 1 && !v2calls[0].includes(BC) && v2calls[0].length === 2, 'and only the V2 pairs to refresh');
+    }
+
+    console.log('\n5. held during the startup refresh: apply, never attempt');
+    {
+        const ix3 = TriangleIndex.build(db, factoriesByAddr, { v3: true });
+        const tried = [];
+        const h3 = createHotLoop({
+            index: ix3, db, thresholds: () => thresholds, pricing: () => pricing,
+            decimalsByToken: new Map(ix3.tokenAddr.map(a => [a, 18])),
+            attempt: async (c) => { tried.push(c.triangleId); return { candidate: c, built: null, simulated: false, broadcast: false, confirmed: false }; },
+            report: () => {}, candidatesPerBlock: 1, cooldownMs: 0, log: () => {},
+        });
+        const ab = AB.toLowerCase(), pi = ix3.pairIdx.get(ab);
+        // A Sync that skews ROOT/B 3x: the cycle scores whichever way it runs.
+        const skew = (k) => [{ pair: ab, reserve0: ix3.res0[pi] * k, reserve1: ix3.res1[pi], blockNumber: 1, logIndex: 0 }];
+        const before = ix3.res0[pi];
+        h3.hold(true);
+        await h3.onBatch(skew(3), 1);
+        ok(ix3.res0[pi] === before * 3, 'the held batch still updated the index');
+        ok(tried.length === 0 && h3.stats().candidatesFound === 0 && h3.stats().heldBatches === 1,
+           'and nothing was scored or attempted', JSON.stringify({ tried, held: h3.stats().heldBatches }));
+        ok(ix3.scoreAll(thresholds).length > 0, 'though the move does open a cycle (control)');
+        h3.hold(false);
+        await h3.onBatch(skew(1), 2);
+        ok(tried.length > 0, 'released, the next batch is attempted as usual', `attempts ${tried.length}`);
     }
 } catch (e) {
     console.error(e); fails++;

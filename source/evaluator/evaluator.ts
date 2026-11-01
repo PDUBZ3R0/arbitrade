@@ -370,7 +370,7 @@ export function scoreMixed(oriented: any[]): { x: number; grossProfit: number } 
     if (!(x > 0) || !isFinite(x)) return { skip: 'notProfitable' };
     if (x < 1) x = 1;
     else if (x > hi) x = hi;
-    const grossProfit = mixed_cycle_profit(x, oriented);
+    const grossProfit = mixed_cycle_profit(x, oriented, true);
     if (!(grossProfit > 0)) return { skip: 'notProfitable' };
     if (mixed_cycle_overflows(x, oriented)) return { skip: 'uint112Overflow' };
     return { x, grossProfit };

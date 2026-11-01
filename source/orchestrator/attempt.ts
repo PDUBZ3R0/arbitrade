@@ -81,8 +81,13 @@ export type BackrunPlan = {
     built?: BuiltArb;
     funding?: string;
     tx?: { from: string; to: string; data: string };
-    /** The profit this call must realise at `gas` units to be worth sending; null when gas cannot be priced in a swap root. */
-    floorFor?: (gas: bigint) => bigint | null;
+    /**
+     * The profit this call must realise at `gas` units to be worth sending;
+     * null when gas cannot be priced in a swap root. `gasPriceWei` overrides
+     * the market price: a backrun has to bid what landing behind its victim
+     * costs, not what an ordinary tx pays.
+     */
+    floorFor?: (gas: bigint, gasPriceWei?: bigint) => bigint | null;
     /** For a flash-swap call: the same path through the lender, to try if the flash swap reverts. */
     fallback?: { built: BuiltArb; funding: string; tx: { from: string; to: string; data: string } };
 };
@@ -513,8 +518,8 @@ export class CandidateExecutor {
      * a static config number cannot, since any value low enough to trade at the
      * bottom of the day's range loses money at the top.
      */
-    gasFloorWeiFor(root: string, gasUnits: bigint): bigint | null {
-        if (this.gasPriceWei == null || this.numeraireDecimals !== 18) return null;
+    gasFloorWeiFor(root: string, gasUnits: bigint, gasPriceWei: bigint | null = this.gasPriceWei): bigint | null {
+        if (gasPriceWei == null || this.numeraireDecimals !== 18) return null;
         // priceInNumeraire: numeraire units per 1 root unit. 1 when the root IS
         // the numeraire; null when no direct pair was found, in which case we
         // cannot price gas in this root at all.
@@ -523,7 +528,7 @@ export class CandidateExecutor {
 
         const rootDecimals = this.decimalsOf(root);
 
-        const gasCostNumeraire = Number(gasUnits * this.gasPriceWei) / 1e18;
+        const gasCostNumeraire = Number(gasUnits * gasPriceWei) / 1e18;
         const gasCostRootUnits = gasCostNumeraire / price;
         // Apply the margin in float math, before the BigInt conversion, so a
         // fractional multiple like 1.5 works. Ceil, not round: a floor that
@@ -689,8 +694,8 @@ export class CandidateExecutor {
             const call = this.callFor(useFlash, pre.terms, root, b);
             return { from: this.opts.ownerAddress, to: this.cfg.chain.executor!, data: this.executor.interface.encodeFunctionData(call.name, call.args(b.minProfitWei)) };
         };
-        const floorFor = (gas: bigint) => {
-            const f = this.gasFloorWeiFor(root, gas);
+        const floorFor = (gas: bigint, gasPriceWei?: bigint) => {
+            const f = this.gasFloorWeiFor(root, gas, gasPriceWei ?? this.gasPriceWei);
             if (f == null) return this.isSwapOnly(root) ? null : built!.minProfitWei;
             return f > built!.minProfitWei ? f : built!.minProfitWei;
         };

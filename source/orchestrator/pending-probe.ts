@@ -31,8 +31,12 @@
 //              on the victim's exact post-swap reserves, and eth_simulateV1
 //              [victim, backrun] as one bundle: does it execute behind THIS
 //              swap, what ArbExecuted says it made, does that clear gas
+//              priced at the VICTIM's gas price (fee-ordered chains sell the
+//              slot behind it at that price, not at the market's)
 //   track      did it land, where in its block, what came straight after it,
-//              and is the cycle still open once the index has the block
+//              who took the cycle's pools behind it and at what gas price (and
+//              would our backrun still clear bidding over that), and is the
+//              cycle still open once the index has the block
 //
 // Phase 1 (2026-10-30) showed why phase 2 is needed: on Polygon 14 of 19
 // cycles a pending swap "opened" were still open a block later, while the
@@ -62,6 +66,7 @@ export type PendingTx = {
     gasPrice?: string | bigint;
     maxFeePerGas?: string | bigint;
     maxPriorityFeePerGas?: string | bigint;
+    nonce?: string | number;
 };
 
 export type SimLog = { address: string; topics: string[]; data: string };
@@ -128,6 +133,8 @@ export type PendingProbeStats = {
     opportunities: number;
     /** Cycles that already scored before the victim — the hot loop's business, not ours. */
     standingSkipped: number;
+    /** Opened a cycle, but the sender has earlier nonces unmined: queued, not next to land. Not backrun. */
+    nonceGapped: number;
     landed: number;
     landedReverted: number;
     notLanded: number;
@@ -150,8 +157,19 @@ export type PendingProbeStats = {
     backrunReverted: number;
     /** Executed behind the victim with a realised profit... */
     backrunClean: number;
-    /** ...and that profit cleared the gas floor at the simulated gas. */
+    /**
+     * ...and that profit cleared the gas floor at the simulated gas, priced at
+     * the victim's own gas price — what landing directly behind it costs.
+     */
     backrunClearsFloor: number;
+    /** ...cleared the floor at the market gas price but not at the victim's: an edge only a cheaper slot keeps. */
+    backrunClearsMarketOnly: number;
+    /** A tx after the victim in its block (first few positions) touched the cycle's pools: a competing backrunner. */
+    competitorSeen: number;
+    /** Executed backruns that would still clear the floor bidding one wei over that competitor. */
+    beatsCompetitor: number;
+    /** ...the competitor paid the victim's own price: no bid both beats it and stays behind the victim; arrival order decides. */
+    competitorTiedVictim: number;
     backrunMsTotal: number;
 };
 
@@ -176,8 +194,21 @@ export type PendingProbeDeps = {
         perSwap?: number;
     };
     receipt: (hash: string) => Promise<LandedTx | null>;
-    /** Ordering evidence. Optional: without it, nothing is said about what followed the victim. */
+    /** Ordering evidence: the tx after `transactionIndex`. Optional: without it, nothing is said about what followed the victim. */
     nextTx?: (blockNumber: number, transactionIndex: number) => Promise<NextTx | null>;
+    /**
+     * The latest block's base fee, to turn an EIP-1559 victim's fee cap into
+     * what it actually pays. Optional: without it the victim's maxFeePerGas
+     * is taken as its price, which errs toward a higher floor.
+     */
+    baseFee?: () => Promise<bigint | null>;
+    /**
+     * The sender's confirmed nonce (latest), to tell a pending swap from one
+     * queued behind a nonce gap. Optional: without it every swap is taken as next.
+     */
+    nonceOf?: (address: string) => Promise<number>;
+    /** How many positions after the victim to look for a competing backrunner. Default 6. */
+    competitorScan?: number;
     /** The last block the index has applied. Without it, "still open" is checked as soon as the victim lands. */
     indexedBlock?: () => number;
     /** Same gate as the hot loop. A swap that moves nothing this much cannot open a cycle. */
@@ -232,7 +263,42 @@ type Opportunity = {
     moves: Array<{ pair: string; bps: number }>;
     cycles: Array<{ triangleId: number; root: string; symbol?: string; netProfit: number; value: number; pairs: string[]; backrun?: Record<string, unknown> }>;
     gasPrice?: bigint;
+    /** What the victim pays per gas on the base block: the bid that lands us directly behind it. */
+    bid?: bigint;
+    /** Per cycle (index into cycles): the plan's floor and the realised profit, to re-price against a competitor once the block is in. */
+    floors: Map<number, { floorFor: NonNullable<BackrunPlan['floorFor']>; gasUsed: bigint; profit: bigint | null }>;
 };
+
+/**
+ * Could a backrun have taken the slot from the competitor that did? Bidding
+ * one wei over it works only while that stays below the victim: Polygon,
+ * 2026-10-30, the competitor paid EXACTLY the victim's 278.6 gwei and sat
+ * at +1 — one wei more would have ordered us ahead of the victim, where the
+ * edge does not exist yet. At that tie the floor is the victim's price and
+ * arrival order, not the bid, decides; `beats` is false because no bid wins it.
+ */
+export function competitorVerdict(
+    f: { floorFor: NonNullable<BackrunPlan['floorFor']>; gasUsed: bigint; profit: bigint | null },
+    competitorPrice: bigint,
+    victimPrice: bigint | undefined,
+): { floor: bigint | null; beats: boolean; tied: boolean } {
+    const tied = victimPrice != null && competitorPrice >= victimPrice;
+    const floor = f.floorFor(f.gasUsed, tied ? victimPrice! : competitorPrice + 1n);
+    return { floor, beats: !tied && f.profit != null && floor != null && f.profit >= floor, tied };
+}
+
+/**
+ * The gas price a victim pays on a block with `baseFee`. A legacy tx pays its
+ * gasPrice; a 1559 tx pays min(cap, baseFee + tip). Without a base fee the
+ * cap stands in — higher, so the floor errs toward skipping.
+ */
+export function victimGasPrice(tx: PendingTx, baseFee: bigint | null | undefined): bigint | undefined {
+    const cap = big(tx.maxFeePerGas);
+    if (cap == null) return big(tx.gasPrice);
+    const tip = big(tx.maxPriorityFeePerGas);
+    if (baseFee == null || tip == null) return cap;
+    return baseFee + tip < cap ? baseFee + tip : cap;
+}
 
 export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
     const ix = deps.index;
@@ -245,10 +311,11 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
     const stats: PendingProbeStats = {
         seen: 0, duplicates: 0, notASwap: 0, filteredOut: 0, simDropped: 0, simulated: 0, simErrors: 0,
         simReverted: 0, touchedOurPools: 0, belowGate: 0, v3OutOfWindow: 0, opportunities: 0,
-        standingSkipped: 0, landed: 0, landedReverted: 0, notLanded: 0, lateSim: 0, nextTouchedPools: 0,
+        standingSkipped: 0, nonceGapped: 0, landed: 0, landedReverted: 0, notLanded: 0, lateSim: 0, nextTouchedPools: 0,
         stillOpen: 0, simMsTotal: 0,
         backrunsTried: 0, backrunDecayed: 0, backrunRefused: 0, backrunVictimReverted: 0,
-        backrunReverted: 0, backrunClean: 0, backrunClearsFloor: 0, backrunMsTotal: 0,
+        backrunReverted: 0, backrunClean: 0, backrunClearsFloor: 0, backrunClearsMarketOnly: 0, backrunMsTotal: 0,
+        competitorSeen: 0, beatsCompetitor: 0, competitorTiedVictim: 0,
     };
 
     // Addresses without 0x, lowercase: the prefilter scans raw calldata hex.
@@ -368,6 +435,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             sim = await deps.simulate(tx);
         } catch (e) {
             stats.simErrors++;
+            // Gnosis, first run: 364 errors and no idea why. Say what the first few were.
+            if (stats.simErrors <= 3) log(`  [pending] simulate failed on ${tx.hash.slice(0, 12)}…: ${(e as Error).message?.slice(0, 200)}`);
             return;
         } finally {
             inFlight--;
@@ -401,12 +470,29 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 pairs: c.hops.map(h => h.pair.toLowerCase()),
             })),
             gasPrice: big(tx.maxFeePerGas ?? tx.gasPrice),
+            floors: new Map(),
         };
         const best = op.cycles[0];
         log(`  [pending] ${tx.hash.slice(0, 12)}… moves ${op.moves.map(m => `${m.pair.slice(0, 8)} ${m.bps}bps`).join(', ')}` +
             ` → ${fresh.length} new cycle(s), best ${fmt(best.netProfit)} ${best.symbol ?? best.root.slice(0, 8)}` +
             (Number.isFinite(best.value) ? ` (~${fmt(best.value)} numeraire)` : '') + ` — simulated in ${simMs}ms on block ${sim.baseBlock}`);
-        if (deps.backrun) await backruns(tx, moves, fresh, op);
+        // Gnosis, second run: the only opportunity in 30 minutes was nonce 17
+        // from a sender whose confirmed nonce was 13. The feed relays queued
+        // txs too; one that can't be mined until four others arrive is no
+        // victim — a backrun sent behind it lands alone and reverts.
+        if (deps.nonceOf && tx.nonce != null) {
+            const confirmed = await deps.nonceOf(tx.from).catch(() => null);
+            if (confirmed != null && Number(tx.nonce) > confirmed) {
+                stats.nonceGapped++;
+                log(`  [pending] ${tx.hash.slice(0, 12)}… is queued behind a nonce gap (nonce ${Number(tx.nonce)}, sender confirmed at ${confirmed}) — not backrun`);
+                deps.record?.({ hash: tx.hash, seenAt: new Date(seenAt).toISOString(), moves: op.moves, cycles: op.cycles, nonceGap: Number(tx.nonce) - confirmed });
+                return;
+            }
+        }
+        if (deps.backrun) {
+            op.bid = victimGasPrice(tx, deps.baseFee ? await deps.baseFee().catch(() => null) : null);
+            await backruns(tx, moves, fresh, op);
+        }
         await outcome(op, tris);
     }
 
@@ -465,13 +551,31 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                     return;
                 }
                 const profit = br.profitOf(b.logs);
-                const floor = plan.floorFor!(b.gasUsed);
+                // Priced at the victim's gas price, not the market's. Gnosis,
+                // 2026-10-30: the first backruns to "clear the floor" did so at
+                // the market price; the victim paid 1723 gwei, and the tx that
+                // took the cycle right behind it paid 237 — ordering there is
+                // by fee, so the market-price floor was a slot nobody sells.
+                // Matching the victim's price is the bid that is sure to land
+                // directly behind it (equal price, it was first); anything
+                // lower is a bet on what the competition pays (recorded once
+                // the block is in, see outcome()).
+                const floorMarket = plan.floorFor!(b.gasUsed);
+                const floor = op.bid != null ? plan.floorFor!(b.gasUsed, op.bid) : null;
                 const clears = profit != null && floor != null && profit >= floor;
+                const clearsMarket = profit != null && floorMarket != null && profit >= floorMarket;
                 stats.backrunClean++;
                 if (clears) stats.backrunClearsFloor++;
-                Object.assign(rec, { result: clears ? 'clears-floor' : 'below-floor', profit: profit?.toString(), floor: floor?.toString() });
+                else if (clearsMarket) stats.backrunClearsMarketOnly++;
+                op.floors.set(i, { floorFor: plan.floorFor!, gasUsed: b.gasUsed, profit });
+                Object.assign(rec, {
+                    result: clears ? 'clears-floor' : clearsMarket ? 'clears-market-floor-only' : 'below-floor',
+                    profit: profit?.toString(), floor: floor?.toString(), bidGasPrice: op.bid?.toString(), floorAtMarket: floorMarket?.toString(),
+                });
                 log(`${tag} — executes behind the victim: profit ${profit != null ? tok(profit) : '?'} ${sym} (predicted ${tok(built.expectedProfit)}), ` +
-                    `gas ${b.gasUsed}, floor ${floor != null ? tok(floor) : 'unpriceable'} → ${clears ? 'WOULD SEND' : 'below the floor'} [${rec.ms}ms, ${funding}` +
+                    `gas ${b.gasUsed}, floor at the victim's ${op.bid != null ? gwei(op.bid) : '?'} gwei ${floor != null ? tok(floor) : 'unpriceable'}` +
+                    ` (${floorMarket != null ? tok(floorMarket) : 'unpriceable'} at market) → ` +
+                    `${clears ? 'WOULD SEND' : clearsMarket ? 'clears only at market gas — below the floor' : 'below the floor'} [${rec.ms}ms, ${funding}` +
                     (rec.flashSwapError !== undefined ? ' after the flash swap reverted' : '') + `]`);
             } catch (e) {
                 stats.backrunRefused++;
@@ -515,18 +619,48 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             lateSim: late,
         });
 
-        // Ordering: what did the chain put straight after the victim?
+        // Ordering: what did the chain put straight after the victim, and who
+        // (within the first few positions) took the cycle's pools? Gnosis,
+        // 2026-10-30: the tx right after the victim did, at 237 gwei against
+        // the victim's 1723 — the price we would have had to beat.
         const cyclePools = new Set(op.cycles.flatMap(c => c.pairs));
+        let competitor: (NextTx & { offset: number }) | undefined;
         if (deps.nextTx) {
-            const next = await deps.nextTx(landed.blockNumber, landed.transactionIndex).catch(() => null);
-            if (next) {
-                const touched = next.logs.some(l => cyclePools.has(l.address.toLowerCase()));
-                if (touched) stats.nextTouchedPools++;
-                rec.next = {
-                    hash: next.hash, from: next.from, to: next.to, touchedCyclePools: touched,
-                    effectiveGasPrice: next.effectiveGasPrice?.toString(),
-                    sameGasPrice: next.effectiveGasPrice != null && next.effectiveGasPrice === landed.effectiveGasPrice,
-                };
+            const scan = deps.competitorScan ?? 6;
+            for (let k = 0; k < scan && !competitor; k++) {
+                const t = await deps.nextTx(landed.blockNumber, landed.transactionIndex + k).catch(() => null);
+                if (!t) break;
+                const touched = t.logs.some(l => cyclePools.has(l.address.toLowerCase()));
+                if (k === 0) {
+                    if (touched) stats.nextTouchedPools++;
+                    rec.next = {
+                        hash: t.hash, from: t.from, to: t.to, touchedCyclePools: touched,
+                        effectiveGasPrice: t.effectiveGasPrice?.toString(),
+                        sameGasPrice: t.effectiveGasPrice != null && t.effectiveGasPrice === landed.effectiveGasPrice,
+                    };
+                }
+                if (touched) competitor = { ...t, offset: k + 1 };
+            }
+        }
+        if (competitor) {
+            stats.competitorSeen++;
+            const px = competitor.effectiveGasPrice;
+            rec.competitor = {
+                hash: competitor.hash, from: competitor.from, to: competitor.to, offset: competitor.offset,
+                effectiveGasPrice: px?.toString(),
+                // Under fee ordering a backrunner behind the victim pays less than it.
+                belowVictim: px != null && landed.effectiveGasPrice != null ? px < landed.effectiveGasPrice : undefined,
+            };
+            // Would each backrun still clear its floor bidding one wei over it?
+            const tied = px != null && landed.effectiveGasPrice != null && px >= landed.effectiveGasPrice;
+            if (tied) {
+                stats.competitorTiedVictim++;
+                (rec.competitor as Record<string, unknown>).tiedVictim = true;
+            }
+            if (px != null) for (const [i, f] of op.floors) {
+                const v = competitorVerdict(f, px, landed.effectiveGasPrice);
+                if (v.beats) stats.beatsCompetitor++;
+                Object.assign(op.cycles[i].backrun!, { floorToBeatCompetitor: v.floor?.toString(), beatsCompetitor: v.beats, ...(v.tied ? { tiedAtVictimPrice: true } : {}) });
             }
         }
 
@@ -549,6 +683,10 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             (late ? ', BEFORE our simulation base (sim was late)' : '') +
             (next ? `; next tx ${next.touchedCyclePools ? 'TOUCHED the cycle\'s pools' : 'did not touch the cycle'}` +
                 (next.touchedCyclePools ? ` (${next.sameGasPrice ? 'same' : 'different'} gas price)` : '') : '') +
+            (competitor ? `; competitor at +${competitor.offset} paid ${competitor.effectiveGasPrice != null ? gwei(competitor.effectiveGasPrice) : '?'} gwei` +
+                ` (victim ${landed.effectiveGasPrice != null ? gwei(landed.effectiveGasPrice) : '?'})` +
+                ((rec.competitor as Record<string, unknown>).tiedVictim ? ' — the victim\'s own price: no outbidding it from behind, arrival order decides' : '') +
+                (op.floors.size ? `, ${[...op.floors.keys()].filter(i => op.cycles[i].backrun!.beatsCompetitor).length}/${op.floors.size} backrun(s) clear bidding over it` : '') : '') +
             `; cycle ${open.length > 0 ? 'still open' : 'closed'} after the block`);
         deps.record?.(rec);
     }
@@ -571,6 +709,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 const big = (v: string | bigint | undefined): bigint | undefined => v == null ? undefined : BigInt(v);
+const gwei = (w: bigint): string => fmt(Number(w) / 1e9);
 const fmt = (n: number): string => n === 0 ? '0' : Math.abs(n) >= 1 ? n.toFixed(3) : n.toPrecision(3);
 const hexq = (v: string | bigint | undefined): string | undefined => v == null ? undefined : '0x' + BigInt(v).toString(16);
 
@@ -584,9 +723,11 @@ const hexq = (v: string | bigint | undefined): string | undefined => v == null ?
  * whose nonce is one ahead of latest (a sender queueing several) would fail
  * for a reason that has nothing to do with its swap.
  */
-export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'receipt' | 'nextTx'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
+export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'receipt' | 'nextTx' | 'baseFee' | 'nonceOf'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
     const p = new JsonRpcProvider(url, undefined, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 });
     const blockTs = new Map<number, number>();
+    const now = Date.now;
+    let baseFeeCache: bigint | null = null, baseFeeAt = 0;
     const timestamp = async (n: number): Promise<number | undefined> => {
         if (blockTs.has(n)) return blockTs.get(n);
         const b = await p.send('eth_getBlockByNumber', ['0x' + n.toString(16), false]);
@@ -647,11 +788,22 @@ export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 're
                 logs: (r?.logs ?? []).map((l: any) => ({ address: l.address, topics: l.topics, data: l.data })),
             };
         },
+        async nonceOf(address) {
+            return Number(await p.send('eth_getTransactionCount', [address, 'latest']));
+        },
+        async baseFee() {
+            // Opportunities come in bursts off one swap; one header per second is plenty.
+            if (now() - baseFeeAt < 1_000) return baseFeeCache;
+            const b = await p.send('eth_getBlockByNumber', ['latest', false]);
+            baseFeeCache = b?.baseFeePerGas != null ? BigInt(b.baseFeePerGas) : null;
+            baseFeeAt = now();
+            return baseFeeCache;
+        },
         destroy: () => p.destroy(),
     };
 }
 
-export type PendingFeedStats = { connected: number; messages: number; fullTxs: number; hashOnly: number; fetched: number; unfetched: number; reconnects: number };
+export type PendingFeedStats = { connected: number; messages: number; fullTxs: number; hashOnly: number; fetched: number; unfetched: number; reconnects: number; stalls: number };
 
 /**
  * Subscribe to newPendingTransactions on each websocket, asking for full
@@ -663,18 +815,60 @@ export type PendingFeedStats = { connected: number; messages: number; fullTxs: n
  */
 export function subscribePending(urls: string[], onTx: (tx: PendingTx) => void, opts: {
     maxFetchPerSec?: number;
+    /**
+     * A subscribed socket that delivers nothing for this long is retired and
+     * reopened. Default 20s. Gnosis, 2026-10-30: publicnode's socket stopped
+     * pushing mid-run without closing — the counts froze for the last ~15
+     * minutes of a 45-minute run while the summary still said it was up.
+     * Measured standalone after: a fresh subscription dumps ~2,600 txs (the
+     * pool) in seconds, then often goes silent within 20s. With 5s blocks and
+     * a mempool that is never empty, 20s of nothing is a dead socket.
+     */
+    stallMs?: number;
     log?: (s: string) => void;
 } = {}): { stop: () => void; stats: () => PendingFeedStats } {
     const log = opts.log ?? ((s: string) => console.log(s));
     const maxFetch = opts.maxFetchPerSec ?? 10;
-    const stats: PendingFeedStats = { connected: 0, messages: 0, fullTxs: 0, hashOnly: 0, fetched: 0, unfetched: 0, reconnects: 0 };
+    const stallMs = opts.stallMs ?? 20_000;
+    const stats: PendingFeedStats = { connected: 0, messages: 0, fullTxs: 0, hashOnly: 0, fetched: 0, unfetched: 0, reconnects: 0, stalls: 0 };
     let stopped = false;
-    const sockets: WebSocket[] = [];
+    // Live sockets and whether each is subscribed. `connected` is counted from
+    // this, not kept as a running total: the running total read "3 feed(s) up"
+    // for one URL after a few reconnects on the same run.
+    const sockets = new Map<WebSocket, { subscribed: boolean }>();
+    const timers: ReturnType<typeof setInterval>[] = [];
 
     const open = (url: string, attempt: number) => {
         if (stopped) return;
         const ws = new WebSocket(url);
-        sockets.push(ws);
+        const state = { subscribed: false };
+        sockets.set(ws, state);
+        let lastMsgAt = Date.now();
+        let retired = false;
+        // Retire this socket and open a fresh one — once, whichever of close
+        // or the stall watchdog gets there first. A stalled socket's close
+        // handshake may never complete, so the reopen cannot wait for onclose.
+        const retire = (why: string, delay: number) => {
+            if (retired) return;
+            retired = true;
+            clearInterval(watchdog);
+            timers.splice(timers.indexOf(watchdog), 1);
+            sockets.delete(ws);
+            ws.onmessage = ws.onclose = ws.onerror = null;
+            try { ws.close(); } catch { /* already closing */ }
+            if (stopped) return;
+            stats.reconnects++;
+            log(`  [!] pending feed ${url} ${why}; reconnecting in ${Math.round(delay / 1000)}s`);
+            setTimeout(() => open(url, attempt + 1), delay).unref();
+        };
+        const watchdog = setInterval(() => {
+            if (state.subscribed && Date.now() - lastMsgAt > stallMs) {
+                stats.stalls++;
+                retire(`silent for ${Math.round((Date.now() - lastMsgAt) / 1000)}s`, 1_000);
+            }
+        }, Math.min(stallMs, 10_000));
+        watchdog.unref();
+        timers.push(watchdog);
         let subId: string | null = null;
         let nextId = 2;
         let bucket = maxFetch, bucketAt = Date.now();
@@ -687,13 +881,15 @@ export function subscribePending(urls: string[], onTx: (tx: PendingTx) => void, 
             if (j.id === 1) {
                 if (j.error) { log(`  [!] pending subscription refused by ${url}: ${j.error.message}`); ws.close(); return; }
                 subId = j.result;
-                stats.connected++;
+                state.subscribed = true;
+                lastMsgAt = Date.now();
                 attempt = 0;
                 return;
             }
             if (j.id != null && j.result && typeof j.result === 'object') { stats.fetched++; onTx(j.result); return; }
             if (j.method !== 'eth_subscription' || j.params?.subscription !== subId) return;
             stats.messages++;
+            lastMsgAt = Date.now();
             const r = j.params.result;
             if (r && typeof r === 'object') { stats.fullTxs++; onTx(r); return; }
             if (typeof r !== 'string') return;
@@ -706,20 +902,15 @@ export function subscribePending(urls: string[], onTx: (tx: PendingTx) => void, 
             ws.send(JSON.stringify({ jsonrpc: '2.0', id: nextId++, method: 'eth_getTransactionByHash', params: [r] }));
         };
         ws.onerror = () => { /* onclose follows and reconnects */ };
-        ws.onclose = () => {
-            const i = sockets.indexOf(ws);
-            if (i >= 0) sockets.splice(i, 1);
-            if (subId) stats.connected--;
-            if (stopped) return;
-            stats.reconnects++;
-            const delay = Math.min(60_000, 2_000 * 2 ** attempt);
-            log(`  [!] pending feed ${url} closed; reconnecting in ${Math.round(delay / 1000)}s`);
-            setTimeout(() => open(url, attempt + 1), delay).unref();
-        };
+        ws.onclose = () => retire('closed', Math.min(60_000, 2_000 * 2 ** attempt));
     };
     for (const u of urls) open(u, 0);
     return {
-        stop() { stopped = true; for (const s of [...sockets]) s.close(); },
-        stats: () => ({ ...stats }),
+        stop() {
+            stopped = true;
+            for (const t of timers) clearInterval(t);
+            for (const s of [...sockets.keys()]) s.close();
+        },
+        stats: () => ({ ...stats, connected: [...sockets.values()].filter(v => v.subscribed).length }),
     };
 }

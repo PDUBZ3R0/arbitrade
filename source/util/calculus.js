@@ -247,6 +247,15 @@ export function cycle_input_cap(hops, frac = 0.5) {
  * and rank on, and it uses the same swap_output the rest of the pipeline uses,
  * so a candidate's profit is never an artifact of the folding algebra.
  *
+ * Each hop's output is floored to whole raw units, because that is what a pair
+ * pays out (getAmountOut rounds down). For any real pool this changes nothing
+ * at float precision. For a pool holding a handful of raw units it is the
+ * difference between an edge and none: Polygon, 2026-10-30, a pair holding
+ * 2.56 USDC against 2 units of XSC (0 decimals) was credited 0.6 XSC per
+ * cycle, which the next pool valued above the input. On chain that hop pays
+ * 0, so 33 of the run's 51 "edge decayed" attempts went through that pair.
+ * Only the reported profit is floored; the sizing stays continuous.
+ *
  * @param {number} x
  * @param {Array<{rIn: number, rOut: number, fee: number}>} hops
  * @returns {number} profit in the root token (may be negative)
@@ -255,7 +264,7 @@ export function cycle_profit(x, hops) {
     let amt = x;
     for (let i = 0; i < hops.length; i++) {
         const h = hops[i];
-        amt = swap_output(amt, h.rIn, h.rOut, h.fee);
+        amt = Math.floor(swap_output(amt, h.rIn, h.rOut, h.fee));
         if (amt === 0) return -x;
     }
     return amt - x;
