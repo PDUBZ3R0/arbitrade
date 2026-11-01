@@ -28,6 +28,13 @@ import { makeProvider } from '../source/util/rpc.ts';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 import { watchSync } from '../source/orchestrator/sync-watcher.ts';
 
+import fs from 'node:fs';
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
+
 let fails = 0;
 const ok = (c, l, extra = '') => { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${l} ${extra}`); if (!c) fails++; };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

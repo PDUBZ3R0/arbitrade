@@ -93,10 +93,15 @@ export type BundleResult = {
     victimOk: boolean;
     ok: boolean;
     error?: string;
+    /** The revert's raw data. A custom error (InsufficientRepay…) comes back as message "execution reverted" with only this to say which. */
+    errorData?: string;
     gasUsed: bigint;
     logs: SimLog[];
     baseBlock: number;
 };
+
+/** A pool's state words before and after the victim, read in one simulation: getReserves() for V2, slot0() + liquidity() for V3. */
+export type PoolReads = Map<string, { pre: string[]; post: string[] }>;
 
 /** The state a pending swap leaves its pools at, exact — what buildHops takes as postState. */
 export type PostState = { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, V3PoolState> };
@@ -127,6 +132,10 @@ export type PendingProbeStats = {
     touchedOurPools: number;
     /** ...but no pool moved >= minMoveBps. */
     belowGate: number;
+    /** Pool moves in the simulated logs that the pool's own state, read before and after the victim, does not show (see confirmMoves). */
+    phantomMoves: number;
+    /** The read-back failed; the logs' moves were used unconfirmed. */
+    confirmErrors: number;
     /** V3 swaps that left the tick window the index holds: not scorable. */
     v3OutOfWindow: number;
     /** Pending swaps that opened at least one new cycle. */
@@ -155,6 +164,12 @@ export type PendingProbeStats = {
     backrunVictimReverted: number;
     /** Our executor call reverted behind the victim. */
     backrunReverted: number;
+    /**
+     * The bundle was simulated on a block that already held the victim, so it
+     * ran the victim twice: whatever it said is not a verdict on the backrun.
+     * Taken out of the counts above once the victim's block is known.
+     */
+    backrunLate: number;
     /** Executed behind the victim with a realised profit... */
     backrunClean: number;
     /**
@@ -180,6 +195,12 @@ export type PendingProbeDeps = {
     decimalsByToken: Map<string, number>;
     simulate: (tx: PendingTx) => Promise<SimResult>;
     /**
+     * Read the moved pools before and after the victim, in one simulation.
+     * Optional: without it the simulated logs are taken as the post-swap
+     * state. Sonic needs it — see confirmMoves.
+     */
+    readPools?: (tx: PendingTx, pools: Array<{ pair: string; kind: 'v2' | 'v3' }>) => Promise<PoolReads>;
+    /**
      * Phase 2, dry run: build our executor call on the post-swap state and
      * simulate it bundled behind the victim. Optional: without it the probe
      * only scores (phase 1).
@@ -190,6 +211,8 @@ export type PendingProbeDeps = {
         bundle: (victim: PendingTx, call: { from: string; to: string; data: string }) => Promise<BundleResult>;
         /** Usually CandidateExecutor.arbExecutedProfit. */
         profitOf: (logs: SimLog[]) => bigint | null;
+        /** Names a revert's custom error from its data. Optional: without it the raw data is recorded. */
+        describeRevert?: (data: string) => string | null;
         /** Cycles per pending swap to build and simulate, best first. Default 3. */
         perSwap?: number;
     };
@@ -310,11 +333,11 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
 
     const stats: PendingProbeStats = {
         seen: 0, duplicates: 0, notASwap: 0, filteredOut: 0, simDropped: 0, simulated: 0, simErrors: 0,
-        simReverted: 0, touchedOurPools: 0, belowGate: 0, v3OutOfWindow: 0, opportunities: 0,
+        simReverted: 0, touchedOurPools: 0, belowGate: 0, phantomMoves: 0, confirmErrors: 0, v3OutOfWindow: 0, opportunities: 0,
         standingSkipped: 0, nonceGapped: 0, landed: 0, landedReverted: 0, notLanded: 0, lateSim: 0, nextTouchedPools: 0,
         stillOpen: 0, simMsTotal: 0,
         backrunsTried: 0, backrunDecayed: 0, backrunRefused: 0, backrunVictimReverted: 0,
-        backrunReverted: 0, backrunClean: 0, backrunClearsFloor: 0, backrunClearsMarketOnly: 0, backrunMsTotal: 0,
+        backrunReverted: 0, backrunLate: 0, backrunClean: 0, backrunClearsFloor: 0, backrunClearsMarketOnly: 0, backrunMsTotal: 0,
         competitorSeen: 0, beatsCompetitor: 0, competitorTiedVictim: 0,
     };
 
@@ -391,6 +414,44 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         return [...byPool.values()];
     }
 
+    /**
+     * Keep only the moves the pools' own state shows, at the state it shows.
+     *
+     * Sonic, 2026-11-01: 443 of 897 backruns "reverted behind the victim" with
+     * no revert data. The victims were arbitrage bots (0xeac0722f…) that swap,
+     * find the round trip losing and undo it inside a try/catch: the tx
+     * succeeds and changes nothing, and on chain it has no logs. Sonic's
+     * eth_simulateV1 (every endpoint tried) still returns the undone frame's
+     * logs, Sync included, so the probe built backruns on a pool state that
+     * never exists and the executor's profit check reverted them —
+     * InsufficientRepay, a custom error the node reports as a bare
+     * "execution reverted".
+     */
+    function confirmMoves(moves: PoolMove[], reads: PoolReads): PoolMove[] {
+        const out: PoolMove[] = [];
+        for (const m of moves) {
+            const r = reads.get(m.pair);
+            if (!r) { out.push(m); continue; }   // that pool's read failed: the log is all there is
+            if (r.pre.every((w, i) => w === r.post[i])) { stats.phantomMoves++; continue; }
+            if (m.kind === 'v2') {
+                const raw0 = word(r.post[0], 0), raw1 = word(r.post[0], 1);
+                const r0 = Number(raw0), r1 = Number(raw1);
+                out.push({ ...m, raw0, raw1, r0, r1, bps: moveBps(ix.res0[m.pi], ix.res1[m.pi], r0, r1) });
+            } else {
+                const old = ix.v3State[m.pi]!;
+                const sqrtPriceX96 = word(r.post[0], 0), tick = int24(word(r.post[0], 1));
+                if ((old.windowLow != null && tick < old.windowLow) || (old.windowHigh != null && tick > old.windowHigh)) {
+                    stats.v3OutOfWindow++;
+                    continue;
+                }
+                const ratio = Number(sqrtPriceX96) / Number(old.sqrtPriceX96);
+                out.push({ ...m, state: { ...m.state, sqrtPriceX96, tick, liquidity: word(r.post[1], 0) },
+                    bps: ratio > 0 && Number.isFinite(ratio) ? Math.abs(Math.log(ratio * ratio)) * 1e4 : Infinity });
+            }
+        }
+        return out;
+    }
+
     const rankValue = (c: IndexedCandidate): number => {
         const lc = c.rootToken.toLowerCase();
         const price = deps.pricing()[lc]?.priceInNumeraire;
@@ -446,10 +507,19 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         stats.simMsTotal += simMs;
         if (!sim.ok) { stats.simReverted++; return; }
 
-        const moves = movesFrom(sim.logs);
+        let moves = movesFrom(sim.logs);
         if (moves.length === 0) return;
         stats.touchedOurPools++;
         if (!moves.some(m => m.bps >= deps.minMoveBps)) { stats.belowGate++; return; }
+        if (deps.readPools) {
+            try {
+                moves = confirmMoves(moves, await deps.readPools(tx, moves.map(m => ({ pair: m.pair, kind: m.kind }))));
+            } catch (e) {
+                stats.confirmErrors++;
+                if (stats.confirmErrors <= 3) log(`  [pending] pool read-back failed on ${tx.hash.slice(0, 12)}…, using the logs: ${(e as Error).message?.slice(0, 200)}`);
+            }
+            if (!moves.some(m => m.bps >= deps.minMoveBps)) return;
+        }
 
         const { fresh, standing, tris } = shadowScore(moves);
         stats.standingSkipped += standing;
@@ -511,6 +581,10 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             if (m.kind === 'v2') post.reserves.set(m.pair, { reserve0: m.raw0, reserve1: m.raw1 });
             else post.v3.set(m.pair, m.state);
         }
+        // A reason string the node already decoded stands; a bare "execution
+        // reverted" with data is a custom error (InsufficientRepay…) — name it.
+        const revertText = (b: BundleResult) => !b.errorData || b.errorData === '0x' || (b.error && b.error !== 'execution reverted')
+            ? b.error : `${b.error ?? 'execution reverted'}: ${br.describeRevert?.(b.errorData) ?? b.errorData}`;
         const n = Math.min(br.perSwap ?? 3, fresh.length);
         await Promise.all(fresh.slice(0, n).map(async (c, i) => {
             const t0 = now();
@@ -533,7 +607,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 let b = await br.bundle(tx, plan.tx);
                 if (b.victimOk && !b.ok && plan.fallback) {
                     // Same retry attempt() makes: the flash swap reverted, try the lender.
-                    rec.flashSwapError = b.error;
+                    rec.flashSwapError = revertText(b);
                     ({ funding, built } = plan.fallback);
                     b = await br.bundle(tx, plan.fallback.tx);
                 }
@@ -545,9 +619,10 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 rec.gasUsed = b.gasUsed.toString();
                 if (!b.ok) {
                     stats.backrunReverted++;
-                    rec.result = 'reverted'; rec.reason = b.error;
+                    rec.result = 'reverted';
+                    rec.reason = revertText(b);
                     log(`${tag} — REVERTS behind the victim (predicted ${tok(built.expectedProfit)} ${sym}, ${funding}` +
-                        (rec.flashSwapError !== undefined ? ', after the flash swap reverted too' : '') + `): ${String(b.error ?? '').slice(0, 160)}`);
+                        (rec.flashSwapError !== undefined ? ', after the flash swap reverted too' : '') + `): ${String(rec.reason ?? '').slice(0, 200)}`);
                     return;
                 }
                 const profit = br.profitOf(b.logs);
@@ -618,6 +693,30 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             blocksAfterSim: landed.blockNumber - op.baseBlock,
             lateSim: late,
         });
+
+        // Sonic, 2026-11-01: 15 of the 22 backruns that "reverted behind the
+        // victim" after the phantom-move fix were bundled on a block the victim
+        // had already landed in — the victim ran a second time on top of its
+        // own swap (and whoever backran it). That is latency, not a failed
+        // backrun: relabel it so 'reverted' means a backrun that failed in the
+        // state it was built for.
+        for (const [i, c] of op.cycles.entries()) {
+            const b = c.backrun as Record<string, unknown> | undefined;
+            if (!b || typeof b.bundleBaseBlock !== 'number' || b.bundleBaseBlock < landed.blockNumber) continue;
+            const was = b.result as string;
+            if (was === 'reverted') stats.backrunReverted--;
+            else if (was === 'victim-reverted') stats.backrunVictimReverted--;
+            else if (was === 'clears-floor' || was === 'clears-market-floor-only' || was === 'below-floor') {
+                stats.backrunClean--;
+                if (was === 'clears-floor') stats.backrunClearsFloor--;
+                if (was === 'clears-market-floor-only') stats.backrunClearsMarketOnly--;
+            } else continue;
+            stats.backrunLate++;
+            b.result = 'late';
+            b.lateResult = was;
+            op.floors.delete(i);
+            log(`  [backrun] ${op.hash.slice(0, 12)}… #${c.triangleId} — bundled on block ${b.bundleBaseBlock}, the victim landed in ${landed.blockNumber}: '${was}' was too late to mean anything`);
+        }
 
         // Ordering: what did the chain put straight after the victim, and who
         // (within the first few positions) took the cycle's pools? Gnosis,
@@ -723,7 +822,7 @@ const hexq = (v: string | bigint | undefined): string | undefined => v == null ?
  * whose nonce is one ahead of latest (a sender queueing several) would fail
  * for a reason that has nothing to do with its swap.
  */
-export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'receipt' | 'nextTx' | 'baseFee' | 'nonceOf'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
+export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'readPools' | 'receipt' | 'nextTx' | 'baseFee' | 'nonceOf'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
     const p = new JsonRpcProvider(url, undefined, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 });
     const blockTs = new Map<number, number>();
     const now = Date.now;
@@ -760,11 +859,34 @@ export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 're
             return {
                 victimOk: Number(cv.status) === 1,
                 ok: Number(co.status) === 1,
-                error: co.error?.message ?? (co.error?.data ? `revert ${co.error.data}` : undefined),
+                error: co.error?.message ?? (co.error?.data ? 'execution reverted' : undefined),
+                errorData: co.error?.data,
                 gasUsed: BigInt(co.gasUsed ?? 0),
                 logs: (co.logs ?? []).map((l: any) => ({ address: l.address, topics: l.topics, data: l.data })),
                 baseBlock: Number(b.number) - 1,
             };
+        },
+        async readPools(victim, pools) {
+            // [reads, victim, the same reads]: before and after, in one state.
+            const reads = pools.flatMap(p => p.kind === 'v2'
+                ? [{ to: p.pair, input: '0x0902f1ac' }]                                   // getReserves()
+                : [{ to: p.pair, input: '0x3850c7bd' }, { to: p.pair, input: '0x1a686502' }]); // slot0(), liquidity()
+            const v = { from: victim.from, to: victim.to, input: victim.input, value: hexq(victim.value) ?? '0x0', gas: hexq(victim.gas) };
+            const res = await p.send('eth_simulateV1', [{ blockStateCalls: [{ calls: [...reads, v, ...reads] }], validation: false }, 'latest']);
+            const calls = res?.[0]?.calls;
+            if (!calls || calls.length !== reads.length * 2 + 1) throw new Error('eth_simulateV1 returned the wrong number of call results');
+            const out: PoolReads = new Map();
+            let k = 0;
+            for (const pool of pools) {
+                const n = pool.kind === 'v2' ? 1 : 2;
+                const pre = calls.slice(k, k + n), post = calls.slice(reads.length + 1 + k, reads.length + 1 + k + n);
+                k += n;
+                // A read that reverts or returns too little (a pool without slot0 — not one the index holds as V3) proves nothing either way.
+                const good = (c: any) => Number(c.status) === 1 && typeof c.returnData === 'string' && c.returnData.length >= 2 + 64 * (pool.kind === 'v2' ? 2 : 1);
+                if (![...pre, ...post].every(good)) continue;
+                out.set(pool.pair, { pre: pre.map((c: any) => c.returnData), post: post.map((c: any) => c.returnData) });
+            }
+            return out;
         },
         async receipt(hash) {
             const r = await p.send('eth_getTransactionReceipt', [hash]);

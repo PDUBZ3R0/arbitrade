@@ -19,6 +19,12 @@ import path from 'node:path';
 import { id, AbiCoder } from 'ethers';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
+
 let fails = 0;
 const ok = (c, l, extra = '') => { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${l} ${extra}`); if (!c) fails++; };
 

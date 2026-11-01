@@ -30,6 +30,14 @@ import { ArbitradeDB } from '../source/util/db.ts';
 import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
 import { createPendingProbe, rpcBackend, subscribePending, victimGasPrice, competitorVerdict } from '../source/orchestrator/pending-probe.ts';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
+import { SYNC_TOPIC } from '../source/orchestrator/sync-watcher.ts';
+
+import fs from 'node:fs';
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
 
 const art = JSON.parse(readFileSync(new URL('./artifacts.json', import.meta.url), 'utf8'));
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -202,6 +210,8 @@ ok(s.backrunsTried === 1 && s.backrunClean === 1 && s.backrunClearsFloor === 1,
    'backrun built on the post-swap reserves executes behind the victim and clears the gas floor', JSON.stringify({
        tried: s.backrunsTried, decayed: s.backrunDecayed, refused: s.backrunRefused, reverted: s.backrunReverted, clean: s.backrunClean, clears: s.backrunClearsFloor }));
 ok(logs.some(l => /\[backrun\].*WOULD SEND/.test(l)), 'backrun verdict logged');
+ok(s.phantomMoves === 0 && s.confirmErrors === 0, 'the victim\'s move is confirmed by reading AB before and after it',
+   JSON.stringify({ phantom: s.phantomMoves, confirmErrors: s.confirmErrors }));
 // The same call at latest — the victim still pending — has no edge to take:
 // proof that the victim's state, not something already on chain, is what it trades.
 {
@@ -233,12 +243,66 @@ ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim
        'a victim queued behind a nonce gap is recorded, not backrun', JSON.stringify({ opp: g.opportunities, gapped: g.nonceGapped, tried: g.backrunsTried, rec: gapRecords[0]?.nonceGap }));
     ok(probe.stats().nonceGapped === 0, '(sanity) the real probe saw the victim as next to land');
 }
+// A bundle simulated on a block that already holds the victim (Sonic,
+// 2026-11-01: 15 of 22 reverts) is relabelled 'late' once the victim's block
+// is known, and leaves the reverted count.
+const lateRecords = [];
+const lateProbe = createPendingProbe({
+    index: ix, thresholds: () => thresholds, pricing: () => pricing,
+    decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
+    ...backend,
+    backrun: {
+        prepare: (c, post) => executor.prepareBackrun(c, db, post),
+        bundle: async () => ({ victimOk: true, ok: false, error: 'execution reverted', gasUsed: 1n, logs: [], baseBlock: 1e9 }),
+        profitOf: () => null,
+    },
+    minMoveBps: 10, receiptPollMs: 100, landWaitMs: 15_000, record: (o) => lateRecords.push(o), log: () => {},
+});
+lateProbe.onPending(await provider.send('eth_getTransactionByHash', [victim.hash]));
+ok(await until(() => lateProbe.stats().backrunReverted === 1), '(late) the stubbed bundle first counts as a revert', JSON.stringify(lateProbe.stats()));
+
+// Sonic, 2026-11-01: a bot's tx that swaps and undoes it in a try/catch
+// changes nothing, but Sonic's eth_simulateV1 returns the undone Sync. Here a
+// simulation that reports a big AB Sync for a tx that touches nothing: the
+// read-back of AB before and after it shows no change, and nothing is built.
+{
+    let prepared = 0;
+    const fakeSync = { address: AB, topics: [SYNC_TOPIC],
+        data: '0x' + [abMid[0] * 2, abMid[1] / 2].map(x => BigInt(Math.round(x)).toString(16).padStart(64, '0')).join('') };
+    const phantom = createPendingProbe({
+        index: ix, thresholds: () => thresholds, pricing: () => pricing,
+        decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
+        ...backend,
+        simulate: async () => ({ ok: true, logs: [fakeSync], baseBlock: await provider.getBlockNumber() }),
+        backrun: { prepare: async () => { prepared++; return {}; }, bundle: backend.bundle, profitOf: () => null },
+        minMoveBps: 10, landWaitMs: 1, log: () => {},
+    });
+    phantom.onPending({ hash: '0x' + 'ab'.repeat(32), from: w.address, to: '0x000000000000000000000000000000000000dEaD',
+        input: '0x12345678' + AB.slice(2).toLowerCase().padStart(64, '0'), value: '0x0', gas: '0x30000', nonce: '0x0' });
+    await phantom.idle();
+    const ph = phantom.stats();
+    ok(ph.simulated === 1 && ph.phantomMoves === 1 && ph.opportunities === 0 && prepared === 0,
+       'a Sync the pool\'s state does not show is dropped: no opportunity, no backrun', JSON.stringify({ sim: ph.simulated, phantom: ph.phantomMoves, opp: ph.opportunities, filtered: ph.filteredOut, notASwap: ph.notASwap }));
+    ok(ix.res0[pi] === abMid[0] && ix.res1[pi] === abMid[1], '(sanity) the live index still holds AB as it was');
+}
+// A custom error by name, not "execution reverted" (the probe's revert reasons).
+{
+    const data = executor.executor.interface.encodeErrorResult('InsufficientRepay', [5n, 7n]);
+    ok(executor.describeRevert(data) === 'InsufficientRepay(5, 7)', 'describeRevert names the executor\'s custom error', executor.describeRevert(data));
+}
 await provider.send('evm_mine', []);
 const minedAt = await provider.getBlockNumber();
 // Apply the victim's block to the index, as the Sync feed would, then let the outcome check run.
 { const [r0, r1] = await pAB.getReserves(); ix.applySync(AB, Number(r0), Number(r1)); }
 indexed = minedAt;
 await probe.idle();
+await lateProbe.idle();
+{
+    const ls = lateProbe.stats(), lb = lateRecords.find(r => r.hash === victim.hash)?.cycles?.[0]?.backrun;
+    ok(ls.backrunLate === 1 && ls.backrunReverted === 0 && lb?.result === 'late' && lb.lateResult === 'reverted',
+       'a bundle on a block at or after the victim\'s is relabelled late, not reverted', JSON.stringify({ late: ls.backrunLate, reverted: ls.backrunReverted, rec: lb }));
+}
+ok(probe.stats().backrunLate === 0, '(sanity) the real bundle ran before the victim\'s block: not late');
 
 s = probe.stats();
 const rec = records.find(r => r.hash === victim.hash);

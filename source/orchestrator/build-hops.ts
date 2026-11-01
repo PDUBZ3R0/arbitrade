@@ -59,6 +59,7 @@ import type { ArbitradeDB } from '../util/db.ts';
 import { multicall3, MULTICALL3_ADDRESS, type Multicall3Call } from '../util/multicall.ts';
 import { getV3States, getAlgebraStates } from '../util/yobatches.ts';
 import { v3_amount_out_exact } from '../util/calculus-v3.js';
+import { algebraV1NextFee } from '../util/algebra-fee.ts';
 import type { Candidate } from '../evaluator/evaluator.ts';
 
 /**
@@ -152,7 +153,7 @@ const PAIR_IFACE = new Interface([
 // size can still be large on a thin or manipulated pool. Downstream hops need
 // no clamp: constant-product math caps each hop's output below that hop's own
 // reserveOut.
-const MAX_INPUT_FRACTION_BPS = 1500n; // 15%
+export const MAX_INPUT_FRACTION_BPS = 1500n; // 15% (probe.ts tests transfer caps at this size)
 
 /**
  * Exact uint112 ceiling for a pair reserve slot.
@@ -297,6 +298,17 @@ export async function buildHops(
                 v3ByPool.set(group[i].pair.toLowerCase(), st.pools[i]);
             }
             blockTag ??= st.block;
+        }
+        // An Algebra V1 pool's stored fee is the LAST swap's; the next one
+        // recomputes it first. Price at the higher of the two (util/algebra-fee.ts).
+        if (alg.length > 0) {
+            const blockTs = (await provider.getBlock(blockTag ?? 'latest'))?.timestamp ?? 0;
+            const time = Math.max(blockTs + 1, Math.floor(Date.now() / 1000));
+            await Promise.all(alg.map(async h => {
+                const key = h.pair.toLowerCase(), s = v3ByPool.get(key);
+                const next = await algebraV1NextFee(provider, h.pair, s, time, blockTag);
+                if (next != null && next > s.fee) v3ByPool.set(key, { ...s, fee: next });
+            }));
         }
     }
 

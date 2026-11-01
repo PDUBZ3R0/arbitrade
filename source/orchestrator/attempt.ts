@@ -54,6 +54,14 @@ export const EXECUTOR_ABI = [
     // Carries the REALISED profit. The off-chain prediction is an upper bound,
     // so the ledger records this rather than what we expected.
     'event ArbExecuted(address indexed asset, uint256 amountBorrowed, uint256 premium, uint256 profit)',
+    // FlashArbExecutor's custom errors, so describeRevert can name them. An
+    // eth_simulateV1 revert carries them only as data, message "execution reverted".
+    'error NotOwner()', 'error NotPool()', 'error UntrustedInitiator()',
+    'error InsufficientRepay(uint256 balance, uint256 required)',
+    'error EmptyHops()', 'error BadFee(uint256 hop, uint32 feePpm)', 'error NothingArrived(uint256 hop)',
+    'error ZeroOutput(uint256 hop)', 'error TokenNotInPair(uint256 hop)', 'error BadSource(uint8 source)',
+    'error NoLender()', 'error AssetMismatch()', 'error TokenNotInLender()', 'error BadHopKind(uint256 hop, uint8 kind)',
+    'error BadRecipient(uint256 hop)', 'error SwapOverpaid(uint256 owed, uint256 maxIn)', 'error NoFlashCallback()',
 ];
 
 /** Swap callbacks FlashArbExecutor implements for HOP_V3 hops. */
@@ -710,6 +718,15 @@ export class CandidateExecutor {
             fallback = { built: lb, funding: pre.terms!.provider, tx: encode(false, lb) };
         }
         return { built, funding: pre.useFlash ? 'flash-swap' : pre.terms!.provider, tx: encode(pre.useFlash, built), floorFor, fallback };
+    }
+
+    /** An executor custom error by name (InsufficientRepay(balance, required)…), else a reason string, from raw revert data. */
+    describeRevert(data: string): string | null {
+        try {
+            const p = this.executor.interface.parseError(data);
+            if (p) return `${p.name}(${p.args.map(String).join(', ')})`;
+        } catch { /* not one of ours */ }
+        return decodeRevertReason(data);
     }
 
     /** The profit an ArbExecuted event in these logs reports, or null when the executor emitted none. */

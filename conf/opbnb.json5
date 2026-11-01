@@ -8,6 +8,7 @@
     token: '0x4200000000000000000000000000000000000006',   // WBNB — the numeraire for thresholds
     // contract: '0x…',  // YoBatches2 — yarn deploy-contract opbnb
     // executor: '0x…',  // FlashArbExecutor — yarn deploy-flasharb opbnb
+    hypersyncUrl: 'http://localhost:8080/v1/graphql',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,

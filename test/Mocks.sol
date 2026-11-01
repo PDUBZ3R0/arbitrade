@@ -33,7 +33,7 @@ contract MockToken {
         totalSupply += amt;
     }
 
-    function _move(address from, address to, uint256 amt) internal {
+    function _move(address from, address to, uint256 amt) internal virtual {
         require(balanceOf[from] >= amt, "ERC20: transfer amount exceeds balance");
         balanceOf[from] -= amt;
         uint256 tax = (amt * taxBps) / 10_000;
@@ -57,6 +57,106 @@ contract MockToken {
         allowance[msg.sender][s] = amt;
         return true;
     }
+}
+
+/// Refuses any single transfer above maxTx — modelled on the Polygon
+/// "DESTRUCTION" tokens (2026-11-01), which revert "ERR3" over 0.6% of supply.
+contract MockCappedToken is MockToken {
+    uint256 public maxTx;
+    constructor(uint256 _maxTx) MockToken("CAPPED", 0) { maxTx = _maxTx; }
+    function _move(address from, address to, uint256 amt) internal override {
+        require(amt <= maxTx, "ERR3");
+        super._move(from, to, amt);
+    }
+}
+
+/// Elastic-supply token logic (YAM-style scalingFactor, like CVI's CVOL), and
+/// a bare EIP-1967 proxy in front of it — CVOL's own layout on Polygon.
+contract MockElasticToken is MockToken {
+    uint256 public scalingFactor = 1e18;
+    constructor() MockToken("ELASTIC", 0) {}
+    function rebase(uint256 factor, bool) external { scalingFactor = factor; }
+}
+
+contract MockEip1967Proxy {
+    constructor(address impl) {
+        assembly { sstore(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc, impl) }
+    }
+    fallback() external payable {
+        assembly {
+            let impl := sload(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc)
+            calldatacopy(0, 0, calldatasize())
+            let ok := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            if iszero(ok) { revert(0, returndatasize()) }
+            return(0, returndatasize())
+        }
+    }
+}
+
+/// Algebra V1's fee surface (Polygon, 2026-11-01, QuickSwap V3): globalState()
+/// holds the LAST swap's fee; dataStorageOperator().getFee answers only its pool.
+contract MockAlgebraOperator {
+    address public pool;
+    uint16 public nextFee;
+    bool public broken;
+    constructor(address _pool, uint16 _fee) { pool = _pool; nextFee = _fee; }
+    function set(uint16 _fee, bool _broken) external { nextFee = _fee; broken = _broken; }
+    function getFee(uint32, int24, uint16 index, uint128) external view returns (uint16) {
+        require(msg.sender == pool, "only pool can call this");
+        require(!broken && index == 341, "bad index");
+        return nextFee;
+    }
+}
+
+contract MockAlgebraV1Pool {
+    address public dataStorageOperator;
+    uint16 public storedFee;
+    constructor(uint16 _fee) { storedFee = _fee; }
+    function setOperator(address op) external { dataStorageOperator = op; }
+    function globalState() external view returns (uint160, int24, uint16, uint16, uint8, uint8, bool) {
+        return (uint160(1) << 96, int24(-203463), storedFee, uint16(341), 0, 0, true);
+    }
+}
+
+/// A token that taxes transfers into one pair and sells the tax into that same
+/// pair before crediting the rest — modelled on Longinus (LGNS, Polygon,
+/// 2026-11-01): transfer(0x882df4b0, x) sends 5% to a fee contract whose
+/// triggerSwapFeeForLottery sells it through 0x882df4b0, which syncs the pair
+/// mid-transfer. The pair's balance still rises by x, but its reserve has
+/// already absorbed the tax, so a swap counts only 95% as input.
+contract MockSyncTaxToken {
+    string public name;
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    uint16 public taxBps;
+    address public taxedPair;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    constructor(string memory _name, uint16 _taxBps) { name = _name; taxBps = _taxBps; }
+    function setTaxedPair(address p) external { taxedPair = p; }
+    function mint(address to, uint256 amt) external { balanceOf[to] += amt; totalSupply += amt; }
+
+    function _move(address from, address to, uint256 amt) internal {
+        require(balanceOf[from] >= amt, "ERC20: transfer amount exceeds balance");
+        balanceOf[from] -= amt;
+        if (to == taxedPair && taxBps > 0) {
+            uint256 tax = (amt * taxBps) / 10_000;
+            balanceOf[to] += tax;
+            MockPair(to).sync();
+            amt -= tax;
+        }
+        balanceOf[to] += amt;
+    }
+    function transfer(address to, uint256 amt) external returns (bool) { _move(msg.sender, to, amt); return true; }
+    function transferFrom(address from, address to, uint256 amt) external returns (bool) {
+        require(allowance[from][msg.sender] >= amt, "allowance");
+        allowance[from][msg.sender] -= amt;
+        _move(from, to, amt);
+        return true;
+    }
+    function approve(address s, uint256 amt) external returns (bool) { allowance[msg.sender][s] = amt; return true; }
 }
 
 interface IUniswapV2CalleeM {

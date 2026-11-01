@@ -664,6 +664,7 @@ if (pendingProbeOn) {
             prepare: (c, post) => executor.prepareBackrun(c, db, post),
             bundle: backend.bundle,
             profitOf: (logs) => executor.arbExecutedProfit(logs),
+            describeRevert: (data) => executor.describeRevert(data),
         },
         minMoveBps,
         maxSimInFlight: pendingSims,
@@ -833,13 +834,16 @@ function pendingSummary(): string {
         (p.simulated ? ` (avg ${Math.round(p.simMsTotal / p.simulated)}ms)` : '') +
         (p.simDropped ? `, ${p.simDropped} dropped at the in-flight cap` : '') +
         (p.simErrors ? `, ${p.simErrors} sim error(s)` : '') + (p.simReverted ? `, ${p.simReverted} would revert` : '') +
-        ` -> ${p.touchedOurPools} touched our pools, ${p.belowGate} below the move gate -> ${p.opportunities} opened a cycle` +
+        ` -> ${p.touchedOurPools} touched our pools, ${p.belowGate} below the move gate` +
+        (p.phantomMoves ? `, ${p.phantomMoves} simulated move(s) the pool's state did not show` : '') +
+        (p.confirmErrors ? `, ${p.confirmErrors} read-back failure(s)` : '') + ` -> ${p.opportunities} opened a cycle` +
         (p.standingSkipped ? ` (${p.standingSkipped} standing cycle(s) ignored)` : '') +
         (p.nonceGapped ? `, ${p.nonceGapped} queued behind a nonce gap` : '') +
         (p.backrunsTried ? ` -> ${p.backrunsTried} backrun(s) built: ${p.backrunDecayed} decayed on exact reserves, ${p.backrunRefused} refused, ` +
             `${p.backrunReverted} reverted behind the victim, ${p.backrunClean} executed (${p.backrunClearsFloor} clearing the floor at the victim's gas price` +
             (p.backrunClearsMarketOnly ? `, ${p.backrunClearsMarketOnly} only at market gas` : '') + `)` +
             (p.backrunVictimReverted ? `, ${p.backrunVictimReverted} victim reverted` : '') +
+            (p.backrunLate ? `, ${p.backrunLate} bundled after the victim had landed (too late to count)` : '') +
             ` avg ${Math.round(p.backrunMsTotal / p.backrunsTried)}ms` : '') +
         ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x` +
         (p.competitorSeen ? `; a competitor took the cycle after ${p.competitorSeen} victim(s)` +

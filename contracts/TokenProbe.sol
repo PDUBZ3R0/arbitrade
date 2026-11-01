@@ -256,8 +256,12 @@ contract TokenProbe {
 
     /// Stages 3-4: send everything received back to the pair, swap to root.
     function _sell(Ctx memory c, uint256 amount) internal returns (uint256 arrived, uint256 requested, uint256 received) {
-        (uint256 rRoot, uint256 rTok) = _reserves(c);
         _transfer(STAGE_SELL_TRANSFER, c.token, address(c.pair), amount);
+        // Reserves are read AFTER the transfer: the pair counts balance minus the reserve
+        // it holds at swap time. Polygon, 2026-11-01: LGNS sells its 5% fee through this
+        // pair inside transfer(), syncing it mid-transfer; read before, the stale reserve
+        // credited us the fee too, the swap reverted K, and the tax was blamed on the pair.
+        (uint256 rRoot, uint256 rTok) = _reserves(c);
         uint256 pairBal = IProbeERC20(c.token).balanceOf(address(c.pair));
         arrived = pairBal > rTok ? pairBal - rTok : 0;
         requested = _amountOut(arrived, rTok, rRoot, c.feeBpsCap);

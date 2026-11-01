@@ -39,6 +39,12 @@ import { TriangleIndex } from '../source/orchestrator/triangle-index.ts';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 import { buildHops, HOP_STABLE, HOP_V2 } from '../source/orchestrator/build-hops.ts';
 
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
+
 const require = createRequire(import.meta.url);
 let fails = 0;
 const ok = (c, l, extra = '') => { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${l} ${extra}`); if (!c) fails++; };

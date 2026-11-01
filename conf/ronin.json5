@@ -8,6 +8,7 @@
     token: '0x4200000000000000000000000000000000000006',   // WRON — the numeraire for thresholds
     // contract: '0x…',  // YoBatches2 — yarn deploy-contract ronin
     // executor: '0x…',  // FlashArbExecutor — yarn deploy-flasharb ronin
+    hypersyncUrl: 'http://localhost:8080/v1/graphql',
     threads: 10,
     interval: 3000,
     pagesize: 1000000,
@@ -29,10 +30,12 @@
   //     (deep, holds the token, never traded by the cycle) and premium = its fee tier (0.0005 …)
   //   * a Morpho/Balancer deployment at a non-canonical address: provider + morpho/vault here
   flashloan: {
+    flashSwap: true,
+    swapRoots: { minLiquidity: 1 },
     provider: 'uniswap-v3',
     premium: 0,
     tokens: [
-      // { symbol: 'WRON', address: '0x4200000000000000000000000000000000000006', decimals: 18, lender: '0x<V3 pool>', premium: 0.0005 },
+      { symbol: 'WRON', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
     ],
   },
 }

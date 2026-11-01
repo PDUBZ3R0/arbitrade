@@ -708,6 +708,32 @@ async function fetchPerPairMetadata(
     wantStable: boolean,
     refreshAll: boolean,
 ): Promise<number> {
+    // Fees declared in the config are applied before anything else, to every
+    // pair priced below them. They used to fill only pairs with no fee yet,
+    // after an early return for "all pairs already have a fee", so raising a
+    // factory's fee in the conf never reached its pairs. Polygon, 2026-11-01:
+    // UniswapV2Factory_3ed75aff went to 0.0035 in the conf on 10-14 (its pairs
+    // skim ~0.05% of output); its 110 pairs stayed at 0.003 and the hot loop
+    // kept pricing paths through them 500 ppm short.
+    //
+    // Flat fee: some v2fee/solidly factories charge one fee for all pairs
+    // (Dystopia = 0.05%), or one their fee API can't report (Velodrome-style
+    // stableFee/volatileFee splits, fees hardcoded in swap()). No multicall.
+    if (factory.fee !== undefined && factory.fee !== null) {
+        const updated = db.raisePairFeesTo(factory.address, factory.fee);
+        console.log(`  Flat fee mode: fee=${factory.fee} applied to ${updated} pair(s) unpriced or priced below it (skipping metadata multicall)`);
+        return updated;
+    }
+    // Static per-type fees: hardcoded in swap() by pair.stable (WhaleSwap =
+    // 0.04% stable, 0.25% volatile). Solidly-family only.
+    if (factory.stableFees) {
+        const { stable, volatile } = factory.stableFees;
+        const s = db.raisePairFeesTo(factory.address, stable, true);
+        const v = db.raisePairFeesTo(factory.address, volatile, false);
+        console.log(`  Static per-type mode: stable=${stable} applied to ${s} pair(s), volatile=${volatile} to ${v} (skipping metadata multicall)`);
+        return s + v;
+    }
+
     const targets = db.getPairsForMetadataFetch(factory.address, refreshAll);
     if (targets.length === 0) {
         // Diagnostic: distinguish "already populated" from "no pairs match".
@@ -727,47 +753,6 @@ async function fetchPerPairMetadata(
         return 0;
     }
 
-    // Flat-fee fast path: some v2fee/solidly factories charge a uniform fee
-    // for all pairs (e.g. Dystopia = 0.05% flat). If the config declares a
-    // `fee` on the factory, use it directly — no multicall needed, and no
-    // failure mode from a missing/mismatched feeFunction on-chain.
-    //
-    // This is the escape hatch for Solidly forks whose fee API doesn't fit
-    // our single-feeFunction schema (Velodrome/Aerodrome-style stableFee +
-    // volatileFee split, uniform-fee forks like Dystopia, or forks where
-    // the fee is hardcoded in the pair's swap() and not queryable at all).
-    if (factory.fee !== undefined && factory.fee !== null) {
-        const updated = db.db.prepare(
-            'UPDATE pairs SET fee = ? WHERE factory = ? AND fee IS NULL'
-        ).run(factory.fee, factory.address.toLowerCase()).changes;
-        const total = targets.length;
-        console.log(
-            `  Flat fee mode: applied fee=${factory.fee} to ${updated} pair(s) ` +
-            `(config declares uniform fee for this factory; skipping metadata multicall)`
-        );
-        return updated;
-    }
-
-    // stableFees fast path: some factories hardcode fees in swap() based on
-    // pair.stable (e.g. WhaleSwap = 0.04% stable, 0.25% volatile). Not
-    // queryable on-chain — look up each pair's cached `stable` flag and
-    // apply the corresponding fee via bulk UPDATE. Solidly-family only.
-    if (factory.stableFees) {
-        const { stable, volatile } = factory.stableFees;
-        const stableApplied = db.db.prepare(
-            `UPDATE pairs SET fee = ? WHERE factory = ? AND stable = 1 AND fee IS NULL`
-        ).run(stable, factory.address.toLowerCase()).changes;
-        const volatileApplied = db.db.prepare(
-            `UPDATE pairs SET fee = ? WHERE factory = ? AND (stable = 0 OR stable IS NULL) AND fee IS NULL`
-        ).run(volatile, factory.address.toLowerCase()).changes;
-        const total = stableApplied + volatileApplied;
-        console.log(
-            `  Static per-type mode: applied stable=${stable} to ${stableApplied} pair(s) + ` +
-            `volatile=${volatile} to ${volatileApplied} pair(s) = ${total} total ` +
-            `(config declares static per-type fees; skipping metadata multicall)`
-        );
-        return total;
-    }
 
     const { feeTarget, feeFunction, feeDivisor, feeArgSource } = factory;
     const feeIface = makeFeeIface(feeFunction, feeTarget, feeArgSource);

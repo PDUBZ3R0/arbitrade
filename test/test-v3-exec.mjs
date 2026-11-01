@@ -25,6 +25,12 @@ import { createRequire } from 'node:module';
 import { ethers } from 'ethers';
 import { buildHops, HOP_V2, HOP_V3 } from '../source/orchestrator/build-hops.ts';
 
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
+
 const require = createRequire(import.meta.url);
 const here = (p) => new URL(p, import.meta.url);
 let fails = 0;

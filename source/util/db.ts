@@ -781,6 +781,18 @@ export class ArbitradeDB {
         `).all(factory.toLowerCase()) as any;
     }
 
+    /**
+     * Raise this factory's pairs to a configured fee: unpriced pairs and pairs
+     * priced below it. Never lowers one — a higher per-pair fee came from
+     * verify-fees measuring it, and a fee too low reverts while one too high
+     * only costs profit. `stable` narrows to stable (true) or volatile pairs.
+     */
+    raisePairFeesTo(factory: string, fee: number, stable?: boolean): number {
+        const kind = stable === undefined ? '' : stable ? 'AND stable = 1' : 'AND (stable = 0 OR stable IS NULL)';
+        return this.db.prepare(`UPDATE pairs SET fee = ? WHERE factory = ? AND kind != 'v3' ${kind} AND (fee IS NULL OR fee < ?)`)
+            .run(fee, factory.toLowerCase(), fee).changes;
+    }
+
     /** Update fee (and stable, if provided) for a single pair. */
     updatePairMetadata(rows: Array<{ pair: string; fee: number; stable?: boolean | null }>): number {
         const stmt = this.db.prepare(`
@@ -929,7 +941,7 @@ export class ArbitradeDB {
      * root side's raw reserve. Skips pairs already known restricted and pairs
      * from factories outside `allowedFactories` (i.e. blacklisted).
      */
-    getRootPairsForToken(token: string, roots: string[], allowedFactories: string[], limit = 3): Array<{ pair: string; factory: string; root: string; rootReserve: string }> {
+    getRootPairsForToken(token: string, roots: string[], allowedFactories: string[], limit = 3, kind: 'v2' | 'v3' = 'v2'): Array<{ pair: string; factory: string; root: string; rootReserve: string }> {
         const t = token.toLowerCase();
         const r = roots.map(a => a.toLowerCase());
         const f = allowedFactories.map(a => a.toLowerCase());
@@ -944,13 +956,13 @@ export class ArbitradeDB {
             INNER JOIN reserves rs ON rs.pair = p.address
             WHERE ((p.token0 = ? AND p.token1 IN (${rph})) OR (p.token1 = ? AND p.token0 IN (${rph})))
               AND p.factory IN (${fph})
-              AND p.kind = 'v2'   -- the probe swaps through pair.swap(); v3 pools need a callback
+              AND p.kind = ?      -- 'v2': pair.swap(); 'v3': V3/CL/Algebra pools, through probeCLFrom
               AND (p.stable IS NULL OR p.stable = 0)
               AND (p.probeStatus IS NULL OR p.probeStatus != 'pair-restricted')
               AND rs.reserves0 != '0' AND rs.reserves1 != '0'
             ORDER BY CAST(rootReserve AS REAL) DESC
             LIMIT ?
-        `).all(t, t, t, ...r, t, ...r, ...f, limit) as Array<{ pair: string; factory: string; root: string; rootReserve: string }>;
+        `).all(t, t, t, ...r, t, ...r, ...f, kind, limit) as Array<{ pair: string; factory: string; root: string; rootReserve: string }>;
     }
 
     setTokenProbe(address: string, p: { status: string; buyTaxBps: number | null; sellTaxBps: number | null; reason: string; pair: string | null }): void {

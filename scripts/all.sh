@@ -1,5 +1,6 @@
 #!/bin/bash
 
+clear
 CHAIN=$2
 KEYWORD=$1
 shift 2
@@ -60,6 +61,6 @@ if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then
     logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted > /dev/null && echo '[probe] complete'
     logd 'arbitrage' yarn triangles $CHAIN && echo "[triangles] complete" 
     logd 'arbitrage' yarn evaluate $CHAIN --verbose
-    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 $LIVENESS
+    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS
 fi
 

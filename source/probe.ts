@@ -23,8 +23,9 @@ import { Interface } from 'ethers';
 import { loadChainConfig, dbPath, flashTermsFor } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { appendToBlacklist } from './util/blacklist.ts';
-import { probePair, probeSupportsLenders, STAGE, TOKEN_VERDICTS, type ProbeOutcome, type ProbeLender } from './util/token-probe.ts';
+import { probePair, probeCLPool, probeSupportsCL, probeSupportsLenders, markKnownNonstandard, elasticSupplySignature, transferCapReason, STAGE, TOKEN_VERDICTS, type ProbeOutcome, type ProbeLender } from './util/token-probe.ts';
 import { makeProvider } from './util/rpc.ts';
+import { MAX_INPUT_FRACTION_BPS } from './orchestrator/build-hops.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -88,6 +89,7 @@ const provider = makeProvider(cfg.chain);
 
 // Where each root is borrowed from, and how much that lender can lend.
 const anyLender = await probeSupportsLenders(provider, cfg.chain.probe);
+const clProbe = anyLender && await probeSupportsCL(provider, cfg.chain.probe);
 const ERC20 = new Interface(['function balanceOf(address) view returns (uint256)']);
 const AAVE = new Interface(['function getReserveData(address asset)']);
 const lenderOf = new Map<string, { via: ProbeLender | undefined; label: string; cap: bigint | null }>();
@@ -124,7 +126,10 @@ if (roots.length === 0) {
     process.exit(1);
 }
 
-const tokens = db.getTokensToProbe(roots, { maxAgeSeconds: maxAgeDays * 86_400, refresh, limit });
+// Recorded every run and never probed, so a --refresh can't put them back to 'untestable'.
+const knownBad = new Set(markKnownNonstandard(db, cfg.chain.id));
+if (knownBad.size) console.log(`Recorded ${knownBad.size} token(s) known nonstandard on ${cfg.chain.name} (util/token-probe.ts KNOWN_NONSTANDARD)`);
+const tokens = db.getTokensToProbe(roots, { maxAgeSeconds: maxAgeDays * 86_400, refresh, limit }).filter(t => !knownBad.has(t.toLowerCase()));
 console.log(`Probing ${tokens.length} token(s) on ${cfg.chain.name} via TokenProbe ${cfg.chain.probe}`);
 console.log(`  up to ${PAIRS_PER_TOKEN} root pairs each, ${Number(PROBE_SIZE_BPS) / 100}% of root reserve, fee cap ${feeCapBps} bps, concurrency ${concurrency}`);
 for (const t of configured) {
@@ -142,7 +147,25 @@ let rpcErrors = 0;
 const errorSamples: string[] = [];
 
 async function probeToken(token: string): Promise<void> {
-    const candidates = db.getRootPairsForToken(token, roots, allowedFactories, PAIRS_PER_TOKEN);
+    // Before any trade: a rebase is invisible to one round trip (see util/token-probe.ts).
+    const elastic = await elasticSupplySignature(provider, token);
+    if (elastic) {
+        const out: ProbeOutcome = { status: 'nonstandard', buyTaxBps: null, sellTaxBps: null, stage: null, reason: `elastic supply (${elastic}): V3 pools cannot follow a rebase` };
+        db.setTokenProbe(token, { status: out.status, buyTaxBps: null, sellTaxBps: null, reason: out.reason, pair: null });
+        bump(out.status);
+        flagged.push({ token, out, pair: '-' });
+        return;
+    }
+
+    // V2 pairs first; V3/CL/Algebra pools after them, through probeCLFrom.
+    // Polygon, 2026-11-01: ZICO, MTX, SCR and NGNDT trade only in V3 pools, so
+    // the V2-only probe left them 'untestable' (which excludes nothing) and
+    // the hot loop kept simulating paths through them that reverted "TF" /
+    // "IIA" / require(false).
+    const candidates = [
+        ...db.getRootPairsForToken(token, roots, allowedFactories, PAIRS_PER_TOKEN).map(c => ({ ...c, cl: false })),
+        ...(clProbe ? db.getRootPairsForToken(token, roots, allowedFactories, PAIRS_PER_TOKEN, 'v3').map(c => ({ ...c, cl: true })) : []),
+    ];
     if (candidates.length === 0) {
         db.setTokenProbe(token, { status: 'untestable', buyTaxBps: null, sellTaxBps: null, reason: 'no live, non-restricted root pair in an allowed factory', pair: null });
         bump('untestable');
@@ -162,7 +185,10 @@ async function probeToken(token: string): Promise<void> {
         // Morpho / Balancer / a V3 pool lend only what they hold.
         if (lender.cap != null && amount > lender.cap) amount = lender.cap;
         if (amount === 0n) continue;
-        const out = await probePair(provider, cfg.chain.probe!, c.root, c.pair, amount, feeCapBps, lender.via);
+        if (c.cl && !lender.via) continue;   // probeCLFrom borrows only through a configured lender
+        const out = c.cl
+            ? await probeCLPool(provider, cfg.chain.probe!, c.root, c.pair, amount, lender.via!)
+            : await probePair(provider, cfg.chain.probe!, c.root, c.pair, amount, feeCapBps, lender.via);
         lastReason = out.reason;
 
         if (out.status === 'pair-restricted' || out.status === 'pair-rejects') {
@@ -186,6 +212,20 @@ async function probeToken(token: string): Promise<void> {
         // Token-level verdict. The buy leg executed unless it failed at stage 2
         // (a token refusing transfers to contracts), so the pair itself is fine.
         if (out.stage === null || out.stage >= STAGE.SELL_TRANSFER) db.setPairProbe(c.pair, 'ok', 'round trip reached the sell leg');
+        // The trade moved 0.5% of the root reserve; the hot loop moves up to
+        // MAX_INPUT_FRACTION_BPS of it. A per-transfer cap in between passes
+        // here and reverts there (DESTRUCTION — see transferCapReason).
+        if (out.status === 'clean') {
+            const raw = await provider.call({ to: token, data: ERC20.encodeFunctionData('balanceOf', [c.pair]) });
+            const held = ERC20.decodeFunctionResult('balanceOf', raw)[0] as bigint;
+            const capped = await transferCapReason(provider, token, c.pair, cfg.chain.probe!,
+                held * PROBE_SIZE_BPS / 10_000n, held * MAX_INPUT_FRACTION_BPS / 10_000n);
+            if (capped) {
+                out.status = 'nonstandard';
+                out.buyTaxBps = out.sellTaxBps = null;
+                out.reason = `transfer capped: ${Number(PROBE_SIZE_BPS) / 100}% of the pair's balance moves, ${Number(MAX_INPUT_FRACTION_BPS) / 100}% reverts "${capped}"`;
+            }
+        }
         db.setTokenProbe(token, { status: out.status, buyTaxBps: out.buyTaxBps, sellTaxBps: out.sellTaxBps, reason: out.reason, pair: c.pair });
         bump(out.status);
         if (out.status !== 'clean') flagged.push({ token, out, pair: c.pair });

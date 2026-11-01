@@ -26,7 +26,8 @@
 // -----------------------------------------------------------------------------
 
 import { Contract, Interface, id, type JsonRpcProvider } from 'ethers';
-import { hasSelector } from './bytecode.ts';
+import { hasSelector, selectorOf } from './bytecode.ts';
+import { detectProxy } from './proxy-detect.ts';
 
 export const PROBE_ABI = [
     'function probe(address root, uint256 amount, address pair, uint16 feeBpsCap)',
@@ -52,6 +53,99 @@ export type ProbeStatus = TokenVerdict | PairVerdict | 'error';
 export const TOKEN_VERDICTS: readonly ProbeStatus[] = ['clean', 'fee-on-transfer', 'nonstandard', 'honeypot', 'dead'];
 /** Token verdicts that make a token unusable for our routing. */
 export const UNSAFE_TOKEN_VERDICTS: readonly TokenVerdict[] = ['fee-on-transfer', 'nonstandard', 'honeypot', 'dead'];
+
+/**
+ * Tokens that are nonstandard by construction, recorded without a probe trade.
+ *
+ * Polygon, 2026-11-01: POL at 0x…1010 is the chain's native-token system
+ * contract (MRC20). Its transfer() returns false unless msg.value equals the
+ * amount, so no pool can pay it out: three hot-loop simulations through
+ * WPOL/POL on Uniswap V3 reverted "TF". The probe had it as untestable (no
+ * root pair it could trade), which excludes nothing.
+ */
+export const KNOWN_NONSTANDARD: Record<number, ReadonlyArray<{ address: string; reason: string }>> = {
+    137: [{
+        address: '0x0000000000000000000000000000000000001010',
+        reason: 'POL system contract (MRC20): transfer() needs msg.value == amount, so a pool cannot pay it out',
+    }],
+};
+
+/** Record this chain's KNOWN_NONSTANDARD tokens as nonstandard; returns their addresses. */
+export function markKnownNonstandard(
+    db: { setTokenProbe(address: string, p: { status: string; buyTaxBps: number | null; sellTaxBps: number | null; reason: string; pair: string | null }): void },
+    chainId: number,
+): string[] {
+    const known = KNOWN_NONSTANDARD[chainId] ?? [];
+    for (const t of known) db.setTokenProbe(t.address, { status: 'nonstandard', buyTaxBps: null, sellTaxBps: null, reason: t.reason, pair: null });
+    return known.map(t => t.address.toLowerCase());
+}
+
+// -----------------------------------------------------------------------------
+// Checks a single small round trip cannot see. probe.ts runs them on every
+// token the trade would have recorded clean.
+
+/**
+ * Elastic-supply (rebasing) entry points. A rebase changes every balance
+ * without a transfer: a V2 pair resyncs, but a V3/Algebra pool cannot, and
+ * after a negative rebase it owes more than it holds.
+ *
+ * Polygon, 2026-11-01: CVOL (0x9cd55255, an ElasticToken behind an EIP-1967
+ * proxy, scalingFactor down to 0.037) round-tripped clean through its V2 pair,
+ * while Algebra pool 0x324e0037 held 0.0000017 CVOL against ~7.5 of in-range
+ * liquidity, so a USDC.e→CVOL hop reverted "TF".
+ */
+export const ELASTIC_SUPPLY_SIGNATURES = [
+    'scalingFactor()',                 // YAM-style ElasticToken (CVI's CVOL)
+    'rebase(uint256,int256)',          // Ampleforth uFragments
+    'rebase(uint256,uint256)',         // Olympus sOHM
+    'rebase(uint256,uint256,bool)',    // YAM
+    'rebase(uint256,bool)',            // CVI ElasticToken
+    'gonsForBalance(uint256)',         // Olympus forks
+] as const;
+
+/** The first elastic-supply signature in the token's code (or its EIP-1967 implementation's), or null. */
+export async function elasticSupplySignature(provider: JsonRpcProvider, token: string): Promise<string | null> {
+    const codes = [await provider.getCode(token)];
+    const proxy = await detectProxy(provider, token);
+    if (proxy.implementation) codes.push(await provider.getCode(proxy.implementation));
+    for (const sig of ELASTIC_SUPPLY_SIGNATURES)
+        if (codes.some(c => hasSelector(c, selectorOf(sig)))) return sig;
+    return null;
+}
+
+const TRANSFER_IFACE = new Interface(['function transfer(address to, uint256 amount) returns (bool)']);
+
+/**
+ * Does the token refuse a large transfer out of `holder` that it allows at a
+ * small size? Both are eth_calls "from" the holder (normally the pair the
+ * probe traded through), so nothing is signed or moved. Returns the revert
+ * reason for the large one, or null: no cap, or the small one already failed
+ * (then the answer is something else and the probe's own verdict stands).
+ *
+ * Polygon, 2026-11-01: two "DESTRUCTION" tokens (0xc94aa2e1, 0xf1fba12e)
+ * revert "ERR3" on any transfer over 0.6% of supply. The probe trades 0.5% of
+ * the root reserve and passed them clean; the hot loop sizes hop 0 up to 15%
+ * of it and four simulations reverted "UniswapV2: TRANSFER_FAILED".
+ */
+export async function transferCapReason(
+    provider: JsonRpcProvider, token: string, holder: string, recipient: string, small: bigint, large: bigint,
+): Promise<string | null> {
+    const attempt = async (amount: bigint): Promise<string | null> => {
+        try {
+            const ret = await provider.call({ from: holder, to: token, data: TRANSFER_IFACE.encodeFunctionData('transfer', [recipient, amount]) });
+            // No return data is fine (USDT-style); an explicit false is a refusal.
+            return ret.length >= 66 && BigInt(ret.slice(0, 66)) === 0n ? 'transfer returned false' : null;
+        } catch (err) {
+            const data = extractRevertData(err);
+            if (data) return decodeRevertReason(data);
+            if ((err as any)?.code === 'CALL_EXCEPTION') return 'reverted without data';
+            throw err;   // RPC trouble, not an answer
+        }
+    };
+    if (small <= 0n || large <= small) return null;
+    if (await attempt(small)) return null;
+    return attempt(large);
+}
 
 export type ProbeOutcome = {
     status: ProbeStatus;
@@ -272,6 +366,13 @@ export async function probeCLPool(provider: JsonRpcProvider, probeAddress: strin
         }
         r = classifyRevertData(data);
     }
+    // 'pair-restricted' is the V2 reading of an unrecognised swap revert: a
+    // pair that admits only its own router. A V3/CL pool has no caller gate;
+    // its unrecognised reverts are size and variant trouble. Polygon,
+    // 2026-11-01: the first CL sweep filed 13 canonical Uniswap V3 pools as
+    // restricted on "AS" (the amount rounded to 0) and empty reverts, and
+    // offered to blacklist Sonic's NineMM V3 factory on 5 empty reverts.
+    if (r.status === 'pair-restricted') return { ...r, status: 'pair-rejects' };
     if (r.status === 'fee-on-transfer' && (r.sellTaxBps ?? 0) > 0)
         return { ...r, status: 'honeypot', reason: `sell tax ${((r.sellTaxBps ?? 0) / 100).toFixed(2)}%: a concentrated-liquidity pool can't take a taxed sell` };
     return r;

@@ -32,6 +32,12 @@ import { measureSwapCallback } from '../source/util/verify-v3-factory.ts';
 import { proposeEntry } from '../source/util/find-factories.ts';
 import { CandidateExecutor } from '../source/orchestrator/attempt.ts';
 
+
+// The executor records confirmed trades through ledgerPath(); without this it
+// writes into the repo's real db/ledger.sqlite (2026-11-01: test-stable left
+// two 'anvil' DAI trades there).
+process.env.ARB_LEDGER ??= `${fs.mkdtempSync('/tmp/arbitrade-ledger-')}/ledger.sqlite`;
+
 const require = createRequire(import.meta.url);
 const here = (p) => new URL(p, import.meta.url);
 let fails = 0;
