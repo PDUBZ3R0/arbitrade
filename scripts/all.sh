@@ -12,6 +12,7 @@ fi
 
 if [[ "$1" = '--live' ]]; then
     LIVENESS="--live"
+    LIVERUNS="--live-backruns"
 fi
 
 logd(){
@@ -41,6 +42,15 @@ runstart(){
         yarn tokens $CHAIN 
 }
 
+RESERVES="${RESERVES:-30m}"
+
+reserves() {
+    while :; do
+        sleep $RESERVES
+        yarn reserves $CHAIN --blacklist-dead > /dev/null
+    done
+}
+
 # The liquidator starts BEFORE the startup pipeline, not after it. It only
 # needs the pool DB for exit routes, and reads it live, so the pipeline's
 # updates reach it as they land. Gated behind runstart, it never started on
@@ -52,6 +62,7 @@ if [[ "$KEYWORD" = "L" || "$KEYWORD" = "_" ]]; then
 fi
 
 logd "@startup@" runstart
+reserves &
 
 if [[ "$KEYWORD" = "L" ]]; then
     wait
@@ -61,6 +72,5 @@ if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then
     logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted > /dev/null && echo '[probe] complete'
     logd 'arbitrage' yarn triangles $CHAIN && echo "[triangles] complete" 
     logd 'arbitrage' yarn evaluate $CHAIN --verbose
-    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS
+    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS $LIVERUNS
 fi
-
