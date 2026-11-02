@@ -32,16 +32,26 @@ export CONTAINED="YEAH"
 # a deleted volume) — never on a rebuild, so a rebuild can't stomp live data. The
 # seed comes from the host-mounted /opt/seed/db (read-only); if nothing is
 # mounted there, start empty and let manual.sh build the DB from scratch.
-if [ ! -f "db/${CHAIN}.sqlite" ]; then
-    if [ -f "$SEED_DIR/${CHAIN}.sqlite" ]; then
-        # Copy only THIS chain's files — the host ./db holds every chain's seed,
-        # and the mount exposes all of them.
-        say "first boot: seeding db/ for ${CHAIN} from mounted $SEED_DIR ($(du -ch "$SEED_DIR/${CHAIN}".sqlite* 2>/dev/null | tail -1 | cut -f1))"
-        cp -a "$SEED_DIR/${CHAIN}".sqlite* db/
-    else
-        say "first boot: no seed at $SEED_DIR/${CHAIN}.sqlite (mount the host's ./db read-only there to seed) — starting empty; manual.sh will build the DB"
-    fi
+# Each DB is seeded on its own: the arb DB (<chain>.sqlite) and the liquidation
+# watchlist (<chain>-liq.sqlite). The old single `${CHAIN}.sqlite*` glob never
+# matched sonic-liq.sqlite, so the VPS's first boot (2026-11-02) copied the pool
+# DB and left liq-watch to re-seed every borrower from scratch.
+# A seed dir we can list but not search (VPS /opt/arbitrade/db was 744 root,
+# 2026-11-02) shows every file name yet fails every -f test as `node`.
+if [ -d "$SEED_DIR" ] && [ ! -x "$SEED_DIR" ]; then
+    say "seed dir $SEED_DIR is not searchable by $(id -un) — on the host: chmod 755 <compose dir>/db"
 fi
+for name in "${CHAIN}" "${CHAIN}-liq"; do
+    [ -f "db/${name}.sqlite" ] && continue
+    if [ -f "$SEED_DIR/${name}.sqlite" ]; then
+        # Copy only THIS chain's files (with any WAL) — the host ./db holds every
+        # chain's seed, and the mount exposes all of them.
+        say "first boot: seeding db/${name}.sqlite from mounted $SEED_DIR ($(du -ch "$SEED_DIR/${name}".sqlite* 2>/dev/null | tail -1 | cut -f1))"
+        cp -a "$SEED_DIR/${name}".sqlite* db/
+    else
+        say "first boot: no seed at $SEED_DIR/${name}.sqlite (seen there: $(ls "$SEED_DIR" 2>&1 | tr '\n' ' ')) — starting empty; the pipeline will build it"
+    fi
+done
 
 if [ -z "${PRIVATE_KEY:-}" ]; then
     # Both loops need it even to simulate: the executors are owner-only.

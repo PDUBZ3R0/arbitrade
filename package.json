@@ -39,7 +39,7 @@
     "provider": "bash scripts/vet.sh vet",
     "best": "bash scripts/vet.sh best",
     "bigblocks": "node scripts/hyperevm-bigblocks.mjs",
-    "build-vps": "git pull && cp dist/vps/* . && docker compose build && docker compose up -d",
+    "build-vps": "git pull && cp dist/vps/* . && docker compose down -v && docker compose build && docker compose up -d",
     "deploy-vps": "ssh arb 'cd /opt/arbitrade && yarn build-vps'",
     "build-aws": "scripts/aws/setup-instance.sh"
   },
