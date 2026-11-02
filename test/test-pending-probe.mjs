@@ -374,6 +374,164 @@ console.log('\n4. silent feed');
     ok(await until(() => quiet.stats().connected === 0), 'stop() leaves nothing connected');
 }
 
+// Phase 3: --live-backruns. Its own venue, where one victim swap opens TWO
+// cycles (ROOT -> B2 -> C2 and ROOT -> B2 -> D2, both through AB2), and the
+// victim comes from another wallet, so nothing orders our tx behind it but
+// the chain.
+console.log('\n5. live backruns');
+{
+    await provider.send('evm_setAutomine', [true]);
+    const v1 = new Wallet('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', provider);
+    const tB2 = await deploy('MockToken', 'B2', 0), tC2 = await deploy('MockToken', 'C2', 0), tD2 = await deploy('MockToken', 'D2', 0);
+    const [B2, C2, D2] = [await tB2.getAddress(), await tC2.getAddress(), await tD2.getAddress()];
+    const qAB = await deploy('MockPair', ROOT, B2, 30), qBC = await deploy('MockPair', B2, C2, 30), qCA = await deploy('MockPair', C2, ROOT, 30);
+    const qBD = await deploy('MockPair', B2, D2, 30), qDA = await deploy('MockPair', D2, ROOT, 30);
+    const qs = [qAB, qBC, qCA, qBD, qDA];
+    await seed(qAB, tRoot, E(1_000_000), tB2, E(1_000_000));
+    await seed(qBC, tB2, E(1_000_000), tC2, E(1_000_000));
+    await seed(qCA, tC2, E(1_000_000), tRoot, E(1_000_000));
+    await seed(qBD, tB2, E(1_000_000), tD2, E(1_000_000));
+    await seed(qDA, tD2, E(1_000_000), tRoot, E(1_000_000));
+    const QAB = await qAB.getAddress();
+    await (await tRoot.mint(v1.address, E(1_000_000))).wait();
+    await (await tRoot.connect(v1).approve(QAB, E(1_000_000))).wait();
+
+    const db2 = new ArbitradeDB(`${WORK}/live.sqlite`);
+    const r2 = db2.db;
+    r2.prepare('INSERT INTO factories (address,name,type,fee,deployBlock) VALUES (?,?,?,?,?)').run(FACTORY, 'MockFactory', 'v2', 0.003, 0);
+    const ins2Pair = r2.prepare('INSERT INTO pairs (address,factory,token0,token1,blockNumber,fee,stable) VALUES (?,?,?,?,?,?,?)');
+    const ins2Res = r2.prepare('INSERT INTO reserves (pair,reserves0,reserves1,blockNumber,updatedAt) VALUES (?,?,?,?,?)');
+    const ins2Tok = r2.prepare('INSERT INTO tokens (address,symbol,name,decimals,fetchStatus,fetchedAt,discoveredAt) VALUES (?,?,?,?,?,?,?)');
+    for (const [sym, addr] of [['ROOT', ROOT], ['B2', B2], ['C2', C2], ['D2', D2]]) ins2Tok.run(addr.toLowerCase(), sym, sym, 18, 'ok', now, now);
+    for (const p of qs) {
+        const [r0, r1] = await p.getReserves();
+        ins2Pair.run((await p.getAddress()).toLowerCase(), FACTORY, (await p.token0()).toLowerCase(), (await p.token1()).toLowerCase(), 1, 0.003, null);
+        ins2Res.run((await p.getAddress()).toLowerCase(), r0.toString(), r1.toString(), 1, now);
+    }
+    const insTri = r2.prepare(`INSERT INTO triangles (id,root_token,hop_count,token_a,token_b,token_c,pair_ab,pair_bc,pair_ca,
+        factory_ab,factory_bc,factory_ca,canonical,createdAt) VALUES (?,?,3,?,?,?,?,?,?,?,?,?,?,?)`);
+    for (const [id, X, pBX, pXA] of [[1, C2, qBC, qCA], [2, D2, qBD, qDA]]) {
+        const ps = [QAB, await pBX.getAddress(), await pXA.getAddress()].map(a => a.toLowerCase());
+        insTri.run(id, ROOT.toLowerCase(), ROOT.toLowerCase(), B2.toLowerCase(), X.toLowerCase(), ...ps, FACTORY, FACTORY, FACTORY, [...ps].sort().join('-'), now);
+    }
+    const ix2 = TriangleIndex.build(db2, new Map([[FACTORY, { address: FACTORY, fee: 0.003 }]]));
+    const th2 = {
+        minProfitByRoot: new Map(ix2.tokenAddr.map(a => [a, 0.01 * 1e18])),
+        minInputByRoot: new Map(ix2.tokenAddr.map(a => [a, 0.1 * 1e18])),
+        minReserveByToken: Float64Array.from(ix2.tokenAddr.map(() => 1e18)),
+        maxRoi: 20, flashPremium: 0.0005,
+    };
+    ok(ix2.triangleCount === 2 && ix2.scoreAll(th2).length === 0, 'two triangles through AB2, nothing profitable yet');
+    const syncAll = async () => { for (const p of qs) { const [r0, r1] = await p.getReserves(); ix2.applySync(await p.getAddress(), Number(r0), Number(r1)); } };
+
+    const liveExec = new CandidateExecutor(cfg, provider, pricing, {
+        ownerAddress: w.address, liveBackruns: true, signer: w, gasMarginMultiple: 1, minProfitTokens: 0.01, gasPriceMaxAgeMs: 1,
+    });
+    let indexed2 = await provider.getBlockNumber();
+    const liveRecords = [], livePlans = [];
+    const liveProbe = createPendingProbe({
+        index: ix2, thresholds: () => th2, pricing: () => pricing,
+        decimalsByToken: new Map(ix2.tokenAddr.map(a => [a, 18])),
+        ...backend,
+        indexedBlock: () => indexed2,
+        backrun: {
+            prepare: async (c, post) => { const p = await liveExec.prepareBackrun(c, db2, post); livePlans.push(p); return p; },
+            bundle: backend.bundle,
+            profitOf: (l) => liveExec.arbExecutedProfit(l),
+            describeRevert: (d) => liveExec.describeRevert(d),
+            // 1 wei: the first reverted send stops sending.
+            live: { bid: 'market', maxLossWei: 1n },
+        },
+        minMoveBps: 10, receiptPollMs: 100, landWaitMs: 4_000,
+        record: (o) => liveRecords.push(o), log: (s) => { console.log(`    ${s}`); },
+    });
+    const vGas = { gasLimit: 300_000n, maxFeePerGas: 10n ** 10n, maxPriorityFeePerGas: 2n * 10n ** 9n };   // tips over our market bid: lands first
+    // A different amount each time: the third victim reuses the dropped second
+    // one's nonce, and with the same calldata it would be the same hash (a duplicate).
+    let victims = 0;
+    const sendVictim = async () => {
+        // 'latest': every earlier victim is mined or dropped, and a dropped one can linger in anvil's pending count.
+        const v = await qAB.connect(v1).drift(ROOT, E(100_000 + victims++), { ...vGas, nonce: await provider.getTransactionCount(v1.address, 'latest') });
+        liveProbe.onPending(await provider.send('eth_getTransactionByHash', [v.hash]));
+        return v;
+    };
+    const sentRecs = (rec) => (rec?.cycles ?? []).filter(c => c.backrun?.sent);
+    await provider.send('evm_setAutomine', [false]);
+
+    // a. A victim: one backrun sent, behind it in its block, confirmed, in the ledger.
+    const va = await sendVictim();
+    ok(await until(() => liveProbe.stats().backrunsSent + liveProbe.stats().backrunSendFailed >= 1 && liveProbe.stats().backrunClean === 2),
+       'the victim opens both cycles and both execute behind it in the bundle', JSON.stringify(liveProbe.stats()));
+    await provider.send('evm_mine', []);
+    await syncAll();
+    indexed2 = await provider.getBlockNumber();
+    ok(await until(() => liveRecords.some(r => r.hash === va.hash), 20_000), 'the victim\'s outcome is recorded once our send settles');
+    {
+        const ls = liveProbe.stats(), rec = liveRecords.find(r => r.hash === va.hash), sent = sentRecs(rec);
+        ok(ls.backrunsSent === 1 && sent.length === 1, 'one backrun sent for the victim, not one per cycle (they share AB2)', JSON.stringify({ sent: ls.backrunsSent, recs: sent.length }));
+        const s0 = sent[0]?.backrun?.sent;
+        const txr = s0?.txHash ? await provider.getTransactionReceipt(s0.txHash) : null;
+        const vr = await provider.getTransactionReceipt(va.hash);
+        ok(txr?.status === 1 && txr.blockNumber === vr.blockNumber && txr.index === vr.index + 1,
+           'mined directly behind the victim, status 1', JSON.stringify({ block: txr?.blockNumber, index: txr?.index, victimIndex: vr?.index }));
+        ok(s0?.result === 'confirmed' && BigInt(s0.realisedProfit ?? 0) > 0n && ls.backrunsConfirmed === 1, 'recorded confirmed at its realised profit', JSON.stringify(s0));
+        // The market bid: minProfit is the floor at the market price, not the victim's 2-gwei-tip price.
+        const plan = livePlans.find(p => p.send);
+        const cyc = sent[0]?.backrun;
+        ok(cyc && BigInt(s0.minProfit) === plan.floorFor(BigInt(cyc.gasUsed)), 'minProfit enforced on-chain is the floor at the market gas price', JSON.stringify({ minProfit: s0?.minProfit, floorAtMarket: cyc?.floorAtMarket }));
+        const { TradeLedger } = await import('../source/util/ledger.ts');
+        const led = new TradeLedger(process.env.ARB_LEDGER);
+        const row = led.getTrades({ limit: 50 }).find(t => t.txHash === s0?.txHash);
+        led.close();
+        ok(row && String(row.profitWei) === s0.realisedProfit, 'the ledger has the trade at the realised profit', JSON.stringify(row ?? null));
+        ok(!ix2.scoreAll(th2).some(c => c.triangleId === sent[0]?.triangleId), '(sanity) our backrun closed the cycle it took');
+    }
+
+    // b. A victim that never lands: our backrun mines alone, reverts on its
+    // on-chain floor, and its gas trips the 1-wei loss cap.
+    const vb = await sendVictim();
+    ok(await until(() => liveProbe.stats().backrunsSent === 2), 'second victim: a backrun sent');
+    await provider.send('anvil_dropTransaction', [vb.hash]);
+    await provider.send('evm_mine', []);
+    indexed2 = await provider.getBlockNumber();
+    ok(await until(() => liveProbe.stats().sendingStopped, 20_000), 'the reverted send stops sending', JSON.stringify(liveProbe.stats(), (k, v) => typeof v === 'bigint' ? String(v) : v));
+    {
+        const ls = liveProbe.stats();
+        ok(ls.backrunsRevertedOnChain === 1 && ls.backrunGasLost > 0, 'counted as reverted on-chain, its gas as lost', `(${ls.backrunGasLost} native)`);
+    }
+    ok(await until(() => liveRecords.some(r => r.hash === vb.hash), 20_000), 'the dropped victim is recorded (not landed)');
+    ok(sentRecs(liveRecords.find(r => r.hash === vb.hash))[0]?.backrun?.sent?.result === 'reverted', 'its record says our backrun reverted');
+
+    // c. Past the cap: the next victim still simulates, nothing is sent.
+    const cleanBefore = liveProbe.stats().backrunClean;
+    const vc = await sendVictim();
+    ok(await until(() => liveProbe.stats().backrunClean > cleanBefore), 'third victim: its backrun still simulated', JSON.stringify({ gapped: liveProbe.stats().nonceGapped }));
+    {
+        const ls = liveProbe.stats();
+        ok(ls.backrunsSent === 2, 'nothing sent past the loss cap', JSON.stringify({ sent: ls.backrunsSent }));
+    }
+    await provider.send('evm_mine', []);
+    await syncAll();
+    indexed2 = await provider.getBlockNumber();
+    ok(await until(() => liveRecords.some(r => r.hash === vc.hash), 20_000), 'third victim recorded');
+    ok(liveRecords.find(r => r.hash === vc.hash).cycles.some(c => c.backrun?.notSent === 'loss cap reached'), 'its record says why it was not sent');
+    await liveProbe.idle();
+
+    // d. Two sends at once from one executor get consecutive nonces, not the
+    // same one: the send lock (the hot loop's trade and a backrun race this way).
+    {
+        const plan = livePlans.find(p => p.send);
+        const [a1, a2] = await Promise.all([plan.send(E(1_000_000), 400_000n), plan.send(E(1_000_000), 400_000n)]);
+        const [t1, t2] = await Promise.all([a1, a2].map(a => a.txHash ? provider.getTransaction(a.txHash) : null));
+        ok(a1.broadcast && a2.broadcast && t1 && t2 && Math.abs(t1.nonce - t2.nonce) === 1,
+           'both sent, on consecutive nonces', JSON.stringify({ n1: t1?.nonce, n2: t2?.nonce, e1: a1.simulationError, e2: a2.simulationError }));
+        await provider.send('evm_mine', []);
+        await Promise.all([a1.settled, a2.settled].filter(Boolean));   // both revert on a 1M-ROOT floor; nothing else to see
+    }
+    await provider.send('evm_setAutomine', [true]);
+    db2.close();
+}
+
 feed.stop();
 backend.destroy();
 await provider.send('evm_setAutomine', [true]);

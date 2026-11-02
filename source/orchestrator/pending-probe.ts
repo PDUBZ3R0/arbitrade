@@ -1,7 +1,11 @@
 // -----------------------------------------------------------------------------
-// Pending-swap probe: phases 1 and 2 of a pre-confirmation backrun path.
-// MEASURES ONLY — it builds our executor call to simulate it, but nothing here
-// signs or sends a transaction.
+// Pending-swap probe: phases 1 and 2 of a pre-confirmation backrun path, and
+// (phase 3, opt-in) sending the backrun.
+//
+// Without deps.backrun.live it MEASURES ONLY — it builds our executor call to
+// simulate it, but nothing signs or sends a transaction. With it, the first
+// backrun per victim that executes behind it and clears the floor at the
+// chosen bid is sent (see backruns()), until the loss cap stops sending.
 //
 // The hot loop reacts to a swap one block after it lands. On a chain with a
 // public mempool the swap is visible before that: measured 2026-10-30 on
@@ -186,6 +190,20 @@ export type PendingProbeStats = {
     /** ...the competitor paid the victim's own price: no bid both beats it and stays behind the victim; arrival order decides. */
     competitorTiedVictim: number;
     backrunMsTotal: number;
+    /** Phase 3 (live): backruns handed to the node. */
+    backrunsSent: number;
+    /** ...refused before they reached the node (funds, nonce, a node-side check). */
+    backrunSendFailed: number;
+    /** ...mined with status 1: a trade, in the ledger at its realised profit. */
+    backrunsConfirmed: number;
+    /** ...mined and reverted: the gas is what it cost. */
+    backrunsRevertedOnChain: number;
+    /** ...never mined within the wait. */
+    backrunsNotMined: number;
+    /** Gas paid by reverted sends, in native tokens (the cap itself is counted exactly, in wei). */
+    backrunGasLost: number;
+    /** The loss cap was hit: nothing more is sent. */
+    sendingStopped: boolean;
 };
 
 export type PendingProbeDeps = {
@@ -215,6 +233,28 @@ export type PendingProbeDeps = {
         describeRevert?: (data: string) => string | null;
         /** Cycles per pending swap to build and simulate, best first. Default 3. */
         perSwap?: number;
+        /**
+         * Phase 3: send the backrun. Absent, nothing is ever sent. Needs plans
+         * that carry `send` (CandidateExecutor with liveBackruns).
+         */
+        live?: {
+            /**
+             * The gas price the floor (and the on-chain minProfit) is priced at.
+             * 'victim' on a fee-ordered chain, where the slot right behind the
+             * victim costs what it paid. 'market' where the block is not
+             * fee-ordered — Sonic, 2026-11-02: backrunners paying ~50 gwei landed
+             * directly behind 400–450 gwei victims, so the victim's price
+             * overstates the cost, and outbidding the victim could put us
+             * BEFORE it.
+             */
+            bid: 'market' | 'victim';
+            /**
+             * Native wei that reverted sends may cost before sending stops for
+             * the rest of the process. A missed backrun reverts on the on-chain
+             * floor and costs only its gas.
+             */
+            maxLossWei: bigint;
+        };
     };
     receipt: (hash: string) => Promise<LandedTx | null>;
     /** Ordering evidence: the tx after `transactionIndex`. Optional: without it, nothing is said about what followed the victim. */
@@ -290,6 +330,10 @@ type Opportunity = {
     bid?: bigint;
     /** Per cycle (index into cycles): the plan's floor and the realised profit, to re-price against a competitor once the block is in. */
     floors: Map<number, { floorFor: NonNullable<BackrunPlan['floorFor']>; gasUsed: bigint; profit: bigint | null }>;
+    /** Live: a backrun for this victim was claimed for sending — one per victim, the rest share its pools. */
+    sending?: boolean;
+    /** Live: the sent backrun's receipt and ledger work; outcome() waits for it before recording. */
+    sent?: Promise<void>;
 };
 
 /**
@@ -339,7 +383,11 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         backrunsTried: 0, backrunDecayed: 0, backrunRefused: 0, backrunVictimReverted: 0,
         backrunReverted: 0, backrunLate: 0, backrunClean: 0, backrunClearsFloor: 0, backrunClearsMarketOnly: 0, backrunMsTotal: 0,
         competitorSeen: 0, beatsCompetitor: 0, competitorTiedVictim: 0,
+        backrunsSent: 0, backrunSendFailed: 0, backrunsConfirmed: 0, backrunsRevertedOnChain: 0, backrunsNotMined: 0,
+        backrunGasLost: 0, sendingStopped: false,
     };
+    /** Exact, for the loss cap; stats carry it as a number so they stay JSON-friendly. */
+    let gasLostWei = 0n;
 
     // Addresses without 0x, lowercase: the prefilter scans raw calldata hex.
     const pairHex = new Set<string>([...ix.pairIdx.keys()].map(a => a.slice(2)));
@@ -574,6 +622,48 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
      * buildHops' prediction cannot: does the cycle execute behind THIS swap,
      * what does ArbExecuted say it made, and does that clear gas.
      */
+    async function sendBackrun(
+        send: NonNullable<BackrunPlan['send']>, minProfit: bigint, gasUsed: bigint, rec: Record<string, unknown>, op: Opportunity,
+        tag: string, tok: (w: bigint) => string, sym: string,
+    ): Promise<void> {
+        const live = deps.backrun!.live!;
+        const a = await send(minProfit, gasUsed);
+        if (!a.broadcast) {
+            stats.backrunSendFailed++;
+            rec.sent = { result: 'not-sent', error: a.simulationError };
+            log(`${tag} — NOT SENT: ${String(a.simulationError ?? '').slice(0, 200)}`);
+            return;
+        }
+        stats.backrunsSent++;
+        const sent: Record<string, unknown> = { txHash: a.txHash, minProfit: minProfit.toString(), bid: live.bid, msFromSeen: now() - op.seenAt };
+        rec.sent = sent;
+        log(`${tag} — SENT ${a.txHash}: minProfit ${tok(minProfit)} ${sym} at the ${live.bid} gas price, ${sent.msFromSeen}ms after the victim was seen`);
+        // settled never rejects (CandidateExecutor.settle).
+        op.sent = (a.settled ?? Promise.resolve(a)).then(done => {
+            sent.latency = done.latency;
+            if (done.confirmed) {
+                stats.backrunsConfirmed++;
+                Object.assign(sent, { result: 'confirmed', realisedProfit: done.realisedProfit?.toString(), gasCostWei: done.gasCostWei?.toString() });
+                log(`${tag} — CONFIRMED ${done.txHash}: realised ${done.realisedProfit != null ? tok(done.realisedProfit) : '?'} ${sym}`);
+            } else if (done.gasCostWei) {
+                stats.backrunsRevertedOnChain++;
+                gasLostWei += done.gasCostWei;
+                stats.backrunGasLost = Number(gasLostWei) / 1e18;
+                Object.assign(sent, { result: 'reverted', gasCostWei: done.gasCostWei.toString(), error: done.simulationError });
+                log(`${tag} — REVERTED on-chain ${done.txHash}: lost ${fmt(Number(done.gasCostWei) / 1e18)} native in gas`);
+                if (gasLostWei >= live.maxLossWei && !stats.sendingStopped) {
+                    stats.sendingStopped = true;
+                    log(`  [backrun] SENDING STOPPED: reverted backruns have cost ${fmt(stats.backrunGasLost)} native ` +
+                        `(cap ${fmt(Number(live.maxLossWei) / 1e18)}); still simulating, sending nothing more until restarted`);
+                }
+            } else {
+                stats.backrunsNotMined++;
+                Object.assign(sent, { result: 'not-mined', error: done.simulationError });
+                log(`${tag} — not mined: ${String(done.simulationError ?? '').slice(0, 200)}`);
+            }
+        });
+    }
+
     async function backruns(tx: PendingTx, moves: PoolMove[], fresh: IndexedCandidate[], op: Opportunity): Promise<void> {
         const br = deps.backrun!;
         const post: PostState = { reserves: new Map(), v3: new Map() };
@@ -603,12 +693,12 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                     log(`${tag} — ${rec.result}: ${String(rec.reason ?? '').slice(0, 200)}`);
                     return;
                 }
-                let funding = plan.funding, built = plan.built!;
+                let funding = plan.funding, built = plan.built!, send = plan.send;
                 let b = await br.bundle(tx, plan.tx);
                 if (b.victimOk && !b.ok && plan.fallback) {
                     // Same retry attempt() makes: the flash swap reverted, try the lender.
                     rec.flashSwapError = revertText(b);
-                    ({ funding, built } = plan.fallback);
+                    ({ funding, built, send } = plan.fallback);
                     b = await br.bundle(tx, plan.fallback.tx);
                 }
                 rec.funding = funding;
@@ -652,6 +742,20 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                     ` (${floorMarket != null ? tok(floorMarket) : 'unpriceable'} at market) → ` +
                     `${clears ? 'WOULD SEND' : clearsMarket ? 'clears only at market gas — below the floor' : 'below the floor'} [${rec.ms}ms, ${funding}` +
                     (rec.flashSwapError !== undefined ? ' after the flash swap reverted' : '') + `]`);
+
+                // Phase 3: send it — the first cycle per victim to clear the
+                // floor at the live bid (the others share the victim's pools;
+                // a second send would revert behind the first). First, not
+                // best: waiting on the slower cycles costs the race.
+                const sendFloor = br.live?.bid === 'market' ? floorMarket : floor;
+                if (br.live && !op.sending && profit != null && sendFloor != null && profit >= sendFloor) {
+                    if (stats.sendingStopped) rec.notSent = 'loss cap reached';
+                    else if (!send) rec.notSent = 'the plan cannot send (executor without liveBackruns)';
+                    else {
+                        op.sending = true;   // claimed with no await before it: the other cycles see it at once
+                        await sendBackrun(send, sendFloor, b.gasUsed, rec, op, tag, tok, sym);
+                    }
+                }
             } catch (e) {
                 stats.backrunRefused++;
                 rec.result = 'error'; rec.reason = (e as Error).message?.slice(0, 240);
@@ -678,6 +782,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             stats.notLanded++;
             rec.landed = false;
             log(`  [pending] ${op.hash.slice(0, 12)}… did not land within ${Math.round(landWaitMs / 1000)}s`);
+            await op.sent;
             deps.record?.(rec);
             return;
         }
@@ -787,6 +892,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 ((rec.competitor as Record<string, unknown>).tiedVictim ? ' — the victim\'s own price: no outbidding it from behind, arrival order decides' : '') +
                 (op.floors.size ? `, ${[...op.floors.keys()].filter(i => op.cycles[i].backrun!.beatsCompetitor).length}/${op.floors.size} backrun(s) clear bidding over it` : '') : '') +
             `; cycle ${open.length > 0 ? 'still open' : 'closed'} after the block`);
+        await op.sent;   // the record carries how our own backrun ended
         deps.record?.(rec);
     }
 

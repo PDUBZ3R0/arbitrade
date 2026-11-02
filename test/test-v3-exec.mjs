@@ -301,6 +301,40 @@ try {
 
     console.log('\n6. version probe');
     ok(Number(await exec.HOP_V3()) === HOP_V3 && Number(await exec.HOP_V2()) === HOP_V2, 'executor exposes HOP_V2/HOP_V3 matching build-hops');
+
+    console.log('\n7. a path read fits under an endpoint\'s eth_call gas cap');
+    {
+        // Polygon, 2026-11-01: most public endpoints cap eth_call at 50M and
+        // revert with no data past it; one read of a path's three busy V3
+        // pools went over. An endpoint here whose cap fits any one pool's read
+        // but not two must still price a V3 -> V3 path.
+        await fresh();
+        const q1 = await v3pool(R, A, 500, 1.0), q2 = await v3pool(A, B, 3000, 1.03), p3 = await v2(B, R, 1e6, 1e6);
+        const yoI = new ethers.Interface(['function getV3StatePacked(bytes pools, uint256 words) view returns (bytes)']);
+        const gasOf = (pools) => provider.estimateGas({ to: YO, data: yoI.encodeFunctionData('getV3StatePacked', ['0x' + pools.map(p => p.slice(2)).join(''), 3]) });
+        const one = [await gasOf([q1]), await gasOf([q2])].reduce((a, b) => a > b ? a : b), both = await gasOf([q1, q2]);
+        const CAP = one + (both - one) / 2n;
+        let refused = 0;
+        const capped = new Proxy(provider, { get(t, k) {
+            if (k === 'call') return async (tx) => {
+                if (await t.estimateGas(tx) > CAP) { refused++; throw Object.assign(new Error('missing revert data'), { code: 'CALL_EXCEPTION', data: null }); }
+                return t.call(tx);
+            };
+            const v = Reflect.get(t, k, t);
+            return typeof v === 'function' ? v.bind(t) : v;
+        } });
+        const cand = {
+            rootToken: R.a, inputAmount: Number(E(500)), netProfit: 0, triangleId: 0,
+            hops: [[q1, R, A, 'v3', 0.0005], [q2, A, B, 'v3', 0.003], [p3, B, R, 'v2', 0.003]]
+                .map(([pair, tin, tout, kind, fee]) => ({ pair, factory: ethers.ZeroAddress, tokenIn: tin.a, tokenOut: tout.a, fee, kind })),
+        };
+        const free = await buildHops(provider, EX, db, cand, 0n, YO);
+        let built = null, err = '';
+        try { built = await buildHops(capped, EX, db, cand, 0n, YO); } catch (e) { err = e.message; }
+        ok(both > CAP && one <= CAP, 'the cap admits one pool\'s read and not both', `(one ${one}, both ${both}, cap ${CAP})`);
+        ok(built && free && built.expectedProfit === free.expectedProfit && refused === 0,
+           'buildHops prices the path a pool per call, and the same as without the cap', err ? `(${err.slice(0, 80)})` : `(${refused} refused)`);
+    }
 } catch (e) {
     console.error(e); fails++;
 } finally {

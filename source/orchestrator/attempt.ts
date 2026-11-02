@@ -96,8 +96,14 @@ export type BackrunPlan = {
      * costs, not what an ordinary tx pays.
      */
     floorFor?: (gas: bigint, gasPriceWei?: bigint) => bigint | null;
+    /**
+     * Send this call for real (ExecutorOptions.liveBackruns only): `minProfitWei`
+     * enforced on-chain, gas limit `gasUsed` (from the bundle) + 30%. Returns
+     * once the tx is with the node; the receipt and ledger run in `settled`.
+     */
+    send?: (minProfitWei: bigint, gasUsed: bigint) => Promise<CandidateAttempt>;
     /** For a flash-swap call: the same path through the lender, to try if the flash swap reverts. */
-    fallback?: { built: BuiltArb; funding: string; tx: { from: string; to: string; data: string } };
+    fallback?: { built: BuiltArb; funding: string; tx: { from: string; to: string; data: string }; send?: BackrunPlan['send'] };
 };
 
 export type CandidateAttempt = {
@@ -135,6 +141,8 @@ export type CandidateAttempt = {
     gasFloorWei?: bigint | null;
     /** max(config floor, gas floor) — what the contract actually enforced. */
     minProfitUsed?: bigint;
+    /** What a mined transaction paid for gas, native wei (gasUsed x effective price) — what a revert cost. */
+    gasCostWei?: bigint;
     /** True when the candidate was dropped for not covering gas, before simulating. */
     belowGasFloor?: boolean;
     /** Why the build came back empty ("edge decayed"): buildHops' own account. */
@@ -163,6 +171,12 @@ export type ExecutorOptions = {
     ownerAddress: string;
     /** If true, broadcast candidates that simulate clean. Default false (simulate only). */
     live?: boolean;
+    /**
+     * If true, prepareBackrun's plans can be sent (BackrunPlan.send). Separate
+     * from `live`: the pending probe's backruns and the hot loop's trades are
+     * turned on independently. Needs `signer`. Default false.
+     */
+    liveBackruns?: boolean;
     /** Required when live=true — must control ownerAddress. */
     signer?: Signer;
     /**
@@ -221,6 +235,9 @@ export class CandidateExecutor {
     private gasPriceWei: bigint | null = null;
     private gasPriceFetchedAt = 0;
     private gasFloorUnavailableReason: string | null = null;
+    /** See withSendLock / nextSendFields. */
+    private sendChain: Promise<unknown> = Promise.resolve();
+    private lastNonce = -1;
     private warnedNoGasFloor = false;
 
     // Explicit fields, NOT constructor parameter properties. The project runs
@@ -260,15 +277,15 @@ export class CandidateExecutor {
                 `as "executor" under the chain block in conf/${cfg.chain.label}.json5.`
             );
         }
-        if (opts.live && !opts.signer) {
-            throw new Error('live=true requires a signer (set PRIVATE_KEY and pass a Wallet).');
+        if ((opts.live || opts.liveBackruns) && !opts.signer) {
+            throw new Error(`${opts.live ? 'live' : 'liveBackruns'}=true requires a signer (set PRIVATE_KEY and pass a Wallet).`);
         }
 
         this.executor = new Contract(cfg.chain.executor, EXECUTOR_ABI, provider);
 
         // Submit-only provider for direct-to-sequencer broadcast. staticNetwork
         // avoids a chainId round-trip to an endpoint that may not answer reads.
-        this.sendProvider = opts.live && cfg.chain.sequencer
+        this.sendProvider = (opts.live || opts.liveBackruns) && cfg.chain.sequencer
             ? new JsonRpcProvider(cfg.chain.sequencer, cfg.chain.id, { staticNetwork: true })
             : null;
         if (this.sendProvider) console.log(`  Broadcasting via sequencer ${redactUrl(cfg.chain.sequencer)} (reads stay on ${redactUrl(cfg.chain.host)})`);
@@ -685,6 +702,9 @@ export class CandidateExecutor {
         if (bad) return { error: `known bad: ${bad}` };
         const pre = await this.preflight(candidate);
         if ('error' in pre) return pre;
+        // Live: nonce and fees fetched while the path is built and the bundle
+        // simulated, so the send is one round trip (as attempt() does).
+        const sendPrep = this.opts.liveBackruns && this.opts.signer ? prepareSend(this.opts.signer, this.provider) : null;
         await this.ensureGasPrice();
         const root = candidate.rootToken;
         const whyNull: { reason?: string } = {};
@@ -712,12 +732,21 @@ export class CandidateExecutor {
         // LOCKED). Offer the same retry, or the probe counts as a revert a
         // backrun the trade path would have sent. Sonic, 2026-10-30: 57 of 57
         // backrun reverts were flash-swap funded.
+        const sendFor = (useFlash: boolean, b: BuiltArb, funding: string): BackrunPlan['send'] => !sendPrep ? undefined : (minProfitWei, gasUsed) => {
+            const attempt: CandidateAttempt = {
+                candidate, built: b, simulated: true, broadcast: false, confirmed: false, funding, gasEstimate: gasUsed, minProfitUsed: minProfitWei,
+                rootMeta: { decimals: this.decimalsOf(root), symbol: this.rootPricing[root.toLowerCase()]?.symbol },
+            };
+            // Always detached: the probe must not sit on a receipt while the next pending swap arrives.
+            return this.broadcast(attempt, this.callFor(useFlash, pre.terms, root, b), minProfitWei, (gasUsed * 13n) / 10n, sendPrep, Date.now(), [], true);
+        };
         let fallback: BackrunPlan['fallback'];
         if (pre.useFlash && !this.lenderUnusable(candidate, pre.terms)) {
             const lb = this.viaLender(built, pre.terms);
-            fallback = { built: lb, funding: pre.terms!.provider, tx: encode(false, lb) };
+            fallback = { built: lb, funding: pre.terms!.provider, tx: encode(false, lb), send: sendFor(false, lb, pre.terms!.provider) };
         }
-        return { built, funding: pre.useFlash ? 'flash-swap' : pre.terms!.provider, tx: encode(pre.useFlash, built), floorFor, fallback };
+        const funding = pre.useFlash ? 'flash-swap' : pre.terms!.provider;
+        return { built, funding, tx: encode(pre.useFlash, built), floorFor, fallback, send: sendFor(pre.useFlash, built, funding) };
     }
 
     /** An executor custom error by name (InsufficientRepay(balance, required)…), else a reason string, from raw revert data. */
@@ -932,34 +961,58 @@ export class CandidateExecutor {
 
         // 4. Broadcast. effectiveMinProfit, NOT built.minProfitWei — the whole
         // point of the gas floor is that it binds the broadcast, not just the
-        // simulation.
+        // simulation. Gas limit: the estimate + 30% headroom.
+        return this.broadcast(attempt, call, effectiveMinProfit, (gasUnits * 13n) / 10n, sendPrep, t0, marks);
+    }
+
+    /**
+     * Sign and send `call` enforcing `minProfit` on-chain, then wait for the
+     * receipt and record a confirmed trade in the ledger (inline, or detached:
+     * see settle). Shared by attempt() and a backrun's send (BackrunPlan.send),
+     * so the two never drift in how they sign, what they enforce on-chain, or
+     * what the ledger records.
+     *
+     * The explicit gasLimit matters: without it ethers re-runs eth_estimateGas
+     * before sending — a whole extra round trip after a simulation that just
+     * passed, while the edge ages (Sonic: ~3 blocks a second).
+     */
+    private async broadcast(
+        attempt: CandidateAttempt, call: { name: string; args: (minProfit: bigint) => unknown[] }, minProfit: bigint, gasLimit: bigint,
+        sendPrep: Promise<Record<string, unknown>> | null, t0: number, marks: Array<[string, number]>, detach = !!this.opts.detachReceipt,
+    ): Promise<CandidateAttempt> {
         const signer = this.opts.signer!;
+        const candidate = attempt.candidate, built = attempt.built!;
+        const mark = (label: string) => marks.push([label, Date.now()]);
 
         if (this.sendProvider) {
             // Direct-to-sequencer submission. Sign locally — nonce, fees and
             // chainId come from the READ provider via the signer — and set an
-            // explicit gasLimit (the step-1 estimate + 30% headroom) so nothing
-            // is re-estimated against the submit-only endpoint. Then POST the raw
-            // tx straight to the sequencer, and confirm on the read provider: a
-            // sequencer endpoint speaks only eth_sendRawTransaction, and once
-            // mined the tx is visible to any RPC.
-            const req = await (this.executor.connect(signer) as Contract)
-                .getFunction(call.name).populateTransaction(...call.args(effectiveMinProfit));
-            req.gasLimit = (gasUnits * 13n) / 10n;
-            Object.assign(req, await sendPrep);   // nonce + fees fetched during the simulation
-            const prepared = await signer.populateTransaction(req);
-            const raw = await signer.signTransaction(prepared);
-            let txHash: string;
-            try {
-                txHash = await this.sendProvider.send('eth_sendRawTransaction', [raw]);
-            } catch (err) {
-                // The sequencer did not accept it (e.g. "context deadline
-                // exceeded" at the 12s queue timeout). Nothing entered ordering,
-                // so drop any locally-advanced nonce and move on.
-                (signer as { reset?: () => void }).reset?.();
-                attempt.simulationError = `sequencer did not accept the tx: ${(err as Error).message?.slice(0, 160)}`;
-                return attempt;
-            }
+            // explicit gasLimit so nothing is re-estimated against the
+            // submit-only endpoint. Then POST the raw tx straight to the
+            // sequencer, and confirm on the read provider: a sequencer endpoint
+            // speaks only eth_sendRawTransaction, and once mined the tx is
+            // visible to any RPC.
+            const sent = await this.withSendLock(async () => {
+                const req = await (this.executor.connect(signer) as Contract)
+                    .getFunction(call.name).populateTransaction(...call.args(minProfit));
+                req.gasLimit = gasLimit;
+                Object.assign(req, await this.nextSendFields(sendPrep));   // nonce + fees, fetched ahead where the caller could
+                const prepared = await signer.populateTransaction(req);
+                const raw = await signer.signTransaction(prepared);
+                try {
+                    const hash: string = await this.sendProvider!.send('eth_sendRawTransaction', [raw]);
+                    this.lastNonce = Number(prepared.nonce);
+                    return { hash };
+                } catch (err) {
+                    // The sequencer did not accept it (e.g. "context deadline
+                    // exceeded" at the 12s queue timeout). Nothing entered ordering,
+                    // so drop any locally-advanced nonce and move on.
+                    (signer as { reset?: () => void }).reset?.();
+                    return { error: `sequencer did not accept the tx: ${(err as Error).message?.slice(0, 160)}` };
+                }
+            });
+            if ('error' in sent) { attempt.simulationError = sent.error; return attempt; }
+            const txHash = sent.hash;
             mark('send');
             attempt.broadcast = true;
             attempt.txHash = txHash;
@@ -970,33 +1023,36 @@ export class CandidateExecutor {
                 const receipt = await this.provider.waitForTransaction(txHash, 1, 60_000);
                 if (!receipt) {
                     (signer as { reset?: () => void }).reset?.();
+                    this.lastNonce = -1;   // it may never mine: stop building on its nonce
                     attempt.simulationError = `broadcast but not mined within 60s, txHash=${txHash}`;
                     return;
                 }
-                attempt.latency = latencyNote(built!.blockTag, receipt.blockNumber, t0, marks);
+                attempt.latency = latencyNote(built.blockTag, receipt.blockNumber, t0, marks);
+                attempt.gasCostWei = gasCostOf(receipt);
                 if (receipt.status !== 1) {
                     attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
                     return;
                 }
                 attempt.confirmed = true;
-                attempt.realisedProfit = await this.recordTrade(candidate, built!, txHash, receipt);
-            });
+                attempt.realisedProfit = await this.recordTrade(candidate, built, txHash, receipt);
+            }, detach);
         }
 
-        // Explicit gasLimit: without it ethers re-runs eth_estimateGas before
-        // sending — a whole extra round trip after a simulation that just
-        // passed, while the edge ages (Sonic: ~3 blocks a second). The same
-        // estimate + 30% headroom as the sequencer path.
         const signed = this.executor.connect(signer) as Contract;
-        let tx: any;
-        try {
-            tx = await signed.getFunction(call.name)(...call.args(effectiveMinProfit), { gasLimit: (gasUnits * 13n) / 10n, ...(await sendPrep) });
-        } catch (err) {
-            // Refused before it was sent (nonce, funds, a node-side check):
-            // nothing went on-chain, so it is a failed attempt, not a crash.
-            attempt.simulationError = `not sent: ${String((err as any)?.shortMessage ?? (err as Error)?.message ?? err).slice(0, 200)}`;
-            return attempt;
-        }
+        const sent = await this.withSendLock(async () => {
+            const fields = await this.nextSendFields(sendPrep);
+            try {
+                const tx = await signed.getFunction(call.name)(...call.args(minProfit), { gasLimit, ...fields });
+                this.lastNonce = Number(tx.nonce);
+                return { tx };
+            } catch (err) {
+                // Refused before it was sent (nonce, funds, a node-side check):
+                // nothing went on-chain, so it is a failed attempt, not a crash.
+                return { error: `not sent: ${String((err as any)?.shortMessage ?? (err as Error)?.message ?? err).slice(0, 200)}` };
+            }
+        });
+        if ('error' in sent) { attempt.simulationError = sent.error; return attempt; }
+        const tx = sent.tx;
         mark('send');
         attempt.broadcast = true;
         attempt.txHash = tx.hash;
@@ -1020,11 +1076,13 @@ export class CandidateExecutor {
             } catch (err: any) {
                 if (err?.receipt) receipt = err.receipt;
                 else {
+                    this.lastNonce = -1;   // it may never mine: stop building on its nonce
                     attempt.simulationError = `broadcast, but waiting for the receipt failed: ${String(err?.shortMessage ?? err?.message ?? err).slice(0, 160)}, txHash=${tx.hash}`;
                     return;
                 }
             }
-            attempt.latency = latencyNote(built!.blockTag, receipt?.blockNumber, t0, marks);
+            attempt.latency = latencyNote(built.blockTag, receipt?.blockNumber, t0, marks);
+            if (receipt) attempt.gasCostWei = gasCostOf(receipt);
             if (!receipt || receipt.status !== 1) {
                 // Broadcast but reverted on-chain — not a trade, not logged to the
                 // ledger. Surfaced via simulationError so the CLI print picks it up.
@@ -1033,8 +1091,34 @@ export class CandidateExecutor {
             }
 
             attempt.confirmed = true;
-            attempt.realisedProfit = await this.recordTrade(candidate, built!, tx.hash, receipt);
-        });
+            attempt.realisedProfit = await this.recordTrade(candidate, built, tx.hash, receipt);
+        }, detach);
+    }
+
+    /**
+     * One send at a time from this executor. Two sends racing for
+     * getNonce('pending') can both read N — the hot loop's trade and a backrun
+     * are both async on the same wallet — and the second is refused or
+     * replaces the first. Held from choosing the nonce until the node has the
+     * tx, not through the receipt wait.
+     */
+    private withSendLock<T>(fn: () => Promise<T>): Promise<T> {
+        const run = this.sendChain.then(fn, fn);
+        this.sendChain = run.catch(() => undefined);
+        return run;
+    }
+
+    /**
+     * Nonce and fees for the next send: what `sendPrep` fetched ahead of time
+     * (or a fresh read), with the nonce kept past the last one this process
+     * sent — a pending nonce read through the rated pool can come from a node
+     * that has not seen our previous tx yet.
+     */
+    private async nextSendFields(sendPrep: Promise<Record<string, unknown>> | null): Promise<Record<string, unknown>> {
+        const fields = { ...(await (sendPrep ?? prepareSend(this.opts.signer!, this.provider))) };
+        const read = typeof fields.nonce === 'number' ? fields.nonce : await this.opts.signer!.getNonce('pending');
+        fields.nonce = Math.max(read, this.lastNonce + 1);
+        return fields;
     }
 
     /**
@@ -1049,12 +1133,12 @@ export class CandidateExecutor {
      * someone else. Never rejects — a failure here is reported on the attempt,
      * as the inline path always did.
      */
-    private settle(attempt: CandidateAttempt, after: () => Promise<void>): Promise<CandidateAttempt> {
+    private settle(attempt: CandidateAttempt, after: () => Promise<void>, detach = !!this.opts.detachReceipt): Promise<CandidateAttempt> {
         const done = after().then(() => attempt, (err) => {
             attempt.simulationError ??= `after broadcast: ${String((err as Error)?.message ?? err).slice(0, 200)}, txHash=${attempt.txHash}`;
             return attempt;
         });
-        if (!this.opts.detachReceipt) return done;
+        if (!detach) return done;
         attempt.settled = done;
         return Promise.resolve(attempt);
     }
@@ -1377,6 +1461,11 @@ function gasSpent(receipt: any): string {
         const cost = price > 0n ? ` (${(Number(used * price) / 1e18).toFixed(6)} native)` : '';
         return `, gas ${used.toLocaleString('en-US')}${cost}`;
     } catch { return ''; }
+}
+
+/** gasUsed x effective gas price, native wei; 0 when the receipt does not say. */
+function gasCostOf(receipt: any): bigint {
+    try { return BigInt(receipt?.gasUsed ?? 0) * BigInt(receipt?.gasPrice ?? receipt?.effectiveGasPrice ?? 0); } catch { return 0n; }
 }
 
 /** InsufficientRepay(uint256,uint256) — FlashArbExecutor's "the cycle came back short". */

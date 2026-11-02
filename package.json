@@ -8,7 +8,7 @@
     "node": ">=22.6.0"
   },
   "scripts": {
-    "aws": "aws ssm start-session --target i-0883e3a47cc9fc6c1",
+    "aws": "aws ssm start-session --target i-0f1f0cadc82310662",
     "aws-push-db": "bash scripts/aws/push-db.sh",
     "aws-push-env": "bash scripts/aws/push-env.sh",
     "all": "bash scripts/all.sh _",
@@ -36,7 +36,8 @@
     "verify-markets": "bash scripts/log.sh source verify-markets",
     "market": "bash scripts/market.sh",
     "pretty": "bash scripts/pretty.sh",
-    "provider": "bash scripts/vet.sh",
+    "provider": "bash scripts/vet.sh vet",
+    "best": "bash scripts/vet.sh best",
     "bigblocks": "node scripts/hyperevm-bigblocks.mjs",
     "build-vps": "git pull && cp dist/vps/* . && docker compose build && docker compose up -d",
     "deploy-vps": "ssh arb 'cd /opt/arbitrade && yarn build-vps'",
@@ -49,7 +50,7 @@
     "ethers": "^6.17.0",
     "json5": "^2.2.3",
     "sevm": "^0.7.4",
-    "vetted-provider": "^0.1.5"
+    "vetted-provider": "^0.1.6"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.0",

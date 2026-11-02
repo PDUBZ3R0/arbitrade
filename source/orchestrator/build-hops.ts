@@ -288,17 +288,27 @@ export async function buildHops(
         if (!yobatchesAddress) throw new Error('cycle has a V3 hop but no YoBatches address (chain.contract) was given');
         // Uniswap-style pools via slot0/tickBitmap; Algebra pools via
         // globalState/tickTable — pinned to the first read's block.
+        //
+        // One pool per call. A busy pool's ±3-word read costs 10–27M gas and
+        // most public endpoints cap eth_call at 50M; past the cap they revert
+        // with no data. Polygon, 2026-11-01: 13 backruns refused as "could
+        // not read the path: missing revert data" on three-V3-pool paths —
+        // 12 of 16 rated endpoints failed that read, every one passed it a
+        // pool at a time. (Passing `gas` doesn't help: endpoints rated at
+        // 600M+ failed it too.)
         const isAlg = (h: { pair: string }) => !!opts.algebraPools?.has(h.pair.toLowerCase());
-        const uni = v3Hops.filter(h => !isAlg(h)), alg = v3Hops.filter(isAlg);
-        for (const [group, read] of [[uni, getV3States], [alg, getAlgebraStates]] as const) {
-            if (group.length === 0) continue;
-            const st = await read(provider, yobatchesAddress, group.map(h => h.pair), V3_WORDS, blockTag);
-            for (let i = 0; i < group.length; i++) {
-                if (!st.pools[i]) return why(`v3 pool ${group[i].pair} returned no state`);   // pool stopped answering its state reads — treat as dead
-                v3ByPool.set(group[i].pair.toLowerCase(), st.pools[i]);
-            }
-            blockTag ??= st.block;
+        const reads = v3Hops.map(h => ({ h, read: isAlg(h) ? getAlgebraStates : getV3States }));
+        const readOne = (r: typeof reads[number]) => r.read(provider, yobatchesAddress, [r.h.pair], V3_WORDS, blockTag);
+        const first = blockTag === undefined ? await readOne(reads[0]) : undefined;
+        blockTag ??= first!.block;
+        const rest = await Promise.all(reads.slice(first ? 1 : 0).map(readOne));
+        const states = first ? [first, ...rest] : rest;
+        for (let i = 0; i < reads.length; i++) {
+            const s = states[i].pools[0];
+            if (!s) return why(`v3 pool ${reads[i].h.pair} returned no state`);   // pool stopped answering its state reads — treat as dead
+            v3ByPool.set(reads[i].h.pair.toLowerCase(), s);
         }
+        const alg = reads.filter(r => r.read === getAlgebraStates).map(r => r.h);
         // An Algebra V1 pool's stored fee is the LAST swap's; the next one
         // recomputes it first. Price at the higher of the two (util/algebra-fee.ts).
         if (alg.length > 0) {

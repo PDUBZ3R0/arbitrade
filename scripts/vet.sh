@@ -1,7 +1,11 @@
 #!/bin/bash
 
+CMD=$1
+shift
+
 CHAIN=$1
 shift
+
 
 CHAIN_ID=$(node --input-type=module -e "
 import JSON5 from 'json5'; import { readFileSync } from 'node:fs';
@@ -18,5 +22,5 @@ if [ -z "$CHAIN_ID" ]; then
 	echo "Chain unknown, run: yarn add-chain <id#> (or use id number)"
 else 
 	mkdir -p ./log/$CHAIN/
-	yarn vetrpc vet $CHAIN_ID --out ./conf/provider/ $@ 2>&1 | tee ./log/$CHAIN/provider.log
+	yarn vetrpc $CMD $CHAIN_ID --out ./conf/provider/ $@ 2>&1 | tee ./log/$CHAIN/provider.log
 fi

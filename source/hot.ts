@@ -49,7 +49,7 @@
 // maxRoiPct values, so the hot loop reads them from the same place.
 // -----------------------------------------------------------------------------
 
-import { Wallet, JsonRpcProvider } from 'ethers';
+import { Wallet, JsonRpcProvider, parseEther } from 'ethers';
 import { loadChainConfig, dbPath, flashTermsFor, flashSwapEnabled, type NormalizedFactory } from './util/config.ts';
 import { ArbitradeDB } from './util/db.ts';
 import { evaluateTriangles, DEFAULT_MAX_ROI_PCT } from './evaluator/evaluator.ts';
@@ -99,7 +99,14 @@ if (!chainArg || chainArg.startsWith('--')) {
     console.error('                           pending swap through our pools, score the cycles it would open, simulate our');
     console.error('                           executor call bundled behind it, then log where it landed and what followed');
     console.error('                           it (log/<chain>/pending-probe.jsonl).');
-    console.error('                           Never sends anything. Defaults exist for Sonic and Polygon.');
+    console.error('                           Never sends anything without --live-backruns. Defaults exist for Sonic and Polygon.');
+    console.error('  --live-backruns          With --pending-probe: SEND the first backrun per victim that executes behind');
+    console.error('                           it and clears the floor at the bid price. Separate from --live. Requires PRIVATE_KEY.');
+    console.error('  --backrun-bid market|victim  Gas price the backrun floor and on-chain minProfit are priced at:');
+    console.error('                           victim on a fee-ordered chain, market where the block is not (default: market');
+    console.error('                           on Sonic, victim elsewhere).');
+    console.error('  --backrun-max-loss N     Native tokens reverted backruns may cost in gas before sending stops until');
+    console.error('                           restarted (default 1).');
     console.error('  --pending-ws URL[,URL]   Pending-tx websocket(s). Default: <LABEL>_PENDING_WS, else the measured default.');
     console.error('  --pending-sim URL        HTTP endpoint for eth_simulateV1 and receipts (default: the first --pending-ws as https).');
     console.error('  --pending-sims N         Simulations in flight at once; pending swaps beyond are dropped (default 8).');
@@ -157,6 +164,17 @@ const v3RefreshSec = num('--v3-refresh-sec', 30, v => v >= 0, 'zero or more');
 const moveWindowBlocks = num('--move-window', 2, v => v >= 0 && Number.isInteger(v), 'a whole number, zero or more');
 const pendingProbeOn = hasFlag('--pending-probe');
 const pendingSims = num('--pending-sims', 8, v => v >= 1 && Number.isInteger(v), 'a whole number, at least 1');
+const liveBackruns = hasFlag('--live-backruns');
+const backrunMaxLoss = num('--backrun-max-loss', 1, v => v > 0, 'a positive number');
+const backrunBidFlag = getStr('--backrun-bid');
+if (backrunBidFlag !== undefined && backrunBidFlag !== 'market' && backrunBidFlag !== 'victim') {
+    console.error(`--backrun-bid must be market or victim, got "${backrunBidFlag}"`);
+    process.exit(1);
+}
+if (liveBackruns && !pendingProbeOn) {
+    console.error('--live-backruns sends what the pending probe finds: pass --pending-probe too.');
+    process.exit(1);
+}
 
 const cfg = loadChainConfig(chainArg);
 // Push feed: --ws pins one websocket. Otherwise, on the rated pool, the
@@ -199,8 +217,8 @@ if (process.env.PRIVATE_KEY) {
     console.error('(and a signer if --live is set). Set PRIVATE_KEY in .env, or pass --owner 0x...');
     process.exit(1);
 }
-if (live && !signer) {
-    console.error('--live requires PRIVATE_KEY to be set (need a signer to broadcast).');
+if ((live || liveBackruns) && !signer) {
+    console.error(`${live ? '--live' : '--live-backruns'} requires PRIVATE_KEY to be set (need a signer to broadcast).`);
     process.exit(1);
 }
 if (!cfg.chain.executor) {
@@ -233,6 +251,7 @@ const db = new ArbitradeDB(dbFile);
 const executor = new CandidateExecutor(cfg, provider, {}, {
     ownerAddress,
     live,
+    liveBackruns,
     signer,
     gasMarginMultiple,
     minProfitTokens,
@@ -619,7 +638,7 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
     }
 }
 
-// --- pending-swap probe (measurement only) -----------------------------------
+// --- pending-swap probe (measures; sends only with --live-backruns) ----------
 //
 // See ./orchestrator/pending-probe.ts. Started after the startup refresh so it
 // scores against current reserves, never before.
@@ -630,6 +649,12 @@ if (cfg.chain.contract && !hasFlag('--no-startup-refresh')) {
 // ~18% (drpc 89%, but hashes only — pass it with --pending-ws to compare, at
 // the cost of a capped eth_getTransactionByHash per tx). Both answer
 // eth_simulateV1 over https.
+// Where a block is not ordered by fee, the victim's price is the wrong bid.
+// Sonic, 2026-11-02: in 5.5h of probe records, backrunners paying ~50 gwei
+// landed directly behind 400–450 gwei victims (36 of 86 floor-clearing
+// victims had one at +1). Everywhere measured so far (Polygon, Gnosis) a tx
+// behind the victim paid its price or near it: fee-ordered.
+const BACKRUN_BID_DEFAULTS: Record<number, 'market' | 'victim'> = { 146: 'market' };
 const PENDING_DEFAULTS: Record<number, string> = {
     146: 'wss://sonic-rpc.publicnode.com',
     137: 'wss://polygon-bor-rpc.publicnode.com',
@@ -659,20 +684,28 @@ if (pendingProbeOn) {
         ...backend,
         indexedBlock: () => watcher.lastBlock(),
         // Phase 2: our real executor call, bundle-simulated behind the victim.
-        // prepareBackrun builds and encodes; nothing is signed or sent.
+        // prepareBackrun builds and encodes; nothing is signed or sent unless live is set below.
         backrun: {
             prepare: (c, post) => executor.prepareBackrun(c, db, post),
             bundle: backend.bundle,
             profitOf: (logs) => executor.arbExecutedProfit(logs),
             describeRevert: (data) => executor.describeRevert(data),
+            // Phase 3, --live-backruns only: plans carry send() (executor liveBackruns).
+            live: liveBackruns ? {
+                bid: (backrunBidFlag as 'market' | 'victim' | undefined) ?? BACKRUN_BID_DEFAULTS[cfg.chain.id] ?? 'victim',
+                maxLossWei: parseEther(String(backrunMaxLoss)),
+            } : undefined,
         },
         minMoveBps,
         maxSimInFlight: pendingSims,
         record: (o) => appendFileSync(jsonl, JSON.stringify({ chain: cfg.chain.label, ...o }) + '\n'),
     });
     pendingFeed = subscribePending(wsList, pendingProbe.onPending);
+    const bid = (backrunBidFlag as string | undefined) ?? BACKRUN_BID_DEFAULTS[cfg.chain.id] ?? 'victim';
     console.log(`Pending:   probing ${wsList.map(redactUrl).join(', ')} (simulate on ${redactUrl(simUrl)}, ` +
-        `${pendingSims} at once) — measurement only, nothing is sent; outcomes in ${jsonl}`);
+        `${pendingSims} at once) — ` + (liveBackruns
+            ? `LIVE BACKRUNS: sends the first clearing backrun per victim, floor at the ${bid} gas price, stops after ${backrunMaxLoss} native lost to reverts`
+            : 'measurement only, nothing is sent') + `; outcomes in ${jsonl}`);
 }
 
 const TRANSPORT_NOTE: Record<string, string> = {
@@ -847,7 +880,10 @@ function pendingSummary(): string {
             ` avg ${Math.round(p.backrunMsTotal / p.backrunsTried)}ms` : '') +
         ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x` +
         (p.competitorSeen ? `; a competitor took the cycle after ${p.competitorSeen} victim(s)` +
-            (p.competitorTiedVictim ? ` (${p.competitorTiedVictim} at the victim's own price)` : '') + `, ${p.beatsCompetitor} backrun(s) would clear bidding over it` : '');
+            (p.competitorTiedVictim ? ` (${p.competitorTiedVictim} at the victim's own price)` : '') + `, ${p.beatsCompetitor} backrun(s) would clear bidding over it` : '') +
+        (liveBackruns ? `; SENT ${p.backrunsSent} backrun(s): ${p.backrunsConfirmed} confirmed, ${p.backrunsRevertedOnChain} reverted ` +
+            `(${p.backrunGasLost.toFixed(4)} native in gas), ${p.backrunsNotMined} not mined` +
+            (p.backrunSendFailed ? `, ${p.backrunSendFailed} refused by the node` : '') + (p.sendingStopped ? ' — SENDING STOPPED at the loss cap' : '') : '');
 }
 
 const shutdown = async (sig: string) => {
@@ -856,7 +892,8 @@ const shutdown = async (sig: string) => {
     await watcher.stop();
     pendingFeed?.stop();
     if (pendingProbe) {
-        await Promise.race([pendingProbe.idle(), sleep(5_000)]);
+        // A sent backrun's receipt and ledger row: bounded, the executor's own wait is 60s.
+        await Promise.race([pendingProbe.idle(), sleep(liveBackruns ? 65_000 : 5_000)]);
         console.log(`Pending probe: ${pendingSummary()}`);
     }
     // A sent trade's receipt and ledger row, if one is in flight — bounded, the executor's own wait is 60s.
