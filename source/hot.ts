@@ -58,7 +58,7 @@ import { printAttempt } from './orchestrator/report.ts';
 import { TriangleIndex, type ScoreThresholds } from './orchestrator/triangle-index.ts';
 import { watchSync } from './orchestrator/sync-watcher.ts';
 import { createHotLoop } from './orchestrator/hot-loop.ts';
-import { createPendingProbe, rpcBackend, subscribePending } from './orchestrator/pending-probe.ts';
+import { createPendingProbe, rpcBackend, subscribePending, type PendingProbeStats } from './orchestrator/pending-probe.ts';
 import { makeProvider, redactUrl, usesPool } from './util/rpc.ts';
 import { getReservesByPairs, getV3States, getAlgebraStates } from './util/yobatches.ts';
 import { readChunked, isTransientRpcError } from './util/chunked-read.ts';
@@ -879,11 +879,28 @@ function pendingSummary(): string {
             (p.backrunLate ? `, ${p.backrunLate} bundled after the victim had landed (too late to count)` : '') +
             ` avg ${Math.round(p.backrunMsTotal / p.backrunsTried)}ms` : '') +
         ` -> ${p.landed} landed (${p.lateSim} after our sim base), ${p.notLanded} didn't; next tx touched the cycle ${p.nextTouchedPools}x, still open after ${p.stillOpen}x` +
+        // The verdicts above assume our backrun sits right behind the victim; this says whether we could have got there.
+        (p.backrunInTime + p.backrunTooLate ? `; a floor-clearing backrun was ready in time for the victim's block on ${p.backrunInTime} victim(s), TOO LATE on ${p.backrunTooLate}` : '') +
         (p.competitorSeen ? `; a competitor took the cycle after ${p.competitorSeen} victim(s)` +
-            (p.competitorTiedVictim ? ` (${p.competitorTiedVictim} at the victim's own price)` : '') + `, ${p.beatsCompetitor} backrun(s) would clear bidding over it` : '') +
-        (liveBackruns ? `; SENT ${p.backrunsSent} backrun(s): ${p.backrunsConfirmed} confirmed, ${p.backrunsRevertedOnChain} reverted ` +
+            (p.competitorTiedVictim ? ` (${p.competitorTiedVictim} at the victim's own price)` : '') + `, ${p.beatsCompetitor} backrun(s) in time would clear bidding over it` : '') +
+        (liveBackruns ? `; SENT ${p.backrunsSent} backrun(s), ${p.backrunsInVictimBlock} mined in the victim's block: ${p.backrunsConfirmed} confirmed, ${p.backrunsRevertedOnChain} reverted ` +
             `(${p.backrunGasLost.toFixed(4)} native in gas), ${p.backrunsNotMined} not mined` +
-            (p.backrunSendFailed ? `, ${p.backrunSendFailed} refused by the node` : '') + (p.sendingStopped ? ' — SENDING STOPPED at the loss cap' : '') : '');
+            (p.backrunSendFailed ? `, ${p.backrunSendFailed} refused by the node` : '') + (p.sendingStopped ? ' — SENDING STOPPED at the loss cap' : '') : '') +
+        stageSummary(p);
+}
+
+/**
+ * Where seen→ready/sent goes, median (p90) per stage, in pipeline order. The
+ * window to beat is the landing lines' "produced Xms after we saw it".
+ */
+function stageSummary(p: PendingProbeStats): string {
+    const order = ['sim', 'read-back', 'score', 'nonce check', 'base fee', 'preflight', 'gas price', 'build', 'prepare',
+        'bundle', 'fallback bundle', 'nonce+fees', 'sign', 'send'];
+    const fmtStage = (label: string) => { const s = p.stageMs[label]; return s ? `${label} ${s.p50} (${s.p90})` : null; };
+    const parts = order.map(fmtStage).filter(Boolean);
+    if (!parts.length) return '';
+    const total = (label: string) => { const s = p.stageMs[label]; return s ? `, ${label} ${s.p50}ms (p90 ${s.p90}, n=${s.n})` : ''; };
+    return `; stage timings, median (p90) ms: ${parts.join(', ')}${total('seen→ready')}${total('seen→sent')}; ${p.busyP50} other victim(s) in flight (median)`;
 }
 
 const shutdown = async (sig: string) => {

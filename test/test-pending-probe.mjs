@@ -261,6 +261,27 @@ const lateProbe = createPendingProbe({
 lateProbe.onPending(await provider.send('eth_getTransactionByHash', [victim.hash]));
 ok(await until(() => lateProbe.stats().backrunReverted === 1), '(late) the stubbed bundle first counts as a revert', JSON.stringify(lateProbe.stats()));
 
+// Reach: the real backrun clears the floor, but only counts as in time if it
+// was ready before the victim's block was produced (Sonic VPS, 2026-11-02:
+// 22 of 22 sends landed a block late). anvil has no ms block times, so the
+// receipt is stubbed with one: before the probe even saw the victim, and well after.
+const timedProbe = (blockAtMs) => {
+    const records = [];
+    const probe = createPendingProbe({
+        index: ix, thresholds: () => thresholds, pricing: () => pricing,
+        decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
+        ...backend,
+        receipt: async (h) => { const r = await backend.receipt(h); return r && { ...r, timestampMs: blockAtMs }; },
+        backrun: { prepare: (c, post) => executor.prepareBackrun(c, db, post), bundle: backend.bundle, profitOf: (l) => executor.arbExecutedProfit(l) },
+        minMoveBps: 10, receiptPollMs: 100, landWaitMs: 15_000, record: (o) => records.push(o), log: () => {},
+    });
+    return { probe, records };
+};
+const tooLate = timedProbe(Date.now() - 1_000), inTime = timedProbe(Date.now() + 60_000);
+for (const t of [tooLate, inTime]) t.probe.onPending(await provider.send('eth_getTransactionByHash', [victim.hash]));
+ok(await until(() => tooLate.probe.stats().backrunClearsFloor === 1 && inTime.probe.stats().backrunClearsFloor === 1),
+   '(reach) both timed probes see the backrun clear the floor', JSON.stringify([tooLate.probe.stats().backrunClearsFloor, inTime.probe.stats().backrunClearsFloor]));
+
 // Sonic, 2026-11-01: a bot's tx that swaps and undoes it in a try/catch
 // changes nothing, but Sonic's eth_simulateV1 returns the undone Sync. Here a
 // simulation that reports a big AB Sync for a tx that touches nothing: the
@@ -303,6 +324,19 @@ await lateProbe.idle();
        'a bundle on a block at or after the victim\'s is relabelled late, not reverted', JSON.stringify({ late: ls.backrunLate, reverted: ls.backrunReverted, rec: lb }));
 }
 ok(probe.stats().backrunLate === 0, '(sanity) the real bundle ran before the victim\'s block: not late');
+await tooLate.probe.idle();
+await inTime.probe.idle();
+{
+    const l = tooLate.probe.stats(), lr = tooLate.records.find(r => r.hash === victim.hash);
+    ok(l.backrunTooLate === 1 && l.backrunInTime === 0 && lr?.reach?.inTime === false && lr.reach.leadMs < 0,
+       'a block produced before the backrun was ready: TOO LATE, though it cleared the floor', JSON.stringify({ stats: [l.backrunInTime, l.backrunTooLate], reach: lr?.reach }));
+    ok(l.competitorSeen === 1 && l.beatsCompetitor === 0, 'too late, it is not counted as able to outbid the competitor');
+    const i = inTime.probe.stats(), ir = inTime.records.find(r => r.hash === victim.hash);
+    ok(i.backrunInTime === 1 && i.backrunTooLate === 0 && ir?.reach?.inTime === true && ir.reach.leadMs >= ir.reach.marginMs,
+       'a block well after the backrun was ready: in time', JSON.stringify({ stats: [i.backrunInTime, i.backrunTooLate], reach: ir?.reach }));
+    ok(probe.stats().backrunInTime + probe.stats().backrunTooLate === 0 && records.find(r => r.hash === victim.hash)?.reach === undefined,
+       'without ms block times (anvil) nothing is claimed either way');
+}
 
 s = probe.stats();
 const rec = records.find(r => r.hash === victim.hash);
@@ -314,6 +348,22 @@ ok(rec?.next?.hash === after.hash && rec.next.touchedCyclePools === true && rec.
 ok(rec?.stillOpenAfter === true && s.stillOpen === 1, 'nobody arbitraged it: still open once the index has the block');
 ok(rec?.cycles?.[0]?.netProfit > 0 && rec.moves.some(m => m.pair === AB.toLowerCase() && m.bps > 10), 'record carries the cycle profit and the move',
    JSON.stringify(rec?.cycles?.[0]));
+// Per-stage timings (Sonic VPS, 2026-11-02: seen→sent ran 825ms median
+// against a ~210ms window). The stages are serial, so they must account for
+// seen→ready, give or take the probe's own bookkeeping between them.
+{
+    const br = rec?.cycles?.[0]?.backrun ?? {};
+    const want = ['sim', 'read-back', 'score', 'nonce check', 'base fee'];
+    ok(want.every(k => typeof rec?.stages?.[k] === 'number') && ['preflight', 'gas price', 'build', 'bundle'].every(k => typeof br.stages?.[k] === 'number'),
+       'the record times every stage from seeing the victim to a simulated backrun', JSON.stringify({ victim: rec?.stages, backrun: br.stages }));
+    const sum = Object.values(rec?.stages ?? {}).reduce((x, y) => x + y, 0) + Object.values(br.stages ?? {}).reduce((x, y) => x + y, 0);
+    ok(typeof br.readyMs === 'number' && sum <= br.readyMs + 2 && br.readyMs - sum < 100,
+       'the stages add up to seen→ready (nothing slow goes untimed)', JSON.stringify({ readyMs: br.readyMs, sum }));
+    const st = s.stageMs;
+    ok(st['seen→ready']?.n === 1 && st.sim?.n >= 1 && st.bundle?.n >= 1 && st['seen→ready'].p50 === br.readyMs,
+       'stats carry the stage percentiles', JSON.stringify(st));
+    ok(logs.some(l => l.includes(victim.hash.slice(0, 12)) && /seen→ready \d+ms: sim \d+, read-back \d+, score/.test(l)), 'the breakdown is logged for a floor-clearing backrun');
+}
 const b = rec?.cycles?.[0]?.backrun;
 // flashFeeFor rounds the lender's fee UP (safe direction), so the prediction may sit a wei under.
 ok(b?.funding === 'aave-v3' && typeof b.flashSwapError === 'string', 'the flash swap through CA reverted and the backrun fell back to the lender', JSON.stringify({ funding: b?.funding, flashSwapError: b?.flashSwapError }));
@@ -433,6 +483,8 @@ console.log('\n5. live backruns');
         index: ix2, thresholds: () => th2, pricing: () => pricing,
         decimalsByToken: new Map(ix2.tokenAddr.map(a => [a, 18])),
         ...backend,
+        // anvil has whole-second block times only; a block well after we were ready.
+        receipt: async (h) => { const r = await backend.receipt(h); return r && { ...r, timestampMs: Date.now() + 60_000 }; },
         indexedBlock: () => indexed2,
         backrun: {
             prepare: async (c, post) => { const p = await liveExec.prepareBackrun(c, db2, post); livePlans.push(p); return p; },
@@ -474,7 +526,12 @@ console.log('\n5. live backruns');
         const vr = await provider.getTransactionReceipt(va.hash);
         ok(txr?.status === 1 && txr.blockNumber === vr.blockNumber && txr.index === vr.index + 1,
            'mined directly behind the victim, status 1', JSON.stringify({ block: txr?.blockNumber, index: txr?.index, victimIndex: vr?.index }));
+        ok(s0?.minedBlock === vr.blockNumber && s0.inVictimBlock === true && ls.backrunsInVictimBlock === 1 && ls.backrunInTime === 1,
+           'recorded as mined in the victim\'s block, and as ready in time', JSON.stringify({ minedBlock: s0?.minedBlock, inVictimBlock: s0?.inVictimBlock, n: ls.backrunsInVictimBlock }));
         ok(s0?.result === 'confirmed' && BigInt(s0.realisedProfit ?? 0) > 0n && ls.backrunsConfirmed === 1, 'recorded confirmed at its realised profit', JSON.stringify(s0));
+        const cs = sent[0]?.backrun?.stages;
+        ok(typeof cs?.['nonce+fees'] === 'number' && typeof cs.send === 'number' && ls.stageMs['seen→sent']?.n === 1 && ls.stageMs['seen→sent'].p50 === s0.msFromSeen,
+           'the send\'s own stages are timed, and seen→sent is sampled', JSON.stringify({ stages: cs, seenToSent: ls.stageMs['seen→sent'] }));
         // The market bid: minProfit is the floor at the market price, not the victim's 2-gwei-tip price.
         const plan = livePlans.find(p => p.send);
         const cyc = sent[0]?.backrun;

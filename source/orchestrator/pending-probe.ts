@@ -90,6 +90,8 @@ export type LandedTx = {
     effectiveGasPrice?: bigint;
     /** Block timestamp, seconds. */
     timestamp?: number;
+    /** Block time in ms, where the node says it exactly (Sonic's timestampNano). Whole seconds are too coarse to time a backrun against. */
+    timestampMs?: number;
 };
 
 /** The victim and our backrun simulated as one bundle, in that order, on one block. */
@@ -200,10 +202,32 @@ export type PendingProbeStats = {
     backrunsRevertedOnChain: number;
     /** ...never mined within the wait. */
     backrunsNotMined: number;
+    /**
+     * Victims with a backrun that clears a floor, timed against the victim's
+     * block (needs exact block times): the first such backrun was ready at
+     * least reachMarginMs before the block was produced...
+     */
+    backrunInTime: number;
+    /** ...or not: the block was (nearly) out before we could send. Nothing behind the victim was ours to take. */
+    backrunTooLate: number;
+    /** Live: sends mined in the victim's own block — the only place the backrun's edge exists. */
+    backrunsInVictimBlock: number;
     /** Gas paid by reverted sends, in native tokens (the cap itself is counted exactly, in wei). */
     backrunGasLost: number;
     /** The loss cap was hit: nothing more is sent. */
     sendingStopped: boolean;
+    /**
+     * Where seen→sent goes, per stage over the last STAGE_SAMPLES victims or
+     * backruns that reached it: 'sim', 'read-back', 'score', 'nonce check',
+     * 'base fee', then per backrun 'preflight', 'gas price', 'build',
+     * 'bundle', 'fallback bundle', and the send's 'nonce+fees', 'sign', 'send'.
+     * Totals: 'seen→ready' (a floor-clearing backrun simulated) and
+     * 'seen→sent'. Sonic VPS, 2026-11-02: seen→sent ran a median 825ms
+     * against ~210ms from seeing a victim to its block being produced.
+     */
+    stageMs: Record<string, { n: number; p50: number; p90: number; max: number }>;
+    /** Victims being handled when this one arrived, median over the same window: contention, not a stage. */
+    busyP50: number;
 };
 
 export type PendingProbeDeps = {
@@ -270,6 +294,16 @@ export type PendingProbeDeps = {
      * queued behind a nonce gap. Optional: without it every swap is taken as next.
      */
     nonceOf?: (address: string) => Promise<number>;
+    /**
+     * How long before the victim's block a backrun must be ready to count as
+     * in time. Sonic VPS, 2026-11-02: every one of 22 sent backruns landed a
+     * block after its victim; the two timed exactly were sent 55ms and 482ms
+     * AFTER the victim's block was produced. The dry run had priced all of
+     * them as if they sat right behind the victim. Default 250ms: an unmeasured
+     * guess at send-to-inclusion, kept on the high side — live sends'
+     * inVictimBlock against their lead is what calibrates it.
+     */
+    reachMarginMs?: number;
     /** How many positions after the victim to look for a competing backrunner. Default 6. */
     competitorScan?: number;
     /** The last block the index has applied. Without it, "still open" is checked as soon as the victim lands. */
@@ -308,6 +342,9 @@ const TOKEN_OPS = new Set([
 const SYNC_TOPIC_SET = new Set(SYNC_TOPICS);
 const V3_SWAP_TOPIC_SET = new Set([V3_SWAP_TOPIC, PANCAKE_V3_SWAP_TOPIC]);
 
+/** Per stage, how many recent samples the percentiles are taken over. */
+const STAGE_SAMPLES = 1000;
+
 const word = (data: string, i: number): bigint => {
     const body = data.startsWith('0x') ? data.slice(2) : data;
     return BigInt('0x' + (body.slice(i * 64, i * 64 + 64) || '0'));
@@ -322,6 +359,10 @@ type Opportunity = {
     hash: string;
     seenAt: number;
     simMs: number;
+    /** ms per victim-level stage, in order (sim, read-back, score, nonce check, base fee). */
+    stages: Array<[string, number]>;
+    /** Other victims in handle() when this one arrived. */
+    busy: number;
     baseBlock: number;
     moves: Array<{ pair: string; bps: number }>;
     cycles: Array<{ triangleId: number; root: string; symbol?: string; netProfit: number; value: number; pairs: string[]; backrun?: Record<string, unknown> }>;
@@ -374,6 +415,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
     const maxInFlight = deps.maxSimInFlight ?? 8;
     const landWaitMs = deps.landWaitMs ?? 60_000;
     const pollMs = deps.receiptPollMs ?? 2_000;
+    const reachMarginMs = deps.reachMarginMs ?? 250;
 
     const stats: PendingProbeStats = {
         seen: 0, duplicates: 0, notASwap: 0, filteredOut: 0, simDropped: 0, simulated: 0, simErrors: 0,
@@ -382,12 +424,24 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         stillOpen: 0, simMsTotal: 0,
         backrunsTried: 0, backrunDecayed: 0, backrunRefused: 0, backrunVictimReverted: 0,
         backrunReverted: 0, backrunLate: 0, backrunClean: 0, backrunClearsFloor: 0, backrunClearsMarketOnly: 0, backrunMsTotal: 0,
-        competitorSeen: 0, beatsCompetitor: 0, competitorTiedVictim: 0,
-        backrunsSent: 0, backrunSendFailed: 0, backrunsConfirmed: 0, backrunsRevertedOnChain: 0, backrunsNotMined: 0,
-        backrunGasLost: 0, sendingStopped: false,
+        competitorSeen: 0, beatsCompetitor: 0, competitorTiedVictim: 0, backrunInTime: 0, backrunTooLate: 0,
+        backrunsInVictimBlock: 0, backrunsSent: 0, backrunSendFailed: 0, backrunsConfirmed: 0, backrunsRevertedOnChain: 0, backrunsNotMined: 0,
+        backrunGasLost: 0, sendingStopped: false, stageMs: {}, busyP50: 0,
     };
     /** Exact, for the loss cap; stats carry it as a number so they stay JSON-friendly. */
     let gasLostWei = 0n;
+
+    // Rolling samples per stage (see PendingProbeStats.stageMs).
+    const samples = new Map<string, number[]>();
+    const sample = (stage: string, ms: number) => {
+        let a = samples.get(stage);
+        if (!a) samples.set(stage, a = []);
+        a.push(ms);
+        if (a.length > STAGE_SAMPLES) a.shift();
+    };
+    const pct = (sorted: number[], q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+    const busySamples: number[] = [];
+    let busy = 0;
 
     // Addresses without 0x, lowercase: the prefilter scans raw calldata hex.
     const pairHex = new Set<string>([...ix.pairIdx.keys()].map(a => a.slice(2)));
@@ -538,8 +592,19 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
     }
 
     async function handle(tx: PendingTx, seenAt: number): Promise<void> {
+        const busyAtSeen = busy++;
+        busySamples.push(busyAtSeen);
+        if (busySamples.length > STAGE_SAMPLES) busySamples.shift();
+        try { await handleOne(tx, seenAt, busyAtSeen); } finally { busy--; }
+    }
+
+    async function handleOne(tx: PendingTx, seenAt: number, busyAtSeen: number): Promise<void> {
         let sim: SimResult;
         const t0 = now();
+        // Victim-level stages, in order: the serial path from seeing it to the first backrun.
+        const stages: Array<[string, number]> = [];
+        let at = t0;
+        const stage = (label: string) => { const t = now(); stages.push([label, t - at]); sample(label, t - at); at = t; };
         try {
             sim = await deps.simulate(tx);
         } catch (e) {
@@ -551,6 +616,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             inFlight--;
         }
         const simMs = now() - t0;
+        stage('sim');
         stats.simulated++;
         stats.simMsTotal += simMs;
         if (!sim.ok) { stats.simReverted++; return; }
@@ -566,10 +632,12 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 stats.confirmErrors++;
                 if (stats.confirmErrors <= 3) log(`  [pending] pool read-back failed on ${tx.hash.slice(0, 12)}…, using the logs: ${(e as Error).message?.slice(0, 200)}`);
             }
+            stage('read-back');
             if (!moves.some(m => m.bps >= deps.minMoveBps)) return;
         }
 
         const { fresh, standing, tris } = shadowScore(moves);
+        stage('score');
         stats.standingSkipped += standing;
         if (fresh.length === 0) return;
         stats.opportunities++;
@@ -577,7 +645,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         fresh.sort((a, b) => rankValue(b) - rankValue(a));
         const pricing = deps.pricing();
         const op: Opportunity = {
-            hash: tx.hash, seenAt, simMs, baseBlock: sim.baseBlock,
+            hash: tx.hash, seenAt, simMs, stages, busy: busyAtSeen, baseBlock: sim.baseBlock,
             moves: moves.map(m => ({ pair: m.pair, bps: Math.round(m.bps) })),
             cycles: fresh.slice(0, 5).map(c => ({
                 triangleId: c.triangleId,
@@ -600,6 +668,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         // victim — a backrun sent behind it lands alone and reverts.
         if (deps.nonceOf && tx.nonce != null) {
             const confirmed = await deps.nonceOf(tx.from).catch(() => null);
+            stage('nonce check');
             if (confirmed != null && Number(tx.nonce) > confirmed) {
                 stats.nonceGapped++;
                 log(`  [pending] ${tx.hash.slice(0, 12)}… is queued behind a nonce gap (nonce ${Number(tx.nonce)}, sender confirmed at ${confirmed}) — not backrun`);
@@ -609,6 +678,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         }
         if (deps.backrun) {
             op.bid = victimGasPrice(tx, deps.baseFee ? await deps.baseFee().catch(() => null) : null);
+            if (deps.baseFee) stage('base fee');
             await backruns(tx, moves, fresh, op);
         }
         await outcome(op, tris);
@@ -637,10 +707,16 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         stats.backrunsSent++;
         const sent: Record<string, unknown> = { txHash: a.txHash, minProfit: minProfit.toString(), bid: live.bid, msFromSeen: now() - op.seenAt };
         rec.sent = sent;
-        log(`${tag} — SENT ${a.txHash}: minProfit ${tok(minProfit)} ${sym} at the ${live.bid} gas price, ${sent.msFromSeen}ms after the victim was seen`);
+        const ss = a.sendStages ?? [];
+        for (const [label, ms] of ss) sample(label, ms);
+        sample('seen→sent', sent.msFromSeen as number);
+        Object.assign(rec.stages as Record<string, number>, Object.fromEntries(ss));
+        log(`${tag} — SENT ${a.txHash}: minProfit ${tok(minProfit)} ${sym} at the ${live.bid} gas price, ${sent.msFromSeen}ms after the victim was seen` +
+            (ss.length ? ` (send: ${ss.map(([l, ms]) => `${l} ${ms}`).join(', ')}ms)` : ''));
         // settled never rejects (CandidateExecutor.settle).
         op.sent = (a.settled ?? Promise.resolve(a)).then(done => {
             sent.latency = done.latency;
+            if (done.minedBlock != null) sent.minedBlock = done.minedBlock;
             if (done.confirmed) {
                 stats.backrunsConfirmed++;
                 Object.assign(sent, { result: 'confirmed', realisedProfit: done.realisedProfit?.toString(), gasCostWei: done.gasCostWei?.toString() });
@@ -685,8 +761,15 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             const dec = deps.decimalsByToken.get(c.rootToken.toLowerCase()) ?? 18;
             const sym = deps.pricing()[c.rootToken.toLowerCase()]?.symbol ?? c.rootToken.slice(0, 8);
             const tok = (w: bigint) => fmt(Number(w) / 10 ** dec);
+            // Per backrun, ms per stage in order: prepare's own (preflight, gas
+            // price, build), then the bundle(s), then the send's.
+            const stages: Record<string, number> = {};
+            rec.stages = stages;
+            const stage = (label: string, ms: number) => { stages[label] = ms; sample(label, ms); };
             try {
                 const plan = await br.prepare(c as Candidate, post);
+                if (plan.stages) for (const [label, ms] of plan.stages) stage(label, ms);
+                else stage('prepare', now() - t0);
                 if (!plan.tx) {
                     if (plan.decayReason !== undefined) { stats.backrunDecayed++; rec.result = 'decayed'; rec.reason = plan.decayReason; }
                     else { stats.backrunRefused++; rec.result = 'refused'; rec.reason = plan.error; }
@@ -694,12 +777,16 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                     return;
                 }
                 let funding = plan.funding, built = plan.built!, send = plan.send;
+                let tb = now();
                 let b = await br.bundle(tx, plan.tx);
+                stage('bundle', now() - tb);
                 if (b.victimOk && !b.ok && plan.fallback) {
                     // Same retry attempt() makes: the flash swap reverted, try the lender.
                     rec.flashSwapError = revertText(b);
                     ({ funding, built, send } = plan.fallback);
+                    tb = now();
                     b = await br.bundle(tx, plan.fallback.tx);
+                    stage('fallback bundle', now() - tb);
                 }
                 rec.funding = funding;
                 rec.expectedProfit = built.expectedProfit.toString();
@@ -733,7 +820,16 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
                 if (clears) stats.backrunClearsFloor++;
                 else if (clearsMarket) stats.backrunClearsMarketOnly++;
                 op.floors.set(i, { floorFor: plan.floorFor!, gasUsed: b.gasUsed, profit });
+                const readyAt = now();
+                if (clears || clearsMarket) {
+                    sample('seen→ready', readyAt - op.seenAt);
+                    log(`${tag} — seen→ready ${readyAt - op.seenAt}ms: ` +
+                        [...op.stages, ...Object.entries(stages)].map(([l, ms]) => `${l} ${ms}`).join(', ') +
+                        `ms (${op.busy} other victim(s) in flight when it was seen)`);
+                }
                 Object.assign(rec, {
+                    // When we could have sent: timed against the victim's block in outcome().
+                    readyAt, readyMs: readyAt - op.seenAt,
                     result: clears ? 'clears-floor' : clearsMarket ? 'clears-market-floor-only' : 'below-floor',
                     profit: profit?.toString(), floor: floor?.toString(), bidGasPrice: op.bid?.toString(), floorAtMarket: floorMarket?.toString(),
                 });
@@ -776,7 +872,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         }
         const rec: Record<string, unknown> = {
             hash: op.hash, seenAt: new Date(op.seenAt).toISOString(), simMs: op.simMs, simBaseBlock: op.baseBlock,
-            moves: op.moves, cycles: op.cycles, victimGasPrice: op.gasPrice?.toString(),
+            stages: Object.fromEntries(op.stages), busy: op.busy, moves: op.moves, cycles: op.cycles, victimGasPrice: op.gasPrice?.toString(),
         };
         if (!landed) {
             stats.notLanded++;
@@ -793,8 +889,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         Object.assign(rec, {
             landed: true, status: landed.status, block: landed.blockNumber, index: landed.transactionIndex,
             effectiveGasPrice: landed.effectiveGasPrice?.toString(),
-            // Whole-second block timestamps: coarse, can read negative on fast chains. blocksAfterSim is exact.
-            leadMs: landed.timestamp != null ? landed.timestamp * 1000 - op.seenAt : undefined,
+            // From whole-second block timestamps this is coarse and can read negative on fast chains; exact where the node gives ms.
+            leadMs: landed.timestampMs != null ? landed.timestampMs - op.seenAt : landed.timestamp != null ? landed.timestamp * 1000 - op.seenAt : undefined,
             blocksAfterSim: landed.blockNumber - op.baseBlock,
             lateSim: late,
         });
@@ -821,6 +917,24 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             b.lateResult = was;
             op.floors.delete(i);
             log(`  [backrun] ${op.hash.slice(0, 12)}… #${c.triangleId} — bundled on block ${b.bundleBaseBlock}, the victim landed in ${landed.blockNumber}: '${was}' was too late to mean anything`);
+        }
+
+        // Could we have made the victim's block at all? Every verdict above is
+        // priced as if our backrun sat right behind the victim; that slot exists
+        // only if we could send before the block was produced. Sonic VPS,
+        // 2026-11-02: 22 of 22 sends landed a block late and reverted, on
+        // victims the dry run had counted as clearing the floor.
+        let reach: { leadMs: number; inTime: boolean } | undefined;
+        if (landed.timestampMs != null) {
+            const ready = op.cycles.map(c => c.backrun as Record<string, unknown> | undefined)
+                .filter(b => b && (b.result === 'clears-floor' || b.result === 'clears-market-floor-only') && typeof b.readyAt === 'number')
+                .map(b => b!.readyAt as number);
+            if (ready.length) {
+                const leadMs = landed.timestampMs - Math.min(...ready);
+                reach = { leadMs, inTime: leadMs >= reachMarginMs };
+                if (reach.inTime) stats.backrunInTime++; else stats.backrunTooLate++;
+                rec.reach = { ...reach, marginMs: reachMarginMs };
+            }
         }
 
         // Ordering: what did the chain put straight after the victim, and who
@@ -863,7 +977,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             }
             if (px != null) for (const [i, f] of op.floors) {
                 const v = competitorVerdict(f, px, landed.effectiveGasPrice);
-                if (v.beats) stats.beatsCompetitor++;
+                // Outbidding only matters if we were there to bid.
+                if (v.beats && reach?.inTime !== false) stats.beatsCompetitor++;
                 Object.assign(op.cycles[i].backrun!, { floorToBeatCompetitor: v.floor?.toString(), beatsCompetitor: v.beats, ...(v.tied ? { tiedAtVictimPrice: true } : {}) });
             }
         }
@@ -885,14 +1000,25 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             // read -480ms on the first run. The block gap below is the real lead.
             `, ${landed.blockNumber - op.baseBlock} block(s) after our simulation base` +
             (late ? ', BEFORE our simulation base (sim was late)' : '') +
+            (landed.timestampMs != null ? `, produced ${landed.timestampMs - op.seenAt}ms after we saw it` : '') +
+            (reach ? (reach.inTime ? `; our backrun was ready ${reach.leadMs}ms before the block — in time`
+                : `; our backrun was ready ${reach.leadMs >= 0 ? `only ${reach.leadMs}ms before` : `${-reach.leadMs}ms AFTER`} the block — TOO LATE to land behind it`) : '') +
             (next ? `; next tx ${next.touchedCyclePools ? 'TOUCHED the cycle\'s pools' : 'did not touch the cycle'}` +
                 (next.touchedCyclePools ? ` (${next.sameGasPrice ? 'same' : 'different'} gas price)` : '') : '') +
             (competitor ? `; competitor at +${competitor.offset} paid ${competitor.effectiveGasPrice != null ? gwei(competitor.effectiveGasPrice) : '?'} gwei` +
                 ` (victim ${landed.effectiveGasPrice != null ? gwei(landed.effectiveGasPrice) : '?'})` +
                 ((rec.competitor as Record<string, unknown>).tiedVictim ? ' — the victim\'s own price: no outbidding it from behind, arrival order decides' : '') +
-                (op.floors.size ? `, ${[...op.floors.keys()].filter(i => op.cycles[i].backrun!.beatsCompetitor).length}/${op.floors.size} backrun(s) clear bidding over it` : '') : '') +
+                (op.floors.size && reach?.inTime !== false ? `, ${[...op.floors.keys()].filter(i => op.cycles[i].backrun!.beatsCompetitor).length}/${op.floors.size} backrun(s) clear bidding over it` : '') : '') +
             `; cycle ${open.length > 0 ? 'still open' : 'closed'} after the block`);
         await op.sent;   // the record carries how our own backrun ended
+        for (const c of op.cycles) {
+            const sent = (c.backrun as Record<string, unknown> | undefined)?.sent as Record<string, unknown> | undefined;
+            if (typeof sent?.minedBlock !== 'number') continue;
+            sent.inVictimBlock = sent.minedBlock === landed.blockNumber;
+            if (sent.inVictimBlock) stats.backrunsInVictimBlock++;
+            log(`  [backrun] ${op.hash.slice(0, 12)}… #${c.triangleId} — ours mined in block ${sent.minedBlock}, the victim's was ${landed.blockNumber}` +
+                (reach ? ` (ready ${reach.leadMs}ms before it)` : ''));
+        }
         deps.record?.(rec);
     }
 
@@ -907,7 +1033,15 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             inFlight++;
             track(handle(tx, now()).catch(e => log(`  [pending] probe error on ${tx.hash}: ${(e as Error).message}`)));
         },
-        stats: () => ({ ...stats }),
+        stats: () => {
+            const stageMs: PendingProbeStats['stageMs'] = {};
+            for (const [label, a] of samples) {
+                const sorted = [...a].sort((x, y) => x - y);
+                stageMs[label] = { n: sorted.length, p50: pct(sorted, 0.5), p90: pct(sorted, 0.9), max: sorted[sorted.length - 1] };
+            }
+            const busySorted = [...busySamples].sort((x, y) => x - y);
+            return { ...stats, stageMs, busyP50: busySorted.length ? pct(busySorted, 0.5) : 0 };
+        },
         async idle() { while (work.size) await Promise.allSettled([...work]); },
     };
 }
@@ -930,14 +1064,15 @@ const hexq = (v: string | bigint | undefined): string | undefined => v == null ?
  */
 export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 'readPools' | 'receipt' | 'nextTx' | 'baseFee' | 'nonceOf'> & { bundle: NonNullable<PendingProbeDeps['backrun']>['bundle']; destroy: () => void } {
     const p = new JsonRpcProvider(url, undefined, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 });
-    const blockTs = new Map<number, number>();
+    const blockTs = new Map<number, { s: number; ms?: number }>();
     const now = Date.now;
     let baseFeeCache: bigint | null = null, baseFeeAt = 0;
-    const timestamp = async (n: number): Promise<number | undefined> => {
+    const timestamp = async (n: number): Promise<{ s: number; ms?: number } | undefined> => {
         if (blockTs.has(n)) return blockTs.get(n);
         const b = await p.send('eth_getBlockByNumber', ['0x' + n.toString(16), false]);
         if (!b) return undefined;
-        const ts = Number(b.timestamp);
+        // Sonic gives the block time in ns; elsewhere only whole seconds.
+        const ts = { s: Number(b.timestamp), ms: b.timestampNano != null ? Number(BigInt(b.timestampNano) / 1_000_000n) : undefined };
         blockTs.set(n, ts);
         if (blockTs.size > 500) blockTs.delete(blockTs.keys().next().value!);
         return ts;
@@ -1003,7 +1138,7 @@ export function rpcBackend(url: string): Pick<PendingProbeDeps, 'simulate' | 're
                 transactionIndex: Number(r.transactionIndex),
                 status: Number(r.status),
                 effectiveGasPrice: r.effectiveGasPrice != null ? BigInt(r.effectiveGasPrice) : undefined,
-                timestamp: await timestamp(blockNumber).catch(() => undefined),
+                ...await timestamp(blockNumber).then(t => ({ timestamp: t?.s, timestampMs: t?.ms }), () => ({})),
             };
         },
         async nextTx(blockNumber, transactionIndex) {

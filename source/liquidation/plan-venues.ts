@@ -22,6 +22,7 @@
 import { Contract, Interface, getAddress, type JsonRpcProvider, type Signer } from 'ethers';
 import { multicall3 } from '../util/multicall.ts';
 import { TradeLedger } from '../util/ledger.ts';
+import { waitReceipt } from '../util/receipt.ts';
 import { ledgerPath, type ChainConfig } from '../util/config.ts';
 import { LIQUIDATOR_ABI, type RouteFinder, type Route, type LiquidationAttempt, type SimResult, type PairPlan } from './plan.ts';
 import { MORPHO_IFACE, toAssetsUp, WAD, type MorphoVenue } from './morpho.ts';
@@ -179,8 +180,11 @@ export class VenueLiquidator {
         const tx = await signed[cand.method](...cand.send(out.floorDebt), { gasLimit: out.gasUnits! * 13n / 10n });
         out.broadcast = true;
         out.txHash = tx.hash;
-        const receipt = await tx.wait();
-        if (!receipt || receipt.status !== 1) { out.reason = `broadcast but reverted on-chain (${tx.hash})`; return out; }
+        // waitReceipt, not tx.wait(): ethers' wait throws on a status-0 receipt and
+        // leaks a failed receipt read as an unhandled rejection that kills the process.
+        const receipt = await waitReceipt(this.provider, tx.hash, 120_000);
+        if (!receipt) { out.reason = `broadcast but not mined within 120s (${tx.hash})`; return out; }
+        if (receipt.status !== 1) { out.reason = `broadcast but reverted on-chain (${tx.hash})`; return out; }
         out.confirmed = true;
         out.realisedProfit = this.record(best.profit!, token, tx.hash, receipt);
         return out;

@@ -36,6 +36,7 @@ import fs from 'node:fs';
 import { multicall3 } from '../util/multicall.ts';
 import { flashTermsFor, type ChainConfig } from '../util/config.ts';
 import { TradeLedger } from '../util/ledger.ts';
+import { waitReceipt } from '../util/receipt.ts';
 import { ledgerPath } from '../util/config.ts';
 import { readPrices, type AaveMarket, type AaveReserve } from './aave-v3.ts';
 
@@ -494,8 +495,11 @@ export class Liquidator {
             { gasLimit: out.gasUnits * 13n / 10n });
         out.broadcast = true;
         out.txHash = tx.hash;
-        const receipt = await tx.wait();
-        if (!receipt || receipt.status !== 1) { out.reason = `broadcast but reverted on-chain (${tx.hash})`; return out; }
+        // waitReceipt, not tx.wait(): ethers' wait throws on a status-0 receipt and
+        // leaks a failed receipt read as an unhandled rejection that kills the process.
+        const receipt = await waitReceipt(this.provider, tx.hash, 120_000);
+        if (!receipt) { out.reason = `broadcast but not mined within 120s (${tx.hash})`; return out; }
+        if (receipt.status !== 1) { out.reason = `broadcast but reverted on-chain (${tx.hash})`; return out; }
         out.confirmed = true;
         out.realisedProfit = this.record(best, tx.hash, receipt, prices);
         return out;

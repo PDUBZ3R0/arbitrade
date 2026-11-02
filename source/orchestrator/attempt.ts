@@ -27,6 +27,7 @@ import { ledgerPath, flashTermsFor, flashSwapEnabled, type FlashTerms } from '..
 import type { Candidate, EvaluateResult } from '../evaluator/evaluator.ts';
 import { buildHops, flashFeeFor, HOP_V3, type BuiltArb } from './build-hops.ts';
 import { TradeLedger } from '../util/ledger.ts';
+import { waitReceipt } from '../util/receipt.ts';
 import { fetchUsdPrice } from '../util/usd-price.ts';
 import { redactUrl } from '../util/rpc.ts';
 import { extractRevertData, decodeRevertReason, probePair, UNSAFE_TOKEN_VERDICTS } from '../util/token-probe.ts';
@@ -104,6 +105,8 @@ export type BackrunPlan = {
     send?: (minProfitWei: bigint, gasUsed: bigint) => Promise<CandidateAttempt>;
     /** For a flash-swap call: the same path through the lender, to try if the flash swap reverts. */
     fallback?: { built: BuiltArb; funding: string; tx: { from: string; to: string; data: string }; send?: BackrunPlan['send'] };
+    /** Where prepare's time went, ms per stage in order (preflight, gas price, build): the probe's seen→sent breakdown. */
+    stages?: Array<[string, number]>;
 };
 
 export type CandidateAttempt = {
@@ -137,12 +140,16 @@ export type CandidateAttempt = {
      * build 40ms, estimate 120ms, simulate 90ms, send 110ms".
      */
     latency?: string;
+    /** The same stages as `latency` up to the send, ms each, set as soon as the node has the tx (latency waits for the receipt). */
+    sendStages?: Array<[string, number]>;
     /** gasEstimate x live gas price x margin, in root-token wei. Null if it couldn't be priced. */
     gasFloorWei?: bigint | null;
     /** max(config floor, gas floor) — what the contract actually enforced. */
     minProfitUsed?: bigint;
     /** What a mined transaction paid for gas, native wei (gasUsed x effective price) — what a revert cost. */
     gasCostWei?: bigint;
+    /** The block a sent transaction mined in. */
+    minedBlock?: number;
     /** True when the candidate was dropped for not covering gas, before simulating. */
     belowGasFloor?: boolean;
     /** Why the build came back empty ("edge decayed"): buildHops' own account. */
@@ -700,12 +707,19 @@ export class CandidateExecutor {
     async prepareBackrun(candidate: Candidate, db: ArbitradeDB, postState: NonNullable<Parameters<typeof buildHops>[6]>['postState']): Promise<BackrunPlan> {
         const bad = this.knownBad(candidate);
         if (bad) return { error: `known bad: ${bad}` };
+        // Sonic VPS, 2026-11-02: seen→sent ran a median 825ms against a ~210ms
+        // window to the victim's block. Time each stage so the probe can say where it goes.
+        const stages: Array<[string, number]> = [];
+        let at = Date.now();
+        const stage = (label: string) => { const t = Date.now(); stages.push([label, t - at]); at = t; };
         const pre = await this.preflight(candidate);
-        if ('error' in pre) return pre;
+        stage('preflight');
+        if ('error' in pre) return { ...pre, stages };
         // Live: nonce and fees fetched while the path is built and the bundle
         // simulated, so the send is one round trip (as attempt() does).
         const sendPrep = this.opts.liveBackruns && this.opts.signer ? prepareSend(this.opts.signer, this.provider) : null;
         await this.ensureGasPrice();
+        stage('gas price');
         const root = candidate.rootToken;
         const whyNull: { reason?: string } = {};
         let built: BuiltArb | null;
@@ -715,9 +729,11 @@ export class CandidateExecutor {
                 algebraPools: pre.algebraPools, whyNull, postState,
             });
         } catch (err) {
-            return { error: `could not read the path: ${(err as Error).message?.slice(0, 240) ?? String(err)}` };
+            stage('build');
+            return { error: `could not read the path: ${(err as Error).message?.slice(0, 240) ?? String(err)}`, stages };
         }
-        if (!built) return { decayReason: whyNull.reason };
+        stage('build');
+        if (!built) return { decayReason: whyNull.reason, stages };
         const encode = (useFlash: boolean, b: BuiltArb) => {
             const call = this.callFor(useFlash, pre.terms, root, b);
             return { from: this.opts.ownerAddress, to: this.cfg.chain.executor!, data: this.executor.interface.encodeFunctionData(call.name, call.args(b.minProfitWei)) };
@@ -746,7 +762,7 @@ export class CandidateExecutor {
             fallback = { built: lb, funding: pre.terms!.provider, tx: encode(false, lb), send: sendFor(false, lb, pre.terms!.provider) };
         }
         const funding = pre.useFlash ? 'flash-swap' : pre.terms!.provider;
-        return { built, funding, tx: encode(pre.useFlash, built), floorFor, fallback, send: sendFor(pre.useFlash, built, funding) };
+        return { built, funding, tx: encode(pre.useFlash, built), floorFor, fallback, send: sendFor(pre.useFlash, built, funding), stages };
     }
 
     /** An executor custom error by name (InsufficientRepay(balance, required)…), else a reason string, from raw revert data. */
@@ -997,8 +1013,10 @@ export class CandidateExecutor {
                     .getFunction(call.name).populateTransaction(...call.args(minProfit));
                 req.gasLimit = gasLimit;
                 Object.assign(req, await this.nextSendFields(sendPrep));   // nonce + fees, fetched ahead where the caller could
+                mark('nonce+fees');
                 const prepared = await signer.populateTransaction(req);
                 const raw = await signer.signTransaction(prepared);
+                mark('sign');
                 try {
                     const hash: string = await this.sendProvider!.send('eth_sendRawTransaction', [raw]);
                     this.lastNonce = Number(prepared.nonce);
@@ -1014,13 +1032,14 @@ export class CandidateExecutor {
             if ('error' in sent) { attempt.simulationError = sent.error; return attempt; }
             const txHash = sent.hash;
             mark('send');
+            attempt.sendStages = stageDurations(t0, marks);
             attempt.broadcast = true;
             attempt.txHash = txHash;
 
             return this.settle(attempt, async () => {
                 // A direct send can silently not land (dropped from ordering), so
                 // bound the wait and treat a timeout as not-landed rather than hang.
-                const receipt = await this.provider.waitForTransaction(txHash, 1, 60_000);
+                const receipt = await waitReceipt(this.provider, txHash, 60_000);
                 if (!receipt) {
                     (signer as { reset?: () => void }).reset?.();
                     this.lastNonce = -1;   // it may never mine: stop building on its nonce
@@ -1029,6 +1048,7 @@ export class CandidateExecutor {
                 }
                 attempt.latency = latencyNote(built.blockTag, receipt.blockNumber, t0, marks);
                 attempt.gasCostWei = gasCostOf(receipt);
+                attempt.minedBlock = receipt.blockNumber;
                 if (receipt.status !== 1) {
                     attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${txHash}`;
                     return;
@@ -1041,6 +1061,7 @@ export class CandidateExecutor {
         const signed = this.executor.connect(signer) as Contract;
         const sent = await this.withSendLock(async () => {
             const fields = await this.nextSendFields(sendPrep);
+            mark('nonce+fees');
             try {
                 const tx = await signed.getFunction(call.name)(...call.args(minProfit), { gasLimit, ...fields });
                 this.lastNonce = Number(tx.nonce);
@@ -1054,6 +1075,7 @@ export class CandidateExecutor {
         if ('error' in sent) { attempt.simulationError = sent.error; return attempt; }
         const tx = sent.tx;
         mark('send');
+        attempt.sendStages = stageDurations(t0, marks);
         attempt.broadcast = true;
         attempt.txHash = tx.hash;
 
@@ -1063,27 +1085,22 @@ export class CandidateExecutor {
             // inclusion. "Successful" for the trade ledger means status=1
             // confirmed, not just sent.
             //
-            // ethers v6's wait() does not return a status=0 receipt: it THROWS
-            // CALL_EXCEPTION with the receipt attached. Left uncaught, a mined
-            // revert surfaced as "attempt threw … transaction execution reverted"
-            // with no hash, and the attempt was never reported as a broadcast
-            // (Sonic hot run, 2026-10-12, #13814).
-            let receipt: any;
-            try {
-                // Bounded: a tx that is dropped (or whose nonce another tx took) never
-                // mines, and an unbounded wait would stall the loop for good.
-                receipt = await tx.wait(1, 60_000);
-            } catch (err: any) {
-                if (err?.receipt) receipt = err.receipt;
-                else {
-                    this.lastNonce = -1;   // it may never mine: stop building on its nonce
-                    attempt.simulationError = `broadcast, but waiting for the receipt failed: ${String(err?.shortMessage ?? err?.message ?? err).slice(0, 160)}, txHash=${tx.hash}`;
-                    return;
-                }
+            // waitReceipt returns a status=0 receipt as-is. (ethers v6's wait()
+            // THROWS on one, so a mined revert once surfaced as "attempt threw …"
+            // with no hash: Sonic hot run, 2026-10-12, #13814.)
+            //
+            // Bounded: a tx that is dropped (or whose nonce another tx took) never
+            // mines, and an unbounded wait would stall the loop for good.
+            const receipt: any = await waitReceipt(this.provider, tx.hash, 60_000);
+            if (!receipt) {
+                this.lastNonce = -1;   // it may never mine: stop building on its nonce
+                attempt.simulationError = `broadcast but not mined within 60s, txHash=${tx.hash}`;
+                return;
             }
-            attempt.latency = latencyNote(built.blockTag, receipt?.blockNumber, t0, marks);
-            if (receipt) attempt.gasCostWei = gasCostOf(receipt);
-            if (!receipt || receipt.status !== 1) {
+            attempt.latency = latencyNote(built.blockTag, receipt.blockNumber, t0, marks);
+            attempt.gasCostWei = gasCostOf(receipt);
+            attempt.minedBlock = receipt.blockNumber;
+            if (receipt.status !== 1) {
                 // Broadcast but reverted on-chain — not a trade, not logged to the
                 // ledger. Surfaced via simulationError so the CLI print picks it up.
                 attempt.simulationError = `transaction broadcast but reverted on-chain (status=0)${gasSpent(receipt)}, txHash=${tx.hash}`;
@@ -1478,13 +1495,17 @@ const V2_SWAP_IFACE = new Interface(['function swap(uint256 amount0Out, uint256 
  * time it executed — the number to watch when broadcasts revert on a fast chain.
  */
 function latencyNote(quoteBlock: number | undefined, landedBlock: number | undefined, t0: number, marks: Array<[string, number]>): string {
-    const parts: string[] = [];
-    let prev = t0;
-    for (const [label, t] of marks) { parts.push(`${label} ${t - prev}ms`); prev = t; }
+    const parts = stageDurations(t0, marks).map(([label, ms]) => `${label} ${ms}ms`);
     const blocks = quoteBlock != null && landedBlock != null
         ? `quoted @${quoteBlock}, landed @${landedBlock} (+${landedBlock - quoteBlock} block${landedBlock - quoteBlock === 1 ? '' : 's'}); `
         : landedBlock != null ? `landed @${landedBlock}; ` : '';
     return blocks + parts.join(', ');
+}
+
+/** Timestamped marks → [label, ms since the previous mark (or t0)]. */
+function stageDurations(t0: number, marks: Array<[string, number]>): Array<[string, number]> {
+    let prev = t0;
+    return marks.map(([label, t]) => { const ms = t - prev; prev = t; return [label, ms]; });
 }
 
 /**

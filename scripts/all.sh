@@ -12,7 +12,10 @@ fi
 
 if [[ "$1" = '--live' ]]; then
     LIVENESS="--live"
-    LIVERUNS="--live-backruns"
+    # No --live-backruns: on Sonic (VPS, 2026-11-02) all 22 sent backruns
+    # reverted, 0.41 S of gas, each landing a block after its victim. The
+    # pending probe still simulates them; set LIVERUNS=--live-backruns in the
+    # environment to send again.
 fi
 
 logd(){
@@ -72,5 +75,5 @@ if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then
     logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted > /dev/null && echo '[probe] complete'
     logd 'arbitrage' yarn triangles $CHAIN && echo "[triangles] complete" 
     logd 'arbitrage' yarn evaluate $CHAIN --verbose
-    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS $LIVERUNS
+    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS ${LIVERUNS:-}
 fi
