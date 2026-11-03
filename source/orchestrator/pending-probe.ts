@@ -110,7 +110,8 @@ export type BundleResult = {
 export type PoolReads = Map<string, { pre: string[]; post: string[] }>;
 
 /** The state a pending swap leaves its pools at, exact — what buildHops takes as postState. */
-export type PostState = { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, V3PoolState> };
+/** `block`: the victim's simulation base, where the path's other pools are read (buildHops' atBlock). */
+export type PostState = { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, V3PoolState>; block?: number };
 
 /** The transaction directly after the victim in its block. */
 export type NextTx = {
@@ -625,6 +626,12 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         if (moves.length === 0) return;
         stats.touchedOurPools++;
         if (!moves.some(m => m.bps >= deps.minMoveBps)) { stats.belowGate++; return; }
+        // The sender's confirmed nonce and the base fee depend on nothing
+        // below: fetch them now, alongside the read-back, not after it (Sonic
+        // VPS, 2026-11-02: 19ms + 15ms median, one after the other). Not
+        // before the gate: that would add a nonce read to every simulation.
+        const nonceP = deps.nonceOf && tx.nonce != null ? deps.nonceOf(tx.from).catch(() => null) : undefined;
+        const baseFeeP = deps.backrun && deps.baseFee ? deps.baseFee().catch(() => null) : undefined;
         if (deps.readPools) {
             try {
                 moves = confirmMoves(moves, await deps.readPools(tx, moves.map(m => ({ pair: m.pair, kind: m.kind }))));
@@ -666,8 +673,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         // from a sender whose confirmed nonce was 13. The feed relays queued
         // txs too; one that can't be mined until four others arrive is no
         // victim — a backrun sent behind it lands alone and reverts.
-        if (deps.nonceOf && tx.nonce != null) {
-            const confirmed = await deps.nonceOf(tx.from).catch(() => null);
+        if (nonceP) {
+            const confirmed = await nonceP;
             stage('nonce check');
             if (confirmed != null && Number(tx.nonce) > confirmed) {
                 stats.nonceGapped++;
@@ -677,8 +684,8 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             }
         }
         if (deps.backrun) {
-            op.bid = victimGasPrice(tx, deps.baseFee ? await deps.baseFee().catch(() => null) : null);
-            if (deps.baseFee) stage('base fee');
+            op.bid = victimGasPrice(tx, baseFeeP ? await baseFeeP : null);
+            if (baseFeeP) stage('base fee');
             await backruns(tx, moves, fresh, op);
         }
         await outcome(op, tris);
@@ -742,7 +749,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
 
     async function backruns(tx: PendingTx, moves: PoolMove[], fresh: IndexedCandidate[], op: Opportunity): Promise<void> {
         const br = deps.backrun!;
-        const post: PostState = { reserves: new Map(), v3: new Map() };
+        const post: PostState = { reserves: new Map(), v3: new Map(), block: op.baseBlock };
         for (const m of moves) {
             if (m.kind === 'v2') post.reserves.set(m.pair, { reserve0: m.raw0, reserve1: m.raw1 });
             else post.v3.set(m.pair, m.state);

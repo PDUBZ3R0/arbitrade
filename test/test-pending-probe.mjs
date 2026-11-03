@@ -145,6 +145,7 @@ const executor = new CandidateExecutor(cfg, provider, pricing, {
 console.log('\n2. probe on the mempool');
 const records = [];
 const plans = [];
+const prepareArgs = [];
 const logs = [];
 let indexed = await provider.getBlockNumber();
 const backend = rpcBackend(RPC_URL);
@@ -154,7 +155,7 @@ const probe = createPendingProbe({
     ...backend,
     indexedBlock: () => indexed,
     backrun: {
-        prepare: async (c, post) => { const p = await executor.prepareBackrun(c, db, post); plans.push(p); return p; },
+        prepare: async (c, post) => { prepareArgs.push({ c, post }); const p = await executor.prepareBackrun(c, db, post); plans.push(p); return p; },
         bundle: backend.bundle,
         profitOf: (l) => executor.arbExecutedProfit(l),
     },
@@ -222,16 +223,40 @@ ok(s.phantomMoves === 0 && s.confirmErrors === 0, 'the victim\'s move is confirm
 }
 ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim, 'nothing of ours was sent (the owner nonce is unchanged on chain)');
 
+// Trims (Sonic VPS, 2026-11-02: seen→ready 193–666ms against a ~274ms window).
+{
+    // The path's other pools are read at the victim's simulation block, in one round.
+    const { c, post } = prepareArgs[0] ?? {};
+    const simBase = Number(logs.find(l => l.includes(victim.hash.slice(0, 12)) && /simulated in \d+ms on block/.test(l))?.match(/on block (\d+)/)?.[1]);
+    ok(post?.block === simBase && Number.isFinite(simBase), 'the backrun is built at the victim\'s simulation block', JSON.stringify({ post: post?.block, simBase }));
+    ok(plans[0]?.built?.blockTag === simBase, 'its path was read at that block', JSON.stringify({ blockTag: plans[0]?.built?.blockTag }));
+    // An endpoint that can't serve the block (one behind in the pool): read again, unpinned.
+    const p = await executor.prepareBackrun(c, db, { ...post, block: 1e9 });
+    ok(p.tx && p.built.expectedProfit === plans[0].built.expectedProfit && p.stages?.some(([l]) => l === 'build (pinned, failed)'),
+       'a pinned read that fails is retried unpinned, and builds the same', JSON.stringify({ tx: !!p.tx, stages: p.stages, error: p.error }));
+    // A stale gas price is refreshed without waiting, when one is already held.
+    const held = executor.gasPriceWei;
+    executor.gasPriceFetchedAt = 0;
+    await executor.ensureGasPrice({ background: true });
+    const inFlight = executor.gasPriceRefresh;
+    ok(held != null && inFlight != null && executor.gasPriceFetchedAt === 0 && executor.gasPriceWei === held,
+       'background: the held gas price is used now, the refresh runs behind it');
+    await inFlight;
+    ok(executor.gasPriceFetchedAt > 0 && executor.gasPriceRefresh === null, 'background: the refresh lands, and only one ran');
+}
+
 // The same victim seen by a probe told its sender is two nonces behind:
 // queued behind a gap, not next to land — no backrun is built for it.
 {
     const gapRecords = [];
+    const order = [];
     let prepared = 0;
     const gapped = createPendingProbe({
         index: ix, thresholds: () => thresholds, pricing: () => pricing,
         decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
         ...backend,
-        nonceOf: async () => victim.nonce - 2,
+        nonceOf: async () => { order.push('nonce asked'); return victim.nonce - 2; },
+        readPools: async (...a) => { const r = await backend.readPools(...a); order.push('read-back done'); return r; },
         backrun: { prepare: async () => { prepared++; return {}; }, bundle: backend.bundle, profitOf: () => null },
         minMoveBps: 10, landWaitMs: 1, record: (o) => gapRecords.push(o), log: () => {},
     });
@@ -242,6 +267,7 @@ ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim
     ok(g.opportunities === 1 && g.nonceGapped === 1 && g.backrunsTried === 0 && prepared === 0 && gapRecords[0]?.nonceGap === 2,
        'a victim queued behind a nonce gap is recorded, not backrun', JSON.stringify({ opp: g.opportunities, gapped: g.nonceGapped, tried: g.backrunsTried, rec: gapRecords[0]?.nonceGap }));
     ok(probe.stats().nonceGapped === 0, '(sanity) the real probe saw the victim as next to land');
+    ok(order.join() === 'nonce asked,read-back done', 'the nonce is asked alongside the read-back, not after it', order.join());
 }
 // A bundle simulated on a block that already holds the victim (Sonic,
 // 2026-11-01: 15 of 22 reverts) is relabelled 'late' once the victim's block

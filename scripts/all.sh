@@ -50,7 +50,8 @@ RESERVES="${RESERVES:-30m}"
 reserves() {
     while :; do
         sleep $RESERVES
-        yarn reserves $CHAIN --blacklist-dead > /dev/null
+        yarn reserves $CHAIN --blacklist-dead &> /dev/null
+        logd '@reserves' echo "refreshed all reserves."
     done
 }
 
@@ -64,7 +65,7 @@ if [[ "$KEYWORD" = "L" || "$KEYWORD" = "_" ]]; then
     supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS &
 fi
 
-logd "@startup@" runstart
+logd "@startup " runstart
 reserves &
 
 if [[ "$KEYWORD" = "L" ]]; then
@@ -72,8 +73,8 @@ if [[ "$KEYWORD" = "L" ]]; then
 fi
 
 if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then
-    logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted > /dev/null && echo '[probe] complete'
+    logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted &> /dev/null && echo '[probe] complete'
     logd 'arbitrage' yarn triangles $CHAIN && echo "[triangles] complete" 
-    logd 'arbitrage' yarn evaluate $CHAIN --verbose
+    ## ogd 'arbitrage' yarn evaluate $CHAIN --verbose
     supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS ${LIVERUNS:-}
 fi

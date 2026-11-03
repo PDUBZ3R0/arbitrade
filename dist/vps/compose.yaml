@@ -20,9 +20,35 @@ services:
     environment:
       MODE: "live"
       RUNS: "all"
+      RESERVES: "5m"
     volumes:
       - sonic-db:/app/db
       - sonic-log:/app/log
+      - ./db:/opt/seed/db:ro
+
+  polygon:
+    <<: *arb
+    image: polygon
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: polygon } }
+    environment:
+      MODE: "live"
+      RUNS: "all"
+    volumes:
+      - polygon-db:/app/db
+      - polygon-log:/app/log
+      - ./db:/opt/seed/db:ro
+
+  gnosis:
+    <<: *arb
+    image: gnosis
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: gnosis } }
+    environment:
+      MODE: "live"
+      RUNS: "all"
+      RESERVES: "5m"
+    volumes:
+      - gnosis-db:/app/db
+      - gnosis-log:/app/log
       - ./db:/opt/seed/db:ro
 
   # avalanche:
@@ -35,30 +61,6 @@ services:
   #   volumes:
   #     - avalanche-db:/app/db
   #     - avalanche-log:/app/log
-  #     - ./db:/opt/seed/db:ro
-
-  # polygon:
-  #   <<: *arb
-  #   image: polygon
-  #   build: { context: ., dockerfile: Containerfile, args: { CHAIN: polygon } }
-  #   environment:
-  #     MODE: "live"
-  #     RUNS: "liquidate"
-  #   volumes:
-  #     - polygon-db:/app/db
-  #     - polygon-log:/app/log
-  #     - ./db:/opt/seed/db:ro
-
-  # gnosis:
-  #   <<: *arb
-  #   image: gnosis
-  #   build: { context: ., dockerfile: Containerfile, args: { CHAIN: gnosis } }
-  #   environment:
-  #     MODE: "live"
-  #     RUNS: "liquidate"
-  #   volumes:
-  #     - gnosis-db:/app/db
-  #     - gnosis-log:/app/log
   #     - ./db:/opt/seed/db:ro
 
   # hyperliquid:
@@ -112,12 +114,12 @@ services:
 volumes:
   sonic-db:
   sonic-log:
+  polygon-db:
+  polygon-log:
+  gnosis-db:
+  gnosis-log:
   # avalanche-db:
   # avalanche-log:
-  # polygon-db:
-  # polygon-log:
-  # gnosis-db:
-  # gnosis-log:
   # hyperliquid-db:
   # hyperliquid-log:
   # monad-db:

@@ -41,7 +41,9 @@
     "bigblocks": "node scripts/hyperevm-bigblocks.mjs",
     "build-vps": "git pull && cp dist/vps/* . && docker compose down -v && docker compose build && docker compose up -d",
     "deploy-vps": "ssh arb 'cd /opt/arbitrade && yarn build-vps'",
-    "build-aws": "scripts/aws/setup-instance.sh"
+    "build-aws": "bash scripts/aws/setup-instance.sh",
+    "log-vps": "bash scripts/vpslog.sh",
+    "seed-vps": "bash scripts/vpseed.sh"
   },
   "dependencies": {
     "@envio-dev/hypersync-client": "^1.4.0",

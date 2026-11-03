@@ -335,6 +335,45 @@ try {
         ok(built && free && built.expectedProfit === free.expectedProfit && refused === 0,
            'buildHops prices the path a pool per call, and the same as without the cap', err ? `(${err.slice(0, 80)})` : `(${refused} refused)`);
     }
+
+    console.log('\n8. a backrun\'s path is read at its victim\'s block, in one round');
+    {
+        // Sonic VPS, 2026-11-02: unpinned, a V3 path took up to four round trips
+        // in a row (146ms median) against a ~274ms window. Pinned (atBlock),
+        // every read is at that block and all of them are in flight at once.
+        await fresh();
+        const q1 = await v3pool(R, A, 500, 1.0), q2 = await v3pool(A, B, 3000, 1.03), p3 = await v2(B, R, 1e6, 1e6);
+        const cand = {
+            rootToken: R.a, inputAmount: Number(E(500)), netProfit: 0, triangleId: 0,
+            hops: [[q1, R, A, 'v3', 0.0005], [q2, A, B, 'v3', 0.003], [p3, B, R, 'v2', 0.003]]
+                .map(([pair, tin, tout, kind, fee]) => ({ pair, factory: ethers.ZeroAddress, tokenIn: tin.a, tokenOut: tout.a, fee, kind })),
+        };
+        const atB0 = await provider.getBlockNumber();
+        const then = await buildHops(provider, EX, db, cand, 0n, YO);
+        // Move p3 after that block: B is worth more R now.
+        await send(R.t.mint(p3, E(5e4), ov()));
+        await send(new ethers.Contract(p3, art.MockPair.abi, signer).sync(ov()));
+        const nowBuilt = await buildHops(provider, EX, db, cand, 0n, YO);
+        let inFlight = 0, maxInFlight = 0;
+        const slow = new Proxy(provider, { get(t, k) {
+            if (k === 'call') return async (tx) => {
+                maxInFlight = Math.max(maxInFlight, ++inFlight);
+                try { await new Promise(r => setTimeout(r, 30)); return await t.call(tx); } finally { inFlight--; }
+            };
+            const v = Reflect.get(t, k, t);
+            return typeof v === 'function' ? v.bind(t) : v;
+        } });
+        const pinned = await buildHops(slow, EX, db, cand, 0n, YO, { atBlock: atB0 });
+        const pinnedMax = maxInFlight;
+        maxInFlight = 0;
+        await buildHops(slow, EX, db, cand, 0n, YO);
+        const unpinnedMax = maxInFlight;
+        ok(then && nowBuilt && pinned && then.expectedProfit !== nowBuilt.expectedProfit && pinned.expectedProfit === then.expectedProfit && pinned.blockTag === atB0,
+           'pinned, every pool (V3 and V2) is read at that block, not latest',
+           `(at ${atB0}: ${then?.expectedProfit}, latest: ${nowBuilt?.expectedProfit}, pinned: ${pinned?.expectedProfit} @${pinned?.blockTag})`);
+        ok(pinnedMax === 3 && unpinnedMax === 1, 'pinned, both V3 reads and the V2 multicall are in flight together (unpinned: one at a time)',
+           `(pinned ${pinnedMax}, unpinned ${unpinnedMax})`);
+    }
 } catch (e) {
     console.error(e); fails++;
 } finally {

@@ -241,6 +241,8 @@ export class CandidateExecutor {
 
     private gasPriceWei: bigint | null = null;
     private gasPriceFetchedAt = 0;
+    /** A background gas-price refresh in flight (ensureGasPrice({ background })), so only one runs. */
+    private gasPriceRefresh: Promise<void> | null = null;
     private gasFloorUnavailableReason: string | null = null;
     /** See withSendLock / nextSendFields. */
     private sendChain: Promise<unknown> = Promise.resolve();
@@ -480,8 +482,23 @@ export class CandidateExecutor {
     /** Current gas price snapshot, in wei. Null until the first successful fetch. */
     get lastGasPriceWei(): bigint | null { return this.gasPriceWei; }
 
-    private async ensureGasPrice(): Promise<void> {
+    /**
+     * `background`: with a price already held, refresh a stale one without
+     * waiting for it — this call prices with the held one. For a backrun,
+     * where the wait is the cost: Sonic VPS, 2026-11-02, the refresh was 0ms
+     * median but 176ms p90 of a ~274ms window. The floor is then at most one
+     * refresh stale; the send's own fee fields come from prepareSend's fresh fetch.
+     */
+    private async ensureGasPrice(opts: { background?: boolean } = {}): Promise<void> {
         if (this.gasPriceWei != null && Date.now() - this.gasPriceFetchedAt < this.gasPriceMaxAgeMs) return;
+        if (opts.background && this.gasPriceWei != null) {
+            this.gasPriceRefresh ??= this.fetchGasPrice().finally(() => { this.gasPriceRefresh = null; });
+            return;
+        }
+        await this.fetchGasPrice();
+    }
+
+    private async fetchGasPrice(): Promise<void> {
         try {
             const feeData = await this.provider.getFeeData();
             // Prefer maxFeePerGas: it's a ceiling rather than an expectation,
@@ -718,15 +735,23 @@ export class CandidateExecutor {
         // Live: nonce and fees fetched while the path is built and the bundle
         // simulated, so the send is one round trip (as attempt() does).
         const sendPrep = this.opts.liveBackruns && this.opts.signer ? prepareSend(this.opts.signer, this.provider) : null;
-        await this.ensureGasPrice();
+        await this.ensureGasPrice({ background: true });
         stage('gas price');
         const root = candidate.rootToken;
         const whyNull: { reason?: string } = {};
         let built: BuiltArb | null;
+        const build = (atBlock: number | undefined) => buildHops(this.provider, this.cfg.chain.executor!, db, candidate, this.minProfitWeiFor(root), this.cfg.chain.contract, {
+            flashSwap: pre.useFlash, premium: pre.useFlash ? 0 : (pre.terms?.premium ?? 0),
+            algebraPools: pre.algebraPools, whyNull, postState, atBlock,
+        });
         try {
-            built = await buildHops(this.provider, this.cfg.chain.executor!, db, candidate, this.minProfitWeiFor(root), this.cfg.chain.contract, {
-                flashSwap: pre.useFlash, premium: pre.useFlash ? 0 : (pre.terms?.premium ?? 0),
-                algebraPools: pre.algebraPools, whyNull, postState,
+            // Pinned to the victim's simulation block: every read in one round
+            // (buildHops' atBlock). A pooled endpoint a block behind can't serve
+            // it ("header not found"); then once more the unpinned way.
+            built = await build(postState?.block).catch(err => {
+                if (postState?.block === undefined) throw err;
+                stage('build (pinned, failed)');
+                return build(undefined);
             });
         } catch (err) {
             stage('build');

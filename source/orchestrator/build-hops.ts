@@ -264,7 +264,16 @@ export async function buildHops(
          * quote is the pair's own getAmountOut, which can only answer for the
          * state already on chain.
          */
-        postState?: { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, any> };
+        postState?: { reserves: Map<string, { reserve0: bigint; reserve1: bigint }>; v3: Map<string, any>; block?: number };
+        /**
+         * Read every pool at this block, all in one parallel round. Unpinned,
+         * the first V3 read sets the block for the rest, then the Algebra fee
+         * reads, then the V2 multicall: up to four round trips in a row. Sonic
+         * VPS, 2026-11-02: that was the backrun's biggest stage (146ms median,
+         * 535ms worst) against ~274ms from seeing a victim to its block. A
+         * backrun knows the block already: the one its victim was simulated on.
+         */
+        atBlock?: number;
     } = {},
 ): Promise<BuiltArb | null> {
     const why = (r: string): null => { if (opts.whyNull) opts.whyNull.reason = r; return null; };
@@ -281,9 +290,24 @@ export async function buildHops(
     }
     const v3Hops = hops.filter(h => isV3(h) && !post?.v3.has(h.pair.toLowerCase()));
     const v3ByPool = new Map<string, any>(post?.v3 ?? []);
-    let blockTag: number | undefined;
+    let blockTag: number | undefined = opts.atBlock;
     // This chain's own block, asked up front where the contracts can't report it.
-    if (await blockNumberIsL1(provider)) blockTag = await provider.getBlockNumber();
+    if (blockTag === undefined && await blockNumberIsL1(provider)) blockTag = await provider.getBlockNumber();
+    // A stable hop is quoted by a second call (the pair's getAmountOut) after
+    // the multicall; pin both to one block so the quote and the reserves agree.
+    if (blockTag === undefined && v3Hops.length === 0 && hops.some(h => h.stable)) blockTag = await provider.getBlockNumber();
+
+    const v2Hops = hops.filter(h => !isV3(h));
+    const calls: Multicall3Call[] = v2Hops.map(h => ({
+        target: h.pair,
+        allowFailure: false,
+        callData: PAIR_IFACE.encodeFunctionData('getReserves', []),
+    }));
+    // With the block known up front, the V2 reserves are read alongside the V3
+    // state rather than after it. Settled-guarded: a V3 refusal below returns
+    // before this is awaited, and its rejection must not go unhandled.
+    const v2Early = blockTag !== undefined && calls.length > 0 ? multicall3(provider, calls, blockTag) : undefined;
+    v2Early?.catch(() => undefined);
     if (v3Hops.length > 0) {
         if (!yobatchesAddress) throw new Error('cycle has a V3 hop but no YoBatches address (chain.contract) was given');
         // Uniswap-style pools via slot0/tickBitmap; Algebra pools via
@@ -299,6 +323,10 @@ export async function buildHops(
         const isAlg = (h: { pair: string }) => !!opts.algebraPools?.has(h.pair.toLowerCase());
         const reads = v3Hops.map(h => ({ h, read: isAlg(h) ? getAlgebraStates : getV3States }));
         const readOne = (r: typeof reads[number]) => r.read(provider, yobatchesAddress, [r.h.pair], V3_WORDS, blockTag);
+        const alg = reads.filter(r => r.read === getAlgebraStates).map(r => r.h);
+        // The block's timestamp for the Algebra fee, fetched with the reads when the block is known.
+        const blockTsEarly = blockTag !== undefined && alg.length > 0 ? provider.getBlock(blockTag) : undefined;
+        blockTsEarly?.catch(() => undefined);
         const first = blockTag === undefined ? await readOne(reads[0]) : undefined;
         blockTag ??= first!.block;
         const rest = await Promise.all(reads.slice(first ? 1 : 0).map(readOne));
@@ -308,11 +336,10 @@ export async function buildHops(
             if (!s) return why(`v3 pool ${reads[i].h.pair} returned no state`);   // pool stopped answering its state reads — treat as dead
             v3ByPool.set(reads[i].h.pair.toLowerCase(), s);
         }
-        const alg = reads.filter(r => r.read === getAlgebraStates).map(r => r.h);
         // An Algebra V1 pool's stored fee is the LAST swap's; the next one
         // recomputes it first. Price at the higher of the two (util/algebra-fee.ts).
         if (alg.length > 0) {
-            const blockTs = (await provider.getBlock(blockTag ?? 'latest'))?.timestamp ?? 0;
+            const blockTs = (await (blockTsEarly ?? provider.getBlock(blockTag ?? 'latest')))?.timestamp ?? 0;
             const time = Math.max(blockTs + 1, Math.floor(Date.now() / 1000));
             await Promise.all(alg.map(async h => {
                 const key = h.pair.toLowerCase(), s = v3ByPool.get(key);
@@ -322,22 +349,12 @@ export async function buildHops(
         }
     }
 
-    // A stable hop is quoted by a second call (the pair's getAmountOut) after
-    // this multicall; pin both to one block so the quote and the reserves agree.
-    if (blockTag === undefined && hops.some(h => h.stable)) blockTag = await provider.getBlockNumber();
-
-    const v2Hops = hops.filter(h => !isV3(h));
-    const calls: Multicall3Call[] = v2Hops.map(h => ({
-        target: h.pair,
-        allowFailure: false,
-        callData: PAIR_IFACE.encodeFunctionData('getReserves', []),
-    }));
     // An all-V2 path is read at "latest": ask Multicall3 which block that was,
     // in the same call, so the quote still has a block (for the stale-vs-
     // mismatch diagnosis and the broadcast's block lag) at no extra round trip.
     const askBlock = blockTag === undefined;
     if (askBlock) calls.push({ target: MULTICALL3_ADDRESS, allowFailure: true, callData: MC3_BLOCK.encodeFunctionData('getBlockNumber', []) });
-    const results = await multicall3(provider, calls, blockTag);
+    const results = await (v2Early ?? multicall3(provider, calls, blockTag));
     if (askBlock) {
         const r = results.pop()!;
         try { if (r.success && r.returnData !== '0x') blockTag = Number(MC3_BLOCK.decodeFunctionResult('getBlockNumber', r.returnData)[0]); } catch { /* left undefined */ }
