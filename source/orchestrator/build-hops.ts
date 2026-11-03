@@ -274,9 +274,12 @@ export async function buildHops(
          * backrun knows the block already: the one its victim was simulated on.
          */
         atBlock?: number;
+        /** Filled with how long the reads took (ms), the rest of the build being the exact walk: the probe's build stage, split. */
+        timings?: { readMs?: number };
     } = {},
 ): Promise<BuiltArb | null> {
     const why = (r: string): null => { if (opts.whyNull) opts.whyNull.reason = r; return null; };
+    const t0 = Date.now();
     const hops = candidate.hops;
     if (hops.length === 0) throw new Error('candidate has no hops');
     const isV3 = (h: Candidate['hops'][number]) => h.kind === 'v3';
@@ -381,6 +384,7 @@ export async function buildHops(
     }
     // Read anyway (one multicall either way), then replaced by the post-swap state.
     if (post) for (const [p, r] of post.reserves) if (reservesByPair.has(p)) reservesByPair.set(p, r);
+    if (opts.timings) opts.timings.readMs = Date.now() - t0;
 
     // 2. token0/token1 ordering — fixed at pair creation, cached from the scan.
     // Only used for the local prediction; the contract reads token0() itself,

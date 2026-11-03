@@ -380,7 +380,7 @@ ok(rec?.cycles?.[0]?.netProfit > 0 && rec.moves.some(m => m.pair === AB.toLowerC
 {
     const br = rec?.cycles?.[0]?.backrun ?? {};
     const want = ['sim', 'read-back', 'score', 'nonce check', 'base fee'];
-    ok(want.every(k => typeof rec?.stages?.[k] === 'number') && ['preflight', 'gas price', 'build', 'bundle'].every(k => typeof br.stages?.[k] === 'number'),
+    ok(want.every(k => typeof rec?.stages?.[k] === 'number') && ['preflight', 'gas price', 'build reads', 'build walk', 'bundle'].every(k => typeof br.stages?.[k] === 'number'),
        'the record times every stage from seeing the victim to a simulated backrun', JSON.stringify({ victim: rec?.stages, backrun: br.stages }));
     const sum = Object.values(rec?.stages ?? {}).reduce((x, y) => x + y, 0) + Object.values(br.stages ?? {}).reduce((x, y) => x + y, 0);
     ok(typeof br.readyMs === 'number' && sum <= br.readyMs + 2 && br.readyMs - sum < 100,
@@ -436,6 +436,30 @@ await probe.idle();
 s = probe.stats();
 ok(s.opportunities === 1 && s.standingSkipped >= 1, 'a swap through an already-open cycle is not counted as opening it',
    JSON.stringify({ opportunities: s.opportunities, standing: s.standingSkipped }));
+// The state before a swap is scored only for the triangles that clear after
+// it (Polygon VPS, 2026-11-03: scoring all of them twice took up to 1.3s,
+// synchronously). With a bar nothing clears, nothing is scored twice.
+{
+    const realScore = ix.scoreTriangle.bind(ix);
+    let scored = 0;
+    ix.scoreTriangle = (t, th, out) => { scored++; return realScore(t, th, out); };
+    const pi = ix.pairIdx.get(AB.toLowerCase());
+    const affected = ix.affectedTriangles([pi]).length;
+    const big = { address: AB, topics: [SYNC_TOPIC],
+        data: '0x' + [ix.res0[pi] * 1.05, ix.res1[pi] / 1.05].map(x => BigInt(Math.round(x)).toString(16).padStart(64, '0')).join('') };
+    const unreachable = { ...thresholds, minProfitByRoot: new Map([...thresholds.minProfitByRoot].map(([k]) => [k, 1e30])) };
+    const once = createPendingProbe({
+        index: ix, thresholds: () => unreachable, pricing: () => pricing,
+        decimalsByToken: new Map(ix.tokenAddr.map(a => [a, 18])),
+        simulate: async () => ({ ok: true, logs: [big], baseBlock: await provider.getBlockNumber() }),
+        receipt: async () => null, minMoveBps: 10, landWaitMs: 1, log: () => {},
+    });
+    once.onPending({ hash: '0x' + '5c'.repeat(32), from: w.address, to: AB, input: '0x022c0d9f' + '00'.repeat(64) });
+    await once.idle();
+    ix.scoreTriangle = realScore;
+    ok(once.stats().touchedOurPools === 1 && once.stats().opportunities === 0 && affected >= 1 && scored === affected,
+       'with nothing clearing, each affected triangle is scored once, not twice', JSON.stringify({ affected, scored, stats: once.stats().touchedOurPools }));
+}
 await provider.send('evm_mine', []);
 
 // A socket that goes silent without closing is retired and reopened, and the

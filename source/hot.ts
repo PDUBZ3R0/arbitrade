@@ -894,7 +894,7 @@ function pendingSummary(): string {
  * window to beat is the landing lines' "produced Xms after we saw it".
  */
 function stageSummary(p: PendingProbeStats): string {
-    const order = ['sim', 'read-back', 'score', 'nonce check', 'base fee', 'preflight', 'gas price', 'build', 'prepare',
+    const order = ['sim', 'read-back', 'score', 'nonce check', 'base fee', 'preflight', 'gas price', 'build (pinned, failed)', 'build', 'build reads', 'build walk', 'prepare',
         'bundle', 'fallback bundle', 'nonce+fees', 'sign', 'send'];
     const fmtStage = (label: string) => { const s = p.stageMs[label]; return s ? `${label} ${s.p50} (${s.p90})` : null; };
     const parts = order.map(fmtStage).filter(Boolean);

@@ -740,10 +740,19 @@ export class CandidateExecutor {
         const root = candidate.rootToken;
         const whyNull: { reason?: string } = {};
         let built: BuiltArb | null;
+        const timings: { readMs?: number } = {};
         const build = (atBlock: number | undefined) => buildHops(this.provider, this.cfg.chain.executor!, db, candidate, this.minProfitWeiFor(root), this.cfg.chain.contract, {
             flashSwap: pre.useFlash, premium: pre.useFlash ? 0 : (pre.terms?.premium ?? 0),
-            algebraPools: pre.algebraPools, whyNull, postState, atBlock,
+            algebraPools: pre.algebraPools, whyNull, postState, atBlock, timings,
         });
+        // Polygon VPS, 2026-11-03: build was 282ms median, 1082ms p90 even
+        // pinned. Reads or the exact walk (CPU)? Say which.
+        const buildStages = () => {
+            if (timings.readMs == null) { stage('build'); return; }
+            const t = Date.now(), total = t - at;
+            stages.push(['build reads', timings.readMs], ['build walk', total - timings.readMs]);
+            at = t;
+        };
         try {
             // Pinned to the victim's simulation block: every read in one round
             // (buildHops' atBlock). A pooled endpoint a block behind can't serve
@@ -751,13 +760,14 @@ export class CandidateExecutor {
             built = await build(postState?.block).catch(err => {
                 if (postState?.block === undefined) throw err;
                 stage('build (pinned, failed)');
+                timings.readMs = undefined;
                 return build(undefined);
             });
         } catch (err) {
-            stage('build');
+            buildStages();
             return { error: `could not read the path: ${(err as Error).message?.slice(0, 240) ?? String(err)}`, stages };
         }
-        stage('build');
+        buildStages();
         if (!built) return { decayReason: whyNull.reason, stages };
         const encode = (useFlash: boolean, b: BuiltArb) => {
             const call = this.callFor(useFlash, pre.terms, root, b);

@@ -220,7 +220,7 @@ export type PendingProbeStats = {
     /**
      * Where seen→sent goes, per stage over the last STAGE_SAMPLES victims or
      * backruns that reached it: 'sim', 'read-back', 'score', 'nonce check',
-     * 'base fee', then per backrun 'preflight', 'gas price', 'build',
+     * 'base fee', then per backrun 'preflight', 'gas price', 'build reads' + 'build walk' (or 'build'),
      * 'bundle', 'fallback bundle', and the send's 'nonce+fees', 'sign', 'send'.
      * Totals: 'seen→ready' (a floor-clearing backrun simulated) and
      * 'seen→sent'. Sonic VPS, 2026-11-02: seen→sent ran a median 825ms
@@ -568,28 +568,42 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
      * with no await in between: the hot loop shares this index and must never
      * score a block on a swap that has not happened.
      */
-    function shadowScore(moves: PoolMove[]): { fresh: IndexedCandidate[]; standing: number; tris: Uint32Array } {
+    /**
+     * Score the victim's triangles on its post-swap state; `hits` are the ones
+     * that cleared (the index's dense numbers). Only those are scored again on
+     * the state before it, to tell a fresh cycle from a standing one: scoring
+     * every affected triangle twice was the whole 'score' stage. Polygon VPS,
+     * 2026-11-03: 40–190ms typical, 1330ms worst, synchronous — every other
+     * victim in flight waited on it too.
+     */
+    function shadowScore(moves: PoolMove[]): { fresh: IndexedCandidate[]; standing: number; hits: Uint32Array } {
         const th = deps.thresholds();
         const tris = ix.affectedTriangles(moves.map(m => m.pi));
-        const before = new Set(ix.scoreMany(tris, th).map(c => `${c.triangleId}:${c.direction}`));
         const saved = moves.map(m => m.kind === 'v2'
             ? { m, r0: ix.res0[m.pi], r1: ix.res1[m.pi] }
             : { m, st: ix.v3State[m.pi] });
-        let after: IndexedCandidate[];
+        const after: IndexedCandidate[] = [];
+        const hitList: number[] = [];
         try {
             for (const m of moves) {
                 if (m.kind === 'v2') ix.applySync(m.pair, m.r0, m.r1);
                 else ix.applyV3State(m.pair, m.state);
             }
-            after = ix.scoreMany(tris, th);
+            for (const t of tris) {
+                const n = after.length;
+                ix.scoreTriangle(t, th, after);
+                if (after.length > n) hitList.push(t);
+            }
         } finally {
             for (const s of saved) {
                 if ('r0' in s) ix.applySync(s.m.pair, s.r0!, s.r1!);
                 else ix.applyV3State(s.m.pair, s.st ?? null);
             }
         }
+        const hits = Uint32Array.from(hitList);
+        const before = hits.length ? new Set(ix.scoreMany(hits, th).map(c => `${c.triangleId}:${c.direction}`)) : new Set<string>();
         const fresh = after.filter(c => !before.has(`${c.triangleId}:${c.direction}`));
-        return { fresh, standing: after.length - fresh.length, tris };
+        return { fresh, standing: after.length - fresh.length, hits };
     }
 
     async function handle(tx: PendingTx, seenAt: number): Promise<void> {
@@ -643,7 +657,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             if (!moves.some(m => m.bps >= deps.minMoveBps)) return;
         }
 
-        const { fresh, standing, tris } = shadowScore(moves);
+        const { fresh, standing, hits } = shadowScore(moves);
         stage('score');
         stats.standingSkipped += standing;
         if (fresh.length === 0) return;
@@ -688,7 +702,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             if (baseFeeP) stage('base fee');
             await backruns(tx, moves, fresh, op);
         }
-        await outcome(op, tris);
+        await outcome(op, hits);
     }
 
     /**
@@ -869,8 +883,12 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
         }));
     }
 
-    /** `tris` are the index's dense triangle numbers (what scoreMany takes); op.cycles carry the DB ids. */
-    async function outcome(op: Opportunity, tris: Uint32Array): Promise<void> {
+    /**
+     * `hits` are the index's dense triangle numbers (what scoreMany takes) that
+     * cleared on the victim's state — a superset of op.cycles, which carry the
+     * DB ids. Re-scoring only those keeps the still-open check off the event loop's back.
+     */
+    async function outcome(op: Opportunity, hits: Uint32Array): Promise<void> {
         const deadline = op.seenAt + landWaitMs;
         let landed: LandedTx | null = null;
         while (!landed && now() < deadline) {
@@ -997,7 +1015,7 @@ export function createPendingProbe(deps: PendingProbeDeps): PendingProbe {
             while (deps.indexedBlock() < landed.blockNumber && now() < until) await sleep(250);
         }
         const ids = new Set(op.cycles.map(c => c.triangleId));
-        const open = ix.scoreMany(tris, deps.thresholds()).filter(c => ids.has(c.triangleId));
+        const open = ix.scoreMany(hits, deps.thresholds()).filter(c => ids.has(c.triangleId));
         if (open.length > 0) stats.stillOpen++;
         rec.stillOpenAfter = open.length > 0;
 
