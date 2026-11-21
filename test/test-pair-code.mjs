@@ -36,6 +36,11 @@ console.log('1. the two real pairs');
 
 console.log('\n2. other ways a swap() can be rigged');
 {
+    // Katana on Ronin: swap() asks governance about its tokens and the caller.
+    const k = classifyPairCode(withLine('(bool success, bytes memory ret0) = address(var_c.length).Unresolved_2f1850d7(var_i); // staticcall'));
+    ok(k.verdict === 'trap' && /isAuthorized\(address\[\],address\): it can refuse callers/.test(k.findings[0].what),
+       'a governance isAuthorized gate is named, not an unknown selector', show(k));
+
     const r = classifyPairCode(withLine('(bool success, bytes memory ret0) = address(unresolved_c45a0155).Unresolved_cc56b2c5(var_j); // staticcall'));
     ok(r.verdict === 'watch' && /from the factory/.test(r.findings[0].what), 'a fee read from the factory (Solidly getFee): watch', show(r));
 

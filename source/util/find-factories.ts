@@ -43,6 +43,11 @@
 //   - Are its pairs YoBatches-compatible?
 //   - What's the deploy block?
 //
+// A verified candidate then gets the audits of verify-fees, check-fee-config and
+// pair-code (factory-audit.ts; skip with --no-audit, --claude to read the code),
+// and is named from DefiLlama and DexScreener (llama.ts). Its entry records the
+// factory's creator and DEX.
+//
 // Emits a report with config snippets ready to paste into conf/{chain}.json5,
 // writes log/<chain>/discovery.json, and with --add puts the verified ones
 // straight into conf/<chain>.json5 (comments preserved; see conf-edit.ts).
@@ -52,6 +57,7 @@
 //   yarn find-factories <chain> --lookback 500000  # wider sweep
 //   yarn find-factories <chain> --transport rpc    # force RPC (usually needs paid tier)
 //   yarn find-factories <chain> --add              # also write verified factories to conf
+//   yarn find-factories <chain> --new              # only what appeared since the last full sweep
 //
 // Notes:
 //   - Only "active" factories show up (dormant ones haven't created pairs recently)
@@ -64,7 +70,8 @@ import { ethers, JsonRpcProvider } from 'ethers';
 import { realpathSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadChainConfig, type FactoryEntry } from './config.ts';
+import { loadChainConfig, dbPath, type FactoryEntry, type NormalizedFactory } from './config.ts';
+import { ArbitradeDB } from './db.ts';
 import { blacklistedAddresses } from './blacklist.ts';
 import { addFactoriesToConf, type FactoryAddition } from './conf-edit.ts';
 import type { VerifyResult } from './verify-factory.ts';
@@ -74,7 +81,11 @@ import { DEX_PATTERNS, type DexPattern } from './dex-patterns.ts';
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 import { etherscanGetLogs, rateLimit, notifyRateLimit } from './etherscan.ts';
 import { verifyFactory } from './verify-factory.ts';
+import { hypersyncUp } from './hypersync.ts';
 import { detectProxy } from './proxy-detect.ts';
+import { asFactory, auditCandidate, auditEffect, type AuditContext } from './factory-audit.ts';
+import { hubTokens, type Sample } from './sample-pairs.ts';
+import { identifyDex, loadLlamaIndex, type LlamaIndex } from './llama.ts';
 
 // Contract names that indicate a proxy wrapper rather than the actual DEX logic.
 // When Etherscan returns one of these, we should try detectProxy() and look up
@@ -91,10 +102,11 @@ function isProxyName(name: string): boolean {
 
 import {
     PAIR_CREATED_V2_TOPIC, PAIR_CREATED_SOLIDLY_TOPIC, POOL_CREATED_VELODROME_TOPIC,
-    POOL_CREATED_V3_TOPIC, POOL_CREATED_V3_TS_TOPIC, POOL_CREATED_ALGEBRA_TOPIC,
+    POOL_CREATED_V3_TOPIC, POOL_CREATED_AERODROME_TOPIC, POOL_CREATED_ALGEBRA_TOPIC,
     CL_LAYOUTS, type EventLayout,
 } from './pool-events.ts';
 import { makeProvider, sharedProvider } from './rpc.ts';
+import { EnvioRest } from './envio-rest.ts';
 
 /** A candidate whose events are concentrated-liquidity pool creations. */
 function isClCandidate(c: FactoryCandidate): boolean {
@@ -110,7 +122,7 @@ export type FactoryCandidate = {
     firstBlockSeen: number;
     lastBlockSeen: number;
     /** Which creation event shape(s) this factory emits — PairCreated (v2, solidly)
-     *  or a concentrated-liquidity PoolCreated/Pool (v3, v3ts, algebra). The
+     *  or a concentrated-liquidity PoolCreated/Pool (v3, aerodrome, algebra). The
      *  count field is named for pairs but counts pools too. */
     matchedTopics: Set<EventLayout>;
 };
@@ -118,11 +130,17 @@ export type FactoryCandidate = {
 export type FindOptions = {
     /** Explicit start block. If unset, computed as toBlock - lookbackBlocks. */
     fromBlock?: number;
+    /** Sweep from this block to the head (--new: one past the last full sweep).
+     *  Wins over fromBlock / toBlock / lookbackBlocks. */
+    sinceBlock?: number;
     /** Explicit end block. If unset, defaults to current head. */
     toBlock?: number;
     /** Only used when fromBlock is unset; how far back from toBlock to look. */
     lookbackBlocks?: number;
-    transport?: 'auto' | 'hypersync' | 'etherscan' | 'rpc';
+    /** 'envio' asks our own indexer (envio-rest.ts) instead of sweeping logs. There
+     *  `fromBlock` means "factories whose FIRST pool is at or after it", and the
+     *  range ends where the indexer has got to, not at the head. */
+    transport?: 'auto' | 'envio' | 'hypersync' | 'etherscan' | 'rpc';
     chunkSize?: number;
     explorerApiKey?: string;
     /** If set, sweep bails out at the next chunk boundary and returns partial results. */
@@ -325,12 +343,59 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     // The full-chain default only makes sense because HyperSync is fast enough
     // to make it practical. For chains without HyperSync configured (or with
     // RPC transport), the CLI warns before starting.
-    const head = await provider.getBlockNumber();
     const lookback = opts.lookbackBlocks;
+
+    // Transport selection. Auto priority: envio > hypersync > etherscan > rpc.
+    // Explicit --transport <name> overrides. Missing prereqs cause a clear
+    // error, not a silent fallback (fallback silently downgrading from
+    // hypersync to rpc would confuse someone doing a large sweep).
+    const explicit = opts.transport && opts.transport !== 'auto';
+    const hypersyncUrl   = cfg.chain.hypersyncUrl;
+    const envioToken     = process.env.ENVIO_API_TOKEN;
+    const canHyperSync   = Boolean(hypersyncUrl && envioToken && await hypersyncUp(hypersyncUrl, envioToken));
+    const canEtherscan   = Boolean(opts.explorerApiKey);
+    const envio          = EnvioRest.fromEnv();
+    // The indexer answers "factories created since N", not "emitters active in
+    // a window", so a --lookback / --to-block sweep can't be asked of it.
+    const windowed       = lookback !== undefined || opts.toBlock !== undefined;
+
+    let chosen: 'envio' | 'hypersync' | 'etherscan' | 'rpc';
+    if (opts.transport === 'envio') {
+        if (!envio)   throw new Error(`--transport envio but ENVIO_REST_URL not set in .env`);
+        if (windowed) throw new Error(`--transport envio takes --from-block (or --new) only: it finds factories by their first pool, not by activity in a window`);
+        chosen = 'envio';
+    } else if (opts.transport === 'hypersync') {
+        if (!hypersyncUrl) throw new Error(`--transport hypersync but ${cfg.chain.name} has no hypersyncUrl in @chains.json5`);
+        if (!envioToken)   throw new Error(`--transport hypersync but ENVIO_API_TOKEN not set in .env`);
+        chosen = 'hypersync';
+    } else if (opts.transport === 'etherscan') {
+        if (!canEtherscan) throw new Error(`--transport etherscan but ETHERSCAN_API_KEY not set in .env`);
+        chosen = 'etherscan';
+    } else if (opts.transport === 'rpc') {
+        chosen = 'rpc';
+    } else {
+        // auto
+        if      (envio && !windowed) chosen = 'envio';
+        else if (canHyperSync)  chosen = 'hypersync';
+        else if (canEtherscan)  chosen = 'etherscan';
+        else                    chosen = 'rpc';
+    }
+
+    // With envio the range ends where the indexer has got to: its answer says
+    // nothing about the blocks past that, so they must not count as swept.
+    const head = chosen === 'envio' ? await envio!.processed(cfg.chain.id) : await provider.getBlockNumber();
 
     let from: number;
     let to: number;
-    if (opts.fromBlock !== undefined && opts.toBlock !== undefined) {
+    if (opts.sinceBlock !== undefined) {
+        from = opts.sinceBlock;
+        to   = head;
+    } else if (chosen === 'envio') {
+        // Its --from-block means "first pool at or after", so the range runs to
+        // the head rather than a lookback window.
+        from = opts.fromBlock ?? 0;
+        to   = head;
+    } else if (opts.fromBlock !== undefined && opts.toBlock !== undefined) {
         from = opts.fromBlock;
         to   = opts.toBlock;
     } else if (opts.fromBlock !== undefined) {
@@ -347,17 +412,20 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
         to   = head;
         from = 0;
     }
-    if (to < from) throw new Error(`Bad block range: from=${from} > to=${to}`);
+    // from = to + 1 is an empty range, not an error: --new right after a sweep.
+    if (to < from - 1) throw new Error(`Bad block range: from=${from} > to=${to}`);
     const totalBlocks = to - from + 1;
-    const isFullChainScan = opts.fromBlock === undefined && opts.toBlock === undefined && opts.lookbackBlocks === undefined;
+    const isFullChainScan = opts.fromBlock === undefined && opts.toBlock === undefined && opts.lookbackBlocks === undefined
+        && opts.sinceBlock === undefined;
 
     console.log(`\nSweeping ${cfg.chain.name} for pool-creation emitters (V2/Solidly PairCreated, V3 PoolCreated, Algebra Pool)`);
     console.log(`  Range: blocks ${from} → ${to} (${totalBlocks} blocks${isFullChainScan ? ', full chain from genesis' : ''})`);
-    console.log(`  Transport: ${opts.transport ?? 'auto'}`);
+    console.log(`  Transport: ${chosen}${explicit ? ' (explicit)' : ' (auto)'}`);
+    if (chosen === 'envio') console.log(`  The indexer has processed up to block ${head}; factories whose first pool is in range`);
 
     // If the user asked for a full-chain scan and HyperSync isn't available,
     // warn loudly — this will take a very long time via RPC or Etherscan.
-    if (isFullChainScan) {
+    if (isFullChainScan && chosen !== 'envio') {
         const hasHyperSync = Boolean(cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN);
         const explicitOther = opts.transport && opts.transport !== 'auto' && opts.transport !== 'hypersync';
         if (!hasHyperSync || explicitOther) {
@@ -377,7 +445,7 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
         // biggest V2-style DEX on Base (and Optimism) never shows up at all.
         { hash: POOL_CREATED_VELODROME_TOPIC, label: 'velodrome' },
         { hash: POOL_CREATED_V3_TOPIC,      label: 'v3' },
-        { hash: POOL_CREATED_V3_TS_TOPIC,   label: 'v3ts' },
+        { hash: POOL_CREATED_AERODROME_TOPIC,   label: 'aerodrome' },
         { hash: POOL_CREATED_ALGEBRA_TOPIC, label: 'algebra' },
     ];
 
@@ -388,35 +456,31 @@ export async function findFactories(chainName: string, opts: FindOptions = {}): 
     }
 
     try {
-        // Transport selection. Auto priority: hypersync > etherscan > rpc.
-        // Explicit --transport <name> overrides. Missing prereqs cause a clear
-        // error, not a silent fallback (fallback silently downgrading from
-        // hypersync to rpc would confuse someone doing a large sweep).
-        const explicit = opts.transport && opts.transport !== 'auto';
-        const hypersyncUrl   = cfg.chain.hypersyncUrl;
-        const envioToken     = process.env.ENVIO_API_TOKEN;
-        const canHyperSync   = Boolean(hypersyncUrl && envioToken);
-        const canEtherscan   = Boolean(opts.explorerApiKey);
-
-        let chosen: 'hypersync' | 'etherscan' | 'rpc';
-        if (opts.transport === 'hypersync') {
-            if (!hypersyncUrl) throw new Error(`--transport hypersync but ${cfg.chain.name} has no hypersyncUrl in @chains.json5`);
-            if (!envioToken)   throw new Error(`--transport hypersync but ENVIO_API_TOKEN not set in .env`);
-            chosen = 'hypersync';
-        } else if (opts.transport === 'etherscan') {
-            if (!canEtherscan) throw new Error(`--transport etherscan but ETHERSCAN_API_KEY not set in .env`);
-            chosen = 'etherscan';
-        } else if (opts.transport === 'rpc') {
-            chosen = 'rpc';
-        } else {
-            // auto
-            if      (canHyperSync)  chosen = 'hypersync';
-            else if (canEtherscan)  chosen = 'etherscan';
-            else                    chosen = 'rpc';
+        if (totalBlocks === 0) {
+            console.log(`  Nothing to sweep: already swept to block ${to}`);
+        } else if (chosen === 'envio') {
+            for (const f of await envio!.factories(cfg.chain.id, from)) {
+                if (f.firstBlock > to) continue;   // indexed after we read `processed`
+                if (!f.layout) { console.log(`  [!] ${f.factory}: unknown family "${f.family}" from envio — skipped`); continue; }
+                // One row per (factory, family): a factory emitting two shapes
+                // is one candidate, like the log sweeps make it.
+                const c = emitters.get(f.factory);
+                if (c) {
+                    c.pairCreatedCount += f.pairCount;
+                    c.firstBlockSeen = Math.min(c.firstBlockSeen, f.firstBlock);
+                    c.lastBlockSeen = Math.max(c.lastBlockSeen, f.lastBlock);
+                    c.matchedTopics.add(f.layout);
+                } else {
+                    emitters.set(f.factory, {
+                        address: f.factory, pairCreatedCount: f.pairCount,
+                        firstBlockSeen: f.firstBlock, lastBlockSeen: f.lastBlock,
+                        matchedTopics: new Set([f.layout]),
+                    });
+                }
+            }
+            console.log(`  ${emitters.size} factories from envio`);
         }
-        console.log(`  Chosen transport: ${chosen}${explicit ? ' (explicit)' : ' (auto)'}`);
-
-        for (const topic of topics) {
+        for (const topic of chosen === 'envio' || totalBlocks === 0 ? [] : topics) {
             if (opts.abortSignal?.aborted) break;
             console.log(`\n  Sweeping topic: ${topic.label}...`);
             switch (chosen) {
@@ -490,6 +554,10 @@ function serializeEmitters(emitters: Map<string, FactoryCandidate>): unknown {
 export type CandidateOutcome = {
     status: 'verified' | 'unusable' | 'error' | 'not-verified';
     reason?: string;
+    creator?: string;
+    /** The DEX, per DefiLlama: by the factory's address in its adapter, or DexScreener's dexId. */
+    dex?: { name: string; via: 'adapter' | 'dexscreener'; tvl: number };
+    audit?: { fee?: string; accessor?: string; code?: string; notes: string[] };
     family?: string;
     contractName?: string;
     implementationName?: string;
@@ -523,6 +591,81 @@ export function patternConfirmed(pattern: DexPattern, r: Pick<VerifyResult, 'pro
  */
 const EXECUTOR_CALLBACKS = new Set(['uniswapV3SwapCallback', 'pancakeV3SwapCallback', 'algebraSwapCallback']);
 const PROBE_CONFIDENT = new Set(['high', 'medium']);
+
+/** Everything auditCandidate needs, once per run. */
+async function auditContext(chainArg: string, claude: boolean): Promise<AuditContext> {
+    const cfg = loadChainConfig(chainArg);
+    const provider = sharedProvider(cfg.chain);
+    const logDir = path.join(PROJECT_ROOT, 'log', cfg.chain.label);
+    mkdirSync(logDir, { recursive: true });
+    const hubs = await hubTokens(cfg, provider);
+    if (!hubs.length) console.log('// [!] no hub tokens known for this chain — audits only see recently created pairs');
+    const anthropic = process.env.ANTHROPIC_API_KEY;
+    return {
+        provider, hubs, trusted: new Set(hubs), codeCacheFile: path.join(logDir, 'pair-code-cache.json'),
+        fees: {
+            provider, chainId: cfg.chain.id, rpcUrl: cfg.chain.host, group: 'v2', etherscanKey: process.env.ETHERSCAN_API_KEY,
+            hypersync: cfg.chain.hypersyncUrl && process.env.ENVIO_API_TOKEN ? { url: cfg.chain.hypersyncUrl, apiToken: process.env.ENVIO_API_TOKEN } : undefined,
+            claude: claude && anthropic ? { all: false, allowHeimdall: true, apiKey: anthropic, cacheFile: path.join(logDir, 'fee-analysis-cache.json') } : undefined,
+        },
+    };
+}
+
+/** The snippet was rendered before the audits: show what will actually be written. */
+export function withEntryFacts(snippet: string, entry: FactoryEntry | undefined): string {
+    if (!entry) return snippet;
+    let out = entry.fee != null ? snippet.replace(/^(\s*)fee: [\d.e-]+.*$/m, `$1fee: ${entry.fee}`) : snippet;
+    const facts = [entry.creator && `creator: "${entry.creator}",`, entry.dex && `dex: ${JSON.stringify(entry.dex)},`].filter(Boolean);
+    if (facts.length) out = out.replace(/^(\s*)address: .*$/m, m => `${m}\n${facts.map(f => `${/^\s*/.exec(m)![0]}${f}`).join('\n')}`);
+    return out;
+}
+
+/** Longest one candidate's audits may take: a heimdall decompile alone may run 180s. */
+const AUDIT_TIMEOUT_MS = 300_000;
+
+/** Creator and DEX onto the proposed entry, then the audits' verdict onto the outcome. */
+async function annotateOutcome(
+    o: CandidateOutcome,
+    v: VerifyResult | V3VerifyResult,
+    dexId: string | null | undefined,
+    llama: LlamaIndex | null,
+    auditing: AuditContext | null,
+): Promise<void> {
+    if (v.creator) o.creator = v.creator;
+    const dex = llama ? identifyDex(llama, v.address, dexId) : null;
+    if (dex) { o.dex = dex; console.log(`// ${v.address}: DefiLlama "${dex.name}" (${dex.via === 'adapter' ? 'address in its adapter' : `dexId ${dexId}`})`); }
+    if (!o.proposed) return;
+    const entry = o.proposed.entry as FactoryEntry;
+    if (v.creator) entry.creator = v.creator;
+    if (dex) entry.dex = dex.name;
+    if (!auditing) return;
+
+    const recent: Sample[] = 'samplePairs' in v ? v.samplePairs : [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        const factory = asFactory(o.proposed.group as NormalizedFactory['group'], o.proposed.key, entry);
+        const a = await Promise.race([
+            auditCandidate(auditing, factory, recent),
+            new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error(`audit exceeded ${AUDIT_TIMEOUT_MS / 1000}s`)), AUDIT_TIMEOUT_MS); }),
+        ]);
+        o.audit = {
+            fee: a.fee && `${a.fee.status}${a.fee.finalFee != null ? ` ${a.fee.finalFee} (${a.fee.source})` : ''}`,
+            accessor: a.accessor && `${a.accessor.status}: ${a.accessor.detail}`,
+            code: a.code && `${a.code.report.verdict}${a.code.note ? ` (${a.code.note})` : ''}`,
+            notes: a.notes,
+        };
+        const effect = auditEffect(o.proposed.group, a);
+        console.log(`// ${v.address}: audit fee ${o.audit.fee ?? (o.audit.accessor ?? '-')}, code ${o.audit.code ?? '-'}${effect.hold ? ` — HELD: ${effect.hold}` : ''}`);
+        if (effect.setFee != null) { entry.fee = effect.setFee; o.addable = true; o.heldBack = undefined; }
+        if (effect.basis) o.proposed.basis = `${o.proposed.basis}; ${effect.basis}`;
+        if (effect.hold) { o.addable = false; o.heldBack = effect.hold; }
+    } catch (err) {
+        console.log(`// ${v.address}: audit failed, nothing changed: ${(err as Error).message.slice(0, 160)}`);
+        o.audit = { notes: [`audit failed: ${(err as Error).message.slice(0, 200)}`] };
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 /**
  * The config entry for a verified factory, and whether --add may write it.
@@ -658,7 +801,7 @@ async function emitReport(
     chainArg: string,
     result: Awaited<ReturnType<typeof findFactories>>,
     explorerApiKey: string | undefined,
-    opts: { verify: boolean; verifyLimit: number; addAssumedFees: boolean },
+    opts: { verify: boolean; verifyLimit: number; addAssumedFees: boolean; audit: boolean; claude: boolean },
 ): Promise<Map<string, CandidateOutcome>> {
     const { candidates, unknown, knownCount, scannedRange, aborted } = result;
     const outcomes = new Map<string, CandidateOutcome>();
@@ -783,7 +926,7 @@ async function emitReport(
     // later. See dexscreener.ts's scope note: this flags "worth a look", it
     // does not confirm anything on its own. DexScreener indexes V3 pools by
     // pool address the same way it indexes V2 pairs.
-    const printDexScreener = async (pair: string) => {
+    const printDexScreener = async (pair: string): Promise<string | null> => {
         try {
             const { lookupPairOnDexScreener, isWellKnownDex } = await import('./dexscreener.ts');
             const dsInfo = await lookupPairOnDexScreener(chainArg, pair);
@@ -792,17 +935,24 @@ async function emitReport(
                 const liq = dsInfo.liquidityUsd != null ? `$${dsInfo.liquidityUsd.toLocaleString()}` : 'unknown';
                 console.log(`    DexScreener: dexId="${dsInfo.dexId}" pair=${dsInfo.baseSymbol}/${dsInfo.quoteSymbol} liquidity=${liq}${flag}`);
                 console.log(`    ${dsInfo.url}`);
+                return dsInfo.dexId;
             }
         } catch { /* best-effort — DexScreener lookup never blocks the report */ }
+        return null;
     };
 
-    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean; result: VerifyResult | V3VerifyResult }> = [];
+    // The verifiers read our indexer's pools when it has them; see samplePools.
+    const envio = EnvioRest.fromEnv();
+    const chainId = loadChainConfig(chainArg).chain.id;
+    const indexed = async (address: string) => envio ? envio.samplePools(chainId, address).catch(() => null) : null;
+
+    const verified: Array<{ candidate: FactoryCandidate; snippet: string; family: string; dexId?: string | null; contractName?: string; implementationName?: string; implementationAddress?: string; explorerVerified: boolean; result: VerifyResult | V3VerifyResult }> = [];
     for (const c of toVerify) {
         if (isClCandidate(c)) {
             console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pools, concentrated liquidity)`);
             try {
                 const { verifyV3Factory } = await import('./verify-v3-factory.ts');
-                const v = await withTimeout(verifyV3Factory(chainArg, c.address, explorerApiKey), VERIFY_TIMEOUT_MS, `verifyV3Factory(${c.address})`);
+                const v = await withTimeout(verifyV3Factory(chainArg, c.address, explorerApiKey, { known: await indexed(c.address) }), VERIFY_TIMEOUT_MS, `verifyV3Factory(${c.address})`);
                 if (v.usable) {
                     const { displayName, explorerVerified, implementationName, implementationAddress, nameNote } =
                         await resolveExplorerIdentity(c.address);
@@ -810,9 +960,9 @@ async function emitReport(
                     const how = v.family === 'algebra' ? '' : `, poolEvent ${v.poolEvent}`;
                     console.log(`  ✓ [${tag}] callback ${v.callback}${how}, fees ${v.feesSeen.join('/')} pips` +
                         (v.lensChecked ? ', YoBatches reads it' : '') + nameNote);
-                    if (v.samplePool) await printDexScreener(v.samplePool);
+                    const dexId = v.samplePool ? await printDexScreener(v.samplePool) : null;
                     verified.push({
-                        candidate: c, snippet: v.configSnippet, family: v.family,
+                        candidate: c, snippet: v.configSnippet, family: v.family, dexId,
                         contractName: displayName, implementationName, implementationAddress, explorerVerified, result: v,
                     });
                 } else {
@@ -829,7 +979,7 @@ async function emitReport(
         console.log(`\n▶ Verifying ${c.address} (${c.pairCreatedCount} recent pairs)`);
         try {
             const v = await withTimeout(
-                verifyFactory(chainArg, c.address, explorerApiKey),
+                verifyFactory(chainArg, c.address, explorerApiKey, await indexed(c.address)),
                 VERIFY_TIMEOUT_MS,
                 `verifyFactory(${c.address})`
             );
@@ -840,9 +990,10 @@ async function emitReport(
                     ? 'fee per-pair'
                     : `fee ${v.fee} (${v.feeConfidence})`;
                 console.log(`  ✓ [${v.family.toUpperCase()}] YoBatches compatible, ${feeInfo}${nameNote}`);
-                if (v.samplePair) await printDexScreener(v.samplePair);
+                const dexId = v.samplePair ? await printDexScreener(v.samplePair) : null;
                 verified.push({
                     candidate: c,
+                    dexId,
                     snippet: v.configSnippet,
                     family: v.family,
                     contractName: displayName,
@@ -884,7 +1035,11 @@ async function emitReport(
         // Load pattern registry lazily so this file doesn't hard-depend on it
         const { lookupDexPattern, renderPatternSnippet } = await import('./dex-patterns.ts');
 
-        for (const { candidate, snippet, family, contractName, implementationName, implementationAddress, explorerVerified, result: vr } of verified) {
+        const conf = loadChainConfig(chainArg);
+        const llama: LlamaIndex | null = await loadLlamaIndex(conf.chain.name, path.join(PROJECT_ROOT, 'log', conf.chain.label, 'llama-dex.json')).catch(() => null);
+        if (!llama) console.log('// [!] DefiLlama unavailable — factories go unnamed by it this run');
+        const auditing: AuditContext | null = opts.audit ? await auditContext(chainArg, opts.claude) : null;
+        for (const { candidate, snippet, family, dexId, contractName, implementationName, implementationAddress, explorerVerified, result: vr } of verified) {
             // Naming rule for config keys: prefer the implementation's contract
             // name (real DEX identity) when we detected a proxy. Fall back to
             // the top-level contract name, then to a generic Factory_ prefix.
@@ -909,6 +1064,7 @@ async function emitReport(
                 status: 'verified', family, contractName, implementationName, implementationAddress, explorerVerified,
                 ...proposeEntry(candidate, configKey, vr, named, opts.addAssumedFees),
             });
+            await annotateOutcome(outcomes.get(candidate.address)!, vr, dexId, llama, auditing);
 
             let nameHint = '';
             if (implementationName && contractName) {
@@ -918,6 +1074,7 @@ async function emitReport(
             }
             console.log(`// ${candidate.pairCreatedCount} pairs in the sweep window${nameHint}`);
 
+            const final = outcomes.get(candidate.address)?.proposed?.entry as FactoryEntry | undefined;
             if (pattern) {
                 // Emit a snippet from the pattern registry.
                 const groupComment = `    // Add under factories["${pattern.family}"]:`;
@@ -934,16 +1091,15 @@ async function emitReport(
                 const patternNote = pattern.notes
                     ? `\n          // Pattern: ${pattern.notes}`
                     : '';
-                console.log(
+                console.log(withEntryFacts(
                     `${groupComment}\n` +
                     `        "${configKey}": {${patternNote}\n` +
                     `${body}\n` +
-                    `        }`
-                );
+                    `        }`, final));
             } else {
                 // Fall through to the verify-factory-generated snippet with
                 // NAME_ME substitution.
-                console.log(snippet.replace('NAME_ME', configKey));
+                console.log(withEntryFacts(snippet.replace('NAME_ME', configKey), final));
             }
             console.log('');
         }
@@ -981,13 +1137,21 @@ if (isMain()) {
         console.error('    only --to             → to - lookback → to');
         console.error('    only --lookback       → head - lookback → head');
         console.error('    nothing               → 0 → head  (full chain scan; needs HyperSync)');
+        console.error('  --new                  From one past the block the last full sweep reached, to the head:');
+        console.error('                         only factories that are new since then. Every sweep that covers');
+        console.error('                         block 0 (or continues a saved one) saves where it got to.');
         console.error('');
-        console.error('  --transport auto|hypersync|etherscan|rpc  (default: auto)');
-        console.error('    auto priority: hypersync > etherscan > rpc');
+        console.error('  --transport auto|envio|hypersync|etherscan|rpc  (default: auto)');
+        console.error('    auto priority: envio > hypersync > etherscan > rpc (envio only without --lookback/--to-block)');
+        console.error('    envio needs ENVIO_REST_URL (+ ENVIO_REST_SECRET) in .env: our own indexer, ../hyperindex/ronin.');
+        console.error('      It finds factories by their FIRST pool (--from-block N: first pool at >= N) and stops at');
+        console.error('      the block the indexer has processed, not the head.');
         console.error('    hypersync needs ENVIO_API_TOKEN in .env AND hypersyncUrl in @chains.json5');
         console.error('    etherscan needs ETHERSCAN_API_KEY in .env');
         console.error('    rpc works without keys but is much slower (only if RPC supports address-less log queries)');
         console.error('  --verify-limit N       Max candidates to verify (default: 20, 0 = skip)');
+        console.error('  --no-audit             Skip the fee and pair-code audits of verified candidates');
+        console.error('  --claude               Audits also have Claude read unresolved pairs (costs API money)');
         console.error('  --verify-all           Verify every unknown candidate (may take a long time on');
         console.error('                         chains with many hits; overrides --verify-limit)');
         console.error('  --autosave PATH        Write partial results as JSON every ~15s');
@@ -1024,7 +1188,28 @@ if (isMain()) {
     //                        On chains with 1000+ candidates this can take a long time.
     const verifyAll    = args.includes('--verify-all');
     const verifyLimit  = verifyAll ? Number.MAX_SAFE_INTEGER : getNum('--verify-limit', 20);
-    const transport    = getStr('--transport', 'auto' as const, ['auto', 'hypersync', 'etherscan', 'rpc'] as const)!;
+    const transport    = getStr('--transport', 'auto' as const, ['auto', 'envio', 'hypersync', 'etherscan', 'rpc'] as const)!;
+    // --new: continue from the last sweep that reached the head. The mark lives
+    // in the chain's DB (meta table), next to scan's per-factory progress.
+    const SWEPT_KEY = 'find-factories.lastBlock';
+    const onlyNew = args.includes('--new');
+    if (onlyNew && (fromBlock >= 0 || toBlock >= 0 || lookback >= 0)) {
+        console.error('--new picks its own range: drop --from-block / --to-block / --lookback');
+        process.exit(1);
+    }
+    const readSwept = (): number | null => {
+        const db = new ArbitradeDB(dbPath(chainArg));
+        try {
+            const v = db.getMeta(SWEPT_KEY);
+            return v !== null && Number.isFinite(Number(v)) ? Number(v) : null;
+        } finally { db.close(); }
+    };
+    const swept = readSwept();
+    if (onlyNew) {
+        console.log(swept === null
+            ? '[i] --new: no saved sweep for this chain yet — sweeping all of it (and saving where it gets to)'
+            : `[i] --new: the last sweep reached block ${swept} — sweeping from ${swept + 1}`);
+    }
     const autosavePath = getStr('--autosave', undefined);
     const addToConf      = args.includes('--add');
     const addAssumedFees = args.includes('--add-assumed-fees');
@@ -1065,6 +1250,7 @@ if (isMain()) {
             fromBlock: fromBlock >= 0 ? fromBlock : undefined,
             toBlock:   toBlock >= 0   ? toBlock   : undefined,
             lookbackBlocks: lookback >= 0 ? lookback : undefined,
+            sinceBlock: onlyNew && swept !== null ? swept + 1 : undefined,
             transport,
             explorerApiKey,
             abortSignal: controller.signal,
@@ -1073,6 +1259,15 @@ if (isMain()) {
     } catch (err) {
         console.error(`\n[!] Fatal error: ${(err as Error).message}`);
         process.exit(1);
+    }
+
+    // Save how far the sweeps reach, unbroken from block 0: a sweep that starts
+    // at or before the saved block + 1 extends it; a --lookback window that
+    // leaves a gap does not, or --new would skip what is in the gap.
+    if (!result.aborted && result.scannedRange.from <= (swept ?? -1) + 1 && result.scannedRange.to > (swept ?? -1)) {
+        const db = new ArbitradeDB(dbPath(chainArg));
+        try { db.setMeta(SWEPT_KEY, String(result.scannedRange.to)); } finally { db.close(); }
+        console.log(`[i] Saved: swept to block ${result.scannedRange.to} — the next --new starts at ${result.scannedRange.to + 1}`);
     }
 
     // Write final autosave dump so the JSON reflects the definitive end state.
@@ -1090,6 +1285,8 @@ if (isMain()) {
         verify: !result.aborted && verifyLimit > 0,
         verifyLimit,
         addAssumedFees,
+        audit: !args.includes('--no-audit'),
+        claude: args.includes('--claude'),
     });
 
     const addable = [...outcomes.entries()].filter(([, o]) => o.addable && o.proposed);
@@ -1107,7 +1304,7 @@ if (isMain()) {
                 return {
                     group: o.proposed!.group, key: o.proposed!.key, entry: o.proposed!.entry,
                     comment: `find-factories --add ${today}: ${c.pairCreatedCount} ${o.family === 'v3' || o.family === 'algebra' ? 'pools' : 'pairs'} in sweep` +
-                        `${name ? `, explorer "${name}"` : ', unverified on explorer'}; ${o.proposed!.basis}`,
+                        `${name ? `, explorer "${name}"` : ', unverified on explorer'}${o.dex ? `, DefiLlama "${o.dex.name}"` : ''}; ${o.proposed!.basis}`,
                 };
             });
             try {
@@ -1116,7 +1313,7 @@ if (isMain()) {
                 console.log(`--add: wrote ${added.length} factor${added.length === 1 ? 'y' : 'ies'} to conf/${label}.json5:`);
                 for (const a of added) console.log(`  + factories.${a.group}.${a.key}`);
                 console.log(`Next: yarn scan ${label} && yarn reserves ${label}` +
-                    (addable.some(([, o]) => o.family === 'v2') ? `, and yarn verify-fees ${label} for the v2 fees` : ''));
+                    (addable.some(([, o]) => o.family === 'v2' && !/fee confirmed|fee \S+ → /.test(o.proposed!.basis)) ? `, and yarn verify-fees ${label} for the v2 fees` : ''));
             } catch (err) {
                 console.log(`[!] --add failed, conf/${label}.json5 NOT modified: ${(err as Error).message}`);
             }

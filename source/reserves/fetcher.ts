@@ -90,7 +90,7 @@ const pairStableIface = new Interface([
 // Build the ABI Interface for a factory/pair fee lookup. The function
 // signature depends on both the target (factory vs pair) and, for factory
 // targets, the argument source (pair address vs pair.stable bool).
-function makeFeeIface(
+export function makeFeeIface(
     feeFunctionName: string,
     feeTarget: 'factory' | 'pair',
     feeArgSource: 'pair-address' | 'pair-stable' | 'pair-stable-degen' | 'pair-and-caller' | 'pair-address-stable' = 'pair-address',
@@ -114,6 +114,25 @@ function makeFeeIface(
         sig = `function ${feeFunctionName}(address pair) view returns (uint256)`;
     }
     return new Interface([sig]);
+}
+
+/** Calldata for one pair's fee lookup, per the factory's feeTarget/feeArgSource. */
+export function feeCallData(factory: NormalizedFactory, feeIface: Interface, pair: string, stable: boolean, degen = false): string {
+    const { feeTarget, feeFunction, feeArgSource } = factory;
+    if (feeTarget === 'pair') return feeIface.encodeFunctionData(feeFunction, []);
+    // PairFactory Retro-degen: (bool stable, bool degen).
+    if (feeArgSource === 'pair-stable-degen') return feeIface.encodeFunctionData(feeFunction, [stable, degen]);
+    // PairFactoryUpgradeable.getFee(bool stable). false (volatile) when the
+    // pair has no stable flag.
+    if (feeArgSource === 'pair-stable') return feeIface.encodeFunctionData(feeFunction, [stable]);
+    // Velodrome V2 / Aerodrome PoolFactory.getFee(pool, stable). stable comes
+    // from the PoolCreated event (indexed), so it is always known for pairs
+    // this factory created.
+    if (feeArgSource === 'pair-address-stable') return feeIface.encodeFunctionData(feeFunction, [pair, stable]);
+    // LeetSwapV2.tradingFees(pair, to). 0x0 as `to` returns the baseline fee
+    // (what any user without a per-recipient discount pays).
+    if (feeArgSource === 'pair-and-caller') return feeIface.encodeFunctionData(feeFunction, [pair, '0x0000000000000000000000000000000000000000']);
+    return feeIface.encodeFunctionData(feeFunction, [pair]);
 }
 
 // v2fee/solidly factories express fees as raw uints with wildly different scales:
@@ -381,6 +400,13 @@ export async function fetchReserves(
                     (v3Filter ? `v3 ${v3Pools.length}/${v3Before}` : '') + (v3Filter && v2Filter ? ', ' : '') +
                     (v2Filter ? `v2 ${pairs.length}/${v2Before}` : '') + ` to read, ${pf.dropped.length} unreachable skipped` +
                     (pf.failedBatches ? ` (${pf.failedBatches} balance batch(es) failed — those pools were kept)` : ''));
+                // Ronin shipped with chain.token on an empty predeploy that shares
+                // WRON's symbol: every pool was "unreachable", the run reported
+                // "No pairs need refresh" and looked like a clean no-op.
+                if (pf.rootPools === 0 && allPairs.length > 0) {
+                    console.log(`  [!] none of the ${allPairs.length} pools in the DB touches a root token (${[...rootDecimals.keys()].join(', ')}). ` +
+                        `Check chain.token and flashloan.tokens in conf/${cfg.chain.label}.json5 are the addresses DEXes really pair against.`);
+                }
                 // Unreachable pools get zero reserves so a stale price from
                 // an earlier full read can't linger in enumeration.
                 const zeroed = db.zeroReserves(pf.dropped.map(p => p.pair));
@@ -827,34 +853,10 @@ async function fetchPerPairMetadata(
         // Build the multicall. Fee call target and args depend on feeTarget.
         const calls: Multicall3Call[] = [];
         for (const t of batch) {
-            let feeCallData: string;
-            if (feeTarget === 'pair') {
-                feeCallData = feeIface.encodeFunctionData(feeFunction, []);
-            } else if (feeArgSource === 'pair-stable-degen') {
-                const isStable = Boolean(t.stable);
-                const isDegen = degenByPair.get(t.pair.toLowerCase()) ?? false;
-                feeCallData = feeIface.encodeFunctionData(feeFunction, [isStable, isDegen]);
-            } else if (feeArgSource === 'pair-stable') {
-                // PairFactoryUpgradeable.getFee(bool stable). Fall back to
-                // false (volatile) when the pair has no stable flag.
-                feeCallData = feeIface.encodeFunctionData(feeFunction, [Boolean(t.stable)]);
-            } else if (feeArgSource === 'pair-address-stable') {
-                // Velodrome V2 / Aerodrome PoolFactory.getFee(pool, stable).
-                // stable comes from the PoolCreated event (indexed), so it
-                // is always known for pairs this factory created.
-                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair, Boolean(t.stable)]);
-            } else if (feeArgSource === 'pair-and-caller') {
-                // LeetSwapV2.tradingFees(pair, to). Pass 0x0 as `to` — that
-                // returns the baseline fee (matches what any user without a
-                // per-recipient discount would pay).
-                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair, '0x0000000000000000000000000000000000000000']);
-            } else {
-                feeCallData = feeIface.encodeFunctionData(feeFunction, [t.pair]);
-            }
             calls.push({
                 target: feeTarget === 'pair' ? t.pair : factory.address,
                 allowFailure: true,
-                callData: feeCallData,
+                callData: feeCallData(factory, feeIface, t.pair, Boolean(t.stable), degenByPair.get(t.pair.toLowerCase()) ?? false),
             });
             if (wantStable) {
                 calls.push({

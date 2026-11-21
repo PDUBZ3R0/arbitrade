@@ -12,9 +12,10 @@
 //                  or under $2K per reserve, else 50%), the collateral's bonus
 //                  — or the account's eMode bonus — less the protocol's share
 //                  of the bonus, capped by the collateral actually there.
-//   3. Route       collateral -> debt through pools this bot already knows
-//                  (db/<chain>.sqlite from `yarn scan`): direct pools, then
-//                  two hops via hub tokens. Same-asset positions need none.
+//   3. Route       collateral -> debt through pools the factories report live
+//                  (live-pools.ts) and any in db/<chain>.sqlite from `yarn
+//                  scan`: direct pools, then two hops via hub tokens.
+//                  Same-asset positions need none.
 //   4. Simulate    eth_call of liquidate() for every (pair, route, amount):
 //                  the contract RETURNS realised profit, so the chain itself
 //                  prices Aave's liquidation math, the protocol fee, pool
@@ -39,6 +40,7 @@ import { TradeLedger } from '../util/ledger.ts';
 import { waitReceipt } from '../util/receipt.ts';
 import { ledgerPath } from '../util/config.ts';
 import { readPrices, type AaveMarket, type AaveReserve } from './aave-v3.ts';
+import { type LivePools, type PoolRow } from './live-pools.ts';
 
 export const LIQUIDATOR_ABI = [
     'function owner() view returns (address)',
@@ -191,11 +193,12 @@ export function choosePairs(market: AaveMarket, positions: Position[], hf: bigin
 export type Hop = { pair: string; tokenIn: string; feePpm: number; recipient: string; kind: 0 | 1 | 2 };
 export type Route = { hops: Hop[]; label: string };
 
-type PoolRow = { address: string; token0: string; token1: string; kind: string; fee: number | null; stable: number | null; factory: string; depth: number };
-
 /**
- * Exit-route candidates from the arb pipeline's own pool DB. Only pools of
- * factories in the current (non-blacklisted) config, only curves HopEngine
+ * Exit-route candidates from the chain's factories (LivePools) and the arb
+ * pipeline's pool DB, either of which may be absent: a chain that only runs
+ * liquidations has no scan, and an RPC hiccup leaves the DB's pools. A pool in
+ * both takes its depth from the live read. Only pools of factories in the
+ * current (non-blacklisted) config, only curves HopEngine
  * prices correctly: V2-style constant product with a known fee; V3 and
  * Algebra pools whose swap callback it implements; and Solidly stable pools
  * (HOP_STABLE, sized by the pool's own getAmountOut) when the deployed
@@ -211,30 +214,37 @@ export class RouteFinder {
     readonly hubs: string[];
     /** The liquidator has HOP_STABLE: stable pools may be exit routes. */
     readonly stable: boolean;
+    private readonly live: LivePools | null;
 
-    constructor(cfg: ChainConfig, dbFile: string, hubs: string[], opts: { stable?: boolean } = {}) {
+    constructor(cfg: ChainConfig, dbFile: string, hubs: string[], opts: { stable?: boolean; live?: LivePools } = {}) {
         this.db = fs.existsSync(dbFile) ? new Database(dbFile, { readonly: true, fileMustExist: true }) : null;
         this.factories = new Map(cfg.factories.map(f => [f.address.toLowerCase(), f]));
         this.hubs = [...new Set(hubs.map(h => h.toLowerCase()))];
         this.stable = !!opts.stable;
+        this.live = opts.live ?? null;
     }
 
-    get available(): boolean { return this.db != null; }
+    get available(): boolean { return this.db != null || this.live != null; }
 
     close(): void { this.db?.close(); }
 
     /** Usable pools between a and b, deepest first. */
     pools(a: string, b: string, limit = 4): PoolRow[] {
-        if (!this.db) return [];
         const [t0, t1] = a.toLowerCase() < b.toLowerCase() ? [a.toLowerCase(), b.toLowerCase()] : [b.toLowerCase(), a.toLowerCase()];
-        const rows = this.db.prepare(`
+        const stored = !this.db ? [] : this.db.prepare(`
             SELECT p.address, p.token0, p.token1, p.kind, p.fee, p.stable, p.factory,
                    COALESCE(CAST(r.reserves0 AS REAL) * CAST(r.reserves1 AS REAL), CAST(s.liquidity AS REAL), 0) AS depth
             FROM pairs p
             LEFT JOIN reserves r   ON r.pair = p.address
             LEFT JOIN pool_state s ON s.pool = p.address
             WHERE lower(p.token0) = ? AND lower(p.token1) = ?`).all(t0, t1) as PoolRow[];
-        const usable = rows.filter(r => {
+        const rows = new Map(stored.map(r => [r.address.toLowerCase(), r]));
+        for (const l of this.live?.rows(t0, t1) ?? []) {
+            const had = rows.get(l.address);
+            // A verified fee in the DB (verify-fees, conf raises) beats the raw lookup.
+            rows.set(l.address, had ? { ...had, depth: l.depth } : l);
+        }
+        const usable = [...rows.values()].filter(r => {
             const f = this.factories.get(r.factory.toLowerCase());
             if (!f) return false;                                   // unknown or blacklisted factory
             if (r.kind === 'v3') return (f.group === 'v3' || f.group === 'algebra')
@@ -269,8 +279,18 @@ export class RouteFinder {
         };
     }
 
+    /**
+     * Discover each token's hub legs ahead of an attempt. One token at a time,
+     * so an attempt that arrives meanwhile waits for one batch, not all of them.
+     */
+    async warm(tokens: string[]): Promise<void> {
+        for (const t of tokens) await this.live?.load(this.hubs.map(h => [t, h] as [string, string]));
+    }
+
     /** Route candidates from -> to, ending at `executor`. */
-    routes(from: string, to: string, executor: string, maxRoutes = 10): Route[] {
+    async routes(from: string, to: string, executor: string, maxRoutes = 10): Promise<Route[]> {
+        // One batch for every leg, so an unseen pair costs one round of reads.
+        await this.live?.load([[from, to], ...this.hubs.flatMap(h => [[from, h], [h, to]] as Array<[string, string]>)]);
         const out: Route[] = [];
         const kindOf = (p: PoolRow) => p.stable === 1 ? 'stable' : p.kind;
         for (const p of this.pools(from, to)) out.push({ hops: [this.hopFor(p, from)], label: `direct ${kindOf(p)} ${p.address.slice(0, 10)}` });
@@ -446,12 +466,12 @@ export class Liquidator {
         for (const plan of out.pairs) {
             const same = plan.collateral.asset === plan.debt.asset;
             const routes = same ? [{ hops: [], label: 'same asset' }]
-                : this.routes.routes(plan.collateral.asset, plan.debt.asset, this.opts.executor);
+                : await this.routes.routes(plan.collateral.asset, plan.debt.asset, this.opts.executor);
             for (const r of routes) for (const a of plan.amounts) jobs.push([plan, r, a]);
         }
         if (!jobs.length) {
-            out.reason = this.routes.available ? 'no exit route between collateral and debt in the pool DB'
-                : 'no pool DB (yarn scan) — only same-asset positions can be exited';
+            out.reason = this.routes.available ? 'no exit route between collateral and debt'
+                : 'no pool source — only same-asset positions can be exited';
             return out;
         }
         const batch = jobs.slice(0, this.opts.maxSimulations);

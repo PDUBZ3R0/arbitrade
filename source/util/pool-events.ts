@@ -40,30 +40,30 @@ export const PAIR_CREATED_V2_TOPIC      = ethers.id('PairCreated(address,address
 export const PAIR_CREATED_SOLIDLY_TOPIC = ethers.id('PairCreated(address,address,bool,address,uint256)');
 export const POOL_CREATED_VELODROME_TOPIC = ethers.id('PoolCreated(address,address,bool,address,uint256)');
 export const POOL_CREATED_V3_TOPIC      = ethers.id('PoolCreated(address,address,uint24,int24,address)');
-export const POOL_CREATED_V3_TS_TOPIC   = ethers.id('PoolCreated(address,address,int24,address)');
+export const POOL_CREATED_AERODROME_TOPIC   = ethers.id('PoolCreated(address,address,int24,address)');
 export const POOL_CREATED_ALGEBRA_TOPIC = ethers.id('Pool(address,address,address)');
 
 /** Which event shape a sweep / scan is decoding. */
-export type EventLayout = 'v2' | 'solidly' | 'velodrome' | 'v3' | 'v3ts' | 'algebra';
+export type EventLayout = 'v2' | 'solidly' | 'velodrome' | 'v3' | 'aerodrome' | 'algebra';
 
 export const TOPIC_BY_LAYOUT: Record<EventLayout, string> = {
     v2:      PAIR_CREATED_V2_TOPIC,
     solidly: PAIR_CREATED_SOLIDLY_TOPIC,
     velodrome: POOL_CREATED_VELODROME_TOPIC,
     v3:      POOL_CREATED_V3_TOPIC,
-    v3ts:    POOL_CREATED_V3_TS_TOPIC,
+    aerodrome:    POOL_CREATED_AERODROME_TOPIC,
     algebra: POOL_CREATED_ALGEBRA_TOPIC,
 };
 
 /** Layouts whose pools are concentrated-liquidity (no getReserves, no Sync). */
-export const CL_LAYOUTS: ReadonlySet<EventLayout> = new Set(['v3', 'v3ts', 'algebra']);
+export const CL_LAYOUTS: ReadonlySet<EventLayout> = new Set(['v3', 'aerodrome', 'algebra']);
 
 /**
  * How a v3-group factory announces pools. Stored in conf as
  * `poolEvent: "uniswap" | "tickspacing"`; maps 1:1 onto a layout.
  */
 export type V3PoolEvent = 'uniswap' | 'tickspacing';
-export const LAYOUT_BY_POOL_EVENT: Record<V3PoolEvent, EventLayout> = { uniswap: 'v3', tickspacing: 'v3ts' };
+export const LAYOUT_BY_POOL_EVENT: Record<V3PoolEvent, EventLayout> = { uniswap: 'v3', tickspacing: 'aerodrome' };
 
 export type ParsedCreation = {
     pair: string;
@@ -104,13 +104,6 @@ export function parseCreationLog(topics: string[], data: string, layout: EventLa
         case 'v2':
             if (words < 1) return null;
             return { ...base, pair: addrOf(word(data, 0)) };
-        case 'solidly':
-            if (words < 2) return null;
-            return { ...base, pair: addrOf(word(data, 1)), stable: BigInt('0x' + word(data, 0)) === 1n };
-        case 'velodrome':
-            // stable is the third indexed topic; data = [pool, allPoolsLength]
-            if (topics.length < 4 || words < 1) return null;
-            return { ...base, pair: addrOf(word(data, 0)), stable: BigInt(topics[3]) === 1n };
         case 'v3': {
             if (words < 1) return null;
             const pair = addrOf(word(data, words - 1));
@@ -119,7 +112,14 @@ export function parseCreationLog(topics: string[], data: string, layout: EventLa
             const tickSpacing = words >= 2 ? int24Of(word(data, words - 2)) : null;
             return { ...base, pair, feePips, tickSpacing };
         }
-        case 'v3ts': {
+        case 'solidly':
+            if (words < 2) return null;
+            return { ...base, pair: addrOf(word(data, 1)), stable: BigInt('0x' + word(data, 0)) === 1n };
+        case 'velodrome':
+            // stable is the third indexed topic; data = [pool, allPoolsLength]
+            if (topics.length < 4 || words < 1) return null;
+            return { ...base, pair: addrOf(word(data, 0)), stable: BigInt(topics[3]) === 1n };
+        case 'aerodrome': {
             if (words < 1) return null;
             const pair = addrOf(word(data, words - 1));
             const tickSpacing = topics.length >= 4 ? Number(BigInt.asIntN(24, BigInt(topics[3]))) : null;

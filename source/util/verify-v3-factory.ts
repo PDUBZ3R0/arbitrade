@@ -37,7 +37,9 @@ import { realpathSync } from 'node:fs';
 import { loadChainConfig } from './config.ts';
 import { getContractCreation } from './etherscan.ts';
 import { TOPIC_BY_LAYOUT, parseCreationLog, type EventLayout, type ParsedCreation } from './pool-events.ts';
+import type { EnvioSample } from './envio-rest.ts';
 import { sharedProvider } from './rpc.ts';
+import { resolveCode } from './bytecode.ts';
 
 /** Swap callbacks we know how to recognise. The executor implements by name. */
 export const KNOWN_CALLBACKS = [
@@ -59,7 +61,7 @@ const CALLBACK_SELECTORS: Array<{ name: CallbackName; selector: string }> = KNOW
     selector: ethers.id(`${name}(int256,int256,bytes)`).slice(2, 10),
 }));
 
-const CL_LAYOUTS: EventLayout[] = ['v3', 'v3ts', 'algebra'];
+const CL_LAYOUTS: EventLayout[] = ['v3', 'aerodrome', 'algebra'];
 
 export type V3VerifyResult = {
     address: string;
@@ -68,13 +70,15 @@ export type V3VerifyResult = {
     family: 'v3' | 'algebra' | 'unknown';
     /** Algebra only: measured from globalState()'s return width. */
     algebraVariant: 'v1' | 'integral' | null;
-    /** Creation event layout seen; v3 -> poolEvent "uniswap", v3ts -> "tickspacing". */
+    /** Creation event layout seen; v3 -> poolEvent "uniswap", aerodrome -> "tickspacing". */
     layout: EventLayout | null;
     poolEvent: 'uniswap' | 'tickspacing' | null;
     callback: CallbackName | null;
     /** How the callback was identified: its selector in the bytecode, or a measured swap. */
     callbackHow?: 'bytecode' | 'measured' | 'family';
     deployBlock: number | null;
+    /** Who deployed the factory (block explorer), when it answered. */
+    creator: string | null;
     samplePool: string | null;
     /** Fees (pips) and tick spacings seen across the sampled pools. */
     feesSeen: number[];
@@ -101,15 +105,10 @@ async function callWords(provider: JsonRpcProvider, to: string, sig: string, arg
 const enc = (v: bigint | number) => BigInt.asUintN(256, BigInt(v)).toString(16).padStart(64, '0');
 const asInt = (w: bigint, bits: number) => Number(BigInt.asIntN(bits, w));
 
-/** Runtime code, following an EIP-1167 minimal proxy to its implementation. */
+/** Runtime code, following a proxy to its implementation (bytecode.ts). */
 async function runtimeCode(provider: JsonRpcProvider, addr: string): Promise<{ code: string; via?: string }> {
-    const code = (await provider.getCode(addr)).toLowerCase();
-    const m = code.match(/^0x363d3d373d3d3d363d73([0-9a-f]{40})5af43d82803e903d91602b57fd5bf3$/);
-    if (m) {
-        const impl = '0x' + m[1];
-        return { code: (await provider.getCode(impl)).toLowerCase(), via: impl };
-    }
-    return { code };
+    const read = await resolveCode(provider, addr);
+    return read.impl ? { code: read.code.toLowerCase(), via: read.impl } : { code: read.code.toLowerCase() };
 }
 
 /**
@@ -209,8 +208,8 @@ async function samplePools(
 ): Promise<{ layout: EventLayout | null; hits: Array<ParsedCreation & { blockNumber: number }> }> {
     const head = await provider.getBlockNumber();
 
-    if (hypersyncUrl && envioToken) {
-        const { samplePairsFromFactoryHyperSync } = await import('./hypersync.ts');
+    const { hypersyncUp, samplePairsFromFactoryHyperSync } = await import('./hypersync.ts');
+    if (hypersyncUrl && envioToken && await hypersyncUp(hypersyncUrl, envioToken)) {
         for (const layout of CL_LAYOUTS) {
             try {
                 const hits = await samplePairsFromFactoryHyperSync(
@@ -269,6 +268,8 @@ async function samplePools(
 export type V3VerifyContext = {
     provider?: JsonRpcProvider;
     chain?: { id: number; host?: string; hypersyncUrl?: string; contract?: string };
+    /** Pools our indexer already has, instead of asking the chain for logs. */
+    known?: EnvioSample | null;
 };
 
 export async function verifyV3Factory(
@@ -282,7 +283,7 @@ export async function verifyV3Factory(
     const notes: string[] = [];
     const r: V3VerifyResult = {
         address: address.toLowerCase(), usable: false, family: 'unknown', algebraVariant: null, layout: null, poolEvent: null,
-        callback: null, deployBlock: null, samplePool: null, feesSeen: [], spacingsSeen: [],
+        callback: null, deployBlock: null, creator: null, samplePool: null, feesSeen: [], spacingsSeen: [],
         lensChecked: false, notes, configSnippet: '',
     };
 
@@ -295,14 +296,20 @@ export async function verifyV3Factory(
     if (explorerApiKey) {
         try {
             const c = await getContractCreation(cfg.chain.id, address, explorerApiKey);
-            if (c) { r.deployBlock = c.blockNumber; notes.push(`✓ Deployed at block ${c.blockNumber}`); }
+            if (c) { r.deployBlock = c.blockNumber; r.creator = c.creator?.toLowerCase() ?? null; notes.push(`✓ Deployed at block ${c.blockNumber}`); }
         } catch (err) {
             notes.push(`  Could not fetch deploy block: ${(err as Error).message.slice(0, 100)}`);
         }
     }
 
+    // The first pool is as good as the deploy block for a scan, and Etherscan's
+    // free plan refuses both creator and deploy block on BSC and Gnosis.
+    r.deployBlock ??= ctx.known?.firstBlock ?? null;
+
     // 1. creation event
-    const { layout, hits } = await samplePools(provider, address, r.deployBlock, cfg.chain.hypersyncUrl, process.env.ENVIO_API_TOKEN);
+    const { layout, hits } = ctx.known
+        ? { layout: ctx.known.layout, hits: ctx.known.pools.map(p => ({ ...p, pair: p.pool })) }
+        : await samplePools(provider, address, r.deployBlock, cfg.chain.hypersyncUrl, process.env.ENVIO_API_TOKEN);
     if (!layout || hits.length === 0) {
         notes.push('✗ No PoolCreated / Pool events found from this address (searched the last 100k blocks' +
             (r.deployBlock !== null ? ' and the 100k after deployment' : '') + ').');
@@ -310,9 +317,9 @@ export async function verifyV3Factory(
     }
     r.layout = layout;
     r.family = layout === 'algebra' ? 'algebra' : 'v3';
-    r.poolEvent = layout === 'v3' ? 'uniswap' : layout === 'v3ts' ? 'tickspacing' : null;
+    r.poolEvent = layout === 'v3' ? 'uniswap' : layout === 'aerodrome' ? 'tickspacing' : null;
     notes.push(`✓ Emits ${layout === 'v3' ? 'PoolCreated (fee-keyed, Uniswap V3 shape)' :
-        layout === 'v3ts' ? 'PoolCreated (tick-spacing-keyed)' : 'Pool (Algebra shape)'}; ${hits.length} sampled`);
+        layout === 'aerodrome' ? 'PoolCreated (tick-spacing-keyed)' : 'Pool (Algebra shape)'}; ${hits.length} sampled`);
 
     if (r.family === 'algebra') return verifyAlgebraPools(provider, r, hits, cfg.chain.contract);
 
@@ -451,8 +458,12 @@ async function checkCallback(provider: JsonRpcProvider, r: V3VerifyResult, expec
         return true;
     }
     if (cbs.length === 0) {
+        // Say what the swap did. Katana V3 was reported as "the executor cannot
+        // pay this pool", but it reverts "IR" for everyone except its router:
+        // the callback is payable, the pool just won't take our call.
         r.notes.push(`✗ No known swap-callback selector in the pool bytecode (${KNOWN_CALLBACKS.join(', ')}), ` +
-            `and a simulated swap did not call back with V3 arguments. The executor cannot pay this pool.`);
+            `and a simulated swap did not call back: ${m.why}. A short revert before any callback usually means ` +
+            `the pool only accepts a router, so the executor cannot call it directly.`);
         return false;
     }
     r.notes.push(`✗ Several callback selectors present (${cbs.join(', ')}) — ambiguous, check the source.`);

@@ -1,0 +1,52 @@
+1. Mint/redeem arbitrage (closest to the arb engine)
+
+Many tokens have a second price besides the DEX price: a contract that mints or redeems them at a fixed or NAV rate. When the pool drifts from that rate, you can borrow, mint (or redeem), sell into the pool, and repay, all in one transaction.
+
+Stablecoin PSMs: Sky/Spark PSM (USDC↔USDS/sUSDS at par), GHO’s GSM, crvUSD PegKeepers.
+Liquity v2 (BOLD) and its forks: redemptions are atomic. When BOLD trades below $1, you buy it on a DEX, redeem for $1 of collateral, and sell the collateral. This is the classic flash-loan peg arb.
+ERC-4626 vaults and LSTs with instant deposit: stS on Sonic, sAVAX, wstETH and similar. Only one direction is usually atomic. Instant deposit lets you profit when the DEX price is above NAV (mint and sell). Below NAV you’d hit an unstake queue.
+
+This plugs straight into your graph: model a mint or redeem path as a synthetic edge with a fixed rate and effectively infinite depth (or capped by a mint limit). The triangle finder then discovers cycles like USDC → PSM → USDS → pool → USDC without new search logic. You’d add a new hop kind in HopEngine, a per-edge rate read, and handling for fees, mint caps, and pause flags.
+
+Flash mints (ERC-3156, e.g. DAI). The asset is minted from nothing, then burned. Unlike a pool-backed loan, depth isn’t capped by any pool.
+Mint/redeem arb on stablecoins and liquid restaking tokens, plus Pendle PT/YT mispricings. The limit is wherever redemption isn’t atomic, such as withdrawal queues.
+Cross-venue in one transaction. Your notes on HyperEVM are a live example: HyperCore precompiles let one transaction arb an AMM against the order book.
+
+2. Intent and Dutch-auction filling
+
+UniswapX, 1inch Fusion, and CoW publish orders through off-chain APIs, so not having a mempool doesn’t matter. A Dutch order’s price decays over time. Once it crosses what you can get by routing through DEX pools, you fill the order and source the output inside the fill callback, with no inventory. UniswapX runs on Base and Arbitrum. Your route builder and pool-state reader are most of the work. The new parts are order polling and signature/reactor plumbing. Expect competition from professional fillers, but long-tail token pairs are thinner.
+
+3. More liquidation-style auctions
+
+These are a natural extension of liq-watch once the executor is split, since you’re at ~2.9 KB headroom:
+
+Sky/Maker clipper auctions (they have a flash-callee interface)
+Euler and Morpho bad-debt edge cases
+Reserve Protocol rebalancing auctions
+Curvance and Tydro, already queued
+
+4. Close abritrage gaps
+
+Did we implement Curve StableSwap pools?
+What other dex / pair shapes have we not implemented?
+We haven't done Flashblocks for chains that support them yet, right?
+For the chains that don't have mempools, does listening to the swap events give us any edge we didn't have before? Is there any edge that we can implement there?
+Of the chains we did setup mempool for, can any of them succedd with some tweaks? If we setup a full node for that chain? Would building it at home be sufficient if I obtain the hardware vs setting up a remote dedicated server?
+
+5. Launchpad graduation arb.
+Pairs like the Sonic 0x0534 factory move from a virtual-reserve curve to a real pool at “escape,” and that transition misprices predictably. It’s niche and needs the per-pair FEE + TAX read you already flagged.
+
+6. Sell the data instead of trading it
+A. Pair-safety / fee-truth API. Your verify-fees, curve detection, uint112 and scam-supply flags, and tax detection are exactly what aggregators, bot builders, and wallets want: “is this pool’s real fee/curve what it claims?” That’s recurring revenue with no capital at risk.
+B. Incremental reserves feed. Once reserves --since exists, a cheap websocket of clean V2-style reserves across mid-tier chains is a sellable product.
+
+7. Contract ideas with fee revenue
+A. Keeper jobs. Many protocols pay bounties for calling harvest(), rebase(), oracle updates, or auction settlements. These are boring, steady, and low-competition on small chains.
+B. LP range manager vault. It rebalances concentrated-liquidity positions for a performance fee. This is real demand, but you’d be custodying other people’s funds, which means audits and liability.
+
+8. Bug bounties and audit contests.
+These are Immunefi, Code4rena, Sherlock and Cantina. You keep finding exactly the kinds of bugs they pay for: non-standard fee math, permissioned pairs, the uint112 overflow, Arbitrum block-number pinning. Payouts range from four to six figures, and you don’t need capital or co-location. This is probably the best expected return for your time.
+
+You mentioned this and that we've already found bugs to report. What have we already found? Can we mine our coding sessions and all of our chats under the DeFi project for what we've discovered and document it? Then either provide me instructions or automate the process of reporting them all? Lastly, keep an ongoing log of bugs we find moving forward so we can flag them, keep a master history and make sure everything get reported for those potential payouts, if this is money we're leaving on the table, lets pursue it and get me paid something for all this time investment.
+
+

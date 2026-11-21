@@ -52,7 +52,7 @@
     "ethers": "^6.17.0",
     "json5": "^2.2.3",
     "sevm": "^0.7.4",
-    "vetted-provider": "^0.1.6"
+    "vetted-provider": "^0.1.7"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.0",

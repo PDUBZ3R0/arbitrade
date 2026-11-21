@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// CLI: yarn run scan <chain> [--transport rpc|etherscan]
+// CLI: yarn run scan <chain> [--transport rpc|etherscan|envio]
 //
 // Scans creation events for every configured factory on the given chain and
 // stores results in db/<chain>.sqlite: PairCreated for the v2/v2fee/solidly
@@ -15,6 +15,10 @@
 //   default    RPC first, fall through to Etherscan V2 when RPC prunes logs
 //   --transport rpc         RPC only (fails on pruned RPCs)
 //   --transport etherscan   Etherscan V2 only (slower ~5 calls/sec, always works)
+//   --transport envio       our own indexer (../hyperindex/ronin; ENVIO_REST_URL):
+//                           one paged request per factory, up to the block the
+//                           indexer has processed — a plain scan afterwards
+//                           continues from there over RPC
 // -----------------------------------------------------------------------------
 
 import { loadChainConfig, dbPath } from './util/config.ts';
@@ -24,18 +28,18 @@ import { redactUrl, usesPool } from './util/rpc.ts';
 const args = process.argv.slice(2);
 const chainArg = args[0];
 if (!chainArg || chainArg.startsWith('--')) {
-    console.error('Usage: yarn run scan <chain-name> [--transport rpc|etherscan] [--rescan <address|name>[,…]]');
+    console.error('Usage: yarn run scan <chain-name> [--transport rpc|etherscan|envio] [--rescan <address|name>[,…]]');
     console.error('Example: yarn run scan polygon');
     console.error('Example: yarn run scan polygon --transport etherscan');
     process.exit(1);
 }
 
-let forceTransport: 'rpc' | 'etherscan' | undefined;
+let forceTransport: 'rpc' | 'etherscan' | 'envio' | undefined;
 const tIdx = args.indexOf('--transport');
 if (tIdx >= 0) {
     const t = args[tIdx + 1];
-    if (t !== 'rpc' && t !== 'etherscan') {
-        console.error(`--transport must be 'rpc' or 'etherscan' (got: ${t})`);
+    if (t !== 'rpc' && t !== 'etherscan' && t !== 'envio') {
+        console.error(`--transport must be 'rpc', 'etherscan' or 'envio' (got: ${t})`);
         process.exit(1);
     }
     forceTransport = t;

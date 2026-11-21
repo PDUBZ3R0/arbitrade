@@ -7,7 +7,8 @@
 // is failing for …"). This finds those factories up front, for all of them at
 // once, and says what does answer.
 //
-// Per factory, on up to 3 of its pairs from the DB (most active first):
+// Per factory, on up to 3 of its pairs, most active first, from the DB or, with
+// no DB, the factory's own hub-token pools (util/sample-pairs.ts):
 //   1. The configured accessor — feeTarget / feeArgSource / feeFunction /
 //      feeDivisor as config.ts resolves them, pattern defaults included —
 //      called the way reserves calls it (util/interface-probe.ts tryPattern).
@@ -33,10 +34,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadChainConfig, dbPath, type NormalizedFactory } from './util/config.ts';
-import { ArbitradeDB } from './util/db.ts';
+import { openPoolDb, PairSampler } from './util/sample-pairs.ts';
 import { makeProvider } from './util/rpc.ts';
-import { tryPattern, probeFactoryInterface, type SamplePair } from './util/interface-probe.ts';
-import type { DexPattern } from './util/dex-patterns.ts';
+import { checkFeeAccessor, describeAccessor, type AccessorVerdict } from './util/fee-audit.ts';
 import { editFactoriesInConf, type FactoryEdit } from './util/conf-edit.ts';
 import { appendToBlacklist } from './util/blacklist.ts';
 
@@ -56,58 +56,25 @@ const only = (() => { const i = args.indexOf('--factory'); return i >= 0 ? args[
 
 const cfg = loadChainConfig(chainArg);
 const provider = makeProvider(cfg.chain);
-const db = new ArbitradeDB(dbPath(chainArg));
+const db = openPoolDb(dbPath(chainArg));
 const today = new Date().toISOString().slice(0, 10);
 
 const perPair = cfg.factories.filter(f =>
     (f.group === 'v2fee' || f.group === 'solidly') && f.fee == null && !f.stableFees
     && (!only || f.address.toLowerCase() === only || f.name.toLowerCase() === only));
 
-/** The accessor config.ts resolved for this factory, as a probe pattern. */
-const asPattern = (f: NormalizedFactory): DexPattern => ({
-    family: f.group as 'v2fee' | 'solidly',
-    feeTarget: f.feeTarget, feeArgSource: f.feeArgSource, feeFunction: f.feeFunction, feeDivisor: f.feeDivisor,
-} as DexPattern);
-const describe = (p: Pick<DexPattern, 'feeTarget' | 'feeArgSource' | 'feeFunction' | 'feeDivisor'>) =>
-    `${p.feeTarget === 'pair' ? 'pair' : 'factory'}.${p.feeFunction}(${p.feeTarget === 'pair' ? '' : p.feeArgSource ?? 'pair-address'}) / ${p.feeDivisor}`;
-const fmtFees = (xs: number[]) => [...new Set(xs.map(x => +(x * 100).toFixed(4)))].join('/') + '%';
-
-type Verdict = { f: NormalizedFactory; status: 'OK' | 'FIX' | 'REVIEW' | 'UNREADABLE' | 'NO-SAMPLE'; detail: string; fix?: { name: string; pattern: DexPattern } };
+type Verdict = AccessorVerdict & { f: NormalizedFactory };
 const verdicts: Verdict[] = [];
 
 console.log(`${cfg.chain.name}: checking the fee accessor of ${perPair.length} per-pair-fee factor${perPair.length === 1 ? 'y' : 'ies'}\n`);
+const sampler = await PairSampler.open(cfg, provider, perPair, db);
 for (const f of perPair) {
-    const picks = db.getPairsForFactory(f.address, 3);
-    if (picks.length === 0) {
-        verdicts.push({ f, status: 'NO-SAMPLE', detail: 'no pairs in the DB yet (run yarn scan first)' });
+    const samples = sampler.pairs(f.address, 3);
+    if (samples.length === 0) {
+        verdicts.push({ f, status: 'NO-SAMPLE', detail: 'no pairs in the DB or among hub tokens' });
         continue;
     }
-    const stableOf = db.db.prepare('SELECT stable FROM pairs WHERE address = ?');
-    const samples: SamplePair[] = picks.map(p => {
-        const s = (stableOf.get(p.pair.toLowerCase()) as { stable: number | null } | undefined)?.stable;
-        return { pair: p.pair, stable: s == null ? null : s === 1 };
-    });
-
-    const mine = await tryPattern(provider, f.address, samples, 'configured', asPattern(f));
-    if (mine && mine.sampleFeesAdjusted.length * 2 >= samples.length) {
-        verdicts.push({ f, status: 'OK', detail: `${describe(f)} → ${fmtFees(mine.sampleFeesAdjusted)} on ${mine.sampleFeesAdjusted.length}/${samples.length}` });
-        continue;
-    }
-    const why = mine ? `configured ${describe(f)} answered on only ${mine.sampleFeesAdjusted.length}/${samples.length} pairs`
-        : `configured ${describe(f)} returned nothing plausible on ${samples.length}/${samples.length} pairs`;
-    const matches = await probeFactoryInterface(provider, f.address, samples, f.group as 'v2fee' | 'solidly');
-    const rank = { high: 0, medium: 1, low: 2 };
-    matches.sort((a, b) => rank[a.confidence] - rank[b.confidence]);
-    const best = matches[0];
-    if (best) {
-        verdicts.push({
-            f, status: best.confidence === 'low' ? 'REVIEW' : 'FIX',
-            detail: `${why}; ${best.patternName} answers: ${describe(best.pattern)} → ${fmtFees(best.sampleFeesAdjusted)} [${best.confidence}: ${best.reason}]`,
-            fix: { name: best.patternName, pattern: best.pattern },
-        });
-    } else {
-        verdicts.push({ f, status: 'UNREADABLE', detail: `${why}; no registered pattern answers either` });
-    }
+    verdicts.push({ f, ...await checkFeeAccessor(provider, f as typeof f & { group: 'v2fee' | 'solidly' }, samples) });
 }
 
 const width = Math.max(10, ...verdicts.map(v => v.f.name.length));
@@ -119,7 +86,7 @@ const fixes = verdicts.filter(v => v.status === 'FIX');
 const dead = verdicts.filter(v => v.status === 'UNREADABLE');
 if (!apply) {
     if (fixes.length || dead.length) console.log(`\nReport only. --apply rewrites the ${fixes.length} FIX entr${fixes.length === 1 ? 'y' : 'ies'} and blacklists the ${dead.length} UNREADABLE.`);
-    db.close();
+    db?.close();
     process.exit(0);
 }
 
@@ -138,7 +105,7 @@ if (fixes.length) {
         if (v.f.group === 'v2fee') fields.hasStableFlag = !!(p.hasStableFlag || v.f.hasStableFlag);
         return {
             kind: 'setFields', group: v.f.group as FactoryEdit['group'], key: v.f.name, address: v.f.address, fields,
-            comment: `check-fee-config ${today}: ${describe(asPattern(v.f))} did not answer; ${v.fix!.name} does (${describe(p)})`,
+            comment: `check-fee-config ${today}: ${describeAccessor(v.f)} did not answer; ${v.fix!.name} does (${describeAccessor(p)})`,
         };
     });
     const confDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'conf');
@@ -146,19 +113,19 @@ if (fixes.length) {
         editFactoriesInConf(confDir, cfg.chain.label, edits);
     } catch (e) {
         console.log(`\n[✗] conf/${cfg.chain.label}.json5 not edited, nothing applied: ${(e as Error).message}`);
-        db.close();
+        db?.close();
         process.exit(1);
     }
-    const clear = db.db.prepare('UPDATE pairs SET fee = NULL WHERE factory = ?');
+    const clear = db?.db.prepare('UPDATE pairs SET fee = NULL WHERE factory = ?');
     let cleared = 0;
-    db.db.transaction(() => { for (const v of fixes) cleared += clear.run(v.f.address.toLowerCase()).changes; })();
-    for (const v of fixes) console.log(`  fixed     ${v.f.name.padEnd(width)} → ${v.fix!.name}: ${describe(v.fix!.pattern)}`);
+    db?.db.transaction(() => { for (const v of fixes) cleared += clear!.run(v.f.address.toLowerCase()).changes; })();
+    for (const v of fixes) console.log(`  fixed     ${v.f.name.padEnd(width)} → ${v.fix!.name}: ${describeAccessor(v.fix!.pattern)}`);
     console.log(`            ${cleared} pair fee(s) cleared in the DB — the next yarn reserves reads them through the new accessor`);
 }
 if (dead.length) {
     const { added, skipped } = appendToBlacklist(cfg.chain.label, dead.map(v => ({
         address: v.f.address,
-        reason: `check-fee-config ${today} UNREADABLE (${db.countPairs(v.f.address)} pairs, ${v.f.group}): ${v.detail}`.slice(0, 600),
+        reason: `check-fee-config ${today} UNREADABLE (${db?.countPairs(v.f.address) ?? 'no DB, unknown'} pairs, ${v.f.group}): ${v.detail}`.slice(0, 600),
         addedAt: today,
     })));
     for (const v of dead) console.log(`  blacklist ${v.f.name}`);
@@ -166,4 +133,4 @@ if (dead.length) {
 }
 for (const v of verdicts.filter(v => v.status === 'REVIEW')) console.log(`  left      ${v.f.name}: only a low-confidence match (${v.fix!.name}) — check it by hand`);
 if (fixes.length || dead.length) console.log(`\nNext: yarn reserves ${cfg.chain.label}, then yarn triangles ${cfg.chain.label}.`);
-db.close();
+db?.close();

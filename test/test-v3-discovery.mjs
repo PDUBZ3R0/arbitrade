@@ -123,7 +123,7 @@ try {
     console.log('\n2. the other shapes decode too');
     {
         const tsLogs = await provider.getLogs({ address: await tsStub.getAddress(), fromBlock: 0 });
-        const ts = tsLogs.map(l => parseCreationLog([...l.topics], l.data, 'v3ts'));
+        const ts = tsLogs.map(l => parseCreationLog([...l.topics], l.data, 'aerodrome'));
         ok(ts.every((x, i) => x.pair === pools[i].addr && x.tickSpacing === pools[i].spacing && x.feePips === null),
            'tick-spacing-keyed PoolCreated: pool + spacing, fee left to the pool');
         const algLogs = await provider.getLogs({ address: await algStub.getAddress(), fromBlock: 0 });

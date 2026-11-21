@@ -30,6 +30,7 @@
 // when nothing past 10k was ever actually searched. Never swallow the error.
 // -----------------------------------------------------------------------------
 
+import { hypersyncUp } from './hypersync.ts';
 import { Interface, type JsonRpcProvider } from 'ethers';
 
 const SWAP_SYNC_IFACE = new Interface([
@@ -392,7 +393,7 @@ export async function empiricallyVerifyFee(
     let fetched: { logs: RawLog[]; from: number; to: number; swaps: number; error?: string };
     let hsError: string | undefined;
 
-    if (opts.hypersync) {
+    if (opts.hypersync && await hypersyncUp(opts.hypersync.url, opts.hypersync.apiToken)) {
         try {
             fetched = await fetchLogsHyperSync(opts.hypersync, pairAddress);
             transport = 'hypersync';

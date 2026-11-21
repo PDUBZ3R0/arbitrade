@@ -33,6 +33,7 @@ import { etherscanGetLogs, rateLimit as etherscanRateLimit } from '../util/ether
 // scanner must know which topic to filter for.
 import { TOPIC_BY_LAYOUT, LAYOUT_BY_POOL_EVENT, parseCreationLog, type EventLayout } from '../util/pool-events.ts';
 import { makeProvider } from '../util/rpc.ts';
+import { EnvioRest } from '../util/envio-rest.ts';
 
 // Chunk-size defaults. These are the FALLBACKS; both the per-chain config
 // (chain.pagesize) and env vars (SCAN_CHUNK_*) can override them.
@@ -111,8 +112,9 @@ export type ScanOptions = {
     chainId?: number;
     /** Etherscan V2 API key (unified across chains), for deploy-block discovery */
     explorerApiKey?: string;
-    /** Force a specific transport for log fetching. Default: RPC (the rated pool), then Etherscan on pruning. */
-    forceTransport?: 'rpc' | 'etherscan';
+    /** Force a specific transport for log fetching. Default: RPC (the rated pool), then Etherscan on pruning.
+     *  'envio' reads our own indexer instead (scanEnvio) and stops where it has processed to. */
+    forceTransport?: 'rpc' | 'etherscan' | 'envio';
     /** Called after each successful chunk. */
     onProgress?: (info: { factory: string; block: number; head: number; found: number }) => void;
 };
@@ -347,6 +349,76 @@ export async function scanIncremental(
     log(`  ${factories.length} factories caught up to block ${head} in ${calls} eth_getLogs call(s)` +
         (addrChunk < Math.min(200, addresses.length) || perTopic ? ` (${addrChunk} address(es)${perTopic ? ', one topic' : ''} per call — what this RPC accepts)` : ''));
     return found;
+}
+
+/**
+ * Fill pairs from our envio indexer (util/envio-rest.ts) instead of eth_getLogs.
+ *
+ * WHY. A first scan walks every factory's logs from its deploy block in RPC
+ * chunks; the indexer already holds every creation event, so each factory is
+ * one paged request. Each factory still resumes from its own progress, and that
+ * progress is set to the block the indexer had PROCESSED when we started, never
+ * the head: the indexer knows nothing past it, so an RPC scan afterwards picks
+ * up from there instead of those pools being skipped for good.
+ *
+ * A factory whose pools the indexer has under a different event than the
+ * config scans it for is reported and left alone. Storing them would mix
+ * shapes, and marking it scanned would hide the misconfiguration (the Sonic
+ * SwapX/Atlantis case in resumeFor, where the wrong event read as "no pools").
+ */
+export async function scanEnvio(
+    cfg: ChainConfig,
+    db: ArbitradeDB,
+    rest: EnvioRest,
+    log: (s: string) => void = console.log,
+): Promise<{ found: Record<string, number>; processed: number }> {
+    const processed = await rest.processed(cfg.chain.id);
+    log(`envio: the indexer has processed ${cfg.chain.name} up to block ${processed}`);
+    const found: Record<string, number> = {};
+    const failures: string[] = [];
+    for (const f of cfg.factories) {
+        const layout = layoutOf(f);
+        const topic = TOPIC_BY_LAYOUT[layout];
+        found[f.name] = 0;
+        // conf/sonic.json5 has 'Uniswap v2': { address: '.' } — it went into the
+        // URL as a path segment and 404'd the whole run.
+        if (!/^0x[0-9a-fA-F]{40}$/.test(f.address)) { log(`  [!] ${f.name}: "${f.address}" is not an address — skipped`); continue; }
+        // Rescanning a legacy CL row with no pools costs one request here, not a
+        // chunked history scan, so allow it.
+        const { resume, note } = resumeFor(db, f, topic, true);
+        if (note) log(`  [i] ${f.name}: ${note}`);
+        const from = resume === null ? 0 : resume + 1;
+        if (from > processed) continue;   // scanned past where the indexer is
+
+        let pools: Awaited<ReturnType<EnvioRest['pools']>>;
+        try {
+            pools = await rest.pools(cfg.chain.id, f.address, from, undefined, (got, next) => {
+                if (next !== Infinity) process.stdout.write(`\r  ${f.name}: ${got} pools so far, at block ${next}`);
+            });
+        } catch (err) {
+            // One factory must not cost the rest; its progress is untouched.
+            log(`\n  [x] ${f.name}: ${(err as Error).message.slice(0, 200)}`);
+            failures.push(f.name);
+            continue;
+        }
+        const mine = pools.filter(p => p.layout === layout);
+        if (mine.length < pools.length) {
+            const others = [...new Set(pools.filter(p => p.layout !== layout).map(p => p.layout))];
+            log(`\n  [!] ${f.name}: the indexer has ${pools.length - mine.length} pool(s) from its ${others.join('/')} event, but the ` +
+                `config scans it for ${layout} — nothing stored and its progress left alone; check its group / poolEvent`);
+            continue;
+        }
+        found[f.name] = db.insertPairs(mine.map(p => pairRow(f, {
+            pair: p.pool, token0: p.token0, token1: p.token1, stable: p.stable,
+            feePips: p.feePips, tickSpacing: p.tickSpacing, blockNumber: p.blockNumber,
+        })));
+        db.setScanProgress(f.address, processed, topic);
+        if (found[f.name] > 0 || mine.length > 0) {
+            log(`\r  ${f.name}: ${found[f.name]} new of ${mine.length} ${f.group === 'v3' || f.group === 'algebra' ? 'pools' : 'pairs'} since block ${from}`);
+        }
+    }
+    if (failures.length) log(`[!] ${failures.length} factor${failures.length === 1 ? 'y' : 'ies'} failed (${failures.join(', ')}); re-run to retry them`);
+    return { found, processed };
 }
 
 /**
@@ -610,6 +682,22 @@ export async function scanChain(
             fee: f.fee,
             deployBlock: f.deployBlock || cached || 0,
         });
+    }
+
+    if (opts.forceTransport === 'envio') {
+        const rest = EnvioRest.fromEnv();
+        try {
+            if (!rest) throw new Error(`--transport envio needs ENVIO_REST_URL (and ENVIO_REST_SECRET) in .env`);
+            const { found, processed } = await scanEnvio(cfg, db, rest);
+            const head = await provider.getBlockNumber().catch(() => null);
+            if (head !== null && head > processed) {
+                console.log(`\n[i] The indexer is ${(head - processed).toLocaleString()} blocks behind the head (${processed} vs ${head}). ` +
+                    `\`yarn scan ${cfg.chain.label}\` over RPC continues every factory from block ${processed + 1}.`);
+            }
+            return found;
+        } finally {
+            db.close();
+        }
     }
 
     const results: Record<string, number> = {};

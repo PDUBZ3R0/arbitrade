@@ -5,6 +5,7 @@
 // per factory (the most active), the implementation behind it if it is a proxy,
 // decompiled once per code hash by heimdall and classified by util/pair-code.ts
 // (trap / watch / ok / unclassified). Nothing is written to the conf or the DB.
+// With no pool DB the pair comes from the factory itself (util/sample-pairs.ts).
 //
 // Why: the 30% pair on Polygon (2026-10-31) came from a factory that looked
 // like a UniswapV2 copy; the fee lived in a contract its swap() calls. Fees
@@ -16,11 +17,10 @@
 // -----------------------------------------------------------------------------
 
 import fs from 'node:fs';
-import { keccak256 } from 'ethers';
 import { loadChainConfig, dbPath } from './util/config.ts';
 import { makeProvider } from './util/rpc.ts';
-import { ArbitradeDB } from './util/db.ts';
-import { classifyPairCode, decompilePairCode, type PairCodeReport } from './util/pair-code.ts';
+import { openPoolDb, PairSampler } from './util/sample-pairs.ts';
+import { readPairCode, type PairCodeReport } from './util/pair-code.ts';
 
 const args = process.argv.slice(2);
 const chainArg = args[0];
@@ -35,33 +35,15 @@ const jobs = Number(getStr('--jobs') ?? 4);
 if (!Number.isFinite(jobs) || jobs < 1) { console.error('--jobs must be a positive number'); process.exit(1); }
 
 const cfg = loadChainConfig(chainArg);
-const db = new ArbitradeDB(dbPath(chainArg));
+const db = openPoolDb(dbPath(chainArg));
 const provider = makeProvider(cfg.chain);
 const cacheFile = `log/${cfg.chain.label}/pair-code-cache.json`;
 const cache: Record<string, { sol?: string; error?: string }> = fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : {};
 const saveCache = () => fs.writeFileSync(cacheFile, JSON.stringify(cache));
 
-const EIP1967_IMPL = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
-const EIP1967_ADMIN = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
-const word = (w: string) => (w && w !== '0x' && BigInt(w) !== 0n ? '0x' + w.slice(-40).toLowerCase() : null);
-// Solidity's CBOR metadata tail differs between identical builds; cut it before hashing.
-// Only when a CBOR map header (a1..a5) sits where the tail would start, as ../sniper does.
-const stripMetadata = (code: string) => {
-    const hex = code.toLowerCase().replace(/^0x/, '');
-    const len = parseInt(hex.slice(-4), 16);
-    const start = hex.length - 4 - len * 2;
-    return len > 0 && len < 256 && start > 0 && /^a[1-5]$/.test(hex.slice(start, start + 2)) ? '0x' + hex.slice(0, start) : '0x' + hex;
-};
-
-const retry = async <T>(f: () => Promise<T>): Promise<T> => {
-    for (let i = 0; ; i++) { try { return await f(); } catch (e) { if (i >= 3) throw e; await new Promise(r => setTimeout(r, 500 * (i + 1))); } }
-};
-
 const factories = cfg.factories.filter(f => group === 'all' || f.group === group);
-const pairCount = new Map((db.db.prepare('SELECT factory, count(*) n FROM pairs GROUP BY factory').all() as Array<{ factory: string; n: number }>).map(r => [r.factory, r.n]));
-const samplePair = db.db.prepare(`
-    SELECT p.address, p.token0, p.token1 FROM pairs p LEFT JOIN reserves r ON r.pair = p.address
-    WHERE p.factory = ? ORDER BY MAX(CAST(COALESCE(r.reserves0, 0) AS REAL), CAST(COALESCE(r.reserves1, 0) AS REAL)) DESC LIMIT 1`);
+const pairCount = new Map((db?.db.prepare('SELECT factory, count(*) n FROM pairs GROUP BY factory').all() as Array<{ factory: string; n: number }> | undefined ?? []).map(r => [r.factory, r.n]));
+const sampler = await PairSampler.open(cfg, provider, factories.filter(f => f.group !== 'v3' && f.group !== 'algebra'), db);
 
 console.log(`Pair-code sweep: ${factories.length} factor(ies) on ${cfg.chain.name} (group ${group}); report only\n`);
 
@@ -73,31 +55,10 @@ for (const f of factories) work.push(async () => {
     const a = f.address.toLowerCase();
     const row: Row = { name: f.name, factory: a, group: f.group, pairs: pairCount.get(a) ?? 0, pair: null, hash: null, report: { verdict: 'unclassified', findings: [] }, note: '' };
     rows.push(row);
-    const sample = samplePair.get(a) as { address: string; token0: string; token1: string } | undefined;
-    if (!sample) { row.note = 'no pairs in the DB'; return; }
-    const pair = sample.address;
-    row.pair = pair;
-    try {
-        let code = await retry(() => provider.getCode(pair));
-        if (code === '0x') { row.note = 'pair has no code'; return; }
-        let proxy: string | null = null;
-        const clone = /^0x363d3d373d3d3d363d73([0-9a-f]{40})5af43d82803e903d91602b57fd5bf3/i.exec(code);
-        const impl = clone ? '0x' + clone[1].toLowerCase() : word(await retry(() => provider.getStorage(pair, EIP1967_IMPL)));
-        if (impl) {
-            const admin = clone ? null : word(await retry(() => provider.getStorage(pair, EIP1967_ADMIN)));
-            proxy = clone ? `EIP-1167 clone of ${impl}` : `EIP-1967 proxy to ${impl}${admin ? `, admin ${admin}` : ''}`;
-            code = await retry(() => provider.getCode(impl));
-        }
-        const hash = keccak256(stripMetadata(code));
-        row.hash = hash;
-        if (again || !cache[hash]) { cache[hash] = await decompilePairCode(code); saveCache(); }
-        const d = cache[hash];
-        if (!d.sol) { row.note = d.error ?? 'no decompilation'; return; }
-        row.report = classifyPairCode(d.sol, { proxy: clone ? null : proxy, factory: a, tokens: [sample.token0, sample.token1] });
-        if (row.report.verdict === 'unclassified') row.note = 'no V2 swap(uint256,uint256,address,bytes)';
-    } catch (e) {
-        row.note = `read failed: ${String((e as Error).message ?? e).slice(0, 120)}`;
-    }
+    const sample = sampler.pairs(a, 1)[0];
+    if (!sample) { row.note = 'no pairs in the DB or among hub tokens'; return; }
+    row.pair = sample.pair;
+    Object.assign(row, await readPairCode(provider, { address: sample.pair, token0: sample.token0, token1: sample.token1 }, a, cache, { again, save: saveCache }));
 });
 
 let next = 0, done = 0;
@@ -125,6 +86,6 @@ console.log(`\nUNCLASSIFIED (${un.length}): ${[...why].map(([k, n]) => `${n} ${k
 console.log(`OK (${rows.filter(r => r.report.verdict === 'ok').length})`);
 const codes = new Set(rows.map(r => r.hash).filter(Boolean));
 console.log(`\n${rows.length} factories, ${codes.size} distinct pair codes. Nothing written.`);
-db.close();
+db?.close();
 provider.destroy();
 process.exit(0);

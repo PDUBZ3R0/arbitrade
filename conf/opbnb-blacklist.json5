@@ -1,0 +1,9 @@
+{
+    factories: [
+        {
+            address: "0xd38e34e05df3e04901bb69792869582c704399b4",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-11-05",
+        },
+    ]
+}

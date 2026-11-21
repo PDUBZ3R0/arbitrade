@@ -17,6 +17,8 @@
 //
 //   scan_progress — last block scanned per factory, so we can resume
 //
+//   meta       — small per-chain markers (find-factories' swept-to block)
+//
 //   pool_state / pool_ticks — concentrated-liquidity (kind = 'v3') pool state
 //     as read by YoBatches2.getV3State: price, tick, in-range liquidity, fee,
 //     spacing, and the initialized ticks inside the fetched window. A v3 pool
@@ -125,6 +127,14 @@ const SCHEMA = `
         lastBlock    INTEGER NOT NULL,
         updatedAt    INTEGER NOT NULL,
         topic        TEXT            -- creation-event topic0 the progress is for
+    );
+
+    -- Small per-chain markers that belong to no table, e.g. how far
+    -- find-factories has swept (find-factories.lastBlock) for --new.
+    CREATE TABLE IF NOT EXISTS meta (
+        key          TEXT PRIMARY KEY,
+        value        TEXT NOT NULL,
+        updatedAt    INTEGER NOT NULL
     );
 
     -- Triangles: cached enumeration of arb cycles rooted at flash-loanable tokens.
@@ -605,6 +615,20 @@ export class ArbitradeDB {
         this.db.prepare('DELETE FROM scan_progress WHERE factory = ?').run(factory.toLowerCase());
     }
 
+    // ------------------------------------------- meta
+
+    getMeta(key: string): string | null {
+        const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined;
+        return row?.value ?? null;
+    }
+
+    setMeta(key: string, value: string) {
+        this.db.prepare(`
+            INSERT INTO meta (key, value, updatedAt) VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt
+        `).run(key, value, Math.floor(Date.now() / 1000));
+    }
+
     // ------------------------------------------- reserves
 
     /**
@@ -847,6 +871,12 @@ export class ArbitradeDB {
      * the full pair list. Picks deterministically (lowest address) so repeat
      * calls are stable. Returns null if the factory has no scanned pairs.
      */
+    /** The pair's stable-curve flag; null when unknown. */
+    pairStable(pair: string): boolean | null {
+        const s = (this.db.prepare('SELECT stable FROM pairs WHERE address = ?').get(pair.toLowerCase()) as { stable: number | null } | undefined)?.stable;
+        return s == null ? null : s === 1;
+    }
+
     getSamplePairForFactory(factory: string): { pair: string; token0: string; token1: string } | null {
         const row = this.db.prepare(
             `SELECT address AS pair, token0, token1 FROM pairs WHERE factory = ? ORDER BY address LIMIT 1`

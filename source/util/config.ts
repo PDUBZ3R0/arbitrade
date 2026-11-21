@@ -132,6 +132,10 @@ export function factoryGroupEntries(
 export type FactoryEntry = {
     address: string;
     deployBlock?: number;
+    /** Who deployed it (block explorer). Informational: nothing reads it. */
+    creator?: string;
+    /** The DEX it belongs to, per DefiLlama. Informational: nothing reads it. */
+    dex?: string;
 
     // --- Concentrated-liquidity (v3 group) ---
 

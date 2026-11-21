@@ -42,7 +42,7 @@ const show = (label: string, r: Awaited<ReturnType<typeof rpc>>, extra = '') =>
 
 const layout = (f: (typeof cfg.factories)[number]) =>
     f.group === 'solidly' ? (f.poolEvent === 'velodrome' ? 'velodrome' : 'solidly') :
-    f.group === 'v3' ? (f.poolEvent === 'tickspacing' ? 'v3ts' : 'v3') :
+    f.group === 'v3' ? (f.poolEvent === 'tickspacing' ? 'aerodrome' : 'v3') :
     f.group === 'algebra' ? 'algebra' : 'v2';
 const addrs = cfg.factories.map(f => f.address.toLowerCase());
 const allTopics = [...new Set(cfg.factories.map(f => TOPIC_BY_LAYOUT[layout(f)]))];

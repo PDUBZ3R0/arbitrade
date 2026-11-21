@@ -2,7 +2,7 @@
   "tool": "vetted-provider 0.1.0",
   "chainId": 1672,
   "name": "Pharos Mainnet",
-  "testedAt": "2026-10-17T20:36:26.858Z",
+  "testedAt": "2026-11-06T03:57:15.075Z",
   "from": "B3T4M4X",
   "options": {
     "maxRps": 40,
@@ -11,27 +11,116 @@
     "only": "all",
     "skip": [],
     "sample": {
-      "address": "0x311efd3602f91436384d5f879588fe9ac99ca43c",
-      "topic": "0x07bba4421d6cccc0f0cc6b05657ab1b50297382c35fbd1388e3253d53b0db97a",
-      "topic2": "0x3617b009e9785c42daebadb6d3fb553243a4bf586d07ea72d65d80013ce116b5",
-      "block": 20509420
+      "address": "0xc879c018db60520f4355c26ed1a6d572cdac1815",
+      "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "topic2": "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b",
+      "block": 22242087
     }
   },
   "endpoints": [
+    {
+      "url": "https://pharos.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 24375,
+      "chainId": 1672,
+      "chainIdOk": true,
+      "head": 22242145,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 81,
+        "p95": 569,
+        "n": 12,
+        "failures": 0
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": null,
+        "stateOverride": true
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 1000,
+        "topicOnly": true,
+        "topicOnlyMaxRange": 100,
+        "orTopics": true,
+        "combined": true,
+        "oldLogs": true,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
+      },
+      "history": {
+        "stateDepth": 22242088,
+        "archive": true
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": true,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": true,
+        "eth_createAccessList": null,
+        "eth_getProof": true,
+        "debug_traceCall": null,
+        "trace_call": false,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_createAccessList": "-32013: Generic execution failure.",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "-32601: Method not found: trace_call",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 0,
+      "ratings": {
+        "scanner": {
+          "pass": true,
+          "score": 61
+        },
+        "trader": {
+          "pass": true,
+          "score": 87
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "eth_call unusable (untested)"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "not a websocket"
+        }
+      }
+    },
     {
       "url": "https://infra.originstake.com/pharos/evm",
       "kind": "http",
       "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 46458,
+      "ms": 54071,
       "chainId": 1672,
       "chainIdOk": true,
-      "head": 20509476,
+      "head": 22242145,
       "client": "portal/1.0.0",
       "latency": {
-        "p50": 215,
-        "p95": 561,
+        "p50": 225,
+        "p95": 665,
         "n": 12,
         "failures": 0
       },
@@ -51,7 +140,7 @@
         "rangeError": "-32012: getLogs request exceeded max allowed range {\"code\":\"ErrGetLogsExceededMaxAllowedRange\",\"message\":\"getLogs request exceeded max allowed range\",\"details\":…"
       },
       "history": {
-        "stateDepth": 20509420,
+        "stateDepth": 22242088,
         "archive": true
       },
       "batch": {
@@ -83,7 +172,7 @@
         "limitedAt": null,
         "sent": 150
       },
-      "headLag": 1,
+      "headLag": 0,
       "ratings": {
         "scanner": {
           "pass": true,
@@ -91,7 +180,7 @@
         },
         "trader": {
           "pass": true,
-          "score": 61
+          "score": 72
         },
         "reader": {
           "pass": false,
@@ -110,14 +199,14 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 37359,
+      "ms": 38992,
       "chainId": 1672,
       "chainIdOk": true,
-      "head": 20509477,
+      "head": 22242145,
       "client": "portal/1.0.0",
       "latency": {
-        "p50": 249,
-        "p95": 612,
+        "p50": 265,
+        "p95": 576,
         "n": 12,
         "failures": 0
       },
@@ -134,15 +223,15 @@
         "orTopics": true,
         "combined": true,
         "oldLogs": true,
-        "rangeError": "-32602: param error; The block range is too large. Consider narrowing it down to within 1,000 blocks. {\"traceId\":\"1a14b93e36be1f3d\"}"
+        "rangeError": "-32602: param error; The block range is too large. Consider narrowing it down to within 1,000 blocks. {\"traceId\":\"1a1af00378c4b001\"}"
       },
       "history": {
-        "stateDepth": 20509423,
+        "stateDepth": 22242090,
         "archive": true
       },
       "batch": {
         "max": 500,
-        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a14b94081c2880d\"}",
+        "error": "-32600: exceeding the allowed maximum size of a batch request {\"traceId\":\"1a1af005f16121d9\"}",
         "nullIdErrors": false
       },
       "methods": {
@@ -159,10 +248,10 @@
       },
       "methodErrors": {
         "eth_createAccessList": "-32013: Generic execution failure.",
-        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a14b9411b42d94d\"}",
-        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a14b9412a7b5271\"}",
-        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a14b94139a0e3bd\"}",
-        "eth_newFilter": "-32601: method error; invalid method: eth_newFilter {\"traceId\":\"1a14b941497b05e1\"}"
+        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a1af00698c30f99\"}",
+        "txpool_status": "-32601: method error; invalid method: txpool_status {\"traceId\":\"1a1af006a9c4f13d\"}",
+        "eth_blobBaseFee": "-32601: method error; invalid method: eth_blobBaseFee {\"traceId\":\"1a1af006b98fe8a9\"}",
+        "eth_newFilter": "-32601: method error; invalid method: eth_newFilter {\"traceId\":\"1a1af006ca938721\"}"
       },
       "throttledDuringProbes": 0,
       "rate": {
@@ -178,7 +267,7 @@
         },
         "trader": {
           "pass": true,
-          "score": 70
+          "score": 69
         },
         "reader": {
           "pass": false,
@@ -189,97 +278,6 @@
           "pass": false,
           "score": 0,
           "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://pharos.drpc.org",
-      "kind": "http",
-      "tracking": "none",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 28966,
-      "chainId": 1672,
-      "chainIdOk": true,
-      "head": 20509417,
-      "client": "Geth/v10.0.0/drpc",
-      "latency": {
-        "p50": 65,
-        "p95": 1300,
-        "n": 11,
-        "failures": 1
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": null,
-        "stateOverride": true
-      },
-      "logs": {
-        "maxRange": 100,
-        "maxAddresses": 1000,
-        "topicOnly": true,
-        "topicOnlyMaxRange": 100,
-        "orTopics": true,
-        "combined": true,
-        "oldLogs": true,
-        "rangeError": "35: ranges over 10000 blocks are not supported on free plan"
-      },
-      "history": {
-        "stateDepth": 20509416,
-        "archive": true
-      },
-      "batch": {
-        "max": 2,
-        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": true,
-        "eth_createAccessList": null,
-        "eth_getProof": true,
-        "debug_traceCall": null,
-        "trace_call": false,
-        "txpool_status": false,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": false
-      },
-      "methodErrors": {
-        "eth_createAccessList": "-32013: Generic execution failure.",
-        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
-        "trace_call": "-32601: method error; invalid method: trace_call {\"traceId\":\"1a14b9408f9ef359\"}",
-        "txpool_status": "-32601: method is not available",
-        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
-        "eth_newFilter": "35: method is not available on free plan"
-      },
-      "throttledDuringProbes": 0,
-      "rate": {
-        "cleanRps": 5,
-        "limitedAt": 10,
-        "sent": 30,
-        "error": "-32601: the method eth_blockNumber does not exist/is not available"
-      },
-      "ratings": {
-        "scanner": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "trader": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "reader": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
         }
       }
     }

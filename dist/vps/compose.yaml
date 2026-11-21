@@ -51,6 +51,34 @@ services:
       - gnosis-log:/app/log
       - ./db:/opt/seed/db:ro
 
+  # Groningen sequencer is ~9 ms from this VPS (docs/chain-feed-survey.md); us-east-1 is ~85 ms.
+  optimism:
+    <<: *arb
+    image: optimism
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: optimism } }
+    environment:
+      MODE: "live"
+      RUNS: "all"
+      RESERVES: "5m"
+    volumes:
+      - optimism-db:/app/db
+      - optimism-log:/app/log
+      - ./db:/opt/seed/db:ro
+
+  # Groningen sequencer is ~9 ms from this VPS (docs/chain-feed-survey.md); us-east-1 is ~85 ms.
+  ink:
+    <<: *arb
+    image: ink
+    build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
+    environment:
+      MODE: "live"
+      RUNS: "all"
+      RESERVES: "5m"
+    volumes:
+      - ink-db:/app/db
+      - ink-log:/app/log
+      - ./db:/opt/seed/db:ro
+
   # avalanche:
   #   <<: *arb
   #   image: avalanche
@@ -87,18 +115,6 @@ services:
   #     - monad-log:/app/log
   #     - ./db:/opt/seed/db:ro
 
-  # ink:
-  #   <<: *arb
-  #   image: ink
-  #   build: { context: ., dockerfile: Containerfile, args: { CHAIN: ink } }
-  #   environment:
-  #     MODE: "live"
-  #     RUNS: "liquidate"
-  #   volumes:
-  #     - ink-db:/app/db
-  #     - ink-log:/app/log
-  #     - ./db:/opt/seed/db:ro
-
   # robinhood:
   #   <<: *arb
   #   image: robinhood
@@ -118,13 +134,15 @@ volumes:
   polygon-log:
   gnosis-db:
   gnosis-log:
+  optimism-db:
+  optimism-log:
+  ink-db:
+  ink-log:
   # avalanche-db:
   # avalanche-log:
   # hyperliquid-db:
   # hyperliquid-log:
   # monad-db:
   # monad-log:
-  # ink-db:
-  # ink-log:
   # robinhood-db:
   # robinhood-log:

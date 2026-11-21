@@ -452,3 +452,43 @@ contract MockVeloFactory {
         return fee == ZERO_FEE_INDICATOR ? 0 : fee != 0 ? fee : _stable ? stableFee : volatileFee;
     }
 }
+
+/// Every pool-lookup shape the liquidator's live route discovery asks a factory:
+/// Uniswap V2, Solidly, Velodrome, Uniswap V3, tick-spacing V3, Algebra.
+contract MockLookupFactory {
+    mapping(bytes32 => address) private pools;
+    function key(address a, address b, string memory shape, int256 extra) private pure returns (bytes32) {
+        (address t0, address t1) = a < b ? (a, b) : (b, a);
+        return keccak256(abi.encode(t0, t1, shape, extra));
+    }
+    function setPair(address a, address b, address p) external { pools[key(a, b, "pair", 0)] = p; }
+    function setSolidly(address a, address b, bool s, address p) external { pools[key(a, b, "solidly", s ? int256(1) : int256(0))] = p; }
+    function setVelo(address a, address b, bool s, address p) external { pools[key(a, b, "velo", s ? int256(1) : int256(0))] = p; }
+    function setTier(address a, address b, uint24 fee, address p) external { pools[key(a, b, "tier", int256(uint256(fee)))] = p; }
+    function setSpacing(address a, address b, int24 spacing, address p) external { pools[key(a, b, "spacing", spacing)] = p; }
+    function setAlgebra(address a, address b, address p) external { pools[key(a, b, "algebra", 0)] = p; }
+    function getPair(address a, address b) external view returns (address) { return pools[key(a, b, "pair", 0)]; }
+    function getPair(address a, address b, bool s) external view returns (address) { return pools[key(a, b, "solidly", s ? int256(1) : int256(0))]; }
+    function getPool(address a, address b, bool s) external view returns (address) { return pools[key(a, b, "velo", s ? int256(1) : int256(0))]; }
+    function getPool(address a, address b, uint24 fee) external view returns (address) { return pools[key(a, b, "tier", int256(uint256(fee)))]; }
+    function getPool(address a, address b, int24 spacing) external view returns (address) { return pools[key(a, b, "spacing", spacing)]; }
+    function poolByPair(address a, address b) external view returns (address) { return pools[key(a, b, "algebra", 0)]; }
+    function pairFee(address) external pure returns (uint256) { return 2500; }
+}
+
+/// Just enough of a concentrated-liquidity pool for a depth read.
+contract MockLiquidityPool {
+    uint128 public liquidity;
+    constructor(uint128 l) { liquidity = l; }
+    function setLiquidity(uint128 l) external { liquidity = l; }
+}
+
+/// A Shadow-style pair: V2 reserves plus stable().
+contract MockFlaggedPair {
+    bool public stable;
+    uint256 private r0;
+    uint256 private r1;
+    constructor(bool s, uint256 a, uint256 b) { stable = s; r0 = a; r1 = b; }
+    function getReserves() external view returns (uint256, uint256, uint256) { return (r0, r1, block.timestamp); }
+    function setReserves(uint256 a, uint256 b) external { r0 = a; r1 = b; }
+}

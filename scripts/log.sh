@@ -8,13 +8,15 @@ set -e
 
 ROOT="$1"
 STAGE="$2"
-CHAIN="$3"
+# package.json passes `--` before the chain for some stages; it must not become
+# the chain, or the log lands in log/--/.
+if [ "$3" = "--" ]; then CHAIN="$4"; DASHES=1; else CHAIN="$3"; DASHES=0; fi
 
 if [ -z "$CHAIN" ]; then
     echo "Usage: yarn $STAGE <chain>" >&2
     exit 1
 fi
-shift 3
+shift $((3 + DASHES))
 # The remaining arguments stay in "$@", so ones with spaces survive intact.
 
 CALLLOG="$USER@$HOSTNAME:$(pwd)\$ yarn $STAGE $CHAIN $*"

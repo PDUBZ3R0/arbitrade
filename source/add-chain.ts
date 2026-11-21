@@ -43,6 +43,7 @@ import { JsonRpcProvider, Interface, getAddress } from 'ethers';
 import { BALANCER_V2_VAULT } from './util/config.ts';
 import { makeProvider, ratingsFile } from './util/rpc.ts';
 import { marketsFor } from './util/markets.ts';
+import { holdsNative } from './util/bytecode.ts';
 import { discover } from 'vetted-provider';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -181,7 +182,10 @@ async function findWrappedNative(p: JsonRpcProvider | null, currency: string, aa
     if (fromAave) return fromAave;
     if (p && await hasCode(p, OP_STACK_WETH)) {
         const t = await tokenInfo(p, OP_STACK_WETH);
-        if (t && /^W/i.test(t.symbol) && t.decimals === 18) return { ...t, address: OP_STACK_WETH };
+        if (t && /^W/i.test(t.symbol) && t.decimals === 18) {
+            if (await holdsNative(p, OP_STACK_WETH)) return { ...t, address: OP_STACK_WETH };
+            console.log(`  [!] ${OP_STACK_WETH} answers ${t.symbol} but holds no ${currency}: an unused predeploy, not the wrapped token`);
+        }
     }
     return null;
 }

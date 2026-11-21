@@ -1,20 +1,24 @@
 #!/bin/bash
 
-yarn deploy-all $1
+CHAIN=$1
+CHAIN_ID=$(node ./source/util/chainid.ts $CHAIN 2>/dev/null)
+if [ ! -f "./conf/provider/$CHAIN_ID.json" ]; then
+	yarn provider $CHAIN_ID
+fi
+
+yarn deploy all $CHAIN
 export PARA_MZ="$@"
 
-if [ -z "$(echo $PARA_MZ | grep \"--no-factories\")" ]; then
-	if [ -z "$(echo $PARA_MZ | grep \"--all-factories\")" ]; then
-		yarn factories $1 --add --add-assumed-fees --verify-limit 25
+if [ -z "$(echo $PARA_MZ | grep -e '--no-factories')" ]; then
+	if [ -z "$(echo $PARA_MZ | grep -e '--all-factories')" ]; then
+		yarn factories $CHAIN --add --add-assumed-fees --verify-limit 25
 	else
-		yarn factories $1 --add --add-assumed-fees --verify-all
+		yarn factories $CHAIN --add --add-assumed-fees --verify-all
 	fi
 fi
 
-yarn scan $1 && \
-	yarn check-fee-config $1 --apply && \
-	yarn reserves $1 --blacklist-dead && \
-	yarn verify-fees $1 --claude --apply --blacklist-unread && \
-	yarn cleanup $1 --empty --yes --prune-conf && \
-	yarn tokens $1 && \
-	yarn probe $1 
+yarn scan $CHAIN --transport envio && \
+	yarn reserves $CHAIN --blacklist-dead && \
+	yarn cleanup $CHAIN --empty --yes --prune-conf && \
+	yarn tokens $CHAIN && \
+	yarn probe $CHAIN 

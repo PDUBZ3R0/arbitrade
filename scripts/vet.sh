@@ -1,20 +1,11 @@
 #!/bin/bash
 
 CMD=$1
-shift
-
-CHAIN=$1
-shift
+CHAIN=$2
+shift 2
 
 
-CHAIN_ID=$(node --input-type=module -e "
-import JSON5 from 'json5'; import { readFileSync } from 'node:fs';
-if (/^\d+$/.test('$CHAIN')){
-	process.stdout.write('$CHAIN');
-} else {
-	const c = JSON5.parse(readFileSync('conf/@chains.json5', 'utf8'));
-	if (c['$CHAIN']?.id) process.stdout.write(String(c['$CHAIN']?.id));
-}" 2>/dev/null)
+CHAIN_ID=$(node ./source/util/chainid.ts $CHAIN 2>/dev/null)
 
 echo "Chain: \"$CHAIN\", ID: [$CHAIN_ID]"
 

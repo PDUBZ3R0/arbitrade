@@ -243,6 +243,10 @@ export class CandidateExecutor {
     private gasPriceFetchedAt = 0;
     /** A background gas-price refresh in flight (ensureGasPrice({ background })), so only one runs. */
     private gasPriceRefresh: Promise<void> | null = null;
+    /** Why pinned builds failed, each reason said once. Sonic, 2026-11-03: 244 of
+     *  513 failed and the reason was thrown away — it was drpc's "unsupported
+     *  block number", which vetted-provider didn't read as lag. */
+    private readonly pinnedFailures = new Set<string>();
     private gasFloorUnavailableReason: string | null = null;
     /** See withSendLock / nextSendFields. */
     private sendChain: Promise<unknown> = Promise.resolve();
@@ -760,6 +764,14 @@ export class CandidateExecutor {
             built = await build(postState?.block).catch(err => {
                 if (postState?.block === undefined) throw err;
                 stage('build (pinned, failed)');
+                // ethers words an RPC error on eth_call as "missing revert data"; the node's own words are under info.error.
+                const e = err as { shortMessage?: string; message?: string; info?: { error?: { message?: string } }; error?: { message?: string } };
+                const said = e.info?.error?.message ?? e.error?.message;
+                const why = [e.shortMessage ?? e.message ?? String(err), said].filter(Boolean).join(': ').replace(/0x[0-9a-fA-F]{8,}/g, '0x…').replace(/\d{6,}/g, 'N').slice(0, 160);
+                if (this.pinnedFailures.size < 20 && !this.pinnedFailures.has(why)) {
+                    this.pinnedFailures.add(why);
+                    console.warn(`  [!] a build pinned to block ${postState.block} failed, building unpinned (said once per reason): ${why}`);
+                }
                 timings.readMs = undefined;
                 return build(undefined);
             });

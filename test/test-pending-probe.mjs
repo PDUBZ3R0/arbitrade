@@ -231,7 +231,13 @@ ok(await provider.getTransactionCount(w.address, 'latest') === nonceBeforeVictim
     ok(post?.block === simBase && Number.isFinite(simBase), 'the backrun is built at the victim\'s simulation block', JSON.stringify({ post: post?.block, simBase }));
     ok(plans[0]?.built?.blockTag === simBase, 'its path was read at that block', JSON.stringify({ blockTag: plans[0]?.built?.blockTag }));
     // An endpoint that can't serve the block (one behind in the pool): read again, unpinned.
+    const warned = [], warn = console.warn;
+    console.warn = (...a) => { warned.push(a.join(' ')); };
     const p = await executor.prepareBackrun(c, db, { ...post, block: 1e9 });
+    await executor.prepareBackrun(c, db, { ...post, block: 1e9 });
+    console.warn = warn;
+    const said = warned.filter(w => w.includes('pinned to block'));
+    ok(said.length === 1 && /building unpinned/.test(said[0]) && /missing revert data: ./.test(said[0]), 'the pinned failure\'s reason is said once, in the node\'s own words', JSON.stringify(said));
     ok(p.tx && p.built.expectedProfit === plans[0].built.expectedProfit && p.stages?.some(([l]) => l === 'build (pinned, failed)'),
        'a pinned read that fails is retried unpinned, and builds the same', JSON.stringify({ tx: !!p.tx, stages: p.stages, error: p.error }));
     // A stale gas price is refreshed without waiting, when one is already held.

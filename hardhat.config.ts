@@ -35,6 +35,9 @@ const TEMPO_RPC         = process.env.TEMPO_RPC         || 'https://tempo-mainne
 const HYDRATION_RPC = process.env.HYDRATION_RPC || 'https://hydration-rpc.n.dwellir.com';
 const RONIN_RPC     = process.env.RONIN_RPC || 'https://ronin.gateway.tenderly.co';
 const OPBNB_RPC     = process.env.OPBNB_RPC || 'https://rpc.swiftnodes.io/rpc/opbnb';
+const CELO_RPC      = process.env.CELO_RPC || 'https://42220.rpc.thirdweb.com';
+const FLARE_RPC     = process.env.FLARE_RPC || 'https://flare.drpc.org';
+const MANTLE_RPC    = process.env.MANTLE_RPC || 'https://mantle.drpc.org';
 
 // Only pass an accounts array when the key is actually present, otherwise
 // hardhat throws on load. This lets `hardhat compile` work with no .env.
@@ -197,6 +200,24 @@ export default defineConfig({
         },
         opbnb: {
             url: OPBNB_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        celo: {
+            url: CELO_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        flare: {
+            url: FLARE_RPC,
+            accounts,
+            type: "http",
+            chainType: "generic",
+        },
+        mantle: {
+            url: MANTLE_RPC,
             accounts,
             type: "http",
             chainType: "generic",

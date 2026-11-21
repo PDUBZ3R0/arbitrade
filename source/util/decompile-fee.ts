@@ -43,6 +43,7 @@
 import { Interface, type JsonRpcProvider } from 'ethers';
 import { Contract as SevmContract, solStmts } from 'sevm';
 import 'sevm/4bytedb';
+import { resolveCode } from './bytecode.ts';
 
 const SWAP_IFACE = new Interface([
     'function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes data)',
@@ -167,7 +168,7 @@ export async function deriveFeeFromBytecode(
 
     let bytecode: string;
     try {
-        bytecode = await provider.getCode(pairAddress);
+        bytecode = (await resolveCode(provider, pairAddress)).code;
     } catch (err) {
         result.error = `getCode failed: ${(err as Error).message}`;
         return result;

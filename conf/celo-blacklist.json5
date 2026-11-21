@@ -1,0 +1,14 @@
+{
+    factories: [
+        {
+            address: "0x718e46d0962a66942e233760a8bd6038ce54edcd",
+            reason:  "dead (0/3 pairs with real liquidity)",
+            addedAt: "2026-11-06",
+        },
+        {
+            address: "0xdc929c56616144c3251516c07ac7f12720b631fc",
+            reason:  "restricted DEX — TokenProbe: 2 probed pair(s) rejected swap() from outsiders, 0 accepted",
+            addedAt: "2026-11-06",
+        },
+    ]
+}

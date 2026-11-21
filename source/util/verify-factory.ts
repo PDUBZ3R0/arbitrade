@@ -18,6 +18,7 @@ import { ethers, JsonRpcProvider, Contract } from 'ethers';
 import { loadChainConfig } from './config.ts';
 import { etherscanGetLogs, getContractCreation, rateLimit } from './etherscan.ts';
 import { realpathSync } from 'node:fs';
+import type { EnvioSample } from './envio-rest.ts';
 import { sharedProvider } from './rpc.ts';
 
 import {
@@ -55,6 +56,10 @@ export type VerifyResult = {
     feeConfidence: 'derived' | 'assumed' | 'unknown' | 'probed';
     deployBlock: number | null;
     samplePair: string | null;
+    /** Up to 5 recently created pairs, for the audits. */
+    samplePairs: Array<{ pair: string; token0: string; token1: string; stable: boolean | null }>;
+    /** Who deployed the factory (block explorer), when it answered. */
+    creator: string | null;
     notes: string[];
     configSnippet: string;
 
@@ -97,8 +102,8 @@ async function fetchSamplePairs(
     // Fast path: if HyperSync is configured, use it. It sweeps the entire
     // chain range for this specific factory + topic in one shot — no chunking,
     // no rate limit dance, no hang risk. Falls through to RPC on any error.
-    if (hypersyncUrl && envioApiToken) {
-        const { samplePairsFromFactoryHyperSync } = await import('./hypersync.ts');
+    const { hypersyncUp, samplePairsFromFactoryHyperSync } = await import('./hypersync.ts');
+    if (hypersyncUrl && envioApiToken && await hypersyncUp(hypersyncUrl, envioApiToken)) {
         const from = deployBlock ?? 0;
         for (const topic of topics) {
             try {
@@ -409,6 +414,8 @@ export async function verifyFactory(
     chainName: string,
     address: string,
     explorerApiKey?: string,
+    /** Pools our indexer already has, instead of asking the chain for logs. */
+    known?: EnvioSample | null,
 ): Promise<VerifyResult> {
     const cfg = loadChainConfig(chainName);
     const provider = sharedProvider(cfg.chain);
@@ -423,6 +430,8 @@ export async function verifyFactory(
         feeConfidence: 'unknown',
         deployBlock: null,
         samplePair: null,
+        samplePairs: [],
+        creator: null,
         notes,
         configSnippet: '',
     };
@@ -441,6 +450,7 @@ export async function verifyFactory(
             const creation = await getContractCreation(cfg.chain.id, address, explorerApiKey);
             if (creation) {
                 result.deployBlock = creation.blockNumber;
+                result.creator = creation.creator?.toLowerCase() ?? null;
                 notes.push(`✓ Deployed at block ${creation.blockNumber} by ${creation.creator}`);
             }
         } catch (err) {
@@ -448,19 +458,25 @@ export async function verifyFactory(
         }
     }
 
+    // The first pool is as good as the deploy block for a scan, and Etherscan's
+    // free plan refuses both creator and deploy block on BSC and Gnosis.
+    result.deployBlock ??= known?.firstBlock ?? null;
+
     // Step 3: sample PairCreated events, anchored at deploy block if known.
     // We try both V2-shape and Solidly-shape topics; the winning topic tells us
     // the event-family signature this factory uses.
     notes.push(`  Searching for PairCreated events${result.deployBlock ? ` starting from deploy block ${result.deployBlock}` : ''}...`);
-    const { hits: pairs, matchedTopic } = await fetchSamplePairs(
-        provider,
-        address,
-        cfg.chain.id,
-        result.deployBlock,
-        explorerApiKey,
-        cfg.chain.hypersyncUrl,
-        process.env.ENVIO_API_TOKEN,
-    );
+    const { hits: pairs, matchedTopic } = known
+        ? { hits: known.pools.map(p => ({ pair: p.pool, token0: p.token0, token1: p.token1, blockNumber: p.blockNumber, stable: p.stable })), matchedTopic: known.layout as PairLayout }
+        : await fetchSamplePairs(
+            provider,
+            address,
+            cfg.chain.id,
+            result.deployBlock,
+            explorerApiKey,
+            cfg.chain.hypersyncUrl,
+            process.env.ENVIO_API_TOKEN,
+        );
     if (pairs.length === 0) {
         notes.push(
             `✗ No PairCreated events found (tried both V2 and Solidly signatures). ` +
@@ -471,6 +487,7 @@ export async function verifyFactory(
     }
     result.isV2 = true;
     result.samplePair = pairs[0].pair;
+    result.samplePairs = pairs.slice(0, 5).map(p => ({ pair: p.pair, token0: p.token0, token1: p.token1, stable: p.stable ?? null }));
     notes.push(`✓ Emits PairCreated events (${matchedTopic} signature, found ${pairs.length}). Sample pair: ${pairs[0].pair} (block ${pairs[0].blockNumber})`);
     if (matchedTopic === 'solidly' || matchedTopic === 'velodrome') {
         const stableCount = pairs.filter(p => p.stable === true).length;

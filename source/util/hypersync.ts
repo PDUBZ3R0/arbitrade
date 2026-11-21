@@ -188,6 +188,42 @@ export async function sweepHyperSync(
     return emitters;
 }
 
+const reachable = new Map<string, Promise<boolean>>();
+
+/**
+ * Does this URL answer as HyperSync? Ask once per URL, before any client: the
+ * client retries a failed height forever. opBNB's conf pointed at the indexer's
+ * Hasura (http://localhost:8080/v1/graphql), a 404 to it, and find-factories
+ * sat logging "failed to get height" until it was killed.
+ */
+export function hypersyncUp(url: string, apiToken: string): Promise<boolean> {
+    let up = reachable.get(url);
+    if (!up) {
+        up = hypersyncProblem(url, apiToken).catch(e => String((e as Error).message ?? e).slice(0, 80)).then(why => {
+            if (why) console.log(`  [!] HyperSync unusable at ${url}: ${why}. Using RPC.`);
+            return !why;
+        });
+        reachable.set(url, up);
+    }
+    return up;
+}
+
+/** Height needs no valid token; only a query shows a revoked one (a 403 the client also retries, ~45s per call). */
+async function hypersyncProblem(url: string, apiToken: string): Promise<string> {
+    const base = url.replace(/\/+$/, '');
+    const headers = { authorization: `Bearer ${apiToken}`, 'content-type': 'application/json' };
+    const r = await fetch(`${base}/height`, { headers, signal: AbortSignal.timeout(10_000) });
+    const height = r.ok ? (await r.json() as { height?: unknown }).height : undefined;
+    if (typeof height !== 'number') return `HTTP ${r.status} for its height — check hypersyncUrl in the chain's conf`;
+    const q = await fetch(`${base}/query`, {
+        method: 'POST', headers, signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify({ from_block: Math.max(0, height - 1), to_block: height, logs: [{ address: ['0x0000000000000000000000000000000000000000'] }], field_selection: { log: ['address'] } }),
+    });
+    if (q.ok) return '';
+    const body = await q.text().catch(() => '');
+    return `query refused (HTTP ${q.status}: ${body.slice(0, 120)}) — check ENVIO_API_TOKEN`;
+}
+
 /**
  * Ask HyperSync for the current archive height (a proxy for "chain head"
  * suitable for setting to-block on scans). Uses a minimal query to trigger

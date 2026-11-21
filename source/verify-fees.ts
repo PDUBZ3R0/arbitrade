@@ -23,6 +23,9 @@
 //   - Two confirmed signals that disagree -> CONFLICT; no final fee is
 //     reported. A contradiction is surfaced, never silently resolved.
 //
+// Pairs come from the DB, or with no DB from the factory's own hub-token pools
+// (util/sample-pairs.ts), so a chain that only liquidates can be audited too.
+//
 // Report only by default. With --apply it acts on the verdicts:
 //   MISMATCH (v2 group)   conf fee set to the resolved fee — and the pairs
 //                         already in the DB too: the scanner stamps the
@@ -52,10 +55,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadChainConfig, dbPath } from './util/config.ts';
-import { ArbitradeDB } from './util/db.ts';
-import { deriveFeeFromBytecode } from './util/decompile-fee.ts';
-import { empiricallyVerifyFee, pickFeeSamplePairs } from './util/empirical-fee.ts';
-import { acquireCode, analyzeFeeWithClaude, type ClaudeFeeAnalysis } from './util/source-fee.ts';
+import { pickFeeSamplePairs } from './util/empirical-fee.ts';
+import { auditFee, noSample, type FeeRow } from './util/fee-audit.ts';
+import { openPoolDb, PairSampler } from './util/sample-pairs.ts';
 import { makeProvider } from './util/rpc.ts';
 import { editFactoriesInConf, type FactoryEdit } from './util/conf-edit.ts';
 import { appendToBlacklist, type BlacklistEntry } from './util/blacklist.ts';
@@ -110,7 +112,7 @@ if (useClaude && !anthropicKey) {
 
 const cfg = loadChainConfig(chainArg);
 const dbFile = dbPath(chainArg);
-const db = new ArbitradeDB(dbFile);
+const db = openPoolDb(dbFile);
 const provider = makeProvider(cfg.chain);
 const cacheFile = `log/${cfg.chain.label}/fee-analysis-cache.json`;
 
@@ -129,169 +131,36 @@ console.log(apply
     ? `(--apply: verdicts will be written to conf/${cfg.chain.label}.json5, its blacklist and the DB after the report.)\n`
     : `(Report only — nothing is written to conf/${cfg.chain.label}.json5. Pass --apply to act on it.)\n`);
 
-type Status = 'MATCH' | 'MISMATCH' | 'CONFLICT' | 'NON-CP' | 'NO-SAMPLE' | 'NO-SWAP' | 'UNKNOWN';
-type Source = 'decompile' | 'empirical' | 'claude' | 'claude+empirical' | 'none';
-type Row = {
-    name: string;
-    address: string;
-    assumedFee: number | undefined;
-    finalFee: number | null;
-    source: Source;
-    decompiledFee: number | null;
-    decompiledConfidence: string;
-    empiricalFee: number | null;
-    empiricalConfidence: string;
-    empiricalSampleCount: number;
-    claude: ClaudeFeeAnalysis | null;
-    claudeNote: string;
-    status: Status;
-    snippet: string;
-    detail: string;
-    /** Up to 5 of the factory's pairs, most active first — probed by --apply. */
-    pairs: string[];
-};
+type Row = FeeRow;
 const rows: Row[] = [];
 // Flash-loan roots are blue chips the probe never tests; their pairs count as clean.
 const trustedTokens = new Set((cfg.flashloan?.tokens ?? []).map(t => t.address.toLowerCase()));
-let claudeCalls = 0;
-
-const CONFLICT_TOLERANCE = 0.0002;
+const sampler = await PairSampler.open(cfg, provider, factories, db);
+const auditOpts = {
+    provider, chainId: cfg.chain.id, rpcUrl: cfg.chain.host, hypersync, group, etherscanKey: etherscanKey,
+    claude: useClaude ? { all: claudeAll, allowHeimdall, apiKey: anthropicKey!, cacheFile } : undefined,
+};
 
 for (const f of factories) {
-    const sample = db.getSamplePairForFactory(f.address);
-    if (!sample) {
-        rows.push({
-            name: f.name, address: f.address, assumedFee: f.fee, finalFee: null, source: 'none',
-            decompiledFee: null, decompiledConfidence: '-', empiricalFee: null, empiricalConfidence: '-',
-            empiricalSampleCount: 0, claude: null, claudeNote: '', status: 'NO-SAMPLE', snippet: '',
-            detail: 'no scanned pairs for this factory in the DB', pairs: [],
-        });
-        console.log(`  ${f.name.padEnd(32)} NO-SAMPLE (no pairs scanned yet)`);
-        continue;
-    }
-
     // Active pairs first (by reserve size) — see db.getPairsForFactory for why
     // lowest-address picks are a poor choice for anything needing real history.
-    const candidates = db.getPairsForFactory(f.address, 5);
-    const bestPair = candidates[0]?.pair ?? sample.pair;
+    const candidates = sampler.pairs(f.address, 5);
+    if (!candidates.length) {
+        rows.push(noSample(f, 'no pairs for this factory in the DB or among hub tokens'));
+        console.log(`  ${f.name.padEnd(32)} NO-SAMPLE (no pairs found)`);
+        continue;
+    }
     // Swaps are read only from pairs whose tokens can't move the pair's balance
     // on their own; see pickFeeSamplePairs for the CBS/HKDT readings that flipped.
-    const wider = db.getPairsForFactory(f.address, 50);
+    const wider = sampler.pairs(f.address, 50);
     const { picked: feePairs, excluded: taxedPairs } = pickFeeSamplePairs(
-        wider, db.getTokenProbes(wider.flatMap(c => [c.token0, c.token1])), trustedTokens);
+        wider, sampler.tokenProbes(wider.flatMap(c => [c.token0, c.token1])), trustedTokens);
+    const row = await auditFee(auditOpts, f, db?.getSamplePairForFactory(f.address)?.pair ?? candidates[0].pair, candidates.map(c => c.pair), feePairs, taxedPairs);
+    rows.push(row);
 
-    // --- 1. sevm decompile (free)
-    const decompiled = await deriveFeeFromBytecode(provider, sample.pair);
-
-    // --- 2. empirical (free) — only if sevm didn't settle it
-    let empiricalFee: number | null = null;
-    let empiricalConfidence = 'not attempted';
-    let empiricalSampleCount = 0;
-    let empiricalError: string | undefined;
-    if (decompiled.confidence !== 'derived' || claudeAll) {
-        if (feePairs.length === 0 && taxedPairs.length > 0) {
-            empiricalConfidence = 'unknown';
-            empiricalError = `not measured: all ${taxedPairs.length} pair(s) have a token the probe flagged (${[...new Set(taxedPairs.map(t => t.why))].join(', ')})`;
-        }
-        for (const candidate of feePairs) {
-            const empirical = await empiricallyVerifyFee(provider, candidate.pair, { hypersync });
-            empiricalFee = empirical.fee;
-            empiricalConfidence = empirical.confidence;
-            empiricalSampleCount = empirical.samples.length;
-            empiricalError = empirical.error;
-            if (empirical.confidence === 'derived') break;
-            if (empirical.confidence === 'ambiguous') break; // real signal about the factory — don't pair-shop
-        }
-    }
-
-    // --- 3. Claude (paid, opt-in)
-    const freeResolved = decompiled.confidence === 'derived' || empiricalConfidence === 'derived';
-    let claude: ClaudeFeeAnalysis | null = null;
-    let claudeNote = '';
-    if (useClaude && (!freeResolved || claudeAll)) {
-        try {
-            const acquired = await acquireCode({
-                chainId: cfg.chain.id,
-                rpcUrl: cfg.chain.host,
-                address: bestPair,
-                etherscanApiKey: etherscanKey,
-                allowHeimdall,
-            });
-            if (acquired.source === 'none') {
-                claudeNote = `no readable code (${acquired.note ?? 'unknown reason'})`;
-            } else {
-                claude = await analyzeFeeWithClaude({ acquired, address: bestPair, cacheFile, apiKey: anthropicKey! });
-                if (claude) claudeCalls++; // count only analyses that actually came back
-            }
-        } catch (err) {
-            claudeNote = `claude analysis failed: ${(err as Error).message.slice(0, 160)}`;
-        }
-    }
-
-    // --- Resolution
-    const confirmed: Array<{ src: Source; fee: number }> = [];
-    if (empiricalConfidence === 'derived' && empiricalFee !== null) confirmed.push({ src: 'empirical', fee: empiricalFee });
-    const claudeTrusted = !!claude && claude.evidenceVerified && claude.confidence === 'high'
-        && claude.fee !== null && claude.curve === 'constant-product' && claude.feeKind === 'constant';
-    if (claudeTrusted) confirmed.push({ src: 'claude', fee: claude!.fee! });
-
-    // Two independent weak signals that agree: Claude read the code at MEDIUM
-    // confidence (evidence verified, but e.g. found in a helper rather than
-    // squarely in swap()'s K-check) AND the one real swap we could find implies
-    // the same fee. Deliberately narrow: exactly 1 empirical sample means "too
-    // little data" — the "samples disagree" case (possible dynamic fee or
-    // skimming pair) never qualifies.
-    const claudeCorroborated = !claudeTrusted && !!claude && claude.evidenceVerified && claude.confidence === 'medium'
-        && claude.fee !== null && claude.curve === 'constant-product' && claude.feeKind === 'constant'
-        && empiricalConfidence === 'ambiguous' && empiricalSampleCount === 1 && empiricalFee !== null
-        && Math.abs(claude.fee - empiricalFee) <= CONFLICT_TOLERANCE;
-    if (claudeCorroborated) confirmed.push({ src: 'claude+empirical', fee: claude!.fee! });
-    if (decompiled.confidence === 'derived' && decompiled.fee !== null) confirmed.push({ src: 'decompile', fee: decompiled.fee });
-
-    const claudeSaysNonCp = !!claude && claude.evidenceVerified
-        && (claude.confidence === 'high' || claude.confidence === 'medium')
-        && (claude.curve === 'stable-solidly' || claude.curve === 'other');
-
-    let status: Status;
-    let finalFee: number | null = null;
-    let source: Source = 'none';
-    let detail = '';
-
-    if (claudeSaysNonCp) {
-        status = 'NON-CP';
-        detail = `curve=${claude!.curve} — constant-product math is wrong for these pairs; exclude from triangulation. ${claude!.notes}`;
-    } else if (confirmed.length >= 2 && Math.max(...confirmed.map(c => c.fee)) - Math.min(...confirmed.map(c => c.fee)) > CONFLICT_TOLERANCE) {
-        status = 'CONFLICT';
-        detail = confirmed.map(c => `${c.src}=${c.fee}`).join(' vs ');
-    } else if (confirmed.length > 0) {
-        // Priority: observed behavior > read source > regex over bytecode.
-        const pick = confirmed[0];
-        finalFee = pick.fee;
-        source = pick.src;
-        status = f.fee !== undefined && Math.abs(finalFee - f.fee) < 1e-6 ? 'MATCH' : 'MISMATCH';
-        if (confirmed.length >= 2) detail = `corroborated by ${confirmed.slice(1).map(c => c.src).join(', ')}`;
-    } else {
-        status = decompiled.hasSwapFunction ? 'UNKNOWN' : 'NO-SWAP';
-        detail = [decompiled.error, empiricalError ? `empirical: ${empiricalError}` : undefined].filter(Boolean).join('; ');
-    }
-    if (claude && !claudeTrusted && !claudeCorroborated && !claudeSaysNonCp) {
-        claudeNote = `claude: fee=${claude.fee} curve=${claude.curve} kind=${claude.feeKind} conf=${claude.confidence}${claude.evidenceVerified ? '' : ' (evidence NOT verified)'} — ${claude.notes}`;
-    }
-    if (claude && (claude.feeKind === 'per-pair-storage' || claude.feeKind === 'factory-lookup') && group === 'v2') {
-        claudeNote += `${claudeNote ? '; ' : ''}fee is ${claude.feeKind} — this factory likely belongs in the v2fee group, not v2`;
-    }
-
-    rows.push({
-        name: f.name, address: f.address, assumedFee: f.fee, finalFee, source,
-        decompiledFee: decompiled.fee, decompiledConfidence: decompiled.confidence,
-        empiricalFee, empiricalConfidence, empiricalSampleCount,
-        claude, claudeNote, status, snippet: decompiled.snippet, detail,
-        pairs: candidates.length ? candidates.map(c => c.pair) : [sample.pair],
-    });
-
-    const feeStr = finalFee !== null ? String(finalFee) : '-';
-    const srcTag = source !== 'none' ? `[${source}]` : claude ? `[claude:${claude.codeSource}]` : '';
-    console.log(`  ${f.name.padEnd(32)} ${status.padEnd(10)} assumed=${String(f.fee ?? '-').padEnd(8)} final=${feeStr.padEnd(10)} ${srcTag}`);
+    const feeStr = row.finalFee !== null ? String(row.finalFee) : '-';
+    const srcTag = row.source !== 'none' ? `[${row.source}]` : row.claude ? `[claude:${row.claude.codeSource}]` : '';
+    console.log(`  ${f.name.padEnd(32)} ${row.status.padEnd(10)} assumed=${String(f.fee ?? '-').padEnd(8)} final=${feeStr.padEnd(10)} ${srcTag}`);
 }
 
 // -----------------------------------------------------------------------------
@@ -305,7 +174,7 @@ for (const [k, v] of Object.entries(byStatus)) console.log(`  ${k.padEnd(12)} ${
 const bySource: Record<Source, number> = { decompile: 0, empirical: 0, claude: 0, 'claude+empirical': 0, none: 0 };
 for (const r of rows) if (r.status === 'MATCH' || r.status === 'MISMATCH') bySource[r.source]++;
 console.log(`  resolved via decompile: ${bySource.decompile}   empirical: ${bySource.empirical}   claude: ${bySource.claude}   claude+empirical: ${bySource['claude+empirical']}`);
-if (useClaude) console.log(`  Claude analyses this run: ${claudeCalls} (cached results reused where code unchanged)`);
+if (useClaude) console.log(`  Claude analyses this run: ${rows.filter(r => r.claude).length} (cached results reused where code unchanged)`);
 
 const section = (title: string, rs: Row[], render: (r: Row) => string[]) => {
     if (rs.length === 0) return;
@@ -354,7 +223,7 @@ if (showSnippets) {
 
 if (apply) await applyVerdicts();
 
-db.close();
+db?.close();
 
 // -----------------------------------------------------------------------------
 // --apply
@@ -368,7 +237,7 @@ async function applyVerdicts(): Promise<void> {
     const black: Array<BlacklistEntry & { name: string; status: string }> = [];
     const leftAlone: string[] = [];
     const clip = (s: string, n: number) => s.replace(/\s+/g, ' ').trim().slice(0, n);
-    const pairCount = (r: Row) => db.countPairs(r.address);
+    const pairCount = (r: Row) => db?.countPairs(r.address) ?? r.pairs.length;
 
     const tryReconfig = async (r: Row) => {
         const f = byAddr.get(r.address.toLowerCase())!;
@@ -437,15 +306,17 @@ async function applyVerdicts(): Promise<void> {
     for (const m of movedRows) console.log(`  moved    ${m.name.padEnd(32)} ${group} → ${m.to}  (${m.basis})`);
 
     // 2. The DB rows that carry a copy of the old config.
-    const setFee = db.db.prepare(`UPDATE pairs SET fee = ? WHERE factory = ? AND kind != 'v3'`);
-    const clearMeta = db.db.prepare(`UPDATE pairs SET fee = NULL, stable = NULL WHERE factory = ?`);
-    let feeRowsUpdated = 0, metaCleared = 0;
-    db.db.transaction(() => {
-        for (const f of feeRows) feeRowsUpdated += setFee.run(f.fee, f.factory.toLowerCase()).changes;
-        for (const m of movedRows) metaCleared += clearMeta.run(m.factory.toLowerCase()).changes;
-    })();
-    if (feeRows.length) console.log(`           ${feeRowsUpdated} pair row(s) in the DB now carry the new fee`);
-    if (movedRows.length) console.log(`           ${metaCleared} pair row(s) of moved factories cleared — the next yarn reserves reads their fee and stable flag`);
+    if (db) {
+        const setFee = db.db.prepare(`UPDATE pairs SET fee = ? WHERE factory = ? AND kind != 'v3'`);
+        const clearMeta = db.db.prepare(`UPDATE pairs SET fee = NULL, stable = NULL WHERE factory = ?`);
+        let feeRowsUpdated = 0, metaCleared = 0;
+        db.db.transaction(() => {
+            for (const f of feeRows) feeRowsUpdated += setFee.run(f.fee, f.factory.toLowerCase()).changes;
+            for (const m of movedRows) metaCleared += clearMeta.run(m.factory.toLowerCase()).changes;
+        })();
+        if (feeRows.length) console.log(`           ${feeRowsUpdated} pair row(s) in the DB now carry the new fee`);
+        if (movedRows.length) console.log(`           ${metaCleared} pair row(s) of moved factories cleared — the next yarn reserves reads their fee and stable flag`);
+    }
 
     // 3. The blacklist.
     if (black.length) {

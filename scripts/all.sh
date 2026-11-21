@@ -10,12 +10,21 @@ if [ -z "$CHAIN" ]||[ -z "$KEYWORD" ]; then
     exit 1
 fi
 
+if [[ "$KEYWORD" != "L" ]]; then
+    ISMEMCHAIN=$(cat conf/mempool/list.conf | grep $CHAIN)
+
+    if [[ "$CHAIN" = "$ISMEMCHAIN" ]]; then
+        logd mempool echo "------[ Mempool Mode: Active ][ Chain: $CHAIN) ]------"]
+        LIVERUNS="--pending-probe"
+
+        if [[ "$MEMPOOL" = "live" ]]; then
+            LIVERUNS="$LIVERUNS --live-backruns"
+        fi
+    fi
+fi
+
 if [[ "$1" = '--live' ]]; then
     LIVENESS="--live"
-    # No --live-backruns: on Sonic (VPS, 2026-11-02) all 22 sent backruns
-    # reverted, 0.41 S of gas, each landing a block after its victim. The
-    # pending probe still simulates them; set LIVERUNS=--live-backruns in the
-    # environment to send again.
 fi
 
 logd(){
@@ -39,6 +48,7 @@ supervise() {
 }
 
 runstart(){
+    yarn scan $CHAIN --transport envio && \
     yarn scan $CHAIN && \
         yarn reserves $CHAIN --blacklist-dead && \
         yarn cleanup $CHAIN --empty --yes && \
@@ -51,12 +61,12 @@ reserves() {
     while :; do
         sleep $RESERVES
         yarn reserves $CHAIN --blacklist-dead &> /dev/null
-        logd '@reserves' echo "refreshed all reserves."
+        logd '<reserves' echo "refreshed all reserves."
     done
 }
 
-# The liquidator starts BEFORE the startup pipeline, not after it. It only
-# needs the pool DB for exit routes, and reads it live, so the pipeline's
+# The liquidator starts BEFORE the startup pipeline, not after it. It finds exit
+# pools from the factories itself and reads the pool DB live, so the pipeline's
 # updates reach it as they land. Gated behind runstart, it never started on
 # Polygon, HyperEVM, Monad or Robinhood in the Oct 23-24 run: their scans were
 # still going 33h later, through a BTC move with 15 liquidations on Polygon's
@@ -65,8 +75,14 @@ if [[ "$KEYWORD" = "L" || "$KEYWORD" = "_" ]]; then
     supervise 'liquidate' yarn liq $CHAIN --follow $LIVENESS &
 fi
 
-logd "@startup " runstart
-reserves &
+# A liquidator-only run needs no scan: live-pools.ts asks the factories. The DB
+# still adds pools outside the usual fee tiers and DexUsd prices, which a chain
+# with neither an Aave oracle nor liquidation.usdOracle needs: yarn liquidate
+# <chain> --scan keeps the pipeline for those.
+if [[ "$KEYWORD" != "L" || " $* " = *" --scan "* ]]; then
+    logd "@ startup" runstart
+    reserves &
+fi
 
 if [[ "$KEYWORD" = "L" ]]; then
     wait
@@ -76,5 +92,5 @@ if [[ "$KEYWORD" = "A" || "$KEYWORD" = "_" ]]; then
     logd 'arbitrage' yarn probe $CHAIN --blacklist-restricted &> /dev/null && echo '[probe] complete'
     logd 'arbitrage' yarn triangles $CHAIN && echo "[triangles] complete" 
     ## ogd 'arbitrage' yarn evaluate $CHAIN --verbose
-    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 --pending-probe $LIVENESS ${LIVERUNS:-}
+    supervise 'arbitrage' yarn hot $CHAIN --gas-margin 1.5 --candidates 20 $LIVENESS $LIVERUNS
 fi

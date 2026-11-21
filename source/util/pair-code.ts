@@ -25,10 +25,12 @@
 // -----------------------------------------------------------------------------
 
 import fs from 'node:fs';
+import { keccak256, type JsonRpcProvider } from 'ethers';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { resolveCode } from './bytecode.ts';
 
 const run = promisify(execFile);
 
@@ -53,12 +55,15 @@ const NAMES: Record<string, string> = {
     '9af608c9': 'getFees(address)', '1df4ccfc': 'totalFee()', d0fb0203: 'feeManager()', '6999b377': 'feeController()',
     '62bdc32f': 'getFeeDistribution(address)', '01a362a8': 'discountMgr()', befa96ce: 'discountOf(address)',
     '0e2789bb': 'exchangeConfig()', '4cf088d9': 'staking()', f887ea40: 'router()',
+    '2f1850d7': 'isAuthorized(address[],address)',
     b187bd26: 'isPaused()', '5c975abb': 'paused()', '2e48152c': 'paused(address)', d84f4460: 'poolPaused(address)',
     '3af32abf': 'isWhitelisted(address)', '54789a5e': 'isWhitelistedAccount(address)', acad5b69: 'isAllowedToSwap(address)',
     '6a29ea74': 'isAllowedToSwap()', f3d7d282: 'isRouter(address)', '6177fd18': 'isStaked(address)', '68b959cc': 'isDisableFlashLoan(address)',
 };
 // Asking whether this caller may trade: a pair that does this can refuse us after a simulation passed.
-const PERMISSION = new Set(['3af32abf', '54789a5e', 'acad5b69', '6a29ea74', 'f3d7d282', '6177fd18', '68b959cc']);
+// 2f1850d7 is isAuthorized(address[],address): Katana on Ronin. Its pairs ask governance
+// about their tokens and the caller, so a pair can refuse even a contract it admits elsewhere.
+const PERMISSION = new Set(['3af32abf', '54789a5e', 'acad5b69', '6a29ea74', 'f3d7d282', '6177fd18', '68b959cc', '2f1850d7']);
 // heimdall renders a revert's Error(string) encoding as a call; it isn't one.
 const NOT_A_CALL = new Set(['08c379a0']);
 const label = (sel: string) => NAMES[sel] ?? `0x${sel}`;
@@ -155,4 +160,55 @@ export async function decompilePairCode(code: string, timeoutMs = 180_000): Prom
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
+}
+
+const EIP1967_ADMIN = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
+const word = (w: string) => (w && w !== '0x' && BigInt(w) !== 0n ? '0x' + w.slice(-40).toLowerCase() : null);
+// Solidity's CBOR metadata tail differs between identical builds; cut it before hashing.
+// Only when a CBOR map header (a1..a5) sits where the tail would start, as ../sniper does.
+const stripMetadata = (code: string) => {
+    const hex = code.toLowerCase().replace(/^0x/, '');
+    const len = parseInt(hex.slice(-4), 16);
+    const start = hex.length - 4 - len * 2;
+    return len > 0 && len < 256 && start > 0 && /^a[1-5]$/.test(hex.slice(start, start + 2)) ? '0x' + hex.slice(0, start) : '0x' + hex;
+};
+const retry = async <T>(f: () => Promise<T>): Promise<T> => {
+    for (let i = 0; ; i++) { try { return await f(); } catch (e) { if (i >= 3) throw e; await new Promise(r => setTimeout(r, 500 * (i + 1))); } }
+};
+
+export type PairCodeCache = Record<string, { sol: string } | { error: string }>;
+export type PairCodeRead = { hash: string | null; report: PairCodeReport; note: string };
+
+/** One pair's code, through any proxy, decompiled once per code hash and classified. */
+export async function readPairCode(
+    provider: JsonRpcProvider,
+    pair: { address: string; token0: string; token1: string },
+    factory: string,
+    cache: PairCodeCache,
+    opts: { again?: boolean; save?: () => void } = {},
+): Promise<PairCodeRead> {
+    const out: PairCodeRead = { hash: null, report: { verdict: 'unclassified', findings: [] }, note: '' };
+    const { address } = pair;
+    try {
+        const read = await retry(() => resolveCode(provider, address));
+        const code = read.code;
+        if (code === '0x') { out.note = 'pair has no code'; return out; }
+        let proxy: string | null = null;
+        const clone = read.kind === 'clone';
+        if (read.impl) {
+            const admin = read.kind === 'eip1967' ? word(await retry(() => provider.getStorage(address, EIP1967_ADMIN))) : null;
+            const label = clone ? 'EIP-1167 clone of' : read.kind === 'eip1967' ? 'EIP-1967 proxy to' : read.kind === 'beacon' ? 'beacon proxy to' : 'proxy to';
+            proxy = `${label} ${read.impl}${admin ? `, admin ${admin}` : ''}`;
+        }
+        const hash = keccak256(stripMetadata(code));
+        out.hash = hash;
+        if (opts.again || !cache[hash]) { cache[hash] = await decompilePairCode(code); opts.save?.(); }
+        const d = cache[hash];
+        if (!('sol' in d) || !d.sol) { out.note = ('error' in d ? d.error : undefined) ?? 'no decompilation'; return out; }
+        out.report = classifyPairCode(d.sol, { proxy: clone ? null : proxy, factory, tokens: [pair.token0, pair.token1] });
+        if (out.report.verdict === 'unclassified') out.note = 'no V2 swap(uint256,uint256,address,bytes)';
+    } catch (e) {
+        out.note = `read failed: ${String((e as Error).message ?? e).slice(0, 120)}`;
+    }
+    return out;
 }

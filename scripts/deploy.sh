@@ -75,12 +75,17 @@ if [ -z "$CHAIN" ] || [ "${CHAIN#--}" != "$CHAIN" ]; then
     echo "Usage: yarn $STAGE <chain> [--force] [--check]" >&2; exit 2
 fi
 
+## Export Best RPC to ENV VAR
+declare -gx "${CHAIN^^}_RPC"="$(yarn best $CHAIN | grep https)"
+
+
 # Constructor parameters. FlashArbExecutor and TokenProbe take the chain's Aave
 # pool from ignition/parameters/<chain>.json (address(0) where there is none —
 # both then borrow from the conf's flashloan lender by SOURCE id instead).
 PARAMS_ARG=""
 PARAMS="ignition/parameters/${CHAIN}.json"
 TMP_PARAMS=""
+
 if [ "$WHAT" = "flasharb" ] || [ "$WHAT" = "probe" ]; then
     if [ ! -f "$PARAMS" ]; then
         echo "Missing $PARAMS — it needs the chain's Aave V3 pool (0x000…0 if none):" >&2

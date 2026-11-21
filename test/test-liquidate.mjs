@@ -214,6 +214,7 @@ process.env.ARB_LEDGER = path.join(tmp, 'ledger.sqlite');
 
 const { loadAaveMarket, loadEModeBonuses } = await import('../source/liquidation/aave-v3.ts');
 const { Liquidator, RouteFinder, choosePairs, readPositions, LIQUIDATOR_ABI } = await import('../source/liquidation/plan.ts');
+const { LivePools } = await import('../source/liquidation/live-pools.ts');
 const { readPrices } = await import('../source/liquidation/aave-v3.ts');
 const { MULTICALL3_ADDRESS } = await import('../source/util/multicall.ts');
 
@@ -356,6 +357,28 @@ try {
         L.close();
         ok(row?.type === 'liquidation' && BigInt(row.profitWei) === gain && row.rootTokenSymbol === 'USDC' && Math.abs(row.profitUsd - Number(gain) / 1e6) < 0.01,
             'ledger row: type liquidation, realised profit, USD value', row ? `${row.profitWei} ${row.rootTokenSymbol} $${row.profitUsd?.toFixed(2)}` : 'none');
+    }
+
+    console.log('1b. no pool DB: the exit comes from the factory');
+    {
+        // A chain that only liquidates: no scan, no reserves, no db/<chain>.sqlite.
+        const lookup = await deploy(JSON.parse(fs.readFileSync(here('./artifacts.json'), 'utf8')).MockLookupFactory);
+        await send(lookup.setPair(WETH.a, USDC.a, WETH_USDC, ov()));
+        const liveCfg = { ...cfg, factories: [{ ...cfg.factories[0], address: await lookup.getAddress() }] };
+        const live = new LivePools(provider, liveCfg.factories);
+        const noDb = new RouteFinder(liveCfg, path.join(path.dirname(dbFile), 'no-such.sqlite'), [WETH.a, USDC.a], { live });
+        const N = U();
+        await send(oracle.set(WETH.a, P(3000), ov()));
+        await send(pool.supply(WETH.a, u(10, 18), N, ov()));
+        await send(pool.borrow(USDC.a, u(24_000, 6), N, ov()));
+        await send(oracle.set(WETH.a, P(2800), ov()));
+        const { hf, eMode } = await account(N);
+        const r = await new Liquidator(liveCfg, provider, market, noDb,
+            { executor: EXEC, owner: owner.address, signer: owner, live: true, minProfitUsd: 1 }).attempt(N, hf, eMode);
+        await resync();
+        ok(r.confirmed && r.best?.route.label.startsWith('direct v2') && r.realisedProfit > 0n,
+            'liquidated through a pool only the factory knew', r.reason ?? r.best?.route.label);
+        noDb.close();
     }
 
     console.log('2. same asset in eMode');

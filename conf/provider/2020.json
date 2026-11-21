@@ -2,7 +2,7 @@
   "tool": "vetted-provider 0.1.0",
   "chainId": 2020,
   "name": "Ronin",
-  "testedAt": "2026-11-02T01:25:42.667Z",
+  "testedAt": "2026-11-05T15:06:19.712Z",
   "from": "B3T4M4X",
   "options": {
     "maxRps": 40,
@@ -11,10 +11,10 @@
     "only": "all",
     "skip": [],
     "sample": {
-      "address": "0x0b7007c13325c48911f73a2dad5fa5dcbf808adc",
+      "address": "0xe514d9deb7966c8be0ca922de8a064264ea6bcd4",
       "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-      "topic2": "0x23299aca2c857a349e47cc7c62543207e23fc21bea9be69488ce2eb90095acdc",
-      "block": 63056861
+      "topic2": "0x246d6170c69c84204abe4ebffea96c3422563f69ae3486c0661737953248412c",
+      "block": 63211079
     }
   },
   "endpoints": [
@@ -24,14 +24,14 @@
       "tracking": "yes",
       "source": "chainlist",
       "reachable": true,
-      "ms": 57887,
+      "ms": 48821,
       "chainId": 2020,
       "chainIdOk": true,
-      "head": 63056975,
+      "head": 63211193,
       "client": "Tenderly/1.0",
       "latency": {
-        "p50": 77,
-        "p95": 102,
+        "p50": 91,
+        "p95": 100,
         "n": 12,
         "failures": 0
       },
@@ -44,14 +44,14 @@
         "maxRange": 1000000,
         "maxAddresses": 1000,
         "topicOnly": true,
-        "topicOnlyMaxRange": 5623,
+        "topicOnlyMaxRange": 3162,
         "orTopics": true,
         "combined": true,
         "oldLogs": true,
-        "resultCapError": "-32602: invalid params Query returned more than 20000 results. Try with this block range [0x3c204df, 0x3c217e4]."
+        "resultCapError": "-32602: invalid params Query returned more than 20000 results. Try with this block range [0x3c45f37, 0x3c4723a]."
       },
       "history": {
-        "stateDepth": 63056882,
+        "stateDepth": 63211082,
         "archive": true
       },
       "batch": {
@@ -77,25 +77,25 @@
         "txpool_status": "-32601: method not found",
         "eth_blobBaseFee": "-32601: the method eth_blobBaseFee does not exist/is not available"
       },
-      "throttledDuringProbes": 21,
+      "throttledDuringProbes": 9,
       "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
       },
       "headLag": 0,
       "ratings": {
         "scanner": {
           "pass": true,
-          "score": 85
+          "score": 96
         },
         "trader": {
           "pass": true,
-          "score": 75
+          "score": 89
         },
         "reader": {
           "pass": true,
-          "score": 69
+          "score": 80
         },
         "subscriber": {
           "pass": false,
@@ -110,14 +110,14 @@
       "tracking": "yes",
       "source": "chainlist",
       "reachable": true,
-      "ms": 76766,
+      "ms": 96561,
       "chainId": 2020,
       "chainIdOk": true,
-      "head": 63056975,
+      "head": 63211193,
       "client": "thirdweb/1.0",
       "latency": {
-        "p50": 132,
-        "p95": 455,
+        "p50": 122,
+        "p95": 197,
         "n": 12,
         "failures": 0
       },
@@ -137,7 +137,7 @@
         "rangeError": "-32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"
       },
       "history": {
-        "stateDepth": 63056904,
+        "stateDepth": 63211107,
         "archive": true
       },
       "batch": {
@@ -152,21 +152,21 @@
         "eth_createAccessList": true,
         "eth_getProof": true,
         "debug_traceCall": false,
-        "trace_call": null,
+        "trace_call": false,
         "txpool_status": true,
         "eth_blobBaseFee": true,
         "eth_newFilter": true
       },
       "methodErrors": {
         "debug_traceCall": "-32601: Invalid method debug_traceCall",
-        "trace_call": "-32005: Rate limit exceeded. Upgrade your plan at https://thirdweb.com/pricing"
+        "trace_call": "-32601: Invalid method trace_call"
       },
-      "throttledDuringProbes": 19,
+      "throttledDuringProbes": 25,
       "rate": {
-        "cleanRps": 5,
-        "limitedAt": 10,
-        "sent": 30,
-        "retryAfter": "0"
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10,
+        "retryAfter": "4"
       },
       "headLag": 0,
       "ratings": {
@@ -176,7 +176,7 @@
         },
         "trader": {
           "pass": true,
-          "score": 68
+          "score": 70
         },
         "reader": {
           "pass": true,
@@ -194,14 +194,14 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": true,
-      "ms": 37921,
+      "ms": 38861,
       "chainId": 2020,
       "chainIdOk": true,
-      "head": 63056974,
+      "head": 63211192,
       "client": "conduit-op-reth/v2.4.1-f9a37a8/x86_64-unknown-linux-gnu",
       "latency": {
-        "p50": 169,
-        "p95": 221,
+        "p50": 161,
+        "p95": 508,
         "n": 12,
         "failures": 0
       },
@@ -227,7 +227,7 @@
       },
       "batch": {
         "max": 2,
-        "error": "0: batch answered with a single object {\"message\":\"Too many requests\",\"request_id\":\"da80ba0ca174e009ce211104a2872574\"}",
+        "error": "0: batch answered with a single object {\"message\":\"Too many requests\",\"request_id\":\"5f815e63c5d9bf1e6c5975766780d17a\"}",
         "nullIdErrors": false
       },
       "methods": {
@@ -245,19 +245,19 @@
       "methodErrors": {
         "eth_getBlockReceipts": "no result or error in reply {\"message\":\"Method is not whitelist: eth_getBlockReceipts\",\"request_id\":…",
         "eth_createAccessList": "no result or error in reply {\"message\":\"Method is not whitelist: eth_createAccessList\",\"request_id\":…",
-        "eth_getProof": "no result or error in reply {\"message\":\"Method is not whitelist: eth_getProof\",\"request_id\":\"7e9a211…",
-        "debug_traceCall": "no result or error in reply {\"message\":\"Method is not whitelist: debug_traceCall\",\"request_id\":\"3508…",
-        "trace_call": "no result or error in reply {\"message\":\"Method is not whitelist: trace_call\",\"request_id\":\"21637e67a…",
-        "txpool_status": "no result or error in reply {\"message\":\"Method is not whitelist: txpool_status\",\"request_id\":\"759df1…",
-        "eth_blobBaseFee": "no result or error in reply {\"message\":\"Method is not whitelist: eth_blobBaseFee\",\"request_id\":\"7a39…",
-        "eth_newFilter": "no result or error in reply {\"message\":\"Method is not whitelist: eth_newFilter\",\"request_id\":\"281c6b…"
+        "eth_getProof": "no result or error in reply {\"message\":\"Method is not whitelist: eth_getProof\",\"request_id\":\"991fc05…",
+        "debug_traceCall": "no result or error in reply {\"message\":\"Method is not whitelist: debug_traceCall\",\"request_id\":\"b0d3…",
+        "trace_call": "no result or error in reply {\"message\":\"Method is not whitelist: trace_call\",\"request_id\":\"5229021a9…",
+        "txpool_status": "no result or error in reply {\"message\":\"Method is not whitelist: txpool_status\",\"request_id\":\"2c3411…",
+        "eth_blobBaseFee": "no result or error in reply {\"message\":\"Method is not whitelist: eth_blobBaseFee\",\"request_id\":\"20fd…",
+        "eth_newFilter": "no result or error in reply {\"message\":\"Method is not whitelist: eth_newFilter\",\"request_id\":\"ab79fa…"
       },
       "throttledDuringProbes": 3,
       "rate": {
         "cleanRps": 20,
         "limitedAt": 40,
         "sent": 150,
-        "retryAfter": "48"
+        "retryAfter": "35"
       },
       "headLag": 1,
       "ratings": {
@@ -267,7 +267,7 @@
         },
         "trader": {
           "pass": true,
-          "score": 63
+          "score": 62
         },
         "reader": {
           "pass": true,
@@ -285,230 +285,29 @@
       "kind": "http",
       "tracking": "limited",
       "source": "chainlist",
-      "reachable": true,
-      "ms": 189233,
-      "chainId": 2020,
-      "chainIdOk": true,
-      "head": 63056974,
-      "latency": {
-        "p50": 187,
-        "p95": 337,
-        "n": 7,
-        "failures": 5
-      },
-      "call": {
-        "revertData": true,
-        "gasCap": null,
-        "stateOverride": true,
-        "gasCapError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
-      },
-      "logs": {
-        "maxRange": null,
-        "maxAddresses": 33,
-        "topicOnly": false,
-        "topicOnlyMaxRange": null,
-        "orTopics": false,
-        "combined": null,
-        "oldLogs": false,
-        "rangeError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
-        "addressError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
-        "topicOnlyError": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
-        "oldLogsError": "-32030: public free-tier capacity is temporarily exhausted — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive …"
-      },
-      "history": {
-        "stateDepth": null,
-        "archive": false,
-        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
-      },
-      "batch": {
-        "max": 0,
-        "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": null,
-        "eth_getBlockReceipts": null,
-        "eth_createAccessList": null,
-        "eth_getProof": null,
-        "debug_traceCall": null,
-        "trace_call": null,
-        "txpool_status": false,
-        "eth_blobBaseFee": null,
-        "eth_newFilter": null
-      },
-      "methodErrors": {
-        "eth_maxPriorityFeePerGas": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
-        "eth_getBlockReceipts": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
-        "eth_createAccessList": "-32009: all nodes failed",
-        "eth_getProof": "-32009: all nodes failed",
-        "debug_traceCall": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
-        "trace_call": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…",
-        "txpool_status": "-32002: method not supported",
-        "eth_blobBaseFee": "-32009: all nodes failed",
-        "eth_newFilter": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and…"
-      },
-      "throttledDuringProbes": 75,
-      "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10,
-        "retryAfter": "1"
-      },
-      "headLag": 1,
+      "reachable": false,
+      "ms": 7320,
+      "error": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)",
       "ratings": {
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "getLogs range unusable"
-        },
-        "trader": {
-          "pass": true,
-          "score": 51
-        },
-        "reader": {
-          "pass": false,
-          "score": 0,
-          "why": "eth_call unusable (-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices))"
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "not a websocket"
-        }
-      }
-    },
-    {
-      "url": "https://ronin.drpc.org",
-      "kind": "http",
-      "tracking": "none",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 23199,
-      "chainId": 2020,
-      "chainIdOk": true,
-      "head": 63056947,
-      "client": "Geth/v10.0.0/drpc",
-      "latency": {
-        "p50": 66,
-        "p95": 111,
-        "n": 8,
-        "failures": 4
-      },
-      "call": {
-        "revertData": false,
-        "gasCap": null,
-        "stateOverride": false,
-        "revertError": "19: Temporary internal error. Please retry, trace-id: 509e301409807d4312762e8be209f0a5",
-        "gasCapError": "19: Temporary internal error. Please retry, trace-id: ca43e8a5ce46b9deda3e90339425d050",
-        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
-      },
-      "logs": {
-        "maxRange": null,
-        "maxAddresses": null,
-        "topicOnly": false,
-        "topicOnlyMaxRange": null,
-        "orTopics": false,
-        "combined": null,
-        "oldLogs": false,
-        "rangeError": "19: Temporary internal error. Please retry, trace-id: e0f7ba95e727fdf1eeac3c4d7683bdb5",
-        "addressError": "19: Temporary internal error. Please retry, trace-id: 87b1e2f5b9a87d93b936cd5864ac2818",
-        "topicOnlyError": "19: Temporary internal error. Please retry, trace-id: 6c9f2925ce56e5517abdba8ac6c3c2bb",
-        "oldLogsError": "19: Temporary internal error. Please retry, trace-id: b981e54b59d2376aea2d66c14277439b"
-      },
-      "history": {
-        "stateDepth": 1000000,
-        "archive": false,
-        "error": "-32603: no state found for block 0x0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "batch": {
-        "max": 2,
-        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
-        "nullIdErrors": false
-      },
-      "methods": {
-        "eth_feeHistory": true,
-        "eth_maxPriorityFeePerGas": true,
-        "eth_getBlockReceipts": null,
-        "eth_createAccessList": null,
-        "eth_getProof": null,
-        "debug_traceCall": null,
-        "trace_call": null,
-        "txpool_status": false,
-        "eth_blobBaseFee": false,
-        "eth_newFilter": false
-      },
-      "methodErrors": {
-        "eth_getBlockReceipts": "19: Temporary internal error. Please retry, trace-id: 8f85b3e28de3cc62aa53aeb8df0e7ed3",
-        "eth_createAccessList": "19: Temporary internal error. Please retry, trace-id: 9ded4fd895b1bd08d32b32c08f599591",
-        "eth_getProof": "19: Temporary internal error. Please retry, trace-id: 8a5ad9a6fc447d4f8508680b1d7e9db7",
-        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
-        "trace_call": "19: Temporary internal error. Please retry, trace-id: d2a0bec978fe749de52459c7962ef292",
-        "txpool_status": "-32601: method is not available",
-        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
-        "eth_newFilter": "35: method is not available on free plan"
-      },
-      "throttledDuringProbes": 0,
-      "rate": {
-        "cleanRps": 0,
-        "limitedAt": 5,
-        "sent": 10,
-        "error": "-32601: the method eth_blockNumber does not exist/is not available"
-      },
-      "headLag": 28,
-      "ratings": {
-        "scanner": {
-          "pass": false,
-          "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
         },
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
         },
         "reader": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
         },
         "subscriber": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
-        }
-      }
-    },
-    {
-      "url": "https://api-ronin-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
-      "kind": "http",
-      "tracking": "limited",
-      "source": "chainlist",
-      "reachable": true,
-      "ms": 19362,
-      "chainId": 2020,
-      "chainIdOk": true,
-      "error": "eth_blockNumber failed",
-      "ratings": {
-        "scanner": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "trader": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "reader": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
-        },
-        "subscriber": {
-          "pass": false,
-          "score": 0,
-          "why": "head unknown"
+          "why": "-32029: public rate limit exceeded — sign up for free at https://routeme.sh to continue (economy and performance routing at competitive prices)"
         }
       }
     },
@@ -518,54 +317,53 @@
       "tracking": "none",
       "source": "chainlist",
       "reachable": true,
-      "ms": 48654,
+      "ms": 9781,
       "chainId": 2020,
       "chainIdOk": true,
-      "head": 63056947,
+      "head": 63211177,
       "client": "Geth/v10.0.0/drpc",
       "latency": {
-        "p50": 50,
-        "p95": 116,
-        "n": 8,
-        "failures": 4
+        "p50": 40,
+        "p95": 174,
+        "n": 11,
+        "failures": 1
       },
       "call": {
-        "revertData": false,
-        "gasCap": null,
+        "revertData": true,
+        "gasCap": 24946876,
         "stateOverride": false,
-        "revertError": "19: Temporary internal error. Please retry, trace-id: b5a53dc432ae4213f956b3891138ecef",
-        "gasCapError": "19: Temporary internal error. Please retry, trace-id: a8b9bbd80642168b32a1fdc543760e89",
+        "gasCapError": "19: Temporary internal error. Please retry, trace-id: 542b20761b6e5621dc5de0195a161aa1",
         "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
       },
       "logs": {
-        "maxRange": null,
+        "maxRange": 100,
         "maxAddresses": null,
         "topicOnly": false,
         "topicOnlyMaxRange": null,
         "orTopics": false,
         "combined": null,
         "oldLogs": false,
-        "rangeError": "19: Temporary internal error. Please retry, trace-id: 42600e4b564141770a73fae5a1803aef",
-        "addressError": "19: Temporary internal error. Please retry, trace-id: a98ebd15928d5d7073ab2ed4901a028c",
-        "topicOnlyError": "19: Temporary internal error. Please retry, trace-id: 51ce145c1ad39a057e6e8a8394e3ae06",
-        "oldLogsError": "19: Temporary internal error. Please retry, trace-id: ac91816198d5bb1616a62df6d0ea5b77"
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "socket closed (code 1006)",
+        "topicOnlyError": "socket closed (code 1006)",
+        "oldLogsError": "socket closed (code 1006)"
       },
       "history": {
-        "stateDepth": 1000000,
+        "stateDepth": null,
         "archive": false,
-        "error": "-32603: no state found for block 0x0000000000000000000000000000000000000000000000000000000000000000"
+        "error": "socket closed (code 1006)"
       },
       "batch": {
         "max": 0,
-        "error": "timeout 30000ms",
+        "error": "socket closed (code 1006)",
         "nullIdErrors": false
       },
       "methods": {
-        "eth_feeHistory": false,
-        "eth_maxPriorityFeePerGas": false,
-        "eth_getBlockReceipts": false,
-        "eth_createAccessList": false,
-        "eth_getProof": false,
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
         "debug_traceCall": null,
         "trace_call": null,
         "txpool_status": null,
@@ -573,12 +371,12 @@
         "eth_newFilter": null
       },
       "methodErrors": {
-        "eth_feeHistory": "-32601: the method eth_feeHistory does not exist/is not available",
-        "eth_maxPriorityFeePerGas": "-32601: the method eth_maxPriorityFeePerGas does not exist/is not available",
-        "eth_getBlockReceipts": "-32601: the method eth_getBlockReceipts does not exist/is not available",
-        "eth_createAccessList": "-32601: the method eth_createAccessList does not exist/is not available",
-        "eth_getProof": "-32601: the method eth_getProof does not exist/is not available",
-        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "eth_feeHistory": "socket closed (code 1006)",
+        "eth_maxPriorityFeePerGas": "socket closed (code 1006)",
+        "eth_getBlockReceipts": "socket closed (code 1006)",
+        "eth_createAccessList": "socket closed (code 1006)",
+        "eth_getProof": "socket closed (code 1006)",
+        "debug_traceCall": "socket closed (code 1006)",
         "trace_call": "socket closed (code 1006)",
         "txpool_status": "socket closed (code 1006)",
         "eth_blobBaseFee": "socket closed (code 1006)",
@@ -599,27 +397,128 @@
         "sent": 10,
         "error": "socket closed (code 1006)"
       },
-      "headLag": 28,
+      "headLag": 16,
       "ratings": {
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "head 16 blocks behind"
         },
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "head 16 blocks behind"
         },
         "reader": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "head 16 blocks behind"
         },
         "subscriber": {
           "pass": false,
           "score": 0,
-          "why": "head 28 blocks behind"
+          "why": "head 16 blocks behind"
+        }
+      }
+    },
+    {
+      "url": "https://ronin.drpc.org",
+      "kind": "http",
+      "tracking": "none",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 26064,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "head": 63211177,
+      "client": "Geth/v10.0.0/drpc",
+      "latency": {
+        "p50": 63,
+        "p95": 163,
+        "n": 9,
+        "failures": 3
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 49946876,
+        "stateOverride": false,
+        "stateOverrideError": "12: Can't route your request to suitable provider, if you specified certain providers revise the list"
+      },
+      "logs": {
+        "maxRange": 100,
+        "maxAddresses": 10,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": false,
+        "oldLogs": false,
+        "rangeError": "35: ranges over 10000 blocks are not supported on free plan",
+        "addressError": "19: Temporary internal error. Please retry, trace-id: 58eea1b70e58211044d7d783309e71b1",
+        "topicOnlyError": "19: Temporary internal error. Please retry, trace-id: 1fc6cdd99971d34940678924d52b0603",
+        "combinedError": "19: Temporary internal error. Please retry, trace-id: 17e3e910df96badde63d8402addde538",
+        "oldLogsError": "19: Temporary internal error. Please retry, trace-id: 2c3cda0d3452c8c93949c5b2af6cc173"
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "19: Temporary internal error. Please retry, trace-id: fdfafb44ee7d315f35be74b8638c0922"
+      },
+      "batch": {
+        "max": 2,
+        "error": "31: Batch of more than 3 requests are not allowed on free plan, to use this feature register paid account at drpc.org",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": null,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": null,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": false,
+        "eth_blobBaseFee": false,
+        "eth_newFilter": false
+      },
+      "methodErrors": {
+        "eth_feeHistory": "19: Temporary internal error. Please retry, trace-id: 40405d5dd0b01656c612d06678c875d3",
+        "eth_maxPriorityFeePerGas": "19: Temporary internal error. Please retry, trace-id: 561a907f07d3788e1bfd8061908b4edd",
+        "eth_getBlockReceipts": "19: Temporary internal error. Please retry, trace-id: 237f578ba2fd868d953e47c5e0f8a43b",
+        "eth_createAccessList": "19: Temporary internal error. Please retry, trace-id: a42f5e3afdd5150c62db78e9713761e1",
+        "eth_getProof": "19: Temporary internal error. Please retry, trace-id: ad18d615e9d4b09d1957e5cc8dfc4e6c",
+        "debug_traceCall": "5: Error: -32602, Tracer object with 'tracer' param is required for debug_traceCall",
+        "trace_call": "19: Temporary internal error. Please retry, trace-id: 78f1363408aedcdd647d2c4af7b48a8e",
+        "txpool_status": "-32601: method is not available",
+        "eth_blobBaseFee": "35: method is not available on free plan, please upgrade to paid plan",
+        "eth_newFilter": "35: method is not available on free plan"
+      },
+      "throttledDuringProbes": 0,
+      "rate": {
+        "cleanRps": 40,
+        "limitedAt": null,
+        "sent": 150
+      },
+      "headLag": 16,
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head 16 blocks behind"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 16 blocks behind"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head 16 blocks behind"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head 16 blocks behind"
         }
       }
     },
@@ -628,28 +527,123 @@
       "kind": "http",
       "source": "chainlist",
       "reachable": false,
-      "ms": 172,
-      "error": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"7d278b5b",
+      "ms": 270,
+      "error": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"b846c576",
       "ratings": {
         "scanner": {
           "pass": false,
           "score": 0,
-          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"7d278b5b"
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"b846c576"
         },
         "trader": {
           "pass": false,
           "score": 0,
-          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"7d278b5b"
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"b846c576"
         },
         "reader": {
           "pass": false,
           "score": 0,
-          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"7d278b5b"
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"b846c576"
         },
         "subscriber": {
           "pass": false,
           "score": 0,
-          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"7d278b5b"
+          "why": "no result or error in reply {\"message\":\"failure to get a peer from the ring-balancer\",\"request_id\":\"b846c576"
+        }
+      }
+    },
+    {
+      "url": "https://api-ronin-mainnet.n.dwellir.com/2ccf18bf-2916-4198-8856-42172854353c",
+      "kind": "http",
+      "tracking": "limited",
+      "source": "chainlist",
+      "reachable": true,
+      "ms": 158113,
+      "chainId": 2020,
+      "chainIdOk": true,
+      "head": 63211083,
+      "latency": {
+        "p50": 147,
+        "p95": 186,
+        "n": 8,
+        "failures": 4
+      },
+      "call": {
+        "revertData": true,
+        "gasCap": 4946876,
+        "stateOverride": false,
+        "gasCapError": "HTTP 429: Too Many Requests ",
+        "stateOverrideError": "HTTP 429: Too Many Requests "
+      },
+      "logs": {
+        "maxRange": null,
+        "maxAddresses": null,
+        "topicOnly": false,
+        "topicOnlyMaxRange": null,
+        "orTopics": false,
+        "combined": null,
+        "oldLogs": false,
+        "rangeError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "addressError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "topicOnlyError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. ",
+        "oldLogsError": "HTTP 403: Your current plan does not support the eth_getLogs method. Please upgrade to a paid plan at dashboard.dwellir.com. "
+      },
+      "history": {
+        "stateDepth": null,
+        "archive": false,
+        "error": "HTTP 429: Too Many Requests "
+      },
+      "batch": {
+        "max": 0,
+        "error": "HTTP 429: Too Many Requests ",
+        "nullIdErrors": false
+      },
+      "methods": {
+        "eth_feeHistory": null,
+        "eth_maxPriorityFeePerGas": true,
+        "eth_getBlockReceipts": null,
+        "eth_createAccessList": true,
+        "eth_getProof": null,
+        "debug_traceCall": null,
+        "trace_call": null,
+        "txpool_status": null,
+        "eth_blobBaseFee": true,
+        "eth_newFilter": true
+      },
+      "methodErrors": {
+        "eth_feeHistory": "HTTP 429: Too Many Requests ",
+        "eth_getBlockReceipts": "HTTP 429: Too Many Requests ",
+        "eth_getProof": "HTTP 429: Too Many Requests ",
+        "debug_traceCall": "HTTP 403: Your current plan does not support the debug_traceCall method. Please upgrade to a paid pl…",
+        "trace_call": "HTTP 403: Your current plan does not support the trace_call method. Please upgrade to a paid plan at…",
+        "txpool_status": "HTTP 429: Too Many Requests "
+      },
+      "throttledDuringProbes": 61,
+      "rate": {
+        "cleanRps": 0,
+        "limitedAt": 5,
+        "sent": 10
+      },
+      "ratings": {
+        "scanner": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "trader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "reader": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
+        },
+        "subscriber": {
+          "pass": false,
+          "score": 0,
+          "why": "head unknown"
         }
       }
     },
@@ -659,14 +653,14 @@
       "tracking": "yes",
       "source": "chainlist",
       "reachable": true,
-      "ms": 227424,
+      "ms": 229454,
       "chainId": 2020,
       "chainIdOk": true,
-      "head": 63056861,
+      "head": 63211079,
       "client": "conduit-op-reth/v2.4.1-f9a37a8/x86_64-unknown-linux-gnu",
       "latency": {
-        "p50": 75,
-        "p95": 75,
+        "p50": 77,
+        "p95": 77,
         "n": 2,
         "failures": 10
       },
@@ -702,7 +696,7 @@
         "nullIdErrors": false
       },
       "methods": {
-        "eth_feeHistory": null,
+        "eth_feeHistory": true,
         "eth_maxPriorityFeePerGas": true,
         "eth_getBlockReceipts": true,
         "eth_createAccessList": false,
@@ -714,15 +708,14 @@
         "eth_newFilter": null
       },
       "methodErrors": {
-        "eth_feeHistory": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "eth_createAccessList": "-32601: Method not found: eth_createAccessList",
-        "debug_traceCall": "-16401: Method 'debug_traceCall' is available for paid plans only. To access this feature, please up…",
+        "debug_traceCall": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "trace_call": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "txpool_status": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "eth_blobBaseFee": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …",
         "eth_newFilter": "no result or error in reply {\"statusCode\":429,\"message\":\"You have exceeded your limit of 5 requests …"
       },
-      "throttledDuringProbes": 86,
+      "throttledDuringProbes": 87,
       "rate": {
         "cleanRps": 0,
         "limitedAt": 5,

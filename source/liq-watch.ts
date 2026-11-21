@@ -93,6 +93,7 @@ import { tailRpc } from './liquidation/events.ts';
 import { resolveSubgraphUrl, seedFromSubgraph, redactUrl } from './liquidation/subgraph.ts';
 import { HealthMonitor, WAD, type AccountState, type Transition } from './liquidation/health.ts';
 import { Liquidator, RouteFinder, type LiquidationAttempt } from './liquidation/plan.ts';
+import { LivePools } from './liquidation/live-pools.ts';
 import { VenueLiquidator, VENUE_LIQUIDATOR_ABI } from './liquidation/plan-venues.ts';
 import type { Venue } from './liquidation/venue.ts';
 import { dbPath } from './util/config.ts';
@@ -311,6 +312,7 @@ if (tracks.length === 0) { console.error('No venues initialized — every venue 
 let fluidScanner: FluidScanner | null = null;
 let venueLiq: VenueLiquidator | null = null;
 let routeFinder: RouteFinder | null = null;
+const EXIT_WARM_MS = 20 * 60_000;
 let signer: NonceManager | undefined;
 if (liquidate) {
     // One NonceManager for every planner: two liquidations sent within ethers'
@@ -336,11 +338,16 @@ if (liquidate) {
     // from its bytecode, as the hot loop reads the arb executor's).
     const liqCode = (await provider.getCode(executor).catch(() => '0x')).toLowerCase();
     const liqStable = hasSelector(liqCode, selectorOf('HOP_STABLE()'));
-    routeFinder = new RouteFinder(cfg, dbPath(chainArg), hubs, { stable: liqStable });
+    routeFinder = new RouteFinder(cfg, dbPath(chainArg), hubs, { stable: liqStable, live: new LivePools(provider, cfg.factories) });
     console.log(liqStable ? `  exits    V2, V3/Algebra and Solidly stable pools`
         : `  exits    V2 and V3/Algebra pools — the liquidator predates HOP_STABLE, so stable pools are not exit routes (yarn deploy liquidator ${cfg.chain.label})`);
-    if (!routeFinder.available) console.log(`  [!] no ${dbPath(chainArg)} — only same-asset positions can be exited (run yarn scan ${cfg.chain.label})`);
+    if (!cfg.factories.length) console.log(`  [!] no factories in conf/${cfg.chain.label}.json5 — only pools in ${dbPath(chainArg)} can be exits (yarn factories ${cfg.chain.label} --add)`);
     const plannerOpts = { executor, owner, signer, live, gasMarginMultiple: num('--gas-margin') ?? 3, minProfitUsd };
+    // Within LivePools' discovery window, so an attempt never finds these cold.
+    const exitTokens = [...new Set(aaveMarkets().flatMap(m => m.reserves.map(r => r.asset.toLowerCase())))];
+    const warmExits = () => void routeFinder!.warm(exitTokens);
+    warmExits();
+    setInterval(warmExits, EXIT_WARM_MS).unref();
     for (const t of tracks) if (t.venue instanceof AaveVenue) t.aaveLiq = new Liquidator(cfg, provider, t.venue.market, routeFinder, plannerOpts);
     if (morphoVenue || cometVenue || cv2Venue || eulerVenue || (wantFluid && liquidate)) {
         // The deployed executor must carry the entry points for the venues in play.

@@ -108,8 +108,8 @@ export class VenueLiquidator {
         this.iface = this.contract.interface;
     }
 
-    private exits(from: string, to: string): Route[] {
-        return from.toLowerCase() === to.toLowerCase() ? [{ hops: [], label: 'same asset' }] : this.routes.routes(from, to, this.opts.executor);
+    private exits(from: string, to: string): Promise<Route[]> {
+        return from.toLowerCase() === to.toLowerCase() ? Promise.resolve([{ hops: [], label: 'same asset' }]) : this.routes.routes(from, to, this.opts.executor);
     }
 
     private async l1FeeWei(data: string): Promise<bigint> {
@@ -133,8 +133,8 @@ export class VenueLiquidator {
      */
     private async run(out: LiquidationAttempt, plan: PairPlan, token: Token, cands: Candidate[]): Promise<LiquidationAttempt> {
         if (!cands.length) {
-            out.reason = this.routes.available ? 'no exit route between collateral and debt in the pool DB'
-                : 'no pool DB (yarn scan) — only same-asset positions can be exited';
+            out.reason = this.routes.available ? 'no exit route between collateral and debt'
+                : 'no pool source — only same-asset positions can be exited';
             return out;
         }
         const sim = async (c: Candidate, minProfit: bigint): Promise<SimResult> => {
@@ -249,7 +249,7 @@ export class VenueLiquidator {
 
         const mp = venue.paramsTuple(m);
         const cands: Candidate[] = [];
-        for (const route of this.exits(coll.asset, loan.asset)) for (const j of jobs) {
+        for (const route of await this.exits(coll.asset, loan.asset)) for (const j of jobs) {
             cands.push({
                 route, method: 'liquidateMorpho', amount: j.amount,
                 send: (minProfit: bigint) => [[getAddress(venue.morpho), getAddress(user), j.seized, j.shares, minProfit], mp, route.hops.map(h => [h.pair, h.tokenIn, h.feePpm, h.recipient, h.kind])] as const,
@@ -305,7 +305,7 @@ export class VenueLiquidator {
             const amount = o.baseFor + o.baseFor / 50n + 1n;
             const lender = await this.lenders.pick(c.base, amount);
             if (!lender) continue;
-            for (const route of this.exits(o.a.asset, c.base)) {
+            for (const route of await this.exits(o.a.asset, c.base)) {
                 cands.push({
                     route, method: 'liquidateComet', amount,
                     send: (minProfit: bigint) => [lender.source, lender.lender, [getAddress(comet), borrower ? getAddress(borrower) : '0x0000000000000000000000000000000000000000', getAddress(o.a.asset), minProfit], amount,
@@ -359,7 +359,7 @@ export class VenueLiquidator {
             if (repay === 0n) continue;
             const lender = await this.lenders.pick(borrow.underlying, repay);
             if (!lender) continue;
-            for (const route of this.exits(c.underlying, borrow.underlying)) {
+            for (const route of await this.exits(c.underlying, borrow.underlying)) {
                 cands.push({
                     route, method: 'liquidateCompoundV2', amount: repay,
                     send: (minProfit: bigint) => [lender.source, lender.lender,
@@ -401,7 +401,7 @@ export class VenueLiquidator {
             const collTok: Token = { asset: cvt.asset, symbol: cvt.symbol, decimals: cvt.assetDecimals };
             out.pairs.push(this.plan(collTok, repayTok));
             const repay = o.maxRepay;
-            for (const route of this.exits(cvt.asset, vt.asset)) {
+            for (const route of await this.exits(cvt.asset, vt.asset)) {
                 cands.push({
                     route, method: 'liquidateEuler', amount: repay,
                     send: (minProfit: bigint) => [[getAddress(venue.evc), getAddress(liability), getAddress(o.cv), getAddress(cvt.asset), getAddress(vt.asset), getAddress(account), repay, minProfit],
@@ -426,7 +426,7 @@ export class VenueLiquidator {
         if (!lender) { out.reason = 'no lender for the debt asset'; return out; }
         const colPerUnitDebt = scanner.colPerUnitDebt(o);
         const cands: Candidate[] = [];
-        for (const route of this.exits(o.collateral, o.debt)) {
+        for (const route of await this.exits(o.collateral, o.debt)) {
             cands.push({
                 route, method: 'liquidateFluid', amount: o.inAmt,
                 send: (minProfit: bigint) => [lender.source, lender.lender,

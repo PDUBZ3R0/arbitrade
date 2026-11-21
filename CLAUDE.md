@@ -25,7 +25,7 @@ yarn add-chain <chainId> [slug]   # registry entry, conf skeleton, hardhat netwo
 yarn provider <chain>             # rate the chain's public RPCs -> conf/provider/<chainId>.json (vetted-provider)
 yarn deploy all <chain>           # scripts/deploy.sh: YoBatches3, FlashArbExecutor, TokenProbe, LiquidationExecutor
 yarn configure <chain>            # scripts/init.sh: deploy + find factories + the manual pipeline with fee fixes
-yarn factories <chain> --add      # find + verify DEX factories into conf/<chain>.json5
+yarn factories <chain> --add      # find + verify + audit (fees, pair code) DEX factories into conf/<chain>.json5, with creator and DEX name
 yarn manual <chain>               # scan -> reserves -> cleanup -> tokens -> probe -> triangles -> evaluate
 yarn arbitrage <chain>            # hot loop (source/hot.ts), Sync/Swap-driven
 yarn liquidator <chain>           # liq-watch (source/liq-watch.ts)
@@ -36,7 +36,7 @@ Other tools:
 
 | Command | What it does |
 |---|---|
-| `yarn verify-fees` / `yarn check-fees` | find wrong fee accessors and fix them with `--apply` |
+| `yarn verify-fees` / `yarn check-fees` | find wrong fee accessors and fix them with `--apply`. With no DB they sample the factory's hub-token pools, as does `yarn pair-code` |
 | `yarn cleanup` | db-clean; `--empty --prune-conf` |
 | `yarn market aave\|morpho <chain> <addr>` | verify a lender and print its flashloan block |
 | `yarn verify-markets <aave-v3\|morpho-blue\|compound-v3\|all> [--write]` | check `conf/markets/*` on-chain and fill deploy blocks |
@@ -47,7 +47,7 @@ Other tools:
 - `source/` holds the CLIs, one per stage: `scan`, `reserves`, `tokens`, `probe`, `triangles`, `evaluate`, `hot`, `orchestrator`, `liq-watch`, `add-chain`, `verify-*`, …
   - `scanner/`, `reserves/`, `triangles/`, `evaluator/`: the pipeline stages.
   - `orchestrator/`: hot loop, `sync-watcher.ts`, `triangle-index.ts`, `attempt.ts`, `build-hops.ts`, `report.ts`.
-  - `liquidation/`: one venue per protocol (`aave-v3.ts`, `morpho.ts`, `compound.ts`, `compound-v2.ts`, `euler.ts`, `fluid.ts`), plus `health.ts`, `plan.ts`, `plan-venues.ts`, `lenders.ts`.
+  - `liquidation/`: one venue per protocol (`aave-v3.ts`, `morpho.ts`, `compound.ts`, `compound-v2.ts`, `euler.ts`, `fluid.ts`), plus `health.ts`, `plan.ts`, `plan-venues.ts`, `lenders.ts`, `live-pools.ts` (exit pools from the factories, so `yarn liquidate` needs no scan).
   - `util/`: `config.ts`, `rpc.ts` (makeProvider), `db.ts`, `calculus.js` / `calculus-v3.js` (swap math), `dex-patterns.ts` (fee-accessor registry), `bytecode.ts`, `markets.ts`, `market-checks.ts`, `instance-lock.ts`.
 - `contracts/`: `FlashArbExecutor.sol`, `LiquidationExecutor.sol`, `HopEngine.sol`, `TokenProbe.sol`, `YoBatches{,2,3}.sol`.
 - `conf/` holds the configuration:
@@ -108,6 +108,10 @@ node --experimental-strip-types test/<suite>.mjs   # e.g. test-hot.mjs, test-liq
 - AWS EC2 us-east-1, one container per chain (`Containerfile` `ARG CHAIN`, `compose.aws.yaml`). The container copies `conf/@chains.json5`, `conf/<chain>*.json5`, `conf/provider/` and `conf/markets/`.
 - Secrets live in SSM. A ~$20/mo VPS in Germany runs chains that don't need co-location.
 - Not pursued: BSC and Ethereum mainnet.
+
+## Findings log
+
+When a session finds unexpected behavior in someone else's contract (a pair, factory, token, lender or oracle), add a row to `docs/findings-log.md` and triage it with the three checks at the top: is there a program, is there impact on others, is it new. Do this even when it is only a quirk that broke the bot. Say in the session when a finding passes all three, because that is a bounty lead.
 
 ## Working with Paul
 
