@@ -110,7 +110,15 @@ export function printAttempt(
         return;
     }
 
-    log(`  ${id} — simulated clean (dry run, not broadcast).`);
+    // Live, simulated clean, and still not broadcast: the send itself failed
+    // (sequencer refused, nonce, funds, signing). attempt.ts puts that reason in
+    // simulationError but leaves `broadcast` false, so this used to fall through
+    // to the dry-run line. Ink's first live day (2026-11-21) logged 259 "dry
+    // run" trades under "Mode: LIVE" and hid why none was sent.
+    const notSent = a.simulationError != null;
+    log(notSent
+        ? `  ${id} — simulated clean but NOT sent: ${a.simulationError}`
+        : `  ${id} — simulated clean (dry run, not broadcast).`);
     // "est." because the contract sizes each hop from live reserves at
     // execution time; this is what we predict at the reserves we just read, and
     // it is an upper bound on what a real trade would yield.

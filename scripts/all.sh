@@ -48,7 +48,12 @@ supervise() {
 }
 
 runstart(){
-    yarn scan $CHAIN --transport envio && \
+    # The Envio pass is a head start, not a requirement. It was chained with &&,
+    # so on the VPS, where the indexer (localhost:8080 on the dev box) is unreachable
+    # and ENVIO_REST_URL is unset, OP and Ink's first boot (2026-11-21) stopped
+    # here: no scan, no reserves, no triangles, and hot.ts restarting every 10 s.
+    yarn scan $CHAIN --transport envio || \
+        logd startup echo "envio scan failed or unconfigured; continuing with the default scan"
     yarn scan $CHAIN && \
         yarn reserves $CHAIN --blacklist-dead && \
         yarn cleanup $CHAIN --empty --yes && \

@@ -1073,7 +1073,14 @@ export class CandidateExecutor {
                     // exceeded" at the 12s queue timeout). Nothing entered ordering,
                     // so drop any locally-advanced nonce and move on.
                     (signer as { reset?: () => void }).reset?.();
-                    return { error: `sequencer did not accept the tx: ${(err as Error).message?.slice(0, 160)}` };
+                    // Prefer the JSON-RPC error message inside the HTTP body. ethers'
+                    // own message for a 400 opens with ~150 chars of empty request/
+                    // response dumps, so the 160-char cut ended mid-body and hid the
+                    // reason on Ink's first live day (2026-11-21).
+                    const body = (err as { info?: { responseBody?: string } })?.info?.responseBody;
+                    let why: string | undefined;
+                    try { why = body ? JSON.parse(body)?.error?.message : undefined; } catch { why = body?.slice(0, 160); }
+                    return { error: `sequencer did not accept the tx: ${why ?? (err as Error).message?.slice(0, 160)}` };
                 }
             });
             if ('error' in sent) { attempt.simulationError = sent.error; return attempt; }
